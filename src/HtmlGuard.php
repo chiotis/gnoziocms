@@ -136,6 +136,31 @@ final class HtmlGuard
     }
 
     /**
+     * The rows of a repeater with $change applied to their Markdown fields, also in an inner list.
+     *
+     * @param array<string, mixed> $field
+     * @param array<mixed> $rows
+     * @param \Closure(string): string $change
+     * @return array<mixed>
+     */
+    private static function eachMarkdownInRows(array $field, array $rows, \Closure $change): array
+    {
+        foreach ($rows as $r => $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            foreach ($field['fields'] as $subKey => $subField) {
+                if ($subField['type'] === 'markdown' && is_string($row[$subKey] ?? null)) {
+                    $rows[$r][$subKey] = $change($row[$subKey]);
+                } elseif ($subField['type'] === 'repeater' && is_array($row[$subKey] ?? null)) {
+                    $rows[$r][$subKey] = self::eachMarkdownInRows($subField, $row[$subKey], $change);
+                }
+            }
+        }
+        return $rows;
+    }
+
+    /**
      * Applies $change to every Markdown field of the blocks (including items inside repeaters) and returns the blocks.
      *
      * @param array<int, mixed> $blocks
@@ -162,13 +187,7 @@ final class HtmlGuard
                 if ($field['type'] === 'markdown' && is_string($block[$key] ?? null)) {
                     $blocks[$i][$key] = $change($block[$key]);
                 } elseif ($field['type'] === 'repeater' && is_array($block[$key] ?? null)) {
-                    foreach ($block[$key] as $r => $row) {
-                        foreach ($field['fields'] as $subKey => $subField) {
-                            if ($subField['type'] === 'markdown' && is_array($row) && is_string($row[$subKey] ?? null)) {
-                                $blocks[$i][$key][$r][$subKey] = $change($row[$subKey]);
-                            }
-                        }
-                    }
+                    $blocks[$i][$key] = self::eachMarkdownInRows($field, $block[$key], $change);
                 }
             }
         }

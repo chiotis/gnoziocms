@@ -419,6 +419,27 @@ final class BlockRenderer
     }
 
     /**
+     * Rows of a repeater with the HTML of their Markdown fields beside them (<key>_html), also in an inner list.
+     *
+     * @param array<string, mixed> $field
+     * @param array<int, array<string, mixed>> $rows
+     * @return array<int, array<string, mixed>>
+     */
+    private function rowsWithHtml(array $field, array $rows): array
+    {
+        foreach ($rows as $i => $row) {
+            foreach ($field['fields'] as $subKey => $subField) {
+                if ($subField['type'] === 'markdown') {
+                    $rows[$i][$subKey . '_html'] = $this->markdownHtml((string)$row[$subKey]);
+                } elseif ($subField['type'] === 'repeater') {
+                    $rows[$i][$subKey] = $this->rowsWithHtml($subField, $row[$subKey]);
+                }
+            }
+        }
+        return $rows;
+    }
+
+    /**
      * Markdown renderings and dynamic data for a block.
      *
      * @param array<string, mixed> $definition
@@ -433,13 +454,7 @@ final class BlockRenderer
                 $values[$key . '_html'] = $this->markdownHtml((string)$values[$key]);
             }
             if ($field['type'] === 'repeater') {
-                foreach ($values[$key] as $i => $row) {
-                    foreach ($field['fields'] as $subKey => $subField) {
-                        if ($subField['type'] === 'markdown') {
-                            $values[$key][$i][$subKey . '_html'] = $this->markdownHtml((string)$row[$subKey]);
-                        }
-                    }
-                }
+                $values[$key] = $this->rowsWithHtml($field, $values[$key]);
             }
         }
 

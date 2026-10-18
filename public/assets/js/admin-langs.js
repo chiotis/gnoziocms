@@ -28,6 +28,8 @@
   }
 
   function apply() {
+    // Read again each time: a new row can bring a list of its own with texts per language (a repeater inside a repeater).
+    scopes = Array.prototype.slice.call(document.querySelectorAll('[data-lang-scope]'));
     scopes.forEach(function (scope) {
       inputs(scope).forEach(function (input) {
         input.hidden = input.getAttribute('data-lang') !== active;

@@ -587,7 +587,8 @@ final class ContentCsv
 
     private function buildMarkdownPayload(array $data, string $body): string
     {
-        $frontmatter = trim(Yaml::dump($data, 4, 2));
+        // Deep enough that lists of rows (a repeater, and one inside its rows) are written as block YAML, as the editor writes them.
+        $frontmatter = trim(Yaml::dump($data, 10, 2));
         $body = rtrim($body);
         return "---\n" . $frontmatter . "\n---\n\n" . $body . "\n";
     }

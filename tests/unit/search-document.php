@@ -59,6 +59,11 @@ $fixtureFields = [
         'body' => ['type' => 'markdown'],
         'private' => ['type' => 'text', 'searchable' => false],
         'link' => ['type' => 'link'],
+        'buttons' => ['type' => 'repeater', 'max' => 1, 'fields' => [
+            'label' => ['type' => 'text', 'translatable' => true],
+            'secret' => ['type' => 'text', 'searchable' => false],
+            'url' => ['type' => 'link'],
+        ]],
     ]],
 ];
 file_put_contents($root . '/custom/blocks/search-fixture/block.yaml', Yaml::dump([
@@ -83,8 +88,17 @@ file_put_contents($root . '/custom/content-types/search-fixtures.yaml', Yaml::du
         'decimal' => ['type' => 'decimal'],
         'date' => ['type' => 'date'],
         'missing' => ['type' => 'text', 'default' => 'UnusedFieldDefault'],
+        'editions' => ['type' => 'repeater', 'fields' => [
+            'publisher' => ['type' => 'text'],
+            'format' => ['type' => 'select', 'options' => ['paper' => ['el' => 'Χαρτί', 'en' => 'Paper']]],
+            'shops' => ['type' => 'repeater', 'fields' => [
+                'name' => ['type' => 'text', 'translatable' => true],
+                'url' => ['type' => 'url'],
+                'internal' => ['type' => 'text', 'searchable' => false],
+            ]],
+        ]],
     ],
-], 8));
+], 10));
 
 $theme = new Theme($root);
 $types = new ContentTypes($theme);
@@ -151,6 +165,15 @@ check('empty and malformed repeater rows do not consume its visible row limit', 
     'type' => 'search-fixture', 'items' => [null, [], ['title' => ''], ['unknown' => 'EmptyRowSecret'], ['title' => 'FirstRow'], ['title' => 'SecondRow'], ['title' => 'OverLimitSecret']],
 ]]]))['body'], 'FirstRow SecondRow');
 
+$nested = $search->extract($item(['blocks' => [[
+    'type' => 'search-fixture', 'items' => [
+        ['title' => 'OuterRow', 'buttons' => [['label' => ['default' => 'ΚουμπίΈνα', 'en' => 'ButtonOne'], 'secret' => 'InnerPrivateSecret', 'url' => '/InnerLinkSecret'], ['label' => 'InnerOverLimitSecret']]],
+        ['buttons' => [['label' => 'OnlyInnerWords']]],
+    ],
+]]]))['body'];
+check('a list inside a row of a block is searched too, with its own limit, privacy and language', $nested, 'OuterRow ΚουμπίΈνα OnlyInnerWords');
+check('and in the entry\'s language', $search->extract($item(['blocks' => [['type' => 'search-fixture', 'items' => [['buttons' => [['label' => ['default' => 'ΚουμπίΈνα', 'en' => 'ButtonOne']]]]]]]], '', 'pages', 'en'))['body'], 'ButtonOne');
+
 $container = ['type' => BlockContainer::TYPE, 'settings' => ['class' => 'ContainerClassSecret'], 'columns' => [
     ['settings' => ['width' => 'ColumnWidthSecret'], 'blocks' => [['type' => 'text', 'heading' => 'InsideColumn'], ['type' => 'text', 'heading' => 'HiddenColumnBlockSecret', 'hidden' => true]]],
     ['blocks' => [['type' => 'text', 'body' => 'Column **Markdown**'], ['type' => BlockContainer::TYPE, 'columns' => [['blocks' => [['type' => 'text', 'heading' => 'NestedContainerSecret']]]]]]],
@@ -172,6 +195,10 @@ check('custom fields include public text, Markdown, ISBN, localized labels and e
 check('custom field keys and unpublished data are excluded', str_contains(strtolower($document['fields']), 'secret') || str_contains($document['fields'], 'retail_internal') || str_contains($document['fields'], 'UnusedFieldDefault'), false);
 check('select labels use the entry language', $search->extract($item(['custom_fields' => ['sector' => 'retail_internal']], '', 'search-fixtures', 'en'))['fields'], 'Retail');
 check('book author is searchable because its card publicly displays it', $search->extract($item(['custom_fields' => ['author' => 'Νίκος Καζαντζάκης', 'isbn' => '9781234567890']], '', 'books'))['fields'], 'Νίκος Καζαντζάκης 9781234567890');
+check('a content type\'s list with a list in its rows is searched at both levels', $search->extract($item(['custom_fields' => ['editions' => [
+    ['publisher' => 'PublisherWords', 'format' => 'paper', 'shops' => [['name' => ['default' => 'Πολιτεία', 'en' => 'Politeia'], 'url' => 'https://shop-secret.test', 'internal' => 'InternalShopSecret']]],
+    ['shops' => [['name' => 'SecondShopWords']]], // a choice with no empty option has a value, shown on the page, so it is searched
+]]], '', 'search-fixtures'))['fields'], 'PublisherWords Χαρτί Πολιτεία Χαρτί SecondShopWords');
 check('declared public number, decimal and date facts are searchable', $search->extract($item(['custom_fields' => ['number' => 2026, 'decimal' => 3.5, 'date' => '2026-10-16']], '', 'search-fixtures'))['fields'], '2026 3.5 2026-10-16');
 check('searchable override is preserved in content schema', $types->definition('search-fixtures')['fields']['opted_out']['searchable'], false);
 $field = FieldSchema::normalize(['ordinary' => ['type' => 'text']])['ordinary'];

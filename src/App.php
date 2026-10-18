@@ -3246,7 +3246,9 @@ final class App
                 'definition' => $definition,
                 'theme_definition' => $themeDefinition,
                 'rows' => $admin->fieldRows($definition, $themeDefinition),
-                'field_types' => ContentTypes::FIELD_TYPES,
+                'field_types' => ContentTypes::FORM_FIELD_TYPES,
+                // Parts of the type's files the CMS leaves out (a repeater nested too deep), so whoever wrote them can see why.
+                'definition_problems' => FieldSchema::problems(is_array($types->raw($selected)['fields'] ?? null) ? $types->raw($selected)['fields'] : []),
                 'layouts' => ContentTypes::LAYOUTS,
                 'orders' => ContentTypes::orderOptions($definition['fields']),
                 'taxonomy_names' => $this->taxonomies()->names(),

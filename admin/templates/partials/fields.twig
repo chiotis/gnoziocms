@@ -30,12 +30,12 @@
   {% endfor %}
 {% endmacro %}
 
-{% macro field(field, name, value) %}
+{% macro field(field, name, value, depth) %}
   {% import _self as m %}
   {% set control = 'w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-300' %}
   {% set span = field.span == 'full' ? ' col-span-full' : '' %}
   {% if field.type == 'repeater' %}
-    {{ m.repeater(field, name, value, span) }}
+    {{ m.repeater(field, name, value, span, depth|default(1)) }}
   {% elseif field.type == 'toggle' %}
     <label class="flex items-start justify-between gap-4 rounded-md border border-slate-100 px-3 py-2.5{{ span }}">
       <span>
@@ -81,12 +81,17 @@
 {#
   A list of rows, each with the same fields (up to max rows). Rows are added, removed and moved in the browser
   (data-repeater in admin.js); a new row is cloned from the template, so it starts empty.
+  A row of a top-level list may hold a list of its own (depth 2, see FieldSchema::MAX_DEPTH): the template of each level has its
+  own placeholder for the row number (__INDEX__, then __INDEX2__), so adding a row to one list never renumbers the other, and
+  data-repeater-name is the name the rows of that list start with, which admin.js keeps up to date when rows move.
 #}
-{% macro repeater(field, name, value, span) %}
+{% macro repeater(field, name, value, span, depth) %}
   {% import _self as m %}
+  {% set depth = depth|default(1) %}
+  {% set placeholder = depth > 1 ? '__INDEX' ~ depth ~ '__' : '__INDEX__' %}
   {% set rows = value is iterable ? value : [] %}
   {% set has_translatable = field.fields|filter(sub => sub.translatable|default(false))|length > 0 %}
-  <fieldset class="rounded-md border border-slate-200 p-3{{ span }}" data-repeater data-repeater-max="{{ field.max ?? 0 }}" data-repeater-item="{{ field.item_label }}"{% if has_translatable %} data-lang-scope{% endif %}>
+  <fieldset class="rounded-md border border-slate-200 {{ depth > 1 ? 'col-span-full bg-white p-2' : 'p-3' }}{{ span }}" data-repeater data-repeater-name="{{ name }}" data-repeater-placeholder="{{ placeholder }}" data-repeater-min="{{ field.min ?? 0 }}" data-repeater-max="{{ field.max ?? 0 }}" data-repeater-item="{{ field.item_label }}"{% if has_translatable %} data-lang-scope{% endif %}>
     <legend class="px-1 text-sm font-medium text-slate-700">{{ field.label }}</legend>
     {% if has_translatable %}<div class="mb-2">{{ m.lang_switch() }}</div>{% endif %}
     {% if field.help %}<p class="mb-2 text-xs text-slate-400">{{ field.help }}</p>{% endif %}
@@ -94,18 +99,19 @@
     <input type="hidden" name="{{ name }}" value="">
     <ol class="space-y-2" data-repeater-rows>
       {% for row in rows %}
-        {{ m.repeater_row(field, name, loop.index0, row) }}
+        {{ m.repeater_row(field, name, loop.index0, row, depth) }}
       {% endfor %}
     </ol>
-    <template data-repeater-template>{{ m.repeater_row(field, name, '__INDEX__', {}) }}</template>
-    <button type="button" class="mt-2 inline-flex items-center rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50" data-repeater-add>Add {{ field.item_label|lower }}</button>
+    <template data-repeater-template>{{ m.repeater_row(field, name, placeholder, {}, depth) }}</template>
+    <button type="button" class="mt-2 inline-flex items-center rounded-md border border-slate-300 bg-white {{ depth > 1 ? 'px-2 py-1 text-xs' : 'px-3 py-1.5 text-sm' }} font-medium text-slate-700 hover:bg-slate-50" data-repeater-add>Add {{ field.item_label|lower }}</button>
   </fieldset>
 {% endmacro %}
 
-{% macro repeater_row(field, name, index, row) %}
+{% macro repeater_row(field, name, index, row, depth) %}
   {% import _self as m %}
-  <li class="rounded-md border border-slate-200 bg-slate-50 p-3" data-repeater-row>
-    <div class="mb-2 flex items-center justify-between gap-2">
+  {% set depth = depth|default(1) %}
+  <li class="rounded-md border border-slate-200 bg-slate-50 {{ depth > 1 ? 'p-2' : 'p-3' }}" data-repeater-row>
+    <div class="mb-2 flex items-center justify-between gap-2" data-repeater-head>
       <span class="text-xs font-semibold uppercase tracking-wide text-slate-500" data-repeater-title>{{ field.item_label }}</span>
       <span class="inline-flex gap-1">
         <button type="button" class="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-600 hover:bg-slate-100" data-repeater-up aria-label="Move {{ field.item_label|lower }} up">↑</button>
@@ -115,7 +121,7 @@
     </div>
     <div class="grid gap-3 sm:grid-cols-2">
       {% for sub_key, sub in field.fields %}
-        {{ m.field(sub, name ~ '[' ~ index ~ '][' ~ sub_key ~ ']', row[sub_key]|default(sub.type == 'toggle' ? false : '')) }}
+        {{ m.field(sub, name ~ '[' ~ index ~ '][' ~ sub_key ~ ']', row[sub_key]|default(sub.type == 'toggle' ? false : (sub.type == 'repeater' ? [] : '')), depth + 1) }}
       {% endfor %}
     </div>
   </li>

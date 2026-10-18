@@ -16,9 +16,10 @@ use Symfony\Component\Yaml\Yaml;
  * one (mark a theme field `hidden: true` to retire it), and archive settings replace the theme's.
  *
  *   label / singular / description   text, or a map per language (el: …, en: …)
- *   fields:                          key => definition, see FieldSchema (repeaters are not supported)
+ *   fields:                          key => definition, see FieldSchema; a repeater (a list of rows) may hold one repeater
+ *                                    level of its own, and is stored as a YAML list of maps
  *     filterable: true               select fields only: offered as a filter in the archive
- *     card: true                     shown on the item's card
+ *     card: true                     shown on the item's card (a repeater as a short list of its rows)
  *     show: false                    not shown on the item's own page
  *   single:                          how the type's own page can be set in Theme > Single Layouts
  *     sidebar: true                  its template draws a sidebar when the card asks for one (None, Right, Left)
@@ -67,7 +68,10 @@ final class ContentTypes
     /** Field types an archive can be ordered by. */
     public const SORTABLE_TYPES = ['date', 'number', 'decimal', 'text'];
 
-    public const FIELD_TYPES = ['text', 'textarea', 'markdown', 'email', 'url', 'link', 'image', 'file', 'location', 'color', 'number', 'decimal', 'date', 'select', 'toggle'];
+    public const FIELD_TYPES = ['text', 'textarea', 'markdown', 'email', 'url', 'link', 'image', 'file', 'location', 'color', 'number', 'decimal', 'date', 'select', 'toggle', 'repeater'];
+
+    /** The kinds of field Admin > Content types can create: a repeater needs fields of its own, so it is written in the type's YAML file. */
+    public const FORM_FIELD_TYPES = ['text', 'textarea', 'markdown', 'email', 'url', 'link', 'image', 'file', 'location', 'color', 'number', 'decimal', 'date', 'select', 'toggle'];
 
     /** @var array<string, array<string, mixed>>|null */
     private ?array $raw = null;
@@ -193,16 +197,7 @@ final class ContentTypes
             if (!is_array($definition)) {
                 continue;
             }
-            foreach (['label', 'help', 'placeholder'] as $text) {
-                if (isset($definition[$text])) {
-                    $definition[$text] = (string)$pick($definition[$text]);
-                }
-            }
-            if (is_array($definition['options'] ?? null)) {
-                foreach ($definition['options'] as $value => $optionLabel) {
-                    $definition['options'][$value] = is_array($optionLabel) ? (string)$pick($optionLabel) : $optionLabel;
-                }
-            }
+            $definition = self::pickTexts($definition, $pick);
             $normalized = FieldSchema::normalize([$fieldKey => $definition])[(string)$fieldKey] ?? null;
             if ($normalized === null || !in_array($normalized['type'], self::FIELD_TYPES, true)) {
                 continue;
@@ -245,6 +240,36 @@ final class ContentTypes
     }
 
     /**
+     * A raw field definition with its texts (label, help, placeholder, a repeater's item_label, option labels) chosen for the
+     * language, also in the fields of a repeater's rows.
+     *
+     * @param array<string, mixed> $definition
+     * @param callable(mixed): mixed $pick
+     * @return array<string, mixed>
+     */
+    private static function pickTexts(array $definition, callable $pick): array
+    {
+        foreach (['label', 'help', 'placeholder', 'item_label'] as $text) {
+            if (isset($definition[$text])) {
+                $definition[$text] = (string)$pick($definition[$text]);
+            }
+        }
+        if (is_array($definition['options'] ?? null)) {
+            foreach ($definition['options'] as $value => $optionLabel) {
+                $definition['options'][$value] = is_array($optionLabel) ? (string)$pick($optionLabel) : $optionLabel;
+            }
+        }
+        if (is_array($definition['fields'] ?? null)) {
+            foreach ($definition['fields'] as $key => $sub) {
+                if (is_array($sub)) {
+                    $definition['fields'][$key] = self::pickTexts($sub, $pick);
+                }
+            }
+        }
+        return $definition;
+    }
+
+    /**
      * The options a type declares for its page or its list: each is a field definition with texts chosen for the language.
      * Only the kinds of field a card can draw (and the schema checks) are kept; every one is optional to fill in.
      *
@@ -258,16 +283,7 @@ final class ContentTypes
             if (!is_array($definition)) {
                 continue;
             }
-            foreach (['label', 'help', 'placeholder'] as $text) {
-                if (isset($definition[$text])) {
-                    $definition[$text] = (string)$pick($definition[$text]);
-                }
-            }
-            if (is_array($definition['options'] ?? null)) {
-                foreach ($definition['options'] as $value => $optionLabel) {
-                    $definition['options'][$value] = is_array($optionLabel) ? (string)$pick($optionLabel) : $optionLabel;
-                }
-            }
+            $definition = self::pickTexts($definition, $pick);
             $normalized = FieldSchema::normalize([$key => $definition])[(string)$key] ?? null;
             if ($normalized !== null && in_array($normalized['type'], ['text', 'select', 'toggle', 'number', 'decimal', 'color'], true) && !$normalized['hidden']) {
                 $options[(string)$key] = $normalized;
@@ -329,25 +345,67 @@ final class ContentTypes
      */
     public function display(string $type, array $meta, string $context, \Closure $formatDate, string $lang = 'en', string $defaultLang = 'en'): array
     {
-        $entries = [];
         $values = $this->values($type, $meta, $lang, $defaultLang);
-        foreach ($this->editableFields($type, $lang, $defaultLang) as $key => $field) {
-            if (!array_key_exists($key, $values)) {
-                continue;
-            }
-            if ($context === 'card' ? !$field['card'] : !$field['show']) {
+        $fields = array_filter(
+            $this->editableFields($type, $lang, $defaultLang),
+            static fn(array $field): bool => $context === 'card' ? $field['card'] : $field['show']
+        );
+        return self::displayEntries($fields, $values, $formatDate, $lang, $defaultLang);
+    }
+
+    /**
+     * Entries ready to print for checked values. A repeater's entry has `rows`, each a list of entries of its own (an inner
+     * repeater the same way, one level down), and a `display` that names its rows in one line, for a card.
+     *
+     * @param array<string, array<string, mixed>> $fields
+     * @param array<string, mixed> $values checked values
+     * @param \Closure(string): string $formatDate
+     * @return array<int, array<string, mixed>>
+     */
+    private static function displayEntries(array $fields, array $values, \Closure $formatDate, string $lang, string $defaultLang): array
+    {
+        $entries = [];
+        foreach ($fields as $key => $field) {
+            if ($field['hidden'] || !array_key_exists($key, $values) || self::isEmpty($field, $values[$key])) {
                 continue;
             }
             $value = $values[$key];
-            $display = match ($field['type']) {
+            if (($field['translatable'] ?? false) === true && is_array($value)) {
+                // A text with a version per language: the one of the page's language, else the site's own.
+                $value = (string)(($lang !== $defaultLang ? ($value[$lang] ?? null) : null) ?? $value['default'] ?? '');
+                if ($value === '') {
+                    continue;
+                }
+            }
+            $entry = ['key' => (string)$key, 'label' => $field['label'], 'type' => $field['type'], 'value' => $value];
+            if ($field['type'] === 'repeater') {
+                $rows = [];
+                foreach (is_array($value) ? $value : [] as $row) {
+                    $inner = self::displayEntries($field['fields'], is_array($row) ? $row : [], $formatDate, $lang, $defaultLang);
+                    if ($inner !== []) {
+                        $rows[] = $inner;
+                    }
+                }
+                if ($rows === []) {
+                    continue;
+                }
+                $entry['rows'] = $rows;
+                $entry['display'] = implode(', ', array_filter(array_map(
+                    static fn(array $row): string => (string)(array_values(array_filter($row, static fn(array $e): bool => $e['type'] !== 'repeater' && $e['type'] !== 'image' && $e['display'] !== ''))[0]['display'] ?? ''),
+                    $rows
+                ), static fn(string $text): bool => $text !== ''));
+                $entries[] = $entry;
+                continue;
+            }
+            $entry['display'] = match ($field['type']) {
                 'select' => (string)($field['options'][(string)$value] ?? $value),
                 'toggle' => $value === true ? 'yes' : '',
                 'date' => $formatDate((string)$value),
                 'url' => (string)(preg_replace('#^www\.#i', '', (string)parse_url((string)$value, PHP_URL_HOST)) ?: $value),
                 'link' => (string)preg_replace('#^(mailto:|tel:|https?://(www\.)?)#i', '', (string)$value),
-                default => (string)$value,
+                default => is_scalar($value) ? (string)$value : '',
             };
-            $entries[] = ['key' => $key, 'label' => $field['label'], 'type' => $field['type'], 'value' => $value, 'display' => $display];
+            $entries[] = $entry;
         }
         return $entries;
     }
@@ -377,18 +435,47 @@ final class ContentTypes
                 continue;
             }
             $raw = $input[$key] ?? '';
-            if (!is_scalar($raw) || trim((string)$raw) === '') {
+            // A list (a repeater's rows) or a text per language comes as a map; anything else is one value.
+            $structured = is_array($raw) && ($field['type'] === 'repeater' || ($field['translatable'] ?? false) === true);
+            if (!$structured && (!is_scalar($raw) || trim((string)$raw) === '')) {
                 continue;
             }
             if (in_array($field['type'], ['number', 'decimal'], true) && !is_numeric($raw)) {
                 continue;
             }
             $value = FieldSchema::clean($field, $raw);
+            if ($field['type'] === 'repeater') {
+                $value = self::tidyRows($field, $value);
+            }
             if (!self::isEmpty($field, $value)) {
                 $store[$key] = $value;
             }
         }
         return $store;
+    }
+
+    /**
+     * Checked rows as they are stored: empty values left out (also in an inner list), as for the type's own fields; reading them
+     * back fills them in again.
+     *
+     * @param array<string, mixed> $field
+     * @param array<int, array<string, mixed>> $rows
+     * @return array<int, array<string, mixed>>
+     */
+    private static function tidyRows(array $field, array $rows): array
+    {
+        foreach ($rows as $i => $row) {
+            foreach ($field['fields'] as $subKey => $sub) {
+                if ($sub['type'] === 'repeater' && is_array($row[$subKey] ?? null)) {
+                    $row[$subKey] = self::tidyRows($sub, $row[$subKey]);
+                }
+                if (array_key_exists($subKey, $row) && self::isEmpty($sub, $row[$subKey])) {
+                    unset($row[$subKey]);
+                }
+            }
+            $rows[$i] = $row;
+        }
+        return $rows;
     }
 
     /** Keys of every declared field, including retired ones. @return string[] */
@@ -540,7 +627,7 @@ final class ContentTypes
         return match ($field['type']) {
             'toggle' => $value !== true,
             'number', 'decimal' => !is_int($value) && !is_float($value),
-            default => $value === '' || $value === null,
+            default => $value === '' || $value === null || $value === [],
         };
     }
 

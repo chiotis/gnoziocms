@@ -258,18 +258,7 @@ final class BlockRegistry
                     }
                     $value = FieldSchema::clean($field, $raw[$key]);
                     if ($field['type'] === 'repeater') {
-                        $rows = [];
-                        foreach ($value as $row) {
-                            foreach ($field['fields'] as $subKey => $subField) {
-                                if (($row[$subKey] ?? null) === $subField['default']) {
-                                    unset($row[$subKey]);
-                                }
-                            }
-                            if ($row !== []) {
-                                $rows[] = $row;
-                            }
-                        }
-                        $value = $rows;
+                        $value = self::rowsWithoutDefaults($field, $value);
                     }
                     if ($value === $field['default'] || $value === []) {
                         continue;
@@ -284,6 +273,33 @@ final class BlockRegistry
     }
 
     /** @return array<string, mixed>|null */
+    /**
+     * The rows of a checked repeater as they are stored: values equal to the default left out (also in an inner list), and rows
+     * left with nothing dropped.
+     *
+     * @param array<string, mixed> $field
+     * @param array<int, array<string, mixed>> $rows
+     * @return array<int, array<string, mixed>>
+     */
+    private static function rowsWithoutDefaults(array $field, array $rows): array
+    {
+        $kept = [];
+        foreach ($rows as $row) {
+            foreach ($field['fields'] as $subKey => $subField) {
+                if ($subField['type'] === 'repeater' && is_array($row[$subKey] ?? null)) {
+                    $row[$subKey] = self::rowsWithoutDefaults($subField, $row[$subKey]);
+                }
+                if (($row[$subKey] ?? null) === $subField['default']) {
+                    unset($row[$subKey]);
+                }
+            }
+            if ($row !== []) {
+                $kept[] = $row;
+            }
+        }
+        return $kept;
+    }
+
     private function load(string $type, string $file, string $origin): ?array
     {
         try {

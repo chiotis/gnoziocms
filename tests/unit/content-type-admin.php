@@ -72,6 +72,17 @@ check('and can be a filter', $f['kind']['filterable'], true);
 $admin->update($form([['key' => 'kind', 'label' => 'Kind', 'type' => 'text', 'show' => '1']]), $manageable, 'el');
 $f = $types->customRaw('projects')['fields'];
 check('turned into text it loses its options and filter', [isset($f['kind']['options']), isset($f['kind']['filterable'])], [false, false]);
+// a list of rows (a repeater) is written in the YAML file; the form changes only how it is used, and never makes one
+$types->saveCustom('projects', ['fields' => ['team' => ['type' => 'repeater', 'label' => 'Team', 'fields' => ['name' => ['type' => 'text'], 'links' => ['type' => 'repeater', 'fields' => ['url' => ['type' => 'url']]]]]]]);
+$types = new ContentTypes(new Theme($root, 'default'));
+$admin = new ContentTypeAdmin($types, "$root/content", fn() => ['categories', 'tags'], fn(string $key) => in_array($key, ['title', 'slug', 'status'], true), function (string $action, string $level, ?string $type, ?string $id, string $message, array $ctx) use (&$log) { $log[] = [$action, $id]; });
+$teamRow = array_values(array_filter($admin->fieldRows($types->definition('projects', 'el', 'el'), $theme), fn($r) => $r['key'] === 'team'))[0];
+check('the screen describes the fields of its rows, the inner list too', $teamRow['sub_fields'], 'Name (text), Links (list: Url (url))');
+$admin->update($form([['key' => 'team', 'label' => 'Team', 'type' => 'text', 'show' => '', 'card' => '1']]), $manageable, 'el');
+$f = $types->customRaw('projects')['fields'];
+check('saving the form keeps it a repeater with its fields, and changes its flags', [$f['team']['type'], array_keys($f['team']['fields']), $f['team']['show'], $f['team']['card']], ['repeater', ['name', 'links'], false, true]);
+$admin->update($form([['key' => 'fresh', 'label' => 'Fresh', 'type' => 'repeater', 'show' => '1']]), $manageable, 'el');
+check('a new field cannot be made a repeater from the form', $types->customRaw('projects')['fields']['fresh']['type'], 'text');
 $admin->update($form([]), $manageable, 'el');
 check('a field whose row was removed leaves the definition', $types->customRaw('projects')['fields'] ?? null, null);
 
@@ -96,7 +107,7 @@ check('and dropped when it does not', $types->customRaw('projects')['archive'] ?
 // ---- the screen's rows
 $def = $types->definition('projects', 'el', 'el');
 $rows = $admin->fieldRows($def, $types->themeDefinition('projects', 'el', 'el'));
-check('one row per field, in order, with the keys the editor needs', [array_column($rows, 'key') === array_keys($def['fields']), array_keys($rows[0])], [true, ['key', 'label', 'help', 'type', 'options', 'filterable', 'card', 'show', 'retired', 'from_theme']]);
+check('one row per field, in order, with the keys the editor needs', [array_column($rows, 'key') === array_keys($def['fields']), array_keys($rows[0])], [true, ['key', 'label', 'help', 'type', 'options', 'filterable', 'card', 'show', 'retired', 'from_theme', 'sub_fields']]);
 check('theme fields are marked', array_unique(array_column($rows, 'from_theme')), [true]);
 $selectRow = array_values(array_filter($rows, fn($r) => $r['type'] === 'select'))[0] ?? null;
 check('a select shows its options as lines of value and label, without the empty one', $selectRow !== null && !str_contains($selectRow['options'], "|—") && str_contains($selectRow['options'], '|'), true);

@@ -510,7 +510,7 @@
     rows.forEach(function (row, index) {
       var input = el('input', { type: 'text', class: CLS.input, id: id + '-' + index, value: row[sub.key] == null ? '' : String(row[sub.key]), placeholder: sub.placeholder || '', 'aria-label': item + ' ' + (index + 1) });
       input.addEventListener('input', function () { row[sub.key] = input.value; onChange(rows); });
-      var remove = el('button', { type: 'button', class: CLS.iconDanger, 'aria-label': 'Remove ' + item.toLowerCase() + ' ' + (index + 1), html: svg('trash') });
+      var remove = el('button', { type: 'button', class: CLS.iconDanger, 'aria-label': 'Remove ' + item.toLowerCase() + ' ' + (index + 1), html: svg('trash'), disabled: !!(field.min && rows.length <= field.min) });
       remove.addEventListener('click', function () { rows.splice(index, 1); commit(); });
       grid.appendChild(el('div', { class: 'bk-inline-item' }, [rows.length > 1 ? grip(item.toLowerCase() + ' ' + (index + 1)) : null, input, remove]));
     });
@@ -543,7 +543,8 @@
   function repeaterControl(field, rows, onChange, id) {
     if (field.inline) return inlineRepeater(field, rows, onChange, id);
     var item = field.item_label || 'Item';
-    var list = el('div', { class: 'bk-rows' });
+    // Marked as a list of its own even with one row, so a list around it (a repeater in a repeater row) never takes its rows.
+    var list = el('div', { class: 'bk-rows', 'data-sortable': 'bk-rows' });
     var count = el('span', { class: 'bk-count', text: rows.length + (field.max ? ' / ' + field.max : '') });
     var allOpen = rows.length > 0 && rows.every(function (r) { return rowOpen.get(r); });
     var toggleAll = rows.length > 1 ? el('button', { type: 'button', class: 'bk-link', text: allOpen ? 'Collapse all' : 'Expand all' }) : null;
@@ -596,7 +597,7 @@
         commit();
       });
 
-      var remove = el('button', { type: 'button', class: CLS.iconDanger, 'aria-label': 'Remove ' + item.toLowerCase() + ' ' + (index + 1), html: svg('trash') });
+      var remove = el('button', { type: 'button', class: CLS.iconDanger, 'aria-label': 'Remove ' + item.toLowerCase() + ' ' + (index + 1), html: svg('trash'), disabled: !!(field.min && rows.length <= field.min) });
       remove.addEventListener('click', function () {
         rows.splice(index, 1);
         commit();

@@ -59,7 +59,7 @@ $csv = $make();
 file_put_contents("$dir/content/pages/about.md", "---\ntitle: About\nstatus: published\nvisible: true\ntranslation_id: aaaaaaaaaaaaaaaa\nseo:\n  title: Old SEO\n  description: Keep me\ncustom_note: hello\nblocks:\n  - type: text\n    body: Block text\n---\n\nAbout body.\n");
 file_put_contents("$dir/content/pages/about.en.md", "---\ntitle: About EN\nstatus: published\ntranslation_id: aaaaaaaaaaaaaaaa\n---\n\nEnglish body.\n");
 file_put_contents("$dir/content/pages/other.md", "---\ntitle: Other\ntranslation_id: bbbbbbbbbbbbbbbb\n---\n\nx\n");
-file_put_contents("$dir/content/posts/hello.md", "---\ntitle: Hello\nstatus: published\ndate: '2026-03-04'\nauthor: Jane\ntags:\n  - one\n  - two\ncategories:\n  - news\nmain_image: /uploads/media/a.jpg\nexcerpt: Short\nfeatures:\n  - x\n  - y\n---\n\nPost body\n");
+file_put_contents("$dir/content/posts/hello.md", "---\ntitle: Hello\nstatus: published\ndate: '2026-03-04'\nauthor: Jane\ntags:\n  - one\n  - two\ncategories:\n  - news\nmain_image: /uploads/media/a.jpg\nexcerpt: Short\nfeatures:\n  - x\n  - y\ncustom_fields:\n  editions:\n    - title: 'First, \"quoted\"'\n      shops:\n        - label: Shop A\n          url: 'https://a.example/b?c=1'\n        - label: Κατάστημα\n    - title: Second\n---\n\nPost body\n");
 
 $write = function (string $text) use ($dir): string { $p = $dir . '/in' . mt_rand() . '.csv'; file_put_contents($p, $text); return $p; };
 
@@ -135,10 +135,11 @@ check('empty cells clear the optional fields', [isset($cleared['entries'][0]['da
 $items = $content->getItems('posts', null, true, false);
 $table = $csv->exportTable('posts', $items, 'Site');
 check('the export starts with the fixed columns', array_slice($table['headers'], 0, 16), ['site_title', 'content_type', 'language', 'slug', 'title', 'status', 'visible', 'date', 'author', 'tags', 'categories', 'translation_id', 'main_image', 'excerpt', 'updated_at', 'body']);
-check('and the other fields follow, sorted, lists as JSON', array_slice($table['headers'], 16), ['meta.features']);
+check('and the other fields follow, sorted, lists as JSON', array_slice($table['headers'], 16), ['meta.custom_fields.editions', 'meta.features']);
 $r = array_combine($table['headers'], $table['rows'][0]);
 check('a row has the values', [$r['site_title'], $r['content_type'], $r['language'], $r['slug'], $r['title'], $r['visible'], $r['date'], $r['author'], $r['tags'], $r['categories'], $r['excerpt'], $r['meta.features']], ['Site', 'posts', 'el', 'hello', 'Hello', 'true', '2026-03-04', 'Jane', 'one, two', 'news', 'Short', '["x","y"]']);
 check('and the body is the Markdown', trim($r['body']), 'Post body');
+check('a repeater with rows inside its rows is one JSON cell', json_decode($r['meta.custom_fields.editions'], true), [['title' => 'First, "quoted"', 'shops' => [['label' => 'Shop A', 'url' => 'https://a.example/b?c=1'], ['label' => 'Κατάστημα']]], ['title' => 'Second']]);
 check('every row is as long as the header', array_unique(array_map('count', $table['rows'])), [count($table['headers'])]);
 $out = fopen($dir . '/export.csv', 'w'); fputcsv($out, $table['headers'], ',', '"', ''); foreach ($table['rows'] as $line) { fputcsv($out, $line, ',', '"', ''); } fclose($out);
 $again = $csv->parseImport($dir . '/export.csv');
@@ -151,6 +152,8 @@ $table = $csv->exportTable('posts', $content->getItems('posts', null, true, fals
 $out = fopen($dir . '/export2.csv', 'w'); fputcsv($out, $table['headers'], ',', '"', ''); foreach ($table['rows'] as $line) { fputcsv($out, $line, ',', '"', ''); } fclose($out);
 $again = $csv->parseImport($dir . '/export2.csv');
 check('and the second time nothing changes at all', $csv->preview('posts', $again['rows'], $again['headers'])['summary'], ['create' => 0, 'update' => 0, 'skip' => 1, 'error' => 0]);
+$hello = $content->getItems('posts', null, true, false)[0];
+check('the nested rows come back the same, written as block YAML', [$hello->meta['custom_fields']['editions'][0]['shops'][1]['label'] ?? null, (bool)preg_match('/^          label: \'Shop A\'$/m', (string)file_get_contents("$dir/content/posts/hello.md"))], ['Κατάστημα', true]);
 
 // ---- applying
 check('nothing to apply is said', $csv->apply('pages', []), ['ok' => false, 'error' => 'Nothing to import.']);

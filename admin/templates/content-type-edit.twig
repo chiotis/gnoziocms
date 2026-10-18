@@ -28,6 +28,12 @@
 
   {{ ui.flash(saved ? 'Saved.' : '', 'success') }}
   {% if error == 'write' %}{{ ui.flash('Could not write to the custom/ folder. Check that it is writable.', 'error') }}{% endif %}
+  {% if definition_problems|default([]) %}
+    <div class="mb-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800" role="note">
+      <strong>Parts of this type's definition are ignored:</strong>
+      <ul class="m-0 mt-1 list-disc pl-4">{% for problem in definition_problems %}<li>{{ problem }}</li>{% endfor %}</ul>
+    </div>
+  {% endif %}
 
   <form method="post" data-content-type-form autocomplete="off">
     {{ csrf_field() }}
@@ -80,8 +86,9 @@
                   <code>{{ row.key }}</code>
                   {% if row.from_theme %}<span class="ct-chip">Theme</span>{% endif %}
                 </div>
-                {% if row.from_theme %}
-                  <div class="ct-label-static"><strong>{{ row.label }}</strong><span>{{ row.type }}</span></div>
+                {% if row.from_theme or row.type == 'repeater' %}
+                  {% if not row.from_theme %}<input type="hidden" name="fields[{{ i }}][label]" value="{{ row.label }}"><input type="hidden" name="fields[{{ i }}][help]" value="{{ row.help }}">{% endif %}
+                  <div class="ct-label-static"><strong>{{ row.label }}</strong><span>{{ row.type == 'repeater' ? 'list of rows' : row.type }}</span></div>
                 {% else %}
                   <input type="text" name="fields[{{ i }}][label]" value="{{ row.label }}" class="lc-input" placeholder="Label" aria-label="Label of {{ row.key }}">
                   <select name="fields[{{ i }}][type]" class="lc-input lc-select" aria-label="Kind of {{ row.key }}" data-kind-select>
@@ -96,7 +103,9 @@
                 <label class="lc-chip is-warn" title="Stop using the field; stored values are kept"><input type="checkbox" name="fields[{{ i }}][retired]" value="1"{% if row.retired %} checked{% endif %}><span>Retired</span></label>
                 {% if not row.from_theme %}<button type="button" class="ct-remove" data-remove-field title="Take the field out of the type; the values already saved in content are kept">Remove</button>{% endif %}
               </div>
-              {% if not row.from_theme %}
+              {% if row.type == 'repeater' %}
+                <div class="ct-extra"><p class="seo-help m-0">Each row has: {{ row.sub_fields ?: 'no fields yet' }}. A list's fields are written in the type's YAML file.</p></div>
+              {% elseif not row.from_theme %}
                 <div class="ct-extra">
                   <input type="text" name="fields[{{ i }}][help]" value="{{ row.help }}" class="lc-input" placeholder="Help text shown under the field (optional)" aria-label="Help text of {{ row.key }}">
                   <textarea name="fields[{{ i }}][options]" rows="3" class="lc-input" placeholder="office|Office&#10;retail|Retail" aria-label="Options of {{ row.key }}" data-only-kind="select"{% if row.type != 'select' %} hidden{% endif %}>{{ row.options }}</textarea>
