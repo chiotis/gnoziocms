@@ -52,7 +52,28 @@ $slides = FieldSchema::resolve($registry->get('hero-slider')['fields'], ['items'
 check('a slide only takes its own layout and picture', [$slides['layout'], $slides['background']], ['split', 'image']);
 // A Slider block of before 0.1.110 is a Hero slider now.
 $old = $registry->migrate(['type' => 'slider', 'variant' => 'banner', 'width' => 'full', 'navigation' => 'inside', 'autoplay' => '8', 'tone' => 'muted', 'heading' => 'Gone', 'items' => [['image' => '/a.jpg', 'eyebrow' => 'E', 'title' => 'T', 'text' => 'X', 'link_label' => 'Go', 'url' => 'contact', 'link_label_2' => 'More', 'url_2' => '/m', 'link_label_3' => 'Third', 'url_3' => '/t']]]);
-check('an old Slider becomes a Hero slider with its slides as cover slides', [$old['type'], $old['navigation'], $old['autoplay'], $old['tone'], $old['items'][0]], ['hero-slider', 'inside', '8', 'muted', ['layout' => 'cover', 'image' => '/a.jpg', 'eyebrow' => 'E', 'text' => 'X', 'url' => 'contact', 'url_2' => '/m', 'heading' => 'T', 'label' => 'Go', 'label_2' => 'More']]);
+check('an old Slider becomes a Hero slider with its slides as cover slides', [$old['type'], $old['navigation'], $old['autoplay'], $old['tone'], $old['items'][0]], ['hero-slider', 'inside', '8', 'muted', ['layout' => 'cover', 'image' => '/a.jpg', 'eyebrow' => 'E', 'text' => 'X', 'heading' => 'T', 'buttons' => [['label' => 'Go', 'url' => 'contact', 'style' => 'primary'], ['label' => 'More', 'url' => '/m', 'style' => 'secondary']]]]);
+// The two fixed buttons of a slide (until 0.1.156) are its list of buttons, on reading.
+$slide = static fn(array $item): array => $registry->migrate(['type' => 'hero-slider', 'items' => [$item]])['items'][0];
+check('one button: its text and link, primary as before', $slide(['heading' => 'H', 'label' => 'Go', 'url' => 'contact']), ['heading' => 'H', 'buttons' => [['label' => 'Go', 'url' => 'contact', 'style' => 'primary']]]);
+check('two buttons: in order, the second secondary as before', $slide(['label' => 'Go', 'url' => 'contact', 'label_2' => 'More', 'url_2' => '/m'])['buttons'], [['label' => 'Go', 'url' => 'contact', 'style' => 'primary'], ['label' => 'More', 'url' => '/m', 'style' => 'secondary']]);
+check('a style chosen for a button stays', $slide(['label' => 'Go', 'url' => 'contact', 'style' => 'text', 'label_2' => 'More', 'url_2' => '/m', 'style_2' => 'primary'])['buttons'], [['label' => 'Go', 'url' => 'contact', 'style' => 'text'], ['label' => 'More', 'url' => '/m', 'style' => 'primary']]);
+check('an empty first button is left out, the second is the first now', $slide(['label' => '', 'url' => '', 'style' => 'text', 'label_2' => 'More', 'url_2' => '/m']), ['buttons' => [['label' => 'More', 'url' => '/m', 'style' => 'secondary']]]);
+check('a button with only a text or only a link is kept, to be finished in the editor', $slide(['label' => 'Go', 'url_2' => '/m'])['buttons'], [['label' => 'Go', 'style' => 'primary'], ['url' => '/m', 'style' => 'secondary']]);
+check('a slide without buttons gets no list, and a lone style goes', $slide(['heading' => 'H', 'style_2' => 'text']), ['heading' => 'H']);
+check('a text per language is carried over as it is', $slide(['label' => ['default' => 'Πάμε', 'en' => 'Go'], 'url' => 'contact'])['buttons'][0]['label'], ['default' => 'Πάμε', 'en' => 'Go']);
+$migrated = ['heading' => 'H', 'buttons' => [['label' => 'A', 'url' => '/a'], ['label' => 'B', 'url' => '/b', 'style' => 'text'], ['label' => 'C', 'url' => '/c']]];
+check('a slide with its list of buttons is left as it is (three buttons)', $slide($migrated), $migrated);
+check('and its list wins over old keys, which go', $slide($migrated + ['label' => 'Old', 'url' => '/old']), $migrated);
+$twice = $registry->migrate($registry->migrate(['type' => 'hero-slider', 'items' => [['label' => 'Go', 'url' => 'contact', 'label_2' => 'More', 'url_2' => '/m']]]));
+check('migrating twice is migrating once', $twice['items'][0], $slide(['label' => 'Go', 'url' => 'contact', 'label_2' => 'More', 'url_2' => '/m']));
+check('other blocks keep their label and url', $registry->migrate(['type' => 'hero', 'label' => 'Go', 'url' => '/x', 'label_2' => 'M']), ['type' => 'hero', 'label' => 'Go', 'url' => '/x', 'label_2' => 'M']);
+$stored = $registry->sanitizeForStorage([['type' => 'hero-slider', 'items' => [['heading' => 'H', 'label' => 'Go', 'url' => 'contact', 'label_2' => 'More', 'url_2' => '/m', 'style_2' => 'text']]]]);
+check('stored as the list: a primary style (the default) is left out', $stored[0]['items'][0], ['heading' => 'H', 'buttons' => [['label' => 'Go', 'url' => 'contact'], ['label' => 'More', 'url' => '/m', 'style' => 'text']]]);
+check('a stored list reads back the same', $registry->sanitizeForStorage($stored), $stored);
+$read = FieldSchema::resolve($registry->get('hero-slider')['fields'], $registry->migrate(['type' => 'hero-slider', 'items' => [['heading' => 'H', 'label' => 'Go', 'url' => 'contact', 'label_2' => 'More', 'url_2' => '/m']]]))['items'][0]['buttons'];
+check('the template gets each button with its style', array_map(fn($b) => [$b['label'], $b['url'], $b['style']], $read), [['Go', 'contact', 'primary'], ['More', '/m', 'secondary']]);
+check('at most three buttons', count(FieldSchema::resolve($registry->get('hero-slider')['fields'], ['items' => [['heading' => 'H', 'buttons' => array_fill(0, 5, ['label' => 'B', 'url' => '/b'])]]])['items'][0]['buttons']), 3);
 check('the cards of an old Slider are split slides', $registry->migrate(['type' => 'slider', 'variant' => 'multi', 'items' => [['title' => 'T']]])['items'][0]['layout'], 'split');
 check('it is stored as a Hero slider', array_column($registry->sanitizeForStorage([['type' => 'slider', 'variant' => 'full', 'items' => [['title' => 'T']]]]), 'type'), ['hero-slider']);
 $r = FieldSchema::resolve($registry->get('latest')['fields'], ['limit' => 99, 'source' => 'evil', 'term' => "a\nb", 'show_image' => 'no']);

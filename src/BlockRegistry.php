@@ -116,8 +116,8 @@ final class BlockRegistry
 
     /**
      * A block as its definition means it now: one saved in a layout that has since become another (the hero's text alignment of
-     * 0.1.86, now two layouts) is moved to it, and a Slider block (gone in 0.1.110) becomes a Hero slider. Anything else is
-     * returned as it is.
+     * 0.1.86, now two layouts) is moved to it, a Slider block (gone in 0.1.110) becomes a Hero slider, and the two fixed buttons
+     * of a Hero slider's slide (until 0.1.156) become its list of buttons. Anything else is returned as it is.
      *
      * @param array<string, mixed> $raw
      * @return array<string, mixed>
@@ -125,7 +125,10 @@ final class BlockRegistry
     public function migrate(array $raw): array
     {
         if (($raw['type'] ?? null) === 'slider' && $this->get('slider') === null && $this->get('hero-slider') !== null) {
-            return self::slideToHeroSlider($raw);
+            $raw = self::slideToHeroSlider($raw);
+        }
+        if (($raw['type'] ?? null) === 'hero-slider' && is_array($raw['items'] ?? null)) {
+            $raw['items'] = array_map(static fn(mixed $slide): mixed => is_array($slide) ? self::slideButtons($slide) : $slide, $raw['items']);
         }
         $definition = is_string($raw['type'] ?? null) ? $this->get($raw['type']) : null;
         // A block that used `width` for something of its own before every block got a Width (the divider's line) keeps that choice in
@@ -182,6 +185,48 @@ final class BlockRegistry
             }
             return $this->migrate($block);
         }, $blocks);
+    }
+
+    /**
+     * A slide of the Hero slider with its buttons as a list: the two fixed buttons a slide had until 0.1.156 (`label`, `url`,
+     * `style` and `label_2`, `url_2`, `style_2`) become the rows of `buttons`, in order, a button with neither a text nor a
+     * link left out. Each keeps the style it had, also the one it had by default (the first primary, the second
+     * secondary). A slide that has `buttons` already keeps them; the old keys are dropped either way.
+     *
+     * @param array<string, mixed> $slide
+     * @return array<string, mixed>
+     */
+    private static function slideButtons(array $slide): array
+    {
+        $pairs = [['label', 'url', 'style', 'primary'], ['label_2', 'url_2', 'style_2', 'secondary']];
+        $old = array_merge(...array_map(static fn(array $pair): array => array_slice($pair, 0, 3), $pairs));
+        if (array_intersect_key($slide, array_flip($old)) === []) {
+            return $slide;
+        }
+        if (!array_key_exists('buttons', $slide)) {
+            $buttons = [];
+            $hasText = static fn(mixed $value): bool => $value !== null && $value !== '' && $value !== [];
+            foreach ($pairs as [$label, $url, $style, $default]) {
+                if (!$hasText($slide[$label] ?? null) && !$hasText($slide[$url] ?? null)) {
+                    continue;
+                }
+                $button = [];
+                foreach (['label' => $label, 'url' => $url] as $to => $from) {
+                    if (array_key_exists($from, $slide)) {
+                        $button[$to] = $slide[$from];
+                    }
+                }
+                $button['style'] = is_string($slide[$style] ?? null) && $slide[$style] !== '' ? $slide[$style] : $default;
+                $buttons[] = $button;
+            }
+            if ($buttons !== []) {
+                $slide['buttons'] = $buttons;
+            }
+        }
+        foreach ($old as $key) {
+            unset($slide[$key]);
+        }
+        return $slide;
     }
 
     /**

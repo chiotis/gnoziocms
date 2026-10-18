@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.157 — 2026-10-18 — Hero slider: a slide's buttons are a list
+- **Each slide of the Hero slider has a list of buttons** (up to three), each with its text, link and style, instead of two fixed buttons. Slides saved before are converted when they are read, each button keeping its style, and are written in the new shape on the next save; pages look the same. The importer, the block checker, the starter page and the skill know the new shape.
+
 ## 0.1.156 — 2026-10-18 — Repeaters: two levels, and in content types
 - **A repeater can hold a repeater in its rows** (two levels in all): several buttons for each slide, several shops for each book. A repeater nested deeper is left out of the definition and named by its path, instead of disappearing silently.
 - **Content types can declare repeater fields**, stored under `custom_fields` as YAML lists and checked against the definition before they reach a template. The default theme's fact sheet shows them as lists (nested lists for inner rows).

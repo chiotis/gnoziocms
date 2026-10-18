@@ -349,12 +349,10 @@ Slides that each are a Hero. Every slide picks its own Hero layout (including th
 | &nbsp;&nbsp;`items[].eyebrow` | text |  |
 | &nbsp;&nbsp;`items[].heading` | text |  |
 | &nbsp;&nbsp;`items[].text` | text (several lines) |  |
-| &nbsp;&nbsp;`items[].label` | text |  |
-| &nbsp;&nbsp;`items[].url` | link | A page ("contact"), a path ("/en/contact"), a full URL, #anchor, mailto: or tel: |
-| &nbsp;&nbsp;`items[].style` | choice; one of `primary`, `secondary`, `text`; default `primary` |  |
-| &nbsp;&nbsp;`items[].label_2` | text |  |
-| &nbsp;&nbsp;`items[].url_2` | link |  |
-| &nbsp;&nbsp;`items[].style_2` | choice; one of `primary`, `secondary`, `text`; default `secondary` |  |
+| &nbsp;&nbsp;`items[].buttons` | list of rows; at most 3 rows |  |
+| &nbsp;&nbsp;&nbsp;&nbsp;`items[].buttons[].label` | text |  |
+| &nbsp;&nbsp;&nbsp;&nbsp;`items[].buttons[].url` | link | A page ("contact"), a path ("/en/contact"), a full URL, #anchor, mailto: or tel: |
+| &nbsp;&nbsp;&nbsp;&nbsp;`items[].buttons[].style` | choice; one of `primary`, `secondary`, `text`; default `primary` |  |
 | &nbsp;&nbsp;`items[].highlight_1` | text |  |
 | &nbsp;&nbsp;`items[].highlight_2` | text |  |
 | &nbsp;&nbsp;`items[].highlight_3` | text |  |

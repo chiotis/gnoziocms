@@ -13,8 +13,20 @@ use Symfony\Component\Yaml\Yaml;
 $reg = new BlockRegistry(new Theme($root, 'default'), ['content_types' => fn() => ['posts' => 'Posts', 'projects' => 'Projects'], 'forms' => fn() => ['' => '—', 'contact' => 'Contact']]);
 $problems = 0; $files = 0; $blocksTotal = 0;
 
+/** The rows of a repeater at `$where ($path)`, also the rows of a list inside a row. */
+$checkRows = function (array $field, $rows, string $where, string $path) use (&$checkRows, &$problems): void {
+    foreach ((array)$rows as $r => $row) {
+        foreach ((array)$row as $k => $v) {
+            if (!isset($field['fields'][$k])) { echo "PROBLEM $where ($path) unknown sub-field '$k'\n"; $problems++; continue; }
+            if ($field['fields'][$k]['type'] === 'repeater') { $checkRows($field['fields'][$k], $v, $where, "{$path}[$r].$k"); continue; }
+            $cv = FieldSchema::clean($field['fields'][$k], $v);
+            if ($cv !== $v && !(is_string($v) && trim($v) === $cv)) { echo "PROBLEM $where ({$path}[$r].$k) value changed by validation: " . json_encode($v) . " -> " . json_encode($cv) . "\n"; $problems++; }
+        }
+    }
+};
+
 /** One block (or container) at `$rel $i`; a container is checked with its columns and the blocks inside. */
-$checkBlock = function ($block, string $rel, string $i, bool $inColumn) use (&$checkBlock, $reg, &$problems, &$blocksTotal): void {
+$checkBlock = function ($block, string $rel, string $i, bool $inColumn) use (&$checkBlock, $checkRows, $reg, &$problems, &$blocksTotal): void {
     $blocksTotal++;
     if (!is_array($block)) { echo "PROBLEM $rel $i is not a block\n"; $problems++; return; }
     if (($block['type'] ?? '') === BlockContainer::TYPE) {
@@ -46,13 +58,7 @@ $checkBlock = function ($block, string $rel, string $i, bool $inColumn) use (&$c
         if (!isset($fields[$key])) { echo "PROBLEM $rel $i ({$block['type']}) unknown field '$key'\n"; $problems++; continue; }
         $clean = FieldSchema::clean($fields[$key], $value);
         if ($fields[$key]['type'] === 'repeater') {
-            foreach ((array)$value as $r => $row) {
-                foreach ((array)$row as $k => $v) {
-                    if (!isset($fields[$key]['fields'][$k])) { echo "PROBLEM $rel $i ({$block['type']}.$key) unknown sub-field '$k'\n"; $problems++; continue; }
-                    $cv = FieldSchema::clean($fields[$key]['fields'][$k], $v);
-                    if ($cv !== $v && !(is_string($v) && trim($v) === $cv)) { echo "PROBLEM $rel $i ({$block['type']}.$key[$r].$k) value changed by validation: " . json_encode($v) . " -> " . json_encode($cv) . "\n"; $problems++; }
-                }
-            }
+            $checkRows($fields[$key], $value, "$rel $i", "{$block['type']}.$key");
         } elseif ($clean !== $value && !(is_int($value) && (string)$value === $clean) && !(is_string($value) && trim($value) === $clean) && !(is_string($value) && str_replace("\r\n", "\n", trim($value)) === $clean)) {
             echo "PROBLEM $rel $i ({$block['type']}.$key) value changed by validation: " . json_encode($value) . " -> " . json_encode($clean) . "\n"; $problems++;
         }

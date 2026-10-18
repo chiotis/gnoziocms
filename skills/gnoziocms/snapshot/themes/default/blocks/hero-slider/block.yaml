@@ -44,12 +44,16 @@ fields:
       eyebrow: { type: text, label: Eyebrow }
       heading: { type: text, label: Heading }
       text: { type: textarea, label: Text }
-      label: { type: text, label: Button text, span: third }
-      url: { type: link, label: Button link, help: 'A page ("contact"), a path ("/en/contact"), a full URL, #anchor, mailto: or tel:', span: third }
-      style: { type: select, label: Button style, default: primary, options: { primary: Primary, secondary: Secondary, text: Text }, span: third }
-      label_2: { type: text, label: Second button text, span: third }
-      url_2: { type: link, label: Second button link, span: third }
-      style_2: { type: select, label: Second button style, default: secondary, options: { primary: Primary, secondary: Secondary, text: Text }, span: third }
+      buttons:
+        type: repeater
+        label: Buttons
+        item_label: Button
+        max: 3
+        span: full
+        fields:
+          label: { type: text, label: Button text, span: third }
+          url: { type: link, label: Button link, help: 'A page ("contact"), a path ("/en/contact"), a full URL, #anchor, mailto: or tel:', span: third }
+          style: { type: select, label: Button style, default: primary, options: { primary: Primary, secondary: Secondary, text: Text }, span: third }
       highlight_1: { type: text, label: 'Highlight 1', span: third }
       highlight_2: { type: text, label: 'Highlight 2', span: third }
       highlight_3: { type: text, label: 'Highlight 3', span: third }
