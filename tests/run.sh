@@ -103,6 +103,7 @@ run_js() {
   run_check "block-sortable" "$ROOT" node tests/js/sortable.test.js
   run_check "block-containers" "$ROOT" node tests/js/block-containers.test.js
   run_check "image-width-editor" "$ROOT" node tests/js/image-width.test.js
+  run_check "nested-repeaters" "$ROOT" node tests/js/repeaters.test.js
 }
 
 cleanup_http() {

@@ -1,31 +1,50 @@
 {#
   Fields a content type declares (Content types in docs/theming.md), as a fact sheet.
   Variable: item. Prints nothing when the item has no values to show.
+  A list of rows (a repeater) is a list, each row its fields with their labels; a list inside a row is a list inside that one.
 #}
+{% macro value(entry, prefix) %}
+  {% import _self as f %}
+  {%- if entry.type == 'repeater' -%}
+    <ul class="type-rows">
+      {%- for row in entry.rows -%}
+        <li class="type-row">
+          {%- for sub in row -%}
+            {%- if row|length == 1 and sub.type != 'repeater' -%}
+              {{ f.value(sub, prefix) }}
+            {%- else -%}
+              <span class="type-row-part{{ sub.type == 'repeater' ? ' is-list' : '' }}"><span class="type-row-label">{{ sub.label }}</span> {{ f.value(sub, prefix) }}</span>
+            {%- endif -%}
+          {%- endfor -%}
+        </li>
+      {%- endfor -%}
+    </ul>
+  {%- elseif entry.type == 'url' -%}
+    <a href="{{ entry.value }}" rel="noopener">{{ entry.display }}</a>
+  {%- elseif entry.type == 'email' -%}
+    <a href="mailto:{{ entry.value }}">{{ entry.value }}</a>
+  {%- elseif entry.type == 'link' -%}
+    {% set href = link_url(entry.value, prefix) %}{% if href %}<a href="{{ href }}">{{ entry.display }}</a>{% else %}{{ entry.display }}{% endif %}
+  {%- elseif entry.type == 'toggle' -%}
+    {{ t('field.yes', 'Yes') }}
+  {%- elseif entry.type == 'image' -%}
+    {{ image(entry.value, {alt: '', sizes: '240px', max_width: 480}) }}
+  {%- elseif entry.type in ['textarea', 'markdown'] -%}
+    {{ entry.display|nl2br }}
+  {%- else -%}
+    {{ entry.display }}
+  {%- endif -%}
+{% endmacro %}
+
+{% import _self as f %}
 {% set entries = content_fields(item) %}
 {% if entries %}
   {% set prefix = lang_prefix|default('') %}
   <dl class="type-fields">
     {% for entry in entries %}
-      <div class="type-field">
+      <div class="type-field{{ entry.type == 'repeater' ? ' is-list' : '' }}">
         <dt>{{ entry.label }}</dt>
-        <dd>
-          {%- if entry.type == 'url' -%}
-            <a href="{{ entry.value }}" rel="noopener">{{ entry.display }}</a>
-          {%- elseif entry.type == 'email' -%}
-            <a href="mailto:{{ entry.value }}">{{ entry.value }}</a>
-          {%- elseif entry.type == 'link' -%}
-            {% set href = link_url(entry.value, prefix) %}{% if href %}<a href="{{ href }}">{{ entry.display }}</a>{% else %}{{ entry.display }}{% endif %}
-          {%- elseif entry.type == 'toggle' -%}
-            {{ t('field.yes', 'Yes') }}
-          {%- elseif entry.type == 'image' -%}
-            {{ image(entry.value, {alt: '', sizes: '240px', max_width: 480}) }}
-          {%- elseif entry.type in ['textarea', 'markdown'] -%}
-            {{ entry.display|nl2br }}
-          {%- else -%}
-            {{ entry.display }}
-          {%- endif -%}
-        </dd>
+        <dd>{{ f.value(entry, prefix) }}</dd>
       </div>
     {% endfor %}
   </dl>
