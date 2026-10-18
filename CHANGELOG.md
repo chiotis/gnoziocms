@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.149 — 2026-10-18 — Search: punctuated titles rank first
+- Exact titles and phrases in titles now rank first even when the title has punctuation: **“Hello, World!”** is an exact match for *hello world*.
+
 ## 0.1.148 — 2026-10-18 — GZ monograms and the gnoziocms skill
 - Use **GZ** instead of **GC** for the login and setup monograms, preserving their existing styling.
 - Rename the skill for AI assistants to **`gnoziocms`**: the folder `skills/gnoziocms`, the helper `gnozio_lib.py` and the archive `gnoziocms-skill.zip`. Its snapshot is refreshed to this version. Remove an installed `faroscms` skill and install the new one; it still recognises requests that say FarosCMS or Faros.

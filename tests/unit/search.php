@@ -56,6 +56,9 @@ $write('pages', 'foreign.en', 'Αθήνα English', 'Athens');
 $write('forms', 'contact', 'Αθήνα form configuration', 'Hidden fields');
 $write('books', 'book', 'Ένας περίπατος', '', "custom_fields:\n  author: 'Αθηνά Παπαδοπούλου'\n  isbn: '9781234567890'\n");
 for ($n = 1; $n <= 12; $n++) { $write('posts', sprintf('page-%02d', $n), sprintf('Catalogue %02d', $n), 'Catalogue selection'); }
+$write('pages', 'punct', 'Πόλεις, δρόμοι: Πάτρα', 'Κείμενο.');
+$write('pages', 'phrase-title', 'Intro: Blue Moon, live!', 'Short.');
+$write('pages', 'phrase-body', 'Notes', 'The blue moon rose. ' . str_repeat('blue moon ', 3));
 $write('pages', 'catalogue', 'Catalogue overview', 'Selection');
 $environment = new Environment([]);
 $environment->addExtension(new CommonMarkCoreExtension());
@@ -92,6 +95,9 @@ check('malformed type/page inputs are ignored', [$search->search('Catalogue', 'e
 check('unknown type falls back to all', $search->search('Catalogue', 'el', false, '../x')['total'], 13);
 check('empty or punctuation-only query never lists the whole site', [$search->search('', 'el')['total'], $search->search('!!!', 'el')['total']], [0, 0]);
 check('display retains ContentItem list for custom templates', $all['hits'][0]['item'] === $all['results'][0], true);
+check('punctuated title ranks first for its words typed without punctuation', $slugs($search->search('πολεισ δρομοι πατρα', 'el'))[0], 'punct');
+check('exact punctuated title gets the exact boost over a longer title', $slugs($search->search('Πόλεις δρόμοι Πάτρα', 'el')), ['punct']);
+check('phrase in a punctuated title outranks the same words in a body', $slugs($search->search('blue moon', 'el')), ['phrase-title', 'phrase-body']);
 $write('pages', 'fresh', 'Freshly added', 'uncommonneedle');
 check('new content becomes searchable on next request', $slugs($make()->search('uncommonneedle', 'el')), ['fresh']);
 $write('pages', 'fresh', 'Freshly changed', 'replacementneedle has different size');
