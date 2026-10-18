@@ -1,6 +1,6 @@
 # FarosCMS to GnozioCMS
 
-GnozioCMS is the new product name. This change updates labels, messages, the PHP namespace, package metadata and release filenames. It does not change the admin or public theme's layout, CSS, colours, typography, icons or controls. The existing text initials on the login and setup screens change from `FC` to `GC`.
+GnozioCMS is the new product name. This change updates labels, messages, the PHP namespace, package metadata and release filenames. It does not change the admin or public theme's layout, CSS, colours, typography, icons or controls. The existing text initials on the login and setup screens use `GZ`.
 
 ## Code and packages
 

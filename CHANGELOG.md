@@ -1,5 +1,8 @@
 # Changelog
 
+## Unreleased
+- Use **GZ** instead of **GC** for the login and setup monograms, preserving their existing styling.
+
 ## 0.1.147 — 2026-10-18 — GnozioCMS name and repository
 - Rename the product to **GnozioCMS** in admin labels, messages, defaults, documentation and starter content. Login/setup text initials are now **GC**; layout, CSS, colours and typography are unchanged.
 - Use the `GnozioCMS\` PHP namespace with `FarosCMS\` aliases for existing custom code. JavaScript exposes the new product names alongside the existing globals.
