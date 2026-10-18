@@ -76,10 +76,18 @@ final class ContentSearch
         foreach (self::WEIGHTS as $field => $weight) {
             $text = SearchText::normalize($document[$field] ?? '');
             foreach ($terms as $term) {
-                if (str_contains($text, $term)) {
-                    $found[$term] = true;
-                    $score += $weight;
+                $strength = SearchText::strength($text, $term);
+                if ($strength === 0) {
+                    continue;
                 }
+                $found[$term] = true;
+                // A whole word earns the full weight, a word start most of it, the middle of a word half. Short terms are
+                // worth one point per field however heavy the field, so «ο» or «της» cannot outweigh the real words.
+                $score += SearchText::isShort($term) ? 1 : match ($strength) {
+                    3 => $weight,
+                    2 => intdiv($weight * 3, 4),
+                    default => intdiv($weight, 2),
+                };
             }
         }
         if (count($found) !== count($terms)) {
@@ -103,7 +111,7 @@ final class ContentSearch
                 continue;
             }
             $normal = SearchText::normalize($text);
-            $matches = count(array_filter($terms, static fn(string $term): bool => str_contains($normal, $term)));
+            $matches = count(array_filter($terms, static fn(string $term): bool => SearchText::strength($normal, $term) > 0));
             if ($matches > $score) {
                 $score = $matches;
                 $best = $text;
