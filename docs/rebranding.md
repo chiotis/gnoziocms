@@ -11,13 +11,13 @@ GnozioCMS is the new product name. This change updates labels, messages, the PHP
 
 ## Repository transition
 
-The canonical repository in the code, release builder, clone instructions and badges is now `chiotis/gnoziocms`. **The external GitHub rename and local folder rename are still pending; this patch performs neither.** Complete the GitHub rename and verify the new update addresses before deploying these source changes or publishing a release.
+The GitHub repository has been renamed from `chiotis/faroscms` to `chiotis/gnoziocms`. The code, release builder, clone instructions and badges use the new name. Existing installations can continue to reach the old repository addresses through GitHub's redirects.
 
 For the official repository, update checks and the Settings > Updates form resolve the old `chiotis/faroscms` name to `chiotis/gnoziocms`. The recognised legacy URLs for `VERSION`, `CHANGELOG.md`, branch archives and the latest release manifest resolve to the new repository too. A configured branch stays unchanged. Forks and custom source URLs, including URLs with query strings or fragments, retain their configured values; tokens and other update settings are preserved. Blank URL fields remain blank in the form and saved settings, and the updater derives their effective addresses from the selected repository and branch.
 
 This is a change to the effective source configuration, not a database migration on page load. Reading settings or checking for an update does not rewrite the stored configuration. An explicit save in Settings writes the normalised source values shown in the form.
 
-Rename the existing GitHub repository so old links and release addresses can continue through GitHub's redirects. Keep the old repository name unused, because creating another `chiotis/faroscms` repository would remove those redirects. After the rename, verify both old and new `VERSION`, changelog, release manifest and package addresses, then force a status check on an existing installation. The release workflow uses GitHub's current repository name; local builds default to `chiotis/gnoziocms` and still accept `--repo=owner/name`. See [GitHub's repository rename guidance](https://docs.github.com/en/repositories/creating-and-managing-repositories/renaming-a-repository).
+Keep the old repository name unused, because creating another `chiotis/faroscms` repository would remove those redirects. The release workflow uses GitHub's current repository name; local builds default to `chiotis/gnoziocms` and still accept `--repo=owner/name`. Existing release assets remain available under their original filenames. See [GitHub's repository rename guidance](https://docs.github.com/en/repositories/creating-and-managing-repositories/renaming-a-repository).
 
 ## Compatibility identifiers
 
@@ -37,4 +37,4 @@ Some old names deliberately remain because they identify a stored format, a depl
 
 No automatic migration rewrites a site's saved title, stored settings, content, custom code or uploaded files. Update source values are saved only through the explicit Settings save described above. New installations default to GnozioCMS, and the distributed starter content uses the new name. Historical changelog entries and old-content test fixtures retain their original names.
 
-The legacy aliases, backup formats, updater headers and Omni protocol remain unchanged. Domain changes, removal of legacy aliases and new export protocols would be separate migrations. This code change does not publish a release or change the hosted services.
+The legacy aliases, backup formats, updater headers and Omni protocol remain unchanged. Domain changes, removal of legacy aliases and new export protocols would be separate migrations.

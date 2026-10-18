@@ -14,7 +14,7 @@ How a live GnozioCMS site is updated safely. Part 1 (status, backup before updat
 ### Update status
 
 - `UpdateService` reads the configured GitHub source (`Settings > Updates`): raw `VERSION`, raw `CHANGELOG.md`, and the archive URL. Private repositories use the stored GitHub token.
-- The official source is `chiotis/gnoziocms`. Recognised legacy `chiotis/faroscms` source values resolve to it without rewriting stored settings on read. Custom sources are preserved; the Settings form shows canonical official values and persists them only when explicitly saved. Blank URL fields stay automatic, deriving their addresses from the selected repository and branch at runtime. The external repository rename must be completed before deploying this transition; see [rebranding.md](rebranding.md).
+- The official source is `chiotis/gnoziocms`. Recognised legacy `chiotis/faroscms` source values resolve to it without rewriting stored settings on read. Custom sources are preserved; the Settings form shows canonical official values and persists them only when explicitly saved. Blank URL fields stay automatic, deriving their addresses from the selected repository and branch at runtime. Older installations can still use GitHub's redirects from the former repository; see [rebranding.md](rebranding.md).
 - The remote status is cached in `system_meta.update_status`. It is refreshed at most every 12 hours (hourly while the source is unreachable) or on demand with **Check status**.
 - A new release creates one `update.available` notification per version, and the sidebar version badge turns blue.
 

@@ -1,10 +1,10 @@
 # Changelog
 
-## Unreleased — GnozioCMS rename
+## 0.1.147 — 2026-10-18 — GnozioCMS name and repository
 - Rename the product to **GnozioCMS** in admin labels, messages, defaults, documentation and starter content. Login/setup text initials are now **GC**; layout, CSS, colours and typography are unchanged.
 - Use the `GnozioCMS\` PHP namespace with `FarosCMS\` aliases for existing custom code. JavaScript exposes the new product names alongside the existing globals.
 - Name release packages `gnoziocms-<version>.zip`, keeping the manifest format. Preserve backup/import formats, updater headers, Omni's protocol, browser preferences and existing site data. See `docs/rebranding.md`.
-- Prepare `chiotis/gnoziocms` as the canonical repository in update sources, release builds and documentation. Recognised official legacy sources resolve to the new repository while custom sources are preserved; stored settings are rewritten only on an explicit Settings save. The external repository and local folder rename remain separate pending steps.
+- Use `chiotis/gnoziocms` as the canonical repository in update sources, release builds and documentation. Recognised official legacy sources resolve to the new repository while custom sources are preserved; stored settings are rewritten only on an explicit Settings save. Blank update URLs remain automatic and follow the selected repository and branch.
 
 ## 0.1.146 — 2026-10-16 — Public search: content, relevance and results
 - **Search finds the content in blocks and declared public fields**, including repeaters and container columns, book authors and ISBNs. Hidden blocks, retired/private fields, technical settings, URLs and form definitions are excluded. Field definitions may opt out with `searchable: false`.

@@ -69,7 +69,7 @@ After either, check the home page, a page of each kind, `/admin`, `/sitemap.xml`
 
 Settings → Updates names the repository and, optionally, the address of the release manifest (`release.json`). By default both are the project's own GitHub releases. A private repository needs a GitHub token (Settings → Updates) to read its version; installing from a private release needs a manifest address the server can reach.
 
-The official repository is `chiotis/gnoziocms`. Recognised source settings for the former `chiotis/faroscms` repository resolve to the new address; custom sources are preserved. Stored settings change only when you explicitly save them. The external repository rename must be completed before this transition is deployed; see [the repository transition notes](docs/rebranding.md).
+The official repository is `chiotis/gnoziocms`. Recognised source settings for the former `chiotis/faroscms` repository resolve to the new address; custom sources are preserved. Stored settings change only when you explicitly save them. GitHub redirects keep the old repository addresses available to older installations; see [the repository transition notes](docs/rebranding.md).
 
 ## Good habits
 
