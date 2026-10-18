@@ -265,47 +265,6 @@ final class ContentRepository
         return null;
     }
 
-    /** @return ContentItem[] */
-    public function search(string $query, ?string $lang = null, bool $includeHidden = false): array
-    {
-        $query = trim($this->lowercase($query));
-        if ($query === '') {
-            return [];
-        }
-
-        $results = [];
-        foreach ($this->getTypes() as $type) {
-            foreach ($this->getItems($type, $lang, $includeHidden) as $item) {
-                $tags = $item->meta['tags'] ?? '';
-                $categories = $item->meta['categories'] ?? '';
-                if (is_array($tags)) {
-                    $tags = implode(' ', $tags);
-                }
-                if (is_array($categories)) {
-                    $categories = implode(' ', $categories);
-                }
-                $haystack = $this->lowercase(
-                    ($item->meta['title'] ?? '') . ' ' .
-                    $tags . ' ' .
-                    $categories . ' ' .
-                    $item->markdown
-                );
-                if (str_contains($haystack, $query)) {
-                    $results[] = $item;
-                }
-            }
-        }
-        return $results;
-    }
-
-    private function lowercase(string $value): string
-    {
-        if (function_exists('mb_strtolower')) {
-            return mb_strtolower($value);
-        }
-        return strtolower($value);
-    }
-
     public function parseFile(string $type, string $path): ContentItem
     {
         $filename = basename($path, '.md');

@@ -32,7 +32,7 @@ final class ContentSearch
             // A result in another language could point at a page that does not exist in the current one.
             foreach ($this->content->getItems($contentType, $lang, $includeHidden, false) as $item) {
                 $document = $this->documents->extract($item);
-                $score = $this->score($document, $terms);
+                $score = $this->score($document, $terms, $query);
                 if ($score === 0) {
                     continue;
                 }
@@ -69,7 +69,7 @@ final class ContentSearch
     }
 
     /** @param array<string, string> $document @param string[] $terms */
-    private function score(array $document, array $terms): int
+    private function score(array $document, array $terms, string $query): int
     {
         $found = [];
         $score = 0;
@@ -93,10 +93,13 @@ final class ContentSearch
         if (count($found) !== count($terms)) {
             return 0;
         }
-        $title = SearchText::normalize($document['title']);
-        $phrase = implode(' ', $terms);
+        // Compare word sequences, not raw text: titles keep punctuation ("Hello, World!") that terms drop,
+        // and the phrase keeps repeated words ("new new york") that unique terms collapse.
+        $words = static fn(string $text): string => implode(' ', preg_split('/[^\p{L}\p{N}]+/u', SearchText::normalize($text), -1, PREG_SPLIT_NO_EMPTY) ?: []);
+        $title = $words($document['title']);
+        $phrase = $words($query);
         // Exact titles and a phrase in a title win without rewarding repeated keywords in a long body.
-        $score += $title === $phrase ? 40 : (str_contains($title, $phrase) ? 20 : 0);
+        $score += $title === $phrase ? 40 : (str_contains(" $title ", " $phrase ") ? 20 : 0);
         return $score;
     }
 
