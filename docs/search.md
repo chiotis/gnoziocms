@@ -51,7 +51,7 @@ Existing overrides in `custom/templates/search.twig` still receive `query` and t
 
 ## Cache and extension points
 
-`ContentRepository` remains the source of visibility, enabled types and parsed content. `SearchDocument` turns each entry into fields of searchable text; `ContentSearch` handles matching, relevance and pagination; `SearchText` handles normalization and display parts. The result template has no search logic. Future repeaters or relationships can extend extraction without replacing the matching or presentation code.
+`ContentRepository` remains the source of visibility, enabled types and parsed content. `SearchDocument` turns each entry into fields of searchable text; `ContentSearch` handles matching, relevance and pagination; `SearchText` handles normalization and display parts. The result template has no search logic. Repeaters (also a repeater inside a repeater's rows) are read by `SearchDocument`; relationships can extend extraction the same way without replacing the matching or presentation code.
 
 The extracted-text cache under `storage/cache/search` avoids converting block Markdown on every search. It is disposable and may be deleted. Entry data, relevant field definitions, language and application version determine whether an extracted document can be reused. A missing, corrupt or unwritable cache falls back to extraction. It also holds each field's normalized text, so a search does not normalize every entry again. Only a signed-in search, which sees every entry, removes cached entries that no longer exist; public searches leave drafts cached by it alone. Visibility and result sets are never stored in this cache.
 

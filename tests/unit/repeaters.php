@@ -70,6 +70,7 @@ check('values inside inner rows are checked against their fields', $clean[0]['li
 check('a text per language survives inside an inner row', $clean[0]['links'][1]['label'], ['default' => 'Βιβλιοπωλείο', 'en' => 'Bookshop']);
 check('an outer value is checked too, and a broken inner list is empty', [$clean[0]['format'], $clean[1]['links']], ['paper', []]);
 check('checking again changes nothing', FieldSchema::clean($fields['books'], $clean), $clean);
+check('an inner row with only empty texts per language is empty', FieldSchema::clean($fields['books'], [['title' => 'T', 'links' => [['label' => ['default' => '', 'en' => '']]]]])[0]['links'], []);
 
 // A form: "none" markers first, then the rows (PHP turns the marker into an array once rows follow it).
 $input = ['books' => [
@@ -138,7 +139,7 @@ $file = "---\n" . trim(Yaml::dump(['title' => 'X', 'custom_fields' => $store], 1
 check('front matter holds the rows as YAML lists, not inline', [str_contains($file, "  editions:\n    -\n      publisher: Ikaros"), str_contains($file, '{')], [true, false]);
 $meta = Yaml::parse(substr($file, 4, -5));
 check('and reads back to the same values, every field of a row there', $types->values('novels', $meta, 'en', 'el'), ['author' => 'Apostolos', 'editions' => [$store['editions'][0], ['publisher' => 'Bloomsbury', 'year' => 2012, 'cover' => '', 'buy' => []]]]);
-check('a stored value is checked before it reaches a template', $types->values('novels', ['custom_fields' => ['editions' => [['publisher' => '<b>P</b>', 'buy' => [['url' => 'javascript:x']], 'year' => 'old']]]], 'en', 'el')['editions'], [['publisher' => '<b>P</b>', 'buy' => [], 'year' => 0, 'cover' => '']]);
+check('a stored value is checked before it reaches a template', $types->values('novels', ['custom_fields' => ['editions' => [['publisher' => '<b>P</b>', 'buy' => [['url' => 'javascript:x']], 'year' => 'old']]]], 'en', 'el')['editions'], [['publisher' => '<b>P</b>', 'buy' => [['url' => '', 'shop' => '']], 'year' => 0, 'cover' => '']]); // a row with only a refused value stays, emptied, as at the top level
 
 $page = $types->display('novels', $meta, 'page', fn(string $d): string => $d, 'en', 'el');
 check('the page lists the repeater with its rows (a field not shown on the page left out)', array_column($page, 'key'), ['author', 'editions']);

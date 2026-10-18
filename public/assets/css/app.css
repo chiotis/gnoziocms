@@ -1276,6 +1276,8 @@ html.dark .en-crumb a { color: #93c5fd; }
 .en-actions { display: flex; flex-wrap: wrap; gap: .375rem; }
 .en-details { display: grid; gap: .5rem; margin-top: .5rem; }
 @media (min-width: 768px) { .en-details { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* A list of rows (a repeater) in the details takes the whole row: its rows have two columns of their own. */
+.en-details > [data-repeater] { grid-column: 1 / -1; }
 .en-chips { display: flex; flex-wrap: wrap; gap: .375rem; margin-top: .5rem; }
 .en-custom { display: grid; gap: .375rem; margin-top: .5rem; }
 .en-custom-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: .375rem; align-items: start; }

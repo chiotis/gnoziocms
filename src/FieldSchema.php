@@ -415,14 +415,16 @@ final class FieldSchema
                 foreach (array_values($value) as $item) {
                     if (is_array($item)) {
                         $item = array_intersect_key($item, $field['fields']);
-                        // An inner list is checked first, so a row whose inner rows are all empty counts as empty too.
-                        foreach ($item as $subKey => $subValue) {
-                            if ($field['fields'][$subKey]['type'] === 'repeater') {
-                                $item[$subKey] = self::sanitize($field['fields'][$subKey], $subValue, []);
+                        // A row the person added and left empty is not kept. An inner list counts by its checked rows (a row whose
+                        // inner rows are all empty is empty too), and a text per language by its checked texts.
+                        $seen = $item;
+                        foreach ($seen as $subKey => $subValue) {
+                            $sub = $field['fields'][$subKey];
+                            if ($sub['type'] === 'repeater' || (($sub['translatable'] ?? false) === true && is_array($subValue))) {
+                                $seen[$subKey] = self::sanitize($sub, $subValue, $sub['type'] === 'repeater' ? [] : '');
                             }
                         }
-                        // A row the person added and left empty is not kept.
-                        $filled = array_filter($item, static fn(mixed $v): bool => !($v === '' || $v === null || $v === false || $v === []));
+                        $filled = array_filter($seen, static fn(mixed $v): bool => !($v === '' || $v === null || $v === false || $v === []));
                         if ($filled !== []) {
                             $items[] = self::resolve($field['fields'], $item);
                         }

@@ -227,6 +227,10 @@ def main():
 
     results = []
     entries = []
+    # parts of a block definition the CMS leaves out (a repeater nested too deep)
+    for definition in ctx["blocks"].values():
+        if definition.get("problems"):
+            results.append({"file": definition["file"], "problems": [{"level": "WARN", "message": m} for m in definition["problems"]]})
     for path in files:
         if not os.path.isfile(path):
             results.append({"file": path, "problems": [{"level": "ERROR", "message": "no such file"}]})

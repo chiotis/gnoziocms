@@ -291,12 +291,18 @@ def _num(value):
         return False
 
 
-def normalize_fields(defs, icon_names=None, sources=None):
-    """FieldSchema::normalize, plus the icon set and the option sources (content_types, forms) that BlockRegistry fills in."""
+MAX_DEPTH = 2  # a repeater, and a repeater in its rows (FieldSchema::MAX_DEPTH)
+
+
+def normalize_fields(defs, icon_names=None, sources=None, depth=1):
+    """FieldSchema::normalize, plus the icon set and the option sources (content_types, forms) that BlockRegistry fills in.
+    A repeater nested deeper than MAX_DEPTH is left out, as the CMS does (field_problems() names it)."""
     fields = {}
     for key, d in (defs or {}).items():
         key = str(key)
         if not KEY.match(key) or not isinstance(d, dict):
+            continue
+        if str(d.get("type") or "").lower() == "repeater" and depth > MAX_DEPTH:
             continue
         ftype = str(d.get("type", "text")).lower()
         source = str(d.get("options_from", "") or "")
@@ -337,8 +343,7 @@ def normalize_fields(defs, icon_names=None, sources=None):
         if ftype == "file":
             field["kind"] = "track" if d.get("kind") == "track" else "all"
         if ftype == "repeater":
-            subs = normalize_fields(d.get("fields") if isinstance(d.get("fields"), dict) else {}, icon_names, sources)
-            field["fields"] = {k: v for k, v in subs.items() if v["type"] != "repeater"}
+            field["fields"] = normalize_fields(d.get("fields") if isinstance(d.get("fields"), dict) else {}, icon_names, sources, depth + 1)
             field["item_label"] = str(d.get("item_label") or "Item")
         field["default"] = clean(field, d.get("default"), True)
         fields[key] = field
@@ -469,7 +474,9 @@ def _sanitize(field, value, fallback):
         for item in value:
             if isinstance(item, dict):
                 kept = {k: v for k, v in item.items() if k in field["fields"]}
-                if any(not (v == "" or v is None or v is False or v == []) for v in kept.values()):
+                # an inner list counts by its checked rows, so a row whose inner rows are all empty is empty too
+                seen = {k: (clean(field["fields"][k], v) if field["fields"][k]["type"] == "repeater" or isinstance(v, dict) else v) for k, v in kept.items()}
+                if any(not (v == "" or v is None or v is False or v == []) for v in seen.values()):
                     items.append({k: clean(field["fields"][k], kept.get(k)) for k in field["fields"]})
         return items[: max(0, field["max"])] if field.get("max") is not None else items
     if t in ("markdown", "textarea"):
@@ -569,6 +576,8 @@ def load_blocks(root):
                 "variants": variants, "fields": fields, "common": common,
                 "variant_when": raw.get("variant_when") or {},
                 "width_moved_to": str(raw.get("width_moved_to") or "") if str(raw.get("width_moved_to") or "") in fields else "",
+                "file": os.path.relpath(file, root),
+                "problems": field_problems(raw.get("fields") or {}),
             }
     return blocks
 
@@ -686,26 +695,50 @@ def check_block(blocks, block, where):
         field = fields[key]
         cleaned = clean(field, value)
         if field["type"] == "repeater":
-            if not isinstance(value, list):
-                problems.append("%s (%s.%s): must be a list of rows" % (where, type_, key))
-                continue
-            if field.get("max") is not None and len(value) > field["max"]:
-                problems.append("%s (%s.%s): %d rows, only the first %d are kept" % (where, type_, key, len(value), field["max"]))
-            for index, row in enumerate(value):
-                if not isinstance(row, dict):
-                    problems.append("%s (%s.%s[%d]): a row must be a map" % (where, type_, key, index))
-                    continue
-                for sub, subvalue in row.items():
-                    if sub not in field["fields"]:
-                        problems.append("%s (%s.%s[%d]): unknown field `%s` (the CMS drops it)" % (where, type_, key, index, sub))
-                        continue
-                    if not _same(clean(field["fields"][sub], subvalue), subvalue):
-                        problems.append("%s (%s.%s[%d].%s): %s" % (where, type_, key, index, sub, _why(field["fields"][sub], subvalue)))
+            problems.extend(check_rows(field, value, "%s (%s.%s" % (where, type_, key)))
         elif not _same(cleaned, value):
             problems.append("%s (%s.%s): %s" % (where, type_, key, _why(field, value)))
     for key, field in definition["fields"].items():
         if field["required"] and not block.get(key) and block.get("hidden") is not True:
             problems.append("%s (%s): `%s` is required (the editor marks it, the page looks empty without it)" % (where, type_, key))
+    return problems
+
+
+def check_rows(field, value, at):
+    """What is wrong with the rows of a repeater (and of a repeater inside its rows); `at` is "where (type.key" without the ")"."""
+    problems = []
+    if not isinstance(value, list):
+        return ["%s): must be a list of rows" % at]
+    if field.get("max") is not None and len(value) > field["max"]:
+        problems.append("%s): %d rows, only the first %d are kept" % (at, len(value), field["max"]))
+    for index, row in enumerate(value):
+        here = "%s[%d]" % (at, index)
+        if not isinstance(row, dict):
+            problems.append("%s): a row must be a map" % here)
+            continue
+        for sub, subvalue in row.items():
+            if sub not in field["fields"]:
+                problems.append("%s): unknown field `%s` (the CMS drops it)" % (here, sub))
+                continue
+            subfield = field["fields"][sub]
+            if subfield["type"] == "repeater":
+                problems.extend(check_rows(subfield, subvalue, "%s.%s" % (here, sub)))
+            elif not _same(clean(subfield, subvalue), subvalue):
+                problems.append("%s.%s): %s" % (here, sub, _why(subfield, subvalue)))
+    return problems
+
+
+def field_problems(defs, path="fields", depth=1):
+    """FieldSchema::problems: repeaters nested deeper than MAX_DEPTH, which the CMS leaves out."""
+    problems = []
+    for key, d in (defs or {}).items():
+        if not isinstance(d, dict) or str(d.get("type") or "").lower() != "repeater":
+            continue
+        where = "%s.%s" % (path, key)
+        if depth > MAX_DEPTH:
+            problems.append("%s: a repeater can sit inside another repeater only one level deep (%d levels in all); this field is ignored." % (where, MAX_DEPTH))
+            continue
+        problems.extend(field_problems(d.get("fields") if isinstance(d.get("fields"), dict) else {}, where, depth + 1))
     return problems
 
 
