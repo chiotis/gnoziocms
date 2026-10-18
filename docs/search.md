@@ -43,7 +43,7 @@ Existing overrides in `custom/templates/search.twig` still receive `query` and t
 
 | Variable | Contents |
 | --- | --- |
-| `search.hits` | Current page: `{item, title_parts, snippet_parts}` |
+| `search.hits` | Current page: `{item, type_label, title_parts, snippet_parts}` |
 | `search.total`, `search.page`, `search.pages`, `search.per_page` | Selected type's count and pagination |
 | `search.type` | Selected type, or empty for all |
 | `search.types` | `{value, label, count, url, active}` filter links |

@@ -207,6 +207,10 @@ for query in ('hiddenblockneedle', 'hiddenchildneedle', 'hiddencontainerneedle',
     check('hidden block or technical settings are excluded: ' + query, status == 200 and not page.results, page.paths)
 status, html, page = search('publicfieldneedle')
 check('declared public custom fields participate in search', page.paths == ['/projects/search-fields'], page.paths)
+import re
+result_label = re.search(r'search-result-type">([^<]*)<', html)
+filter_label = re.search(r'<a href="[^"]*type=projects[^"]*"[^>]*>([^<]*?) <span', html)
+check('a custom type result label matches its filter label', bool(result_label and filter_label and result_label.group(1) == filter_label.group(1)), (result_label and result_label.group(1), filter_label and filter_label.group(1)))
 for query in ('privatefieldneedle', 'retiredfieldneedle', 'customurlneedle', 'undeclaredfieldneedle'):
     status, html, page = search(query)
     check('nonpublic or technical custom fields are excluded: ' + query, status == 200 and not page.results, page.paths)
