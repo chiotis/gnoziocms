@@ -8,6 +8,9 @@
  * package is, its SHA-256 and size) into the output directory (build/ by default). The package is built from a list of
  * what to include, so a site's own content, uploads, custom/, storage or settings can never end up in it, whatever is
  * lying around in the folder it is built from. The same version builds to the same bytes.
+ *
+ * installer.php (the one-file installer for a new server) is copied next to the package as its own release asset. It is
+ * not in the package: it is not a code path an update may write, and a running site has no use for it.
  */
 declare(strict_types=1);
 
@@ -89,4 +92,8 @@ $manifest = [
     'requires_backup' => true,
 ];
 file_put_contents($out . '/release.json', json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n");
+if (is_file($root . '/installer.php') && !copy($root . '/installer.php', $out . '/installer.php')) {
+    fwrite(STDERR, "Cannot write $out/installer.php.\n");
+    exit(1);
+}
 echo "Built $name: " . count($files) . " files, " . round($manifest['size'] / 1048576, 1) . " MB, sha256 $sha\n";

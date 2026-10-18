@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.159 — 2026-10-18 — A one-file installer
+- **`installer.php` installs a new site from the browser.** Set its key, upload it to an empty site folder and open it: it checks the server, downloads the latest release, verifies its size and SHA-256, unpacks it with the updater's safety rules and can start from the demo site. Each step shows its progress, in Greek or English, light or dark.
+- It then asks you to point the document root at the site's `public/` folder (with a note for CloudPanel) and waits for your OK. It continues only once it is served from `public/`, removes itself and opens `/admin` to create the first administrator.
+- It refuses to run without a key of at least 12 characters, or where a site is already installed. It is published with every release as its own file, next to the package, and is not part of the package. See `update.md`.
+
 ## 0.1.158 — 2026-10-18 — Books: several buy links
 - **A book can have up to six buy links**, one per shop, each with its own text; the first is the main button, the others secondary. Books saved with a single buy link show it as the first row and keep their button; saving the book writes the list and drops the old fields.
 - Content types can declare `legacy` on a repeater to read flat fields it replaces as its first row; templates can read checked field values with `content_values(item)`.
