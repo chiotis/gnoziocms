@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.152 — 2026-10-18 — Search: whole words rank higher
+- **A whole word ranks above a word start, and a word start above the middle of a word**: *art* puts “Art gallery” before “Party hall”.
+- **Short words such as «ο», «της», "a" or "of" match only whole words** and are no longer highlighted inside longer words. Beside longer words they are optional and only raise an entry's position; a query made only of short words needs all of them.
+
 ## 0.1.151 — 2026-10-18 — Remove the old search method
 - Remove the unused `ContentRepository::search()`; public search lives in `ContentSearch`.
 

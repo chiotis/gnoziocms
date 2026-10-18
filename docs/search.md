@@ -5,7 +5,7 @@
 ## Matching and ordering
 
 - Case, Greek accents (including polytonic text), combining accents and final sigma do not change a match. Common Latin accented letters are normalized too, without requiring PHP intl.
-- Each word must occur somewhere in an entry; words may occur in different fields and in any order. Punctuation separates words. Partial words match, as in the earlier search. There is no stemming, typo correction or special query syntax.
+- Each word must occur somewhere in an entry; words may occur in different fields and in any order. Punctuation separates words. Words of three or more characters also match as the start or the middle of a longer word; words of one or two characters («ο», «της», "a", "of") match only whole words and add only a point per field. Beside longer words they are optional and only raise an entry's position; a query made only of short words needs all of them. A whole word scores higher than a word start, and a word start higher than the middle of a word. There is no stemming, typo correction or special query syntax.
 - Exact titles rank first, followed by phrases in titles. Title matches carry more weight than taxonomy terms, custom fields, excerpts and body text. Repeating a word many times does not improve its score. Equal scores sort by normalized title, then type and slug for stable pagination.
 - Empty and punctuation-only queries show no results. The query is limited to 200 characters; malformed array parameters are ignored.
 

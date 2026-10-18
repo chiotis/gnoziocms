@@ -36,6 +36,10 @@ check('overlapping matches merge', SearchText::parts('foobar', ['foo', 'oobar'])
 $parts = SearchText::parts('<img src=x> Αθήνα & <script>', ['αθηνα']);
 check('highlighting emits plain data, not pre-escaped or trusted HTML', implode('', array_column($parts, 'text')), '<img src=x> Αθήνα & <script>');
 check('empty parts', SearchText::parts('', ['a']), []);
+check('a short term is not highlighted inside a longer word', SearchText::parts('Ο Δρόμος του Οδηγού', ['ο']), [['text' => 'Ο', 'match' => true], ['text' => ' Δρόμος του Οδηγού', 'match' => false]]);
+check('a short Latin term only highlights whole words', array_column(array_filter(SearchText::parts('a party of art', ['a', 'of']), fn($p) => $p['match']), 'text'), ['a', 'of']);
+check('word start beats mid-word, whole word beats both', [SearchText::strength('party', 'art'), SearchText::strength('artist', 'art'), SearchText::strength('the art', 'art')], [1, 2, 3]);
+check('short terms never match mid-word', [SearchText::strength('δρομοσ', 'ο'), SearchText::strength('ο δρομοσ', 'ο')], [0, 3]);
 $long = str_repeat('Πρόλογος χωρίς το ζητούμενο. ', 30) . 'Στο τέλος βρίσκεται η Αθήνα μέσα στο κείμενο. ' . str_repeat('Επίλογος. ', 25);
 $snippet = SearchText::snippet($long, ['αθηνα']);
 check('snippet finds a match late in the body', str_contains($snippet, 'Αθήνα'), true);
@@ -56,6 +60,10 @@ $write('pages', 'foreign.en', 'Αθήνα English', 'Athens');
 $write('forms', 'contact', 'Αθήνα form configuration', 'Hidden fields');
 $write('books', 'book', 'Ένας περίπατος', '', "custom_fields:\n  author: 'Αθηνά Παπαδοπούλου'\n  isbn: '9781234567890'\n");
 for ($n = 1; $n <= 12; $n++) { $write('posts', sprintf('page-%02d', $n), sprintf('Catalogue %02d', $n), 'Catalogue selection'); }
+$write('pages', 'long-words', 'Ο Δρόμος της Πόλης', 'Κείμενο.');
+$write('pages', 'noise', 'Ο πόλεμος της πόλης', 'Αλλο κείμενο.');
+$write('pages', 'whole-word', 'Art gallery', 'Pictures.');
+$write('pages', 'mid-word', 'Party hall', 'Hosting art.');
 $write('pages', 'punct', 'Πόλεις, δρόμοι: Πάτρα', 'Κείμενο.');
 $write('pages', 'phrase-title', 'Intro: Blue Moon, live!', 'Short.');
 $write('pages', 'phrase-body', 'Notes', 'The blue moon rose. ' . str_repeat('blue moon ', 3));
@@ -95,6 +103,11 @@ check('malformed type/page inputs are ignored', [$search->search('Catalogue', 'e
 check('unknown type falls back to all', $search->search('Catalogue', 'el', false, '../x')['total'], 13);
 check('empty or punctuation-only query never lists the whole site', [$search->search('', 'el')['total'], $search->search('!!!', 'el')['total']], [0, 0]);
 check('display retains ContentItem list for custom templates', $all['hits'][0]['item'] === $all['results'][0], true);
+check('short words qualify only as whole words, long words rank first', $slugs($search->search('ο της δρομοσ', 'el')), ['long-words']);
+check('short words are optional beside a long word but still raise the score', $slugs($search->search('ο της πολησ', 'el'))[0], 'long-words');
+check('a long word alone matches without the short ones', in_array('punct', $slugs($search->search('το πατρα', 'el')), true), true);
+check('short words alone do not match mid-word', $slugs($search->search('ο της', 'el')), ['long-words', 'noise']);
+check('whole word outranks a mid-word match', $slugs($search->search('art', 'el')), ['whole-word', 'mid-word']);
 check('punctuated title ranks first for its words typed without punctuation', $slugs($search->search('πολεισ δρομοι πατρα', 'el'))[0], 'punct');
 check('exact punctuated title gets the exact boost over a longer title', $slugs($search->search('Πόλεις δρόμοι Πάτρα', 'el')), ['punct']);
 check('phrase in a punctuated title outranks the same words in a body', $slugs($search->search('blue moon', 'el')), ['phrase-title', 'phrase-body']);

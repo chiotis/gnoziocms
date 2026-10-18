@@ -53,6 +53,57 @@ final class SearchText
         return array_values(array_unique(preg_split('/[^\p{L}\p{N}]+/u', self::normalize($query), -1, PREG_SPLIT_NO_EMPTY) ?: []));
     }
 
+    /**
+     * Terms of one or two characters («ο», «της», "a", "of") occur inside countless words, so they only count as whole words.
+     * They still have to match for an entry to qualify.
+     */
+    public static function isShort(string $term): bool
+    {
+        return mb_strlen($term, 'UTF-8') <= 2;
+    }
+
+    /** How a normalized term occurs in normalized text: 0 not at all, 1 inside a word, 2 at the start of a word, 3 as a whole word. */
+    public static function strength(string $normal, string $term): int
+    {
+        // The cheap substring test keeps the regular expressions off the (many) entries that cannot match.
+        if ($term === '' || !str_contains($normal, $term)) {
+            return 0;
+        }
+        $quoted = preg_quote($term, '/');
+        $before = '(?<![\p{L}\p{N}])';
+        if (preg_match('/' . $before . $quoted . '(?![\p{L}\p{N}])/u', $normal) === 1) {
+            return 3;
+        }
+        if (self::isShort($term)) {
+            return 0;
+        }
+        return preg_match('/' . $before . $quoted . '/u', $normal) === 1 ? 2 : 1;
+    }
+
+    /** Byte offsets in normalized text where the term counts as a match; short terms only as whole words. @return int[] */
+    private static function positions(string $normal, string $term): array
+    {
+        $at = [];
+        if ($term === '') {
+            return $at;
+        }
+        if (self::isShort($term)) {
+            $pattern = '/(?<![\p{L}\p{N}])' . preg_quote($term, '/') . '(?![\p{L}\p{N}])/u';
+            if (preg_match_all($pattern, $normal, $found, PREG_OFFSET_CAPTURE) > 0) {
+                foreach ($found[0] as [, $offset]) {
+                    $at[] = $offset;
+                }
+            }
+            return $at;
+        }
+        $offset = 0;
+        while (($pos = strpos($normal, $term, $offset)) !== false) {
+            $at[] = $pos;
+            $offset = $pos + strlen($term);
+        }
+        return $at;
+    }
+
     /** @param string[] $terms @return array<int, array{text: string, match: bool}> Plain text only; Twig escapes every part. */
     public static function parts(string $text, array $terms): array
     {
@@ -62,10 +113,8 @@ final class SearchText
         $normal = self::normalize($text);
         $ranges = [];
         foreach ($terms as $term) {
-            $offset = 0;
-            while ($term !== '' && ($at = strpos($normal, $term, $offset)) !== false) {
+            foreach (self::positions($normal, $term) as $at) {
                 $ranges[] = [$at, $at + strlen($term)];
-                $offset = $at + strlen($term);
             }
         }
         if ($ranges === []) {
@@ -106,8 +155,8 @@ final class SearchText
         $normal = self::normalize($text);
         $first = null;
         foreach ($terms as $term) {
-            $at = strpos($normal, $term);
-            if ($at !== false && ($first === null || $at < $first)) {
+            $at = self::positions($normal, $term)[0] ?? null;
+            if ($at !== null && ($first === null || $at < $first)) {
                 $first = $at;
             }
         }
