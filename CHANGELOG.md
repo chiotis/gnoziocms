@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.151 — 2026-10-18 — Remove the old search method
+- Remove the unused `ContentRepository::search()`; public search lives in `ContentSearch`.
+
 ## 0.1.150 — 2026-10-18 — Search: content-type names in results
 - Each search result shows the content type's own name, the same one as the type filters (for example a custom type's Greek label instead of its slug). Templates receive it as `hit.type_label`.
 
