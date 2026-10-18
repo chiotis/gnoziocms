@@ -70,7 +70,7 @@ check('theme field retired', $m['fields']['duration']['hidden'], true);
 check('retired field not editable', array_key_exists('duration', $ct2->editableFields('projects', 'el', 'el')), false);
 check('new field type decimal', $m['fields']['budget']['type'], 'decimal');
 check('per-language label from site file', $m['fields']['starts']['label'], 'Έναρξη');
-check('repeater not supported', array_key_exists('tags_x', $m['fields']), false);
+check('a repeater is a field a type can have', $m['fields']['tags_x']['type'] ?? null, 'repeater');
 check('theme-only definition unaffected', $ct2->themeDefinition('projects', 'en', 'el')['archive']['layout'], 'cards');
 check('retired value kept on save', $ct2->fromInput('projects', ['client' => 'A'], ['duration' => '10 weeks'], 'en', 'el'), ['client' => 'A', 'duration' => '10 weeks']);
 check('date input valid', $ct2->fromInput('projects', ['starts' => '2026-02-30'], [], 'en', 'el'), []);

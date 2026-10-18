@@ -98,6 +98,11 @@ custom_fields:
   client: Alpha Corp
   year: 2025
   sector: office        # a select: one of the declared option values
+  editions:             # a repeater: a list of rows (a row may hold one list of its own, never deeper)
+    - publisher: Ikaros
+      year: 2010
+      buy:
+        - {shop: Politeia, url: 'https://example.com/book'}
 ```
 
 Read the definition before writing: `themes/default/content-types/projects.yaml` (or the custom one). A value that is not valid for its field is dropped when read. The ready-made types `points`, `routes` and `businesses` keep a `location: "35.2012, 26.2744"` field and are described in `docs/places-and-routes.md` of the installation.

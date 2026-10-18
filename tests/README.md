@@ -31,7 +31,9 @@ python3 tests/runner_test.py  # verifies that failing subprocesses cannot report
 
 | Check | What it proves |
 |---|---|
-| `tests/unit/search-document.php` | Text extraction from public fields, blocks, repeaters and containers; exclusion of technical/private fields; extracted-text cache invalidation and fallback |
+| `tests/unit/repeaters.php` | Repeaters two levels deep: the schema (a third level left out and named), checking rows at both levels (limits, empty rows, texts per language), defaults and icons; a content type with a nested repeater (texts per language, form input, tidy front matter, display rows); block storage and the Markdown guard |
+| `tests/js/repeaters.test.js` | Nested repeaters in both editors, as shipped in jsdom: the fields.twig form with admin.js (each list renames only its own rows, templates follow their row, each list's maximum) and the block builder (inner rows added, moved, removed) |
+| `tests/unit/search-document.php` | Text extraction from public fields, blocks, repeaters (two levels) and containers; exclusion of technical/private fields; extracted-text cache invalidation and fallback |
 | `tests/unit/search.php` | Greek matching and original spelling, relevance, cross-field multiword matching, snippets, visibility/language boundaries, paging and custom-template compatibility |
 | `tests/http/search_test.py` | Public results through real requests: counts, filters, paging, block/custom field matches, visibility, language isolation, malformed parameters and HTML escaping |
 | `tests/unit/blocks.php` | Block definitions, defaults, tampered values, video links, storage sanitising |

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.156 — 2026-10-18 — Repeaters: two levels, and in content types
+- **A repeater can hold a repeater in its rows** (two levels in all): several buttons for each slide, several shops for each book. A repeater nested deeper is left out of the definition and named by its path, instead of disappearing silently.
+- **Content types can declare repeater fields**, stored under `custom_fields` as YAML lists and checked against the definition before they reach a template. The default theme's fact sheet shows them as lists (nested lists for inner rows).
+- **Both editors handle nested lists**: add, remove and reorder act only on their own list, `min` and `max` hold at each level, and an inner list whose rows are all empty leaves its row empty. CSV import/export, search, HTML checks and the skill's validator know the nesting. See *Repeaters* in `docs/theming.md`.
+- Existing content is unchanged. The hero slider's buttons and the Books buy links move to repeaters in a following release.
+
 ## 0.1.155 — 2026-10-18 — Roadmap: the next priorities in order
 - **`ROADMAP.md`** brought to this version: *Where we are* now covers search, branding, the block builder, the GnozioCMS name and both live client sites. *Next* lists the owner's priorities in the agreed order: general and nested repeaters, then content relationships with the data and index cache, the off-canvas block settings panel in parallel, then the template builder and later a shop. Finished items (categories in a tree, form translation, theme options already delivered) are removed; the search work goes to *Now* to be checked on a real site.
 

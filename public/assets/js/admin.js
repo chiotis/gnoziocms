@@ -480,60 +480,101 @@
     form.appendChild(input);
   }, true);
 
-  /* Repeaters in server-rendered forms (theme settings): add, remove, and move rows. Rows are cloned from the template. */
+  /* Repeaters in server-rendered forms (theme settings, content type fields): add, remove, and move rows. Rows are cloned from the
+   * template. A row may hold a list of its own (two levels): every action works on the nearest list only, and the names of a row's
+   * fields (also those of its inner list, and of that list's template) start with the list's name and the row's number, which is
+   * rewritten whenever rows move, so the saved lists keep the order shown. */
+  function ownRows(box) {
+    var host = box.querySelector(':scope > [data-repeater-rows]');
+    return host ? Array.prototype.slice.call(host.children).filter(function (row) { return row.hasAttribute('data-repeater-row'); }) : [];
+  }
+
+  /** The first element that matches inside a row of a list and belongs to that row, not to a row of an inner list. */
+  function ownPart(row, selector) {
+    var found = row.querySelectorAll(selector);
+    for (var i = 0; i < found.length; i++) {
+      if (found[i].closest('[data-repeater-row]') === row) return found[i];
+    }
+    return null;
+  }
+
+  /** Gives every name in a row that starts with base[<anything>] the prefix base[index], also inside the templates of inner lists. */
+  function renameRow(row, base, index) {
+    var prefix = base + '[' + index + ']';
+    var start = base + '[';
+    var swap = function (value) {
+      if (value.indexOf(start) !== 0) return value;
+      var close = value.indexOf(']', start.length);
+      return close < 0 ? value : prefix + value.slice(close + 1);
+    };
+    row.querySelectorAll('[name]').forEach(function (control) { control.name = swap(control.name); });
+    row.querySelectorAll('[data-repeater-name]').forEach(function (inner) {
+      inner.setAttribute('data-repeater-name', swap(inner.getAttribute('data-repeater-name')));
+    });
+    row.querySelectorAll('template').forEach(function (template) {
+      var pattern = new RegExp(base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\[[^\\]"]*\\]', 'g');
+      template.innerHTML = template.innerHTML.replace(pattern, prefix);
+    });
+  }
+
   function renumberRepeater(box) {
-    var rows = box.querySelectorAll('[data-repeater-rows] > [data-repeater-row]');
+    var rows = ownRows(box);
+    var base = box.getAttribute('data-repeater-name') || '';
+    var min = parseInt(box.getAttribute('data-repeater-min'), 10) || 0;
     var max = parseInt(box.getAttribute('data-repeater-max'), 10) || 0;
-    Array.prototype.forEach.call(rows, function (row, index) {
-      // Keep the field names in row order, so the saved list has the order shown.
-      row.querySelectorAll('[name]').forEach(function (control) {
-        control.name = control.name.replace(/\[(\d+|__INDEX__)\](?=\[[a-z0-9_]+\]$)/, '[' + index + ']');
-      });
-      var title = row.querySelector('[data-repeater-title]');
+    rows.forEach(function (row, index) {
+      if (base) renameRow(row, base, index);
+      var title = ownPart(row, '[data-repeater-title]');
       if (title) title.textContent = box.getAttribute('data-repeater-item') + ' ' + (index + 1);
-      var up = row.querySelector('[data-repeater-up]');
-      var down = row.querySelector('[data-repeater-down]');
+      var up = ownPart(row, '[data-repeater-up]');
+      var down = ownPart(row, '[data-repeater-down]');
+      var remove = ownPart(row, '[data-repeater-remove]');
       if (up) up.disabled = index === 0;
       if (down) down.disabled = index === rows.length - 1;
+      if (remove) remove.disabled = min > 0 && rows.length <= min;
     });
-    var add = box.querySelector('[data-repeater-add]');
+    var add = box.querySelector(':scope > [data-repeater-add]');
     if (add) add.disabled = max > 0 && rows.length >= max;
   }
 
   document.addEventListener('click', function (event) {
     var box = event.target.closest && event.target.closest('[data-repeater]');
     if (!box) return;
-    var rowsHost = box.querySelector('[data-repeater-rows]');
+    var rowsHost = box.querySelector(':scope > [data-repeater-rows]');
+    if (!rowsHost) return;
     if (event.target.closest('[data-repeater-add]')) {
-      var template = box.querySelector('[data-repeater-template]');
-      var count = rowsHost.children.length;
+      var template = box.querySelector(':scope > [data-repeater-template]');
+      var count = ownRows(box).length;
       var max = parseInt(box.getAttribute('data-repeater-max'), 10) || 0;
       if (!template || (max > 0 && count >= max)) return;
       var holder = document.createElement('div');
-      holder.innerHTML = template.innerHTML.replace(/__INDEX__/g, String(count));
+      holder.innerHTML = template.innerHTML.split(box.getAttribute('data-repeater-placeholder') || '__INDEX__').join(String(count));
       var row = holder.firstElementChild;
       rowsHost.appendChild(row);
       renumberRepeater(box);
+      row.querySelectorAll('[data-repeater]').forEach(renumberRepeater);
       var first = row.querySelector('input:not([type=hidden]), textarea, button.icon-picker-trigger, select');
       if (first) first.focus();
       return;
     }
     var row = event.target.closest('[data-repeater-row]');
-    if (!row) return;
+    // Only the buttons of a row of this list: a click in an inner list is that list's.
+    if (!row || row.parentElement !== rowsHost) return;
     if (event.target.closest('[data-repeater-remove]')) {
+      if (event.target.closest('[data-repeater-remove]').disabled) return;
       var next = row.nextElementSibling || row.previousElementSibling;
       row.remove();
       renumberRepeater(box);
-      var focusTarget = next ? next.querySelector('[data-repeater-remove]') : box.querySelector('[data-repeater-add]');
+      var focusTarget = next ? ownPart(next, '[data-repeater-remove]') : box.querySelector(':scope > [data-repeater-add]');
       if (focusTarget) focusTarget.focus();
     } else if (event.target.closest('[data-repeater-up]') && row.previousElementSibling) {
       rowsHost.insertBefore(row, row.previousElementSibling);
       renumberRepeater(box);
-      row.querySelector('[data-repeater-up]').focus();
+      ownPart(row, '[data-repeater-up]').focus();
     } else if (event.target.closest('[data-repeater-down]') && row.nextElementSibling) {
       rowsHost.insertBefore(row.nextElementSibling, row);
       renumberRepeater(box);
-      row.querySelector('[data-repeater-down]').focus();
+      ownPart(row, '[data-repeater-down]').focus();
     }
   });
 

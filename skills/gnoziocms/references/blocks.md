@@ -12,7 +12,7 @@
 | `anchor` | an id for in-page links (`services` makes `#services`) |
 | `hidden` | `true` keeps the block in the file but not on the site |
 
-Kinds of value: **link** is a page (`contact`, relative to the page's language), a path (`/en/contact`), a full URL, `#anchor`, `mailto:` or `tel:`. **image**, **video** and **file** are `/uploads/media/<id>.<ext>` (a library file) or a full https URL; no spaces, quotes or brackets. **icon** is a name from the icon set (`python3 scripts/site_info.py --icons`). **Markdown** fields take Markdown. A **choice** must be exactly one of the listed values. Values equal to the default can be left out. A value the CMS does not accept is replaced by the default without any message, so check with `validate_content.py`.
+Kinds of value: **link** is a page (`contact`, relative to the page's language), a path (`/en/contact`), a full URL, `#anchor`, `mailto:` or `tel:`. **image**, **video** and **file** are `/uploads/media/<id>.<ext>` (a library file) or a full https URL; no spaces, quotes or brackets. **icon** is a name from the icon set (`python3 scripts/site_info.py --icons`). **Markdown** fields take Markdown. A **choice** must be exactly one of the listed values. A **list of rows** (repeater) is a YAML list of maps; a row may hold a list of its own (`slides[].buttons[]`), never deeper. Values equal to the default can be left out. A value the CMS does not accept is replaced by the default without any message, so check with `validate_content.py`.
 
 ## Containers: rows with columns
 

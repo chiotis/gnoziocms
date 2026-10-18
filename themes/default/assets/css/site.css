@@ -3435,6 +3435,38 @@ p.form-error {
   border-radius: var(--radius-m);
 }
 
+/* A list of rows takes the whole width of the sheet; each row is a line, its fields side by side, an inner list below them. */
+.type-field.is-list {
+  grid-column: 1 / -1;
+}
+
+.type-rows {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.type-row-part {
+  display: inline-block;
+  margin-right: var(--space-s);
+}
+
+.type-row-part.is-list {
+  display: block;
+  margin: 0.2rem 0 0;
+}
+
+.type-row-label {
+  color: var(--color-muted);
+  font-size: var(--step--1);
+  font-weight: 600;
+}
+
+.type-row-label::after {
+  content: ":";
+}
+
 .book-hero {
   padding-block: clamp(2rem, 1rem + 4vw, 4.5rem);
   background: var(--color-surface);

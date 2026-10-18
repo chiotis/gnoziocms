@@ -58,6 +58,54 @@ check('a field whose row is left out (removed) is gone from the type, the other 
 st, _, html = root.get('/admin/content-types?type=recipes')
 check('and the editor lists one field', st == 200 and 'ct-count">1<' in html)
 
+# ---- a list of rows with a list in each row (a repeater in a repeater), written in the type's file
+with open('app/custom/content-types/recipes.yaml', 'w', encoding='utf-8') as fh:
+    fh.write('''label: Recipes
+fields:
+  cuisine: {type: select, label: Cuisine, options: {it: Italian, gr: Greek}}
+  steps:
+    type: repeater
+    label: Steps
+    item_label: Step
+    fields:
+      title: {type: text, label: Title}
+      tools:
+        type: repeater
+        label: Tools
+        item_label: Tool
+        max: 3
+        fields:
+          name: {type: text, label: Name}
+          deeper: {type: repeater, fields: {x: {type: text}}}
+''')
+st, _, html = root.get('/admin/content-types?type=recipes')
+check('the type editor shows the list read-only, with the fields of its rows', st == 200 and 'list of rows' in html and 'Title (text), Tools (list: Name (text))' in html and 'name="fields[1][type]"' not in html, html.count('data-field'))
+check('and says that the list three levels down is ignored', 'fields.steps.tools.deeper' in html and 'is ignored' in html)
+before = yaml('recipes')
+root.submit('/admin/content-types?type=recipes', save_form)
+check('saving the type keeps the list and its inner list', 'type: repeater' in yaml('recipes') and 'tools:' in yaml('recipes') and 'name:' in yaml('recipes'), yaml('recipes'))
+
+st, _, html = root.get('/admin/edit?type=recipes&slug=&lang=el')
+check('the editor has the list, its inner list in the template, each with its own row number placeholder',
+      st == 200 and 'data-repeater-name="details[steps]"' in html and 'name="details[steps][__INDEX__][title]"' in html
+      and 'data-repeater-name="details[steps][__INDEX__][tools]"' in html and 'name="details[steps][__INDEX__][tools][__INDEX2__][name]"' in html, st)
+root.submit('/admin/edit?type=recipes&slug=&lang=el', has_field('details_present'), {
+    'slug': 'pasta', 'title': 'Pasta', 'status': 'published', 'visible': '1', 'body': 'Cook.',
+    'details[steps][0][title]': 'Mix', 'details[steps][0][tools]': '', 'details[steps][0][tools][0][name]': 'Bowl', 'details[steps][0][tools][1][name]': '<b>Spoon</b>', 'details[steps][0][tools][2][name]': '',
+    'details[steps][1][title]': 'Rest', 'details[steps][1][tools]': '',
+    'details[steps][2][title]': '', 'details[steps][2][tools]': '', 'details[steps][2][tools][0][name]': '',
+})
+try: raw = open('app/content/recipes/pasta.md', encoding='utf-8').read()
+except FileNotFoundError: raw = ''
+check('saved through the admin, the rows are YAML lists under custom_fields, empty rows and values left out',
+      'custom_fields:' in raw and re.search(r"steps:\n\s+-\n\s+title: Mix\n\s+tools:\n\s+-\n\s+name: Bowl\n\s+-\n\s+name: '<b>Spoon</b>'\n\s+-\n\s+title: Rest\n", raw) is not None and raw.count('title:') == 3, raw)
+st, _, html = root.get('/admin/edit?type=recipes&slug=pasta&lang=el')
+check('opened again, the rows and inner rows are in the form, in order, escaped',
+      'name="details[steps][0][tools][1][name]" value="&lt;b&gt;Spoon&lt;/b&gt;"' in html and 'name="details[steps][1][title]" value="Rest"' in html and 'data-repeater-name="details[steps][1][tools]"' in html, st)
+st, _, page = root.get('/recipes/pasta')
+check('the page shows the list with the inner list as a list inside it, escaped',
+      st == 200 and page.count('class="type-rows"') == 2 and '&lt;b&gt;Spoon&lt;/b&gt;' in page and '<b>Spoon</b>' not in page and page.index('Mix') < page.index('Bowl') < page.index('Rest'), st)
+
 # ---- a field of the theme
 st, _, html = root.get('/admin/content-types?type=projects')
 fields_part = html.split('data-field-rows')[1].split('<template')[0]

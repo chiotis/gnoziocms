@@ -218,7 +218,7 @@ blocks:
 
 Create `blocks/<type>/` with three files:
 
-- `block.yaml`: `label`, `description`, `variants`, optional default `tone` and `spacing`, and `fields` (FieldSchema types plus `markdown`, `link`, `repeater` with `fields`/`max`, `icon`, and `options_from: content_types | forms`).
+- `block.yaml`: `label`, `description`, `variants`, optional default `tone` and `spacing`, and `fields` (FieldSchema types plus `markdown`, `link`, `repeater` with `fields`/`min`/`max`, `icon`, and `options_from: content_types | forms`). See *Repeaters* below.
 - `preview.svg` (optional): the one-colour wireframe the editor's block picker shows beside the block's name. Draw it on a 64 by 48 grid with `fill="none" stroke="currentColor"` shapes (`rect`, `path`, `circle`, `line`, `polygon`; `fill="currentColor" fill-opacity=".14"` for tinted areas). Only those shapes and a few presentation attributes are kept; a block without one shows a placeholder.
 - `variants/<layout>.svg` (optional): a drawing of each layout, in the format of `preview.svg`, shown as tiles in the Design tab where the layout is chosen (without them the layouts are plain buttons). `design_fields: [key, …]` in `block.yaml` moves fields of the block that change how a layout looks (the hero's `align`) to the Design tab, beside the layout; for such a field a drawing named `<layout>-<value>.svg` (`cover-center.svg`) is used while the field has that value. The hero has all of them. `variant_extends: {centred-cover: cover}` makes a layout a variant of another (its section also gets that one's class, so its styles apply), and `variant_migrations` (`when`, `to`, `drop`) moves blocks saved in a layout that has since become another (the hero's old text alignment is now two layouts).
 - `block.twig`: receives `block` (checked values; Markdown fields also as `<key>_html`), `heading_tag`, `item_heading_tag`, `block_uid` (use `{{ block_uid }}-title` as the heading id), `block_first`, and the page context. Import `components/ui.twig` for `section_header`, `actions`, and `initials`.
@@ -272,10 +272,10 @@ archive:
   show_meta: true          # category and card fields
 ```
 
-- **Field types:** `text`, `textarea`, `markdown`, `email`, `url`, `link`, `image`, `color`, `number`, `decimal`, `date`, `select`, `toggle`. Per field: `card: true` shows it on the item's card, `show: false` hides it on the item's own page, `filterable: true` (select fields) adds an archive filter, `hidden: true` retires it. Repeaters are not available.
+- **Field types:** `text`, `textarea`, `markdown`, `email`, `url`, `link`, `image`, `color`, `number`, `decimal`, `date`, `select`, `toggle`, and `repeater` (a list of rows, see *Repeaters* below). Per field: `card: true` shows it on the item's card (a repeater as one line naming its rows), `show: false` hides it on the item's own page, `filterable: true` (select fields only, never a repeater) adds an archive filter, `hidden: true` retires it. Admin > Content types creates every kind but a repeater: its row fields are written in the type's YAML file, and the screen shows it read-only (how it is used can still change).
 - **Storage:** values are saved in the item's front matter under `custom_fields`, checked against the definition on every read and write, so a stored value can never push markup into a template. Fields you declare get their own inputs in the editor (a "<Type> details" tab) and no longer appear under free-form Custom Fields.
 - **Compatibility:** follow the same rules as theme settings. Never rename a field key, retire it with `hidden: true` instead (stored values are kept), and give a `select` a stable set of option values.
-- **On the page:** every single page shows its declared fields as a fact sheet (`components/type-fields.twig`, included by `components/page-body.twig`). In templates, `content_fields(item)` returns the fields to print and `content_fields(item, 'card')` those marked for cards; `content_type('projects')` returns the definition.
+- **On the page:** every single page shows its declared fields as a fact sheet (`components/type-fields.twig`, included by `components/page-body.twig`); a repeater is a list there, each row its fields with their labels, an inner list nested in its row. In templates, `content_fields(item)` returns the fields to print and `content_fields(item, 'card')` those marked for cards (each `{key, label, type, value, display}`; a repeater's entry also has `rows`, a list of rows that are lists of entries of the same shape); `content_type('projects')` returns the definition. `item.meta.custom_fields.<key>` holds the raw stored rows, unchecked.
 - **Archive:** `templates/archive.twig` draws the list with the same eight layouts as the Latest content block (`components/entry-list.twig`). Filters are plain links and a `<form method="get">` (no JavaScript): `?filter[sector]=retail&page=2`. Filter values that no item has are never offered. Filtered pages are `noindex`; each page of a paginated listing has its own canonical URL. Category and tag pages use the same layout, with settings of their own per taxonomy (see below).
 - **Taxonomies of the site's own:** **Admin > Taxonomies > New taxonomy** makes one (a name, an address, optionally the content types its pages list): `content/taxonomies/<name>.yaml`, the same file as categories and tags. Its terms have pages at `/<name>/<term>` (and `/en/<name>/<term>`), drawn by `templates/archive-<name>-<term>.twig` → `archive-<name>.twig` → `archive.twig`, titled "Name: Term", with the same layout settings (Theme > Archive Layouts) and hreflang links, and a term that changes address leaves a redirect behind. `/<name>` alone is an ordinary page address, so a page can be made there. The name cannot be a reserved word, a language, a content type, another taxonomy, the home page or a page; a content type cannot take the name of a taxonomy. Entries keep their terms in the field named like the taxonomy (`project-types: [web]`), the menu editor offers the terms, and the default single templates of posts and projects list them under the title; a template draws them with `item_terms(item, prefix)` (`[{name, title, terms: [{label, url}]}]`, for the taxonomies a site added) or `taxonomy_url('<name>', term, prefix)` and `taxonomy_label(...)`.
 - **Taxonomy archives:** each taxonomy (categories, tags) has its own archive settings in `content/taxonomies/<name>.yaml` under `archive:`, edited in Admin > Theme > Archive Layouts. The keys are those of a content type's archive (`layout`, `columns`, `per_page`, `order`, `show_*`, `title`, `subtitle`, `taxonomies` for filters) plus `types: [posts, projects]` for the content types listed (none means all). `{term}` in `title` and `subtitle` is replaced by the term's name. A term can also have a description per language (Admin > Taxonomies): it is shown as the subtitle unless the taxonomy sets one, and templates receive it as `term_description`. Only what differs from the defaults is stored. The templates lookup is unchanged, so `archive-category.twig` or `archive-tag-<term>.twig` can still take over.
@@ -283,6 +283,37 @@ archive:
   **A tree of terms.** Categories are a tree by default (tags and a site's own taxonomies are not, unless `hierarchical: true` is in the file or *Terms can have a parent* is ticked in Admin > Taxonomies). A term has an optional `parent` (the id of another term). Its address holds its parents' slugs: `/category/books/english`, drawn by `archive-category-<own slug>.twig` → `archive-category.twig` → `archive.twig`. Moving a term or changing a parent's slug leaves redirects behind for the old address of the term and of every term below it, in every language, and updates menu links. The archive card of a tree has a *Sub-terms* chip (`include_children`, on by default): the page, the feed and the language links of a parent then also cover what is filed under its children. Deleting a parent moves its children up a level. The template receives `term_trail`, the parents above the term as `[{label, url}]`, and with *Breadcrumbs* on the trail is Home, the parents, the term.
 - **Per-type templates** still work: `custom/templates/archive-<type>.twig` and `single-<type>.twig` win over the defaults.
 - **Latest content block:** the block lists any type, so a new type is available in it straight away.
+
+## Repeaters
+
+A `repeater` is a list of rows, each row with the same `fields`. It works in block fields, theme settings and content-type fields:
+
+```yaml
+editions:
+  type: repeater
+  label: Editions
+  item_label: Edition        # names a row in the editor ("Edition 2")
+  min: 0                     # rows that cannot be removed in the editor (optional)
+  max: 6                     # rows kept; more are dropped (optional)
+  fields:
+    publisher: {type: text}
+    year: {type: number}
+    buy:                     # a list inside each row
+      type: repeater
+      item_label: Shop
+      max: 4
+      fields:
+        shop: {type: text, translatable: true}
+        url: {type: url}
+```
+
+- **Two levels at most.** A row of a top-level repeater may hold a repeater of its own; a repeater inside that one is left out of the definition, and Admin > Content types (for a type) and the skill's `validate_content.py` (for a block) name it. `min` and `max` belong to each list on its own. `inline: true` (one short text per row, edited as a row of boxes) only works for a list of one text, never one that holds a list.
+- **Checked like any field.** Stored rows are checked against the fields at both levels before they reach a template: unknown keys dropped, invalid values replaced by the default, empty rows (also a row whose inner rows are all empty) dropped, `max` applied to each list. A translatable text inside a row keeps its text per language.
+- **Stored** as YAML lists of maps: in a block, values equal to the default are left out; under `custom_fields`, empty values are left out. Reading fills them in again.
+- **Templates** of blocks loop over the rows (`{% for slide in slides %}{% for button in slide.buttons %}`); a Markdown field inside a row, also in an inner row, has its `<key>_html` beside it.
+- **CSV export/import** of content puts a repeater in one cell as JSON (`meta.custom_fields.editions`), which reads back to the same rows.
+- **Search** reads the text of rows and inner rows like other fields (`searchable: false` works inside rows too).
+- **Editors.** The block builder and the forms of content types and theme settings add, remove and reorder rows of either list; an action acts on the nearest list only.
 
 ## Search results
 

@@ -5,21 +5,61 @@ declare(strict_types=1);
 namespace GnozioCMS;
 
 /**
- * Declarative field definitions for theme settings and content blocks (content types later).
+ * Declarative field definitions for theme settings, content blocks and content types.
  *
  * A definition list is a map of key => definition. Values are always checked against the
  * definition: a missing value takes the field default and an invalid one falls back to it, so a
  * stored value can never push unexpected markup or CSS into a template.
+ *
+ * A repeater is a list of rows with fields of their own. A row of a top-level repeater may hold a
+ * repeater too (two levels, MAX_DEPTH); a repeater deeper than that is left out of the definition,
+ * and problems() names it so the person who wrote the definition can see why.
  */
 final class FieldSchema
 {
     public const TYPES = ['text', 'textarea', 'markdown', 'email', 'url', 'link', 'image', 'video', 'file', 'location', 'color', 'tone', 'number', 'decimal', 'date', 'select', 'icon', 'toggle', 'repeater'];
+
+    /** How many repeaters can sit inside one another: a repeater, and a repeater in its rows. */
+    public const MAX_DEPTH = 2;
 
     /**
      * @param array<string, mixed> $definitions raw map of key => definition
      * @return array<string, array<string, mixed>>
      */
     public static function normalize(array $definitions): array
+    {
+        return self::normalizeLevel($definitions, 1);
+    }
+
+    /**
+     * What is wrong with raw definitions in a way normalize() quietly corrects: a repeater nested deeper than MAX_DEPTH, which it
+     * leaves out. Each problem is one sentence that names the field by its path (`fields.books.links.shops`).
+     *
+     * @param array<string, mixed> $definitions raw map of key => definition
+     * @return list<string>
+     */
+    public static function problems(array $definitions, string $path = 'fields', int $depth = 1): array
+    {
+        $problems = [];
+        foreach ($definitions as $key => $definition) {
+            if (!is_array($definition) || strtolower((string)($definition['type'] ?? '')) !== 'repeater') {
+                continue;
+            }
+            $where = $path . '.' . $key;
+            if ($depth > self::MAX_DEPTH) {
+                $problems[] = $where . ': a repeater can sit inside another repeater only one level deep (' . self::MAX_DEPTH . ' levels in all); this field is ignored.';
+                continue;
+            }
+            $problems = array_merge($problems, self::problems(is_array($definition['fields'] ?? null) ? $definition['fields'] : [], $where, $depth + 1));
+        }
+        return $problems;
+    }
+
+    /**
+     * @param array<string, mixed> $definitions
+     * @return array<string, array<string, mixed>>
+     */
+    private static function normalizeLevel(array $definitions, int $depth): array
     {
         $fields = [];
         foreach ($definitions as $key => $definition) {
@@ -30,6 +70,10 @@ final class FieldSchema
             $type = strtolower((string)($definition['type'] ?? 'text'));
             if (!in_array($type, self::TYPES, true)) {
                 $type = 'text';
+            }
+            // Too deep (see problems()): left out rather than turned into a text that would hold a list.
+            if ($type === 'repeater' && $depth > self::MAX_DEPTH) {
+                continue;
             }
             $field = [
                 'key' => $key,
@@ -120,15 +164,13 @@ final class FieldSchema
                 $field['hex'] = ($definition['hex'] ?? false) === true;
             }
             if ($type === 'repeater') {
-                // Repeater items are flat: nested repeaters are not supported.
+                // The fields of a row; a row of a top-level repeater may hold a repeater of its own (MAX_DEPTH).
                 $subDefinitions = is_array($definition['fields'] ?? null) ? $definition['fields'] : [];
-                $field['fields'] = array_filter(
-                    self::normalize($subDefinitions),
-                    static fn(array $sub): bool => $sub['type'] !== 'repeater'
-                );
+                $field['fields'] = self::normalizeLevel($subDefinitions, $depth + 1);
                 $field['item_label'] = (string)($definition['item_label'] ?? 'Item');
-                // A list of one short text (the hero's highlights) is edited as a row of boxes, not as folding cards.
-                $field['inline'] = ($definition['inline'] ?? false) === true && count($field['fields']) === 1;
+                // A list of one short text (the hero's highlights) is edited as a row of boxes, not as folding cards; never one of lists.
+                $only = count($field['fields']) === 1 ? reset($field['fields']) : null;
+                $field['inline'] = ($definition['inline'] ?? false) === true && $only !== null && $only['type'] !== 'repeater';
             }
             $field['default'] = self::clean($field, $definition['default'] ?? null, true);
             $fields[$key] = $field;
@@ -372,10 +414,19 @@ final class FieldSchema
                 $items = [];
                 foreach (array_values($value) as $item) {
                     if (is_array($item)) {
-                        // A row the person added and left empty is not kept.
-                        $filled = array_filter(array_intersect_key($item, $field['fields']), static fn(mixed $v): bool => !($v === '' || $v === null || $v === false || $v === []));
+                        $item = array_intersect_key($item, $field['fields']);
+                        // A row the person added and left empty is not kept. An inner list counts by its checked rows (a row whose
+                        // inner rows are all empty is empty too), and a text per language by its checked texts.
+                        $seen = $item;
+                        foreach ($seen as $subKey => $subValue) {
+                            $sub = $field['fields'][$subKey];
+                            if ($sub['type'] === 'repeater' || (($sub['translatable'] ?? false) === true && is_array($subValue))) {
+                                $seen[$subKey] = self::sanitize($sub, $subValue, $sub['type'] === 'repeater' ? [] : '');
+                            }
+                        }
+                        $filled = array_filter($seen, static fn(mixed $v): bool => !($v === '' || $v === null || $v === false || $v === []));
                         if ($filled !== []) {
-                            $items[] = self::resolve($field['fields'], array_intersect_key($item, $field['fields']));
+                            $items[] = self::resolve($field['fields'], $item);
                         }
                     }
                 }

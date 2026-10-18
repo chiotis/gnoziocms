@@ -206,9 +206,20 @@ final class ContentTypeAdmin
                 'show' => $field['show'],
                 'retired' => $field['hidden'],
                 'from_theme' => isset($themeDefinition['fields'][$key]),
+                'sub_fields' => $field['type'] === 'repeater' ? self::subFieldSummary($field['fields']) : '',
             ];
         }
         return $rows;
+    }
+
+    /** The fields of a repeater's rows in one line: "Label (text), Links (repeater: Label, Address)". @param array<string, array<string, mixed>> $fields */
+    private static function subFieldSummary(array $fields): string
+    {
+        $parts = [];
+        foreach ($fields as $field) {
+            $parts[] = $field['label'] . ' (' . ($field['type'] === 'repeater' ? 'list: ' . self::subFieldSummary($field['fields']) : $field['type']) . ')';
+        }
+        return implode(', ', $parts);
     }
 
     /**
@@ -301,8 +312,10 @@ final class ContentTypeAdmin
             }
 
             // A site field: everything can change. Details the form does not offer are kept.
-            $type_ = in_array((string)($row['type'] ?? ''), ContentTypes::FIELD_TYPES, true) ? (string)$row['type'] : 'text';
             $entry = is_array($fields[$key] ?? null) ? $fields[$key] : [];
+            // A repeater keeps its kind and its own fields: they are written in the YAML file, the form shows them only.
+            $type_ = ($entry['type'] ?? '') === 'repeater' ? 'repeater'
+                : (in_array((string)($row['type'] ?? ''), ContentTypes::FORM_FIELD_TYPES, true) ? (string)$row['type'] : 'text');
             $entry['type'] = $type_;
             $label = trim((string)preg_replace('/\s+/', ' ', (string)($row['label'] ?? '')));
             $currentLabel = trim((string)ContentTypes::pick($entry['label'] ?? '', $default, $default));
