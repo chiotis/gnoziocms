@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.153 — 2026-10-18 — Search: faster on large sites
+- **Search no longer re-normalizes every entry on every request**: the extracted-text cache also keeps the normalized text. Older cache files are rebuilt automatically.
+- **Only the first 10 distinct words of a query count**, so a very long query cannot slow the site down.
+- **Signed-in and public searches no longer rewrite the cache in turn.** Deleted entries leave the cache on the next signed-in search.
+
 ## 0.1.152 — 2026-10-18 — Search: whole words rank higher
 - **A whole word ranks above a word start, and a word start above the middle of a word**: *art* puts “Art gallery” before “Party hall”.
 - **Short words such as «ο», «της», "a" or "of" match only whole words** and are no longer highlighted inside longer words. Beside longer words they are optional and only raise an entry's position; a query made only of short words needs all of them.

@@ -7,7 +7,7 @@
 - Case, Greek accents (including polytonic text), combining accents and final sigma do not change a match. Common Latin accented letters are normalized too, without requiring PHP intl.
 - Each word must occur somewhere in an entry; words may occur in different fields and in any order. Punctuation separates words. Words of three or more characters also match as the start or the middle of a longer word; words of one or two characters («ο», «της», "a", "of") match only whole words and add only a point per field. Beside longer words they are optional and only raise an entry's position; a query made only of short words needs all of them. A whole word scores higher than a word start, and a word start higher than the middle of a word. There is no stemming, typo correction or special query syntax.
 - Exact titles rank first, followed by phrases in titles. Title matches carry more weight than taxonomy terms, custom fields, excerpts and body text. Repeating a word many times does not improve its score. Equal scores sort by normalized title, then type and slug for stable pagination.
-- Empty and punctuation-only queries show no results. The query is limited to 200 characters; malformed array parameters are ignored.
+- Empty and punctuation-only queries show no results. The query is limited to 200 characters and to its first 10 distinct words (the exact-title and phrase boosts use those words too); malformed array parameters are ignored.
 
 ## What is searched
 
@@ -53,7 +53,7 @@ Existing overrides in `custom/templates/search.twig` still receive `query` and t
 
 `ContentRepository` remains the source of visibility, enabled types and parsed content. `SearchDocument` turns each entry into fields of searchable text; `ContentSearch` handles matching, relevance and pagination; `SearchText` handles normalization and display parts. The result template has no search logic. Future repeaters or relationships can extend extraction without replacing the matching or presentation code.
 
-The extracted-text cache under `storage/cache/search` avoids converting block Markdown on every search. It is disposable and may be deleted. Entry data, relevant field definitions, language and application version determine whether an extracted document can be reused. A missing, corrupt or unwritable cache falls back to extraction. Visibility and result sets are never stored in this cache.
+The extracted-text cache under `storage/cache/search` avoids converting block Markdown on every search. It is disposable and may be deleted. Entry data, relevant field definitions, language and application version determine whether an extracted document can be reused. A missing, corrupt or unwritable cache falls back to extraction. It also holds each field's normalized text, so a search does not normalize every entry again. Only a signed-in search, which sees every entry, removes cached entries that no longer exist; public searches leave drafts cached by it alone. Visibility and result sets are never stored in this cache.
 
 This is still a scan over the site's entries, not a full-text database index. It adds no external search service or database migration. An index can be introduced later if measured site sizes justify it, while keeping the same result contract.
 

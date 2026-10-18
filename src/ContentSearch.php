@@ -23,6 +23,7 @@ final class ContentSearch
     {
         $query = SearchText::query($input);
         $terms = SearchText::terms($query);
+        $phrase = SearchText::phrase($query);
         $types = array_values(array_diff($this->content->getTypes(), ['forms']));
         $type = is_string($type) && in_array($type, $types, true) ? $type : '';
         $page = (is_string($page) || is_int($page)) && preg_match('/^[0-9]{1,9}$/D', (string)$page) ? max(1, (int)$page) : 1;
@@ -32,7 +33,7 @@ final class ContentSearch
             // A result in another language could point at a page that does not exist in the current one.
             foreach ($this->content->getItems($contentType, $lang, $includeHidden, false) as $item) {
                 $document = $this->documents->extract($item);
-                $score = $this->score($document, $terms, $query);
+                $score = $this->score($document, $terms, $phrase);
                 if ($score === 0) {
                     continue;
                 }
@@ -42,10 +43,11 @@ final class ContentSearch
                 }
             }
         }
-        $this->documents->flush();
+        // Only a signed-in scan visits drafts and hidden entries, so only it can tell which cached entries are gone.
+        $this->documents->flush($includeHidden);
         usort($hits, static function (array $a, array $b): int {
             return ($b['score'] <=> $a['score'])
-                ?: strcmp(SearchText::normalize($a['document']['title']), SearchText::normalize($b['document']['title']))
+                ?: strcmp($a['document']['normal']['title'], $b['document']['normal']['title'])
                 ?: strcmp($a['item']->type . '/' . $a['item']->slug, $b['item']->type . '/' . $b['item']->slug);
         });
         $total = count($hits);
@@ -68,13 +70,13 @@ final class ContentSearch
         ];
     }
 
-    /** @param array<string, string> $document @param string[] $terms */
-    private function score(array $document, array $terms, string $query): int
+    /** @param array<string, mixed> $document @param string[] $terms @param string $phrase normalized query word sequence */
+    private function score(array $document, array $terms, string $phrase): int
     {
         $found = [];
         $score = 0;
         foreach (self::WEIGHTS as $field => $weight) {
-            $text = SearchText::normalize($document[$field] ?? '');
+            $text = $document['normal'][$field];
             foreach ($terms as $term) {
                 $strength = SearchText::strength($text, $term);
                 if ($strength === 0) {
@@ -97,9 +99,7 @@ final class ContentSearch
         }
         // Compare word sequences, not raw text: titles keep punctuation ("Hello, World!") that terms drop,
         // and the phrase keeps repeated words ("new new york") that unique terms collapse.
-        $words = static fn(string $text): string => implode(' ', preg_split('/[^\p{L}\p{N}]+/u', SearchText::normalize($text), -1, PREG_SPLIT_NO_EMPTY) ?: []);
-        $title = $words($document['title']);
-        $phrase = $words($query);
+        $title = implode(' ', SearchText::words($document['normal']['title'], true));
         // Exact titles and a phrase in a title win without rewarding repeated keywords in a long body.
         $score += $title === $phrase ? 40 : (str_contains(" $title ", " $phrase ") ? 20 : 0);
         return $score;
@@ -115,7 +115,7 @@ final class ContentSearch
             if ($text === '') {
                 continue;
             }
-            $normal = SearchText::normalize($text);
+            $normal = $document['normal'][$key];
             $matches = count(array_filter($terms, static fn(string $term): bool => SearchText::strength($normal, $term) > 0));
             if ($matches > $score) {
                 $score = $matches;

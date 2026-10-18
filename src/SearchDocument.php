@@ -13,6 +13,8 @@ final class SearchDocument
     private const CACHE_BYTES = 16 * 1024 * 1024;
     private const CACHE_ENTRIES = 5000;
     private const TEXT_KEYS = ['title', 'terms', 'fields', 'excerpt', 'body'];
+    /** Part of the schema hash: bump when the stored document shape changes so older cache files are rebuilt. */
+    private const FORMAT = 2;
     private ?string $cacheDir = null;
     private string $cacheSalt = '';
     private ?string $blockFingerprint = null;
@@ -35,18 +37,26 @@ final class SearchDocument
         $this->cache = [];
     }
 
-    /** Call after a complete search scan, so removed or no-longer-visible entries leave each visited bucket. */
-    public function flush(): void
+    /**
+     * Call after a search scan. Only a $complete scan (one that visited every entry, drafts and hidden ones included) may
+     * prune unvisited entries: a public scan skips drafts a signed-in scan cached, and pruning them would make alternating
+     * requests rewrite the file every time. Deleted entries are pruned on the next complete scan; the entry and byte limits
+     * in extract() keep the bucket bounded until then.
+     */
+    public function flush(bool $complete = false): void
     {
         if ($this->cacheDir === null) {
             return;
         }
         foreach ($this->cache as $key => &$bucket) {
-            $entries = array_intersect_key($bucket['entries'], $bucket['seen']);
-            $bucket['dirty'] = $bucket['dirty'] || count($entries) !== count($bucket['entries']);
-            $bucket['entries'] = $entries;
-            $bucket['sizes'] = array_intersect_key($bucket['sizes'], $bucket['seen']);
-            $bucket['bytes'] = array_sum($bucket['sizes']);
+            if ($complete) {
+                $entries = array_intersect_key($bucket['entries'], $bucket['seen']);
+                $bucket['dirty'] = $bucket['dirty'] || count($entries) !== count($bucket['entries']);
+                $bucket['entries'] = $entries;
+                $bucket['sizes'] = array_intersect_key($bucket['sizes'], $bucket['seen']);
+                $bucket['bytes'] = array_sum($bucket['sizes']);
+            }
+            $entries = $bucket['entries'];
             $bucket['seen'] = [];
             if (!$bucket['dirty']) {
                 continue;
@@ -69,7 +79,10 @@ final class SearchDocument
         unset($bucket);
     }
 
-    /** @return array{title: string, terms: string, fields: string, excerpt: string, body: string} */
+    /**
+     * Display text per field, plus the same fields run through SearchText::normalize() once so a search does not repeat it.
+     * @return array{title: string, terms: string, fields: string, excerpt: string, body: string, normal: array{title: string, terms: string, fields: string, excerpt: string, body: string}}
+     */
     public function extract(ContentItem $item): array
     {
         if ($this->cacheDir === null) {
@@ -112,7 +125,7 @@ final class SearchDocument
             $this->blockFingerprint = hash('sha256', serialize($definitions));
         }
         $schema = hash('sha256', serialize([
-            $this->cacheSalt, $this->defaultLang, $item->type, $item->lang, $this->blockFingerprint,
+            self::FORMAT, $this->cacheSalt, $this->defaultLang, $item->type, $item->lang, $this->blockFingerprint,
             $this->types->definition($item->type, $item->lang, $this->defaultLang)['fields'],
         ]));
         $bucket = ['schema' => $schema, 'entries' => [], 'seen' => [], 'sizes' => [], 'bytes' => 0, 'dirty' => false];
@@ -129,7 +142,8 @@ final class SearchDocument
             && count($data['entries']) <= self::CACHE_ENTRIES) {
             foreach ($data['entries'] as $slug => $entry) {
                 if (!is_array($entry) || !is_string($entry[0] ?? null) || !is_array($entry[1] ?? null)
-                    || array_keys($entry[1]) !== self::TEXT_KEYS || count(array_filter($entry[1], 'is_string')) !== count(self::TEXT_KEYS)) {
+                    || array_keys($entry[1]) !== [...self::TEXT_KEYS, 'normal'] || !is_array($entry[1]['normal'])
+                    || !self::texts(array_diff_key($entry[1], ['normal' => true])) || !self::texts($entry[1]['normal'])) {
                     continue;
                 }
                 $bucket['entries'][$slug] = $entry;
@@ -140,7 +154,13 @@ final class SearchDocument
         $this->cache[$key] = $bucket;
     }
 
-    /** @return array{title: string, terms: string, fields: string, excerpt: string, body: string} */
+    /** @param array<mixed> $texts Exactly the five text fields, all strings. */
+    private static function texts(array $texts): bool
+    {
+        return array_keys($texts) === self::TEXT_KEYS && count(array_filter($texts, 'is_string')) === count(self::TEXT_KEYS);
+    }
+
+    /** @return array{title: string, terms: string, fields: string, excerpt: string, body: string, normal: array<string, string>} */
     private function build(ContentItem $item): array
     {
         $terms = [];
@@ -155,7 +175,7 @@ final class SearchDocument
         $definitions = $this->types->definition($item->type, $item->lang, $this->defaultLang)['fields'];
         $values = $this->types->values($item->type, $item->meta, $item->lang, $this->defaultLang);
         $rawBlocks = $item->get('blocks', []);
-        return [
+        $texts = [
             'title' => self::plain(self::scalar($item->get('title', $item->slug))),
             'terms' => self::join($terms),
             'fields' => $this->fields($definitions, $values, $values, $item->lang, true),
@@ -165,6 +185,7 @@ final class SearchDocument
                 $this->blockText(is_array($rawBlocks) ? $rawBlocks : [], $item->lang),
             ]),
         ];
+        return $texts + ['normal' => array_map(SearchText::normalize(...), $texts)];
     }
 
     /** @param array<int, mixed> $blocks */
