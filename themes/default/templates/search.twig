@@ -67,6 +67,7 @@
           {% if search.pagination.previous %}<a class="pagination-step" rel="prev" href="{{ search.pagination.previous }}">{{ t('pagination.previous') }}</a>{% endif %}
           <ul class="pagination-pages" role="list">
             {% for link in search.pagination.links %}
+              {% if link.gap_before %}<li class="pagination-gap" aria-hidden="true">…</li>{% endif %}
               <li><a href="{{ link.url }}"{% if link.current %} aria-current="page"{% endif %}><span class="visually-hidden">{{ t('pagination.page') }} </span>{{ link.page }}</a></li>
             {% endfor %}
           </ul>

@@ -1006,11 +1006,21 @@ final class App
         unset($hit);
         $numbers = $search['pages'] > 1
             ? array_values(array_unique(array_merge([1], range(max(1, $search['page'] - 2), min($search['pages'], $search['page'] + 2)), [$search['pages']]))) : [];
+        // A gap hiding exactly one page shows that page instead of an ellipsis; wider gaps are flagged so the template can mark them.
+        $links = [];
+        $previous = 0;
+        foreach ($numbers as $n) {
+            if ($previous > 0 && $n - $previous === 2) {
+                $links[] = ['page' => $previous + 1, 'url' => $link($search['type'], $previous + 1), 'current' => false, 'gap_before' => false];
+            }
+            $links[] = ['page' => $n, 'url' => $link($search['type'], $n), 'current' => $n === $search['page'], 'gap_before' => $previous > 0 && $n - $previous > 2];
+            $previous = $n;
+        }
         $search['pagination'] = [
             'page' => $search['page'], 'pages' => $search['pages'],
             'previous' => $search['page'] > 1 ? $link($search['type'], $search['page'] - 1) : '',
             'next' => $search['page'] < $search['pages'] ? $link($search['type'], $search['page'] + 1) : '',
-            'links' => array_map(static fn(int $n): array => ['page' => $n, 'url' => $link($search['type'], $n), 'current' => $n === $search['page']], $numbers),
+            'links' => $links,
         ];
         $this->render('templates/search.twig', [
             'query' => $search['query'], 'results' => $search['results'], 'search' => $search,

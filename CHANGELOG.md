@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.154 — 2026-10-18 — Search: ellipsis in pagination
+- **Search pagination shows “…” where pages are skipped** (1 … 4 5 6 7 8 … 12); a gap of a single page shows that page instead. Templates receive `gap_before` on each link.
+
 ## 0.1.153 — 2026-10-18 — Search: faster on large sites
 - **Search no longer re-normalizes every entry on every request**: the extracted-text cache also keeps the normalized text. Older cache files are rebuilt automatically.
 - **Only the first 10 distinct words of a query count**, so a very long query cannot slow the site down.
