@@ -11,6 +11,16 @@ Everything that follows comes from that split. A release is a ZIP of the code on
 
 ## Put a new site on a server
 
+### The easiest way: the one-file installer
+
+1. Download `installer.php` from the [latest release](https://github.com/chiotis/gnoziocms/releases/latest). Open it in a text editor and set `const INSTALL_KEY = '';` to a long random value of at least 12 characters. Without a key the installer refuses to run.
+2. Upload it to the empty folder of the site on the server and open `https://your-site/installer.php`. Enter the key.
+3. It checks the server (PHP version, extensions, write access, disk space, a connection to GitHub), downloads the latest release, checks its **size and SHA-256**, and unpacks it. Tick *Start from the demo site* if you want the demo pages.
+4. It then shows the exact path to set as the site's **document root** (`<site folder>/public`) and waits. In CloudPanel: Sites → your site → Settings → Root Directory → `public`. The installer has copied itself into `public/`, so the same address keeps working. Press *I've changed it* only when it is done; it checks that the site is really served from `public/` before going on.
+5. It deletes itself and opens `/admin`, where the first administrator is made (as in step 3 of the manual way). The installer refuses to run on a folder that already holds a GnozioCMS site.
+
+The manual way, with the ZIP, is the same thing done by hand:
+
 1. Download `gnoziocms-<version>.zip` from the [latest release](https://github.com/chiotis/gnoziocms/releases/latest) and unzip it into the folder for the site. Point the web server's document root at its `public/` folder (see `README.md`).
 2. PHP must be able to write to the site folder, because that is how updates are installed from the admin (see *Installing an update* below). `content/`, `custom/`, `storage/` and `public/uploads/` are created on the first visit.
 3. Open `/admin` **straight away**. A site with no accounts asks for its first administrator (username, email and a password of at least 8 characters). Nobody else can make an account until that exists, so do it before sharing the address.
