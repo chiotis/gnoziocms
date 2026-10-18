@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.155 — 2026-10-18 — Roadmap: the next priorities in order
+- **`ROADMAP.md`** brought to this version: *Where we are* now covers search, branding, the block builder, the GnozioCMS name and both live client sites. *Next* lists the owner's priorities in the agreed order: general and nested repeaters, then content relationships with the data and index cache, the off-canvas block settings panel in parallel, then the template builder and later a shop. Finished items (categories in a tree, form translation, theme options already delivered) are removed; the search work goes to *Now* to be checked on a real site.
+
 ## 0.1.154 — 2026-10-18 — Search: ellipsis in pagination
 - **Search pagination shows “…” where pages are skipped** (1 … 4 5 6 7 8 … 12); a gap of a single page shows that page instead. Templates receive `gap_before` on each link.
 
