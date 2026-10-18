@@ -14,7 +14,8 @@ custom_fields:
   publisher: 'T. Egerton'
   year: 1813
   language: English
-  buy_url: 'https://example.org/books/pride-and-prejudice'
+  buy_links:
+    - {url: 'https://example.org/books/pride-and-prejudice'}
 ---
 
 A comedy of manners about love, money and first impressions in the English countryside of the early 19th century.

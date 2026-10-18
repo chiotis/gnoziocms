@@ -14,7 +14,8 @@ custom_fields:
   publisher: 'Macmillan'
   year: 1865
   language: Αγγλικά
-  buy_url: 'https://example.org/books/alices-adventures-in-wonderland'
+  buy_links:
+    - {url: 'https://example.org/books/alices-adventures-in-wonderland'}
 ---
 
 Ένα παιδικό βιβλίο για μεγάλους: λογοπαίγνια, παράδοξα και μια λογική που ανατρέπεται με χαρά.

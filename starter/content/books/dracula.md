@@ -13,7 +13,8 @@ custom_fields:
   publisher: 'Archibald Constable and Company'
   year: 1897
   language: Αγγλικά
-  buy_url: 'https://example.org/books/dracula'
+  buy_links:
+    - {url: 'https://example.org/books/dracula'}
 ---
 
 Το μυθιστόρημα που έδωσε στον βρικόλακα τη μορφή που ξέρουμε, γραμμένο ως συλλογή από επιστολές και ημερολόγια.

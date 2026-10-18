@@ -22,7 +22,7 @@ During the current development phase (decided 2026-10-16), pushes and releases s
 1. **Release and check the search work on a real site** (0.1.149–0.1.154). Try a handful of Greek searches on apostolosdoxiadis.com and note how long a search takes. If it is fast there, the scan is good enough for a while; if not, the data and index cache (Next, step 2) comes forward.
 2. **Look at what was only built, not seen**: dark mode and phone width of the visual editor, the block editor and the maps; Safari, Firefox and touch; the map with the list over it in an archive; the YouTube Data API with a real key; real GPX files from a device (a long recording, one with no heights, one in KML from Google Earth). Screen readers by hand are still to do.
 
-The client sites accept for now what the work below improves: a book has one buy button (the other shops go in its Links tab) and slides keep up to three buttons as flat fields, until repeaters can nest; pictures that floated beside the text sit in the flow until the importer writes them as `{align=left}`. Gaps a site finds go to the requests file in its folder and come here as items, never as code in the site.
+The client sites accept for now what the work below improves: a book can have several buy links (a list; books saved with one link keep it) and slides keep up to three buttons as flat fields, until repeaters can nest; pictures that floated beside the text sit in the flow until the importer writes them as `{align=left}`. Gaps a site finds go to the requests file in its folder and come here as items, never as code in the site.
 
 ## Next: the owner's priorities (2026-10-18)
 

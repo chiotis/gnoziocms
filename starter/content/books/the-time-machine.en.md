@@ -14,7 +14,8 @@ custom_fields:
   publisher: 'William Heinemann'
   year: 1895
   language: English
-  buy_url: 'https://example.org/books/the-time-machine'
+  buy_links:
+    - {url: 'https://example.org/books/the-time-machine'}
 ---
 
 The first great time travel novel, and a social parable dressed as science fiction.

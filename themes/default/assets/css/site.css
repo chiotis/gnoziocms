@@ -3573,6 +3573,9 @@ p.form-error {
 }
 
 .book-buy {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
   margin: 0;
 }
 

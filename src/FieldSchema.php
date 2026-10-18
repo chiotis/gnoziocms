@@ -171,6 +171,14 @@ final class FieldSchema
                 // A list of one short text (the hero's highlights) is edited as a row of boxes, not as folding cards; never one of lists.
                 $only = count($field['fields']) === 1 ? reset($field['fields']) : null;
                 $field['inline'] = ($definition['inline'] ?? false) === true && $only !== null && $only['type'] !== 'repeater';
+                // Keys of flat fields this list replaces (`legacy: {url: buy_url}`: a row field => the old key). Only read for content types.
+                $legacy = [];
+                foreach (is_array($definition['legacy'] ?? null) ? $definition['legacy'] : [] as $rowKey => $oldKey) {
+                    if (isset($field['fields'][(string)$rowKey]) && $field['fields'][(string)$rowKey]['type'] !== 'repeater' && is_string($oldKey) && preg_match('/^[a-z][a-z0-9_]*$/', $oldKey)) {
+                        $legacy[(string)$rowKey] = $oldKey;
+                    }
+                }
+                $field['legacy'] = $legacy;
             }
             $field['default'] = self::clean($field, $definition['default'] ?? null, true);
             $fields[$key] = $field;

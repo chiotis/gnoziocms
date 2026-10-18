@@ -3373,6 +3373,14 @@ final class App
             );
         }));
 
+        // The checked values of the declared fields by key (a repeater as a list of rows), for a template that draws them itself.
+        $twig->addFunction(new TwigFunction('content_values', function (mixed $item): array {
+            if (!$item instanceof ContentItem) {
+                return [];
+            }
+            return $this->contentTypes()->values($item->type, $item->meta, $this->currentLang, $this->defaultLanguage());
+        }));
+
         GeoTwigFunctions::register(
             $twig,
             fn(): GeoView => $this->blockRuntime()->geoView(),

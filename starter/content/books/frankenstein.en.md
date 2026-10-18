@@ -14,7 +14,8 @@ custom_fields:
   publisher: 'Lackington, Hughes, Harding, Mavor & Jones'
   year: 1818
   language: English
-  buy_url: 'https://example.org/books/frankenstein'
+  buy_links:
+    - {url: 'https://example.org/books/frankenstein'}
 ---
 
 The book that began science fiction, and a story about what we owe to what we create.

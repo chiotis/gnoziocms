@@ -13,7 +13,8 @@ custom_fields:
   publisher: 'Archibald Constable and Company'
   year: 1897
   language: English
-  buy_url: 'https://example.org/books/dracula'
+  buy_links:
+    - {url: 'https://example.org/books/dracula'}
 ---
 
 The novel that gave the vampire the shape we know, written as a collection of letters and diaries.

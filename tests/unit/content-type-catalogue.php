@@ -33,7 +33,7 @@ $write = fn(string $dir, string $file = 'a.md') => (@mkdir("$root/content/$dir",
 check('the theme ships posts, projects and books', array_values(array_intersect(['posts', 'projects', 'books'], $types->catalogue())), ['posts', 'projects', 'books']);
 check('a type of the site\'s own is not in it', in_array('events', $types->catalogue(), true), false);
 $books = $types->themeDefinition('books', 'en', 'en');
-check('the Books type has its facts as fields', array_keys($books['fields']), ['author', 'publisher', 'year', 'isbn', 'language', 'buy_url', 'buy_label']);
+check('the Books type has its facts as fields', array_keys($books['fields']), ['author', 'publisher', 'year', 'isbn', 'language', 'buy_links', 'buy_url', 'buy_label']);
 check('and an archive of cards, A to Z, filtered by category', [$books['archive']['layout'], $books['archive']['order'], $books['archive']['taxonomies']], ['cards', 'title_asc', ['categories']]);
 
 // ---- which types are on
@@ -57,7 +57,7 @@ check('one list holds every type: the ones in use first, then the ready-made one
 check('what is on and what is off', array_column($all(), 'enabled', 'type'), ['pages' => true, 'posts' => true, 'projects' => true, 'events' => true, 'books' => false, 'businesses' => false, 'points' => false, 'routes' => false]);
 check('only the theme\'s types can be switched; pages and the site\'s own types are always on', array_column($all(), 'switchable', 'type'), ['pages' => false, 'posts' => true, 'projects' => true, 'events' => false, 'books' => true, 'businesses' => true, 'points' => true, 'routes' => true]);
 $bookRow = array_values(array_filter($all(), fn($r) => $r['type'] === 'books'))[0];
-check('a row has its label, what it is for, fields, files, layout and where it is defined', [$bookRow['label'], $bookRow['description'] !== '', $bookRow['fields'], $bookRow['items'], $bookRow['layout'], $bookRow['origin']], ['Books', true, 7, 0, 'cards', 'theme']);
+check('a row has its label, what it is for, fields, files, layout and where it is defined', [$bookRow['label'], $bookRow['description'] !== '', $bookRow['fields'], $bookRow['items'], $bookRow['layout'], $bookRow['origin']], ['Books', true, 6, 0, 'cards', 'theme']);
 check('switching books on goes back to the list and is logged', [$admin->toggle(['type' => 'books', 'enabled' => '1']), end($log)], ['/admin/content-types?toggled=on&type_name=books', ['content_types.enable', 'books']]);
 check('now it is on even with no files', in_array('books', $repo()->getTypes(), true), true);
 check('and it keeps its place in the list', array_slice($repo()->getTypes(), 0, 5), ['pages', 'posts', 'projects', 'forms', 'books']);

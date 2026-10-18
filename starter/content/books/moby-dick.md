@@ -14,7 +14,8 @@ custom_fields:
   publisher: 'Harper & Brothers'
   year: 1851
   language: Αγγλικά
-  buy_url: 'https://example.org/books/moby-dick'
+  buy_links:
+    - {url: 'https://example.org/books/moby-dick'}
 ---
 
 Ένα ναυτικό μυθιστόρημα που είναι ταυτόχρονα περιπέτεια, εγχειρίδιο φαλαινοθηρίας και στοχασμός πάνω στην εμμονή.

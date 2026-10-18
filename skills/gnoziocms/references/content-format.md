@@ -105,6 +105,8 @@ custom_fields:
         - {shop: Politeia, url: 'https://example.com/book'}
 ```
 
+The Books type keeps its shops in `buy_links` (`- {label: Ikaros, url: 'https://…'}`, up to six, the first is the main button; `label` may be left out). Older books with `buy_url` / `buy_label` still show their button and move to `buy_links` when saved in the admin; write `buy_links` in new files.
+
 Read the definition before writing: `themes/default/content-types/projects.yaml` (or the custom one). A value that is not valid for its field is dropped when read. The ready-made types `points`, `routes` and `businesses` keep a `location: "35.2012, 26.2744"` field and are described in `docs/places-and-routes.md` of the installation.
 
 ## Taxonomies

@@ -58,6 +58,21 @@ check('with author, summary, facts and the buy link', all(k in html for k in ('A
 check('and the text below', 'The story.' in html)
 check('the facts are shown once', html.count('class="type-fields"') == 1, html.count('class="type-fields"'))
 st, _, html = pub.get('/books'); check('the archive lists it', 'Uncle Petros' in html)
+st, _, html = pub.get('/books/uncle')
+check('one old link is one primary button, as before', html.count('class="btn btn-primary" href="https://shop.example/uncle"') == 1 and 'btn-secondary' not in html.split('book-buy')[1].split('</p>')[0])
+st, _, html = root.get('/admin/edit?type=books&slug=uncle')
+check('the editor shows the old link as the first row of the buy links', st == 200 and 'data-repeater-name="details[buy_links]"' in html and 'name="details[buy_links][0][url]" value="https://shop.example/uncle"' in html and 'name="details[buy_links][0][label]" value="Buy it now"' in html and 'details[buy_url]' not in html, st)
+def book_form(f): return any(x[0] == 'title' for x in f['fields']) and any(x[0] == 'details_present' for x in f['fields'])
+root.submit('/admin/edit?type=books&slug=uncle', book_form, {'details[buy_links][0][label]': 'Buy it now', 'details[buy_links][0][url]': 'https://shop.example/uncle', 'details[buy_links][1][label]': 'Ikaros', 'details[buy_links][1][url]': 'https://ikaros.example/u', 'details[buy_links][2][label]': '', 'details[buy_links][2][url]': ''})
+front = open('app/content/books/uncle.md', encoding='utf-8').read().split('---')[1]
+check('saving writes buy_links and drops the old keys', 'buy_links:' in front and 'Ikaros' in front and 'buy_url' not in front and 'buy_label' not in front, front[-300:])
+st, _, html = pub.get('/books/uncle')
+buy = html.split('class="book-buy"')[1].split('</p>')[0] if 'class="book-buy"' in html else ''
+check('the page has one button per shop, the first primary and the rest secondary', buy.count('<a ') == 2 and 'btn-primary" href="https://shop.example/uncle"' in buy and 'btn-secondary" href="https://ikaros.example/u"' in buy and 'Ikaros' in buy, buy)
+open('app/content/books/trilogy.md', 'w', encoding='utf-8').write("---\ntitle: Trilogy\nstatus: published\nvisible: true\ncustom_fields:\n  buy_links:\n    - {label: One, url: 'https://a.example/1'}\n    - {label: Two, url: 'https://b.example/2'}\n    - {label: Three, url: 'https://c.example/3'}\n---\n\nText.\n")
+st, _, html = pub.get('/books/trilogy')
+buy = html.split('class="book-buy"')[1].split('</p>')[0] if 'class="book-buy"' in html else ''
+check('three shops are three buttons in order', buy.count('<a ') == 3 and buy.count('btn-primary') == 1 and buy.index('One') < buy.index('Two') < buy.index('Three'), buy)
 st, _, xml = pub.get('/sitemap.xml'); check('and the sitemap has it', 'books/uncle' in xml, st)
 
 # ---- off again: hidden, files kept
