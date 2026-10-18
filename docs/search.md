@@ -47,7 +47,7 @@ Existing overrides in `custom/templates/search.twig` still receive `query` and t
 | `search.total`, `search.page`, `search.pages`, `search.per_page` | Selected type's count and pagination |
 | `search.type` | Selected type, or empty for all |
 | `search.types` | `{value, label, count, url, active}` filter links |
-| `search.pagination` | `previous`, `next` URLs and `links: [{page, url, current}]` |
+| `search.pagination` | `previous`, `next` URLs and `links: [{page, url, current, gap_before}]` (`gap_before` is true where pages are skipped before that link; render an ellipsis there) |
 
 ## Cache and extension points
 

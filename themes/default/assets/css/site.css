@@ -3657,6 +3657,14 @@ p.form-error {
   list-style: none;
 }
 
+.pagination-gap {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.5rem;
+  min-height: 2.5rem;
+  color: var(--color-muted, currentColor);
+}
+
 .pagination a {
   display: inline-grid;
   place-items: center;
