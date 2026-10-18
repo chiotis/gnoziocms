@@ -10,7 +10,7 @@ namespace GnozioCMS;
  */
 final class WordPressHttp
 {
-    private const AGENT = 'GnozioCMS-import (+https://github.com/chiotis/faroscms)';
+    private const AGENT = 'GnozioCMS-import (+https://github.com/chiotis/gnoziocms)';
 
     /** @return array{status: int, body: string}|null null when the site could not be reached */
     public static function get(string $url, int $maxBytes = 20 * 1024 * 1024): ?array

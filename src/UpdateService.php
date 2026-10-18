@@ -10,6 +10,8 @@ namespace GnozioCMS;
  */
 final class UpdateService
 {
+    public const DEFAULT_REPOSITORY = 'chiotis/gnoziocms';
+    private const LEGACY_REPOSITORY = 'chiotis/faroscms';
     public const STATUS_META_KEY = 'update_status';
     public const RELEASE_META_KEY = 'update_release';
     public const CACHE_SECONDS = 43200;
@@ -23,6 +25,49 @@ final class UpdateService
         private array $settings,
         private SystemMetaRepository $meta
     ) {
+        $this->settings = self::normalizeSettings($settings, true);
+    }
+
+    /**
+     * Resolve the update source without writing settings. Only the official repository and its exact known URLs move;
+     * forks, custom endpoints, and explicit branches keep their values. Settings keep blank URLs blank so later source
+     * changes still apply; the update service resolves them only when using the source.
+     *
+     * @param array<string, mixed> $settings the `updates` settings block
+     * @return array<string, mixed>
+     */
+    public static function normalizeSettings(array $settings, bool $resolveUrls = false): array
+    {
+        $repository = trim((string)($settings['repository'] ?? ''));
+        if ($repository === '' || $repository === self::LEGACY_REPOSITORY) {
+            $repository = self::DEFAULT_REPOSITORY;
+        }
+        $branch = trim((string)($settings['branch'] ?? ''));
+        $branch = $branch !== '' ? $branch : 'main';
+        $urls = static fn(string $repo, string $ref): array => [
+            'version_url' => 'https://raw.githubusercontent.com/' . $repo . '/' . rawurlencode($ref) . '/VERSION',
+            'changelog_url' => 'https://raw.githubusercontent.com/' . $repo . '/' . rawurlencode($ref) . '/CHANGELOG.md',
+            'package_url' => 'https://github.com/' . $repo . '/archive/refs/heads/' . rawurlencode($ref) . '.zip',
+            'release_url' => 'https://github.com/' . $repo . '/releases/latest/download/release.json',
+        ];
+        $defaults = $urls($repository, $branch);
+        $legacyBranch = $urls(self::LEGACY_REPOSITORY, $branch);
+        $legacyMain = $urls(self::LEGACY_REPOSITORY, 'main');
+        $currentMain = $urls(self::DEFAULT_REPOSITORY, 'main');
+        foreach ($defaults as $key => $default) {
+            $url = trim((string)($settings[$key] ?? ''));
+            if ($repository === self::DEFAULT_REPOSITORY) {
+                if ($url === $legacyBranch[$key]) {
+                    $url = $default;
+                } elseif ($url === $legacyMain[$key]) {
+                    $url = $currentMain[$key];
+                }
+            }
+            $settings[$key] = $url !== '' || !$resolveUrls ? $url : $default;
+        }
+        $settings['repository'] = $repository;
+        $settings['branch'] = $branch;
+        return $settings;
     }
 
     public function currentVersion(): string
@@ -77,34 +122,12 @@ final class UpdateService
     /** @return array{repository: string, branch: string, version_url: string, changelog_url: string, package_url: string} */
     public function sourceConfig(): array
     {
-        $repository = trim((string)($this->settings['repository'] ?? 'chiotis/faroscms'));
-        if ($repository === '') {
-            $repository = 'chiotis/faroscms';
-        }
-        $branch = trim((string)($this->settings['branch'] ?? 'main'));
-        if ($branch === '') {
-            $branch = 'main';
-        }
-        $encodedBranch = rawurlencode($branch);
-        $versionUrl = trim((string)($this->settings['version_url'] ?? ''));
-        if ($versionUrl === '') {
-            $versionUrl = 'https://raw.githubusercontent.com/' . $repository . '/' . $encodedBranch . '/VERSION';
-        }
-        $changelogUrl = trim((string)($this->settings['changelog_url'] ?? ''));
-        if ($changelogUrl === '') {
-            $changelogUrl = 'https://raw.githubusercontent.com/' . $repository . '/' . $encodedBranch . '/CHANGELOG.md';
-        }
-        $packageUrl = trim((string)($this->settings['package_url'] ?? ''));
-        if ($packageUrl === '') {
-            $packageUrl = 'https://github.com/' . $repository . '/archive/refs/heads/' . $encodedBranch . '.zip';
-        }
-
         return [
-            'repository' => $repository,
-            'branch' => $branch,
-            'version_url' => $versionUrl,
-            'changelog_url' => $changelogUrl,
-            'package_url' => $packageUrl,
+            'repository' => $this->settings['repository'],
+            'branch' => $this->settings['branch'],
+            'version_url' => $this->settings['version_url'],
+            'changelog_url' => $this->settings['changelog_url'],
+            'package_url' => $this->settings['package_url'],
         ];
     }
 
@@ -142,8 +165,7 @@ final class UpdateService
     /** Where the manifest of the latest release is: release.json, attached to each GitHub Release. */
     public function releaseManifestUrl(): string
     {
-        $custom = trim((string)($this->settings['release_url'] ?? ''));
-        return $custom !== '' ? $custom : 'https://github.com/' . $this->sourceConfig()['repository'] . '/releases/latest/download/release.json';
+        return $this->settings['release_url'];
     }
 
     /**

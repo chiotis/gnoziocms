@@ -14,6 +14,7 @@ How a live GnozioCMS site is updated safely. Part 1 (status, backup before updat
 ### Update status
 
 - `UpdateService` reads the configured GitHub source (`Settings > Updates`): raw `VERSION`, raw `CHANGELOG.md`, and the archive URL. Private repositories use the stored GitHub token.
+- The official source is `chiotis/gnoziocms`. Recognised legacy `chiotis/faroscms` source values resolve to it without rewriting stored settings on read. Custom sources are preserved; the Settings form shows canonical official values and persists them only when explicitly saved. Blank URL fields stay automatic, deriving their addresses from the selected repository and branch at runtime. The external repository rename must be completed before deploying this transition; see [rebranding.md](rebranding.md).
 - The remote status is cached in `system_meta.update_status`. It is refreshed at most every 12 hours (hourly while the source is unreachable) or on demand with **Check status**.
 - A new release creates one `update.available` notification per version, and the sidebar version badge turns blue.
 
@@ -48,7 +49,7 @@ The Install button on Admin > Updates installs a release package with every safe
   "version": "0.2.0",
   "min_php": "8.5",
   "package": "gnoziocms-0.2.0.zip",
-  "package_url": "https://github.com/chiotis/faroscms/releases/download/v0.2.0/gnoziocms-0.2.0.zip",
+  "package_url": "https://github.com/chiotis/gnoziocms/releases/download/v0.2.0/gnoziocms-0.2.0.zip",
   "sha256": "…",
   "size": 1234567,
   "files": 1100,
@@ -57,6 +58,8 @@ The Install button on Admin > Updates installs a release package with every safe
 ```
 
 The Release workflow runs the script on PHP 8.5 when `VERSION` changes and attaches both files to the GitHub Release. Releases remain independent of the full test suite: pushes and packages do not wait for CI. The Tests workflow runs on PHP 8.5, cancels superseded runs, and publishes a result summary and diagnostic logs; see [tests/README.md](../tests/README.md) for investigating failures. The site reads `https://github.com/<repository>/releases/latest/download/release.json` (or the address in Settings > Updates), validates it (`UpdateService::validateManifest`: version, PHP, https address, SHA-256, size within 100 MB) and keeps it for as long as the update status.
+
+The workflow passes its current `GITHUB_REPOSITORY` to the builder. Outside GitHub Actions the builder defaults to `chiotis/gnoziocms`; `--repo=owner/name` still overrides it for a fork or a local test.
 
 ### Install steps (`UpdateInstaller`)
 

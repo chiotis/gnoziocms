@@ -37,6 +37,9 @@ final class SiteSettings
             return $defaults;
         }
 
+        if (is_array($data['updates'] ?? null)) {
+            $data['updates'] = UpdateService::normalizeSettings($data['updates']);
+        }
         return self::withDefaults($defaults, $data);
     }
 
@@ -143,11 +146,11 @@ final class SiteSettings
             ],
             'updates' => [
                 'channel' => 'stable',
-                'repository' => 'chiotis/faroscms',
+                'repository' => UpdateService::DEFAULT_REPOSITORY,
                 'branch' => 'main',
-                'version_url' => 'https://raw.githubusercontent.com/chiotis/faroscms/main/VERSION',
-                'changelog_url' => 'https://raw.githubusercontent.com/chiotis/faroscms/main/CHANGELOG.md',
-                'package_url' => 'https://github.com/chiotis/faroscms/archive/refs/heads/main.zip',
+                'version_url' => 'https://raw.githubusercontent.com/chiotis/gnoziocms/main/VERSION',
+                'changelog_url' => 'https://raw.githubusercontent.com/chiotis/gnoziocms/main/CHANGELOG.md',
+                'package_url' => 'https://github.com/chiotis/gnoziocms/archive/refs/heads/main.zip',
                 'release_url' => '',
                 'github_token' => '',
                 'latest_version' => '',
@@ -202,6 +205,7 @@ final class SiteSettings
     {
         $defaults = $this->load();
         $merged = self::withDefaults($defaults, $parsed);
+        $merged['updates'] = UpdateService::normalizeSettings(is_array($merged['updates'] ?? null) ? $merged['updates'] : []);
         $backupSchedule = (string)($merged['backup']['auto']['schedule'] ?? 'daily');
         if (!in_array($backupSchedule, ['daily', 'weekly', 'monthly'], true)) {
             $backupSchedule = 'daily';
@@ -262,7 +266,7 @@ final class SiteSettings
             'maps_tiles_url' => (string)($merged['apis']['maps']['tiles_url'] ?? ''),
             'maps_attribution' => (string)($merged['apis']['maps']['attribution'] ?? ''),
             'maps_load' => ($merged['apis']['maps']['load'] ?? 'click') === 'auto' ? 'auto' : 'click',
-            'update_repository' => (string)($merged['updates']['repository'] ?? 'chiotis/faroscms'),
+            'update_repository' => (string)($merged['updates']['repository'] ?? UpdateService::DEFAULT_REPOSITORY),
             'update_branch' => (string)($merged['updates']['branch'] ?? 'main'),
             'update_version_url' => (string)($merged['updates']['version_url'] ?? ''),
             'update_changelog_url' => (string)($merged['updates']['changelog_url'] ?? ''),
@@ -600,25 +604,17 @@ final class SiteSettings
         ];
 
         $existingUpdates = is_array($data['updates'] ?? null) ? $data['updates'] : [];
-        $repository = trim((string)($form['update_repository'] ?? ''));
-        if ($repository === '') {
-            $repository = 'chiotis/faroscms';
-        }
-        $branch = trim((string)($form['update_branch'] ?? ''));
-        if ($branch === '') {
-            $branch = 'main';
-        }
-        $data['updates'] = [
+        $data['updates'] = UpdateService::normalizeSettings([
             'channel' => (string)($existingUpdates['channel'] ?? 'stable'),
-            'repository' => $repository,
-            'branch' => $branch,
+            'repository' => (string)($form['update_repository'] ?? ''),
+            'branch' => (string)($form['update_branch'] ?? ''),
             'version_url' => (string)($form['update_version_url'] ?? ''),
             'changelog_url' => (string)($form['update_changelog_url'] ?? ''),
             'package_url' => (string)($form['update_package_url'] ?? ''),
             'release_url' => trim((string)($form['update_release_url'] ?? '')),
             'github_token' => '',
             'latest_version' => (string)($existingUpdates['latest_version'] ?? ''),
-        ];
+        ]);
 
         // Blank secret inputs keep the stored value; only an explicit "remove" clears it.
         $clear = is_array($form['clear_secrets'] ?? null) ? $form['clear_secrets'] : [];

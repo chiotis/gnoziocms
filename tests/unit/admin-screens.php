@@ -176,7 +176,7 @@ check('checking for an update says where to go and is logged', [$updateAdmin->ch
 $u = $updateAdmin->screen(['checked' => '1']);
 check('the screen shows the versions and that an update is there', [$u['current_version'], $u['latest_version'], $u['has_update'], $u['checked'], $u['update_source_status']], ['0.0.1', '9.9.9', true, true, 'unreachable']);
 check('and the release notes, from the local file when the project cannot be reached', [$u['changelog_source'], $u['changelog_entries'][0]['version']], ['local', '0.0.1 — 2026-01-01 — First']);
-check('and where updates come from', [$u['update_repository'], $u['update_branch'], $u['update_channel']], ['chiotis/faroscms', 'main', 'stable']);
+check('and where updates come from', [$u['update_repository'], $u['update_branch'], $u['update_channel']], ['chiotis/gnoziocms', 'main', 'stable']);
 check('no backup yet', [$u['latest_backup'], $u['backup_total'], $u['pre_update_backup'], $u['pre_backup_status']], [null, 0, null, '']);
 $byLabel = fn(array $rows) => array_column($rows, null, 'label');
 $c = $byLabel($u['preflight_checks']);

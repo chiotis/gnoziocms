@@ -6,10 +6,10 @@
 
 Markdown and YAML content · Twig themes with a block editor · multilingual · no database server
 
-[![Version](https://img.shields.io/github/v/release/chiotis/faroscms?label=version&color=4f46e5)](https://github.com/chiotis/faroscms/releases)
+[![Version](https://img.shields.io/github/v/release/chiotis/gnoziocms?label=version&color=4f46e5)](https://github.com/chiotis/gnoziocms/releases)
 [![PHP 8.5+](https://img.shields.io/badge/PHP-8.5%2B-777bb4?logo=php&logoColor=white)](#requirements)
 [![License: MIT](https://img.shields.io/badge/license-MIT-2ea44f)](LICENSE)
-[![Tests](https://github.com/chiotis/faroscms/actions/workflows/tests.yml/badge.svg)](https://github.com/chiotis/faroscms/actions/workflows/tests.yml)
+[![Tests](https://github.com/chiotis/gnoziocms/actions/workflows/tests.yml/badge.svg)](https://github.com/chiotis/gnoziocms/actions/workflows/tests.yml)
 [![No build step](https://img.shields.io/badge/server-no%20Node%20%C2%B7%20no%20Composer-4f46e5)](#requirements)
 
 <br>
@@ -66,8 +66,8 @@ It is built for the kind of site an agency or freelancer hands to a client: a go
 ## Quick start
 
 ```bash
-git clone https://github.com/chiotis/faroscms.git
-cd faroscms
+git clone https://github.com/chiotis/gnoziocms.git
+cd gnoziocms
 php scripts/use-starter.php        # copies the demo site from starter/ into content/ and public/uploads/
 # A site that already has content can add what it lacks of the demo in Admin > System > Demo content (nothing is replaced).
 php scripts/import-wordpress.php https://example.com   # what moving a WordPress site over would do (add --apply; see docs/wordpress-import.md)
@@ -183,7 +183,7 @@ npm install && npm run build:css
 
 ## Status
 
-GnozioCMS is under active development and is **pre-1.0** (see [VERSION](VERSION) and the [releases](https://github.com/chiotis/faroscms/releases)). It runs real sites, and the content format (Markdown and YAML) is deliberately simple and stable, but the code is still moving quickly: read the [changelog](CHANGELOG.md) before updating and take a backup first. Issues and ideas are welcome.
+GnozioCMS is under active development and is **pre-1.0** (see [VERSION](VERSION) and the [releases](https://github.com/chiotis/gnoziocms/releases)). It runs real sites, and the content format (Markdown and YAML) is deliberately simple and stable, but the code is still moving quickly: read the [changelog](CHANGELOG.md) before updating and take a backup first. Issues and ideas are welcome.
 
 ## License
 

@@ -75,7 +75,7 @@ check('keep is at least one', [$d['backup']['local']['keep'], $d['backup']['remo
 check('an unknown provider falls back to custom', $d['backup']['remote']['provider'], 'custom');
 check('the prefix loses its slashes', $d['backup']['remote']['prefix'], 'site');
 check('the allowed domain is lower case', $d['auth']['google']['allowed_domain'], 'example.com');
-check('update repository falls back', [$d['updates']['repository'], $d['updates']['branch']], ['chiotis/faroscms', 'main']);
+check('update repository falls back', [$d['updates']['repository'], $d['updates']['branch']], ['chiotis/gnoziocms', 'main']);
 check('the smtp password was stored', $d['forms']['notifications']['smtp']['password'], 'secret1');
 
 // ---- secrets: blank keeps, new replaces, clear removes

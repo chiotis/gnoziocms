@@ -11,7 +11,7 @@ Everything that follows comes from that split. A release is a ZIP of the code on
 
 ## Put a new site on a server
 
-1. Download `gnoziocms-<version>.zip` from the [latest release](https://github.com/chiotis/faroscms/releases/latest) and unzip it into the folder for the site. Point the web server's document root at its `public/` folder (see `README.md`).
+1. Download `gnoziocms-<version>.zip` from the [latest release](https://github.com/chiotis/gnoziocms/releases/latest) and unzip it into the folder for the site. Point the web server's document root at its `public/` folder (see `README.md`).
 2. PHP must be able to write to the site folder, because that is how updates are installed from the admin (see *Installing an update* below). `content/`, `custom/`, `storage/` and `public/uploads/` are created on the first visit.
 3. Open `/admin` **straight away**. A site with no accounts asks for its first administrator (username, email and a password of at least 8 characters). Nobody else can make an account until that exists, so do it before sharing the address.
 4. To start from the demo site instead of an empty one, run `php scripts/use-starter.php` before step 3. It copies the demo pages and images from `starter/` and refuses to run on a site that already has content.
@@ -68,6 +68,8 @@ After either, check the home page, a page of each kind, `/admin`, `/sitemap.xml`
 ## Where updates come from
 
 Settings → Updates names the repository and, optionally, the address of the release manifest (`release.json`). By default both are the project's own GitHub releases. A private repository needs a GitHub token (Settings → Updates) to read its version; installing from a private release needs a manifest address the server can reach.
+
+The official repository is `chiotis/gnoziocms`. Recognised source settings for the former `chiotis/faroscms` repository resolve to the new address; custom sources are preserved. Stored settings change only when you explicitly save them. The external repository rename must be completed before this transition is deployed; see [the repository transition notes](docs/rebranding.md).
 
 ## Good habits
 

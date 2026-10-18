@@ -13,7 +13,7 @@ declare(strict_types=1);
 
 $root = dirname(__DIR__);
 $out = $root . '/build';
-$repo = getenv('GITHUB_REPOSITORY') ?: 'chiotis/faroscms';
+$repo = getenv('GITHUB_REPOSITORY') ?: 'chiotis/gnoziocms';
 foreach (array_slice($argv, 1) as $arg) {
     if (str_starts_with($arg, '--repo=')) {
         $repo = substr($arg, 7);
