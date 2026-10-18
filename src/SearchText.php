@@ -7,6 +7,8 @@ namespace GnozioCMS;
 /** Matching text and display text stay separate: snippets keep the spelling the author wrote. */
 final class SearchText
 {
+    /** Distinct words of a query that are matched; every term is checked against every entry. */
+    public const MAX_TERMS = 10;
     private static ?array $folds = null;
 
     /** Bound public input, discard malformed UTF-8 and controls, and keep ordinary punctuation for display. */
@@ -47,10 +49,31 @@ final class SearchText
         return preg_replace('/\p{M}+/u', '', strtr(mb_strtolower($text, 'UTF-8'), self::$folds)) ?? '';
     }
 
-    /** All words must match; their order does not matter and punctuation is a word separator. @return string[] */
+    /** All words must match; their order does not matter and punctuation is a word separator. Only the first MAX_TERMS distinct words count. @return string[] */
     public static function terms(string $query): array
     {
-        return array_values(array_unique(preg_split('/[^\p{L}\p{N}]+/u', self::normalize($query), -1, PREG_SPLIT_NO_EMPTY) ?: []));
+        return array_slice(array_values(array_unique(self::words($query))), 0, self::MAX_TERMS);
+    }
+
+    /** Words of a text in order, repeats kept; normalizes first unless $normalized says it already is. @return string[] */
+    public static function words(string $text, bool $normalized = false): array
+    {
+        return preg_split('/[^\p{L}\p{N}]+/u', $normalized ? $text : self::normalize($text), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+    }
+
+    /** The query's word sequence up to the last word that still counts as a term, so a capped query keeps a consistent phrase. */
+    public static function phrase(string $query): string
+    {
+        $seen = [];
+        $words = [];
+        foreach (self::words($query) as $word) {
+            if (!isset($seen[$word]) && count($seen) >= self::MAX_TERMS) {
+                break;
+            }
+            $seen[$word] = true;
+            $words[] = $word;
+        }
+        return implode(' ', $words);
     }
 
     /**

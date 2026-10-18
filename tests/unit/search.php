@@ -119,6 +119,43 @@ check('changed content replaces old search text', [$make()->search('uncommonneed
 unlink("$dir/content/pages/fresh.md");
 check('deleted content disappears on next request', $make()->search('replacementneedle', 'el')['total'], 0);
 
+// More than ten distinct words: only the first ten are terms, and an exact title of those words still gets the boost.
+$long = 'alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu';
+check('terms are capped at ten, in query order', SearchText::terms($long), ['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta', 'iota', 'kappa']);
+check('repeated words do not use up the cap', count(SearchText::terms(str_repeat('same ', 30) . 'other')), 2);
+check('phrase stops at the last counted term', SearchText::phrase($long . ' nu'), 'alpha beta gamma delta epsilon zeta eta theta iota kappa');
+$write('pages', 'ten-words', 'Alpha beta gamma delta epsilon zeta eta theta iota kappa', 'Ten.');
+$write('pages', 'ten-body', 'Other', 'alpha beta gamma delta epsilon zeta eta theta iota kappa');
+$capped = $make()->search($long . ' nu', 'el');
+check('a capped query still finds and ranks entries', $slugs($capped), ['ten-words', 'ten-body']);
+check('a very long query is still answered', $make()->search(implode(' ', array_map(fn($n) => "w$n", range(1, 100))), 'el')['total'], 0);
+
+// Cache: normalized text is stored, and public scans neither prune nor rewrite what a signed-in scan cached.
+$cacheDir = "$dir/doc-cache";
+$cachedSearch = function () use ($cacheDir, $dir, $markdown): ContentSearch {
+    $theme = new Theme(dirname(__DIR__, 2), 'default');
+    $docs = new SearchDocument(new BlockRegistry($theme), new ContentTypes($theme), fn($text) => (string)$markdown->convert($text), 'el');
+    $docs->cacheIn($cacheDir, 'search-test');
+    $repository = new ContentRepository("$dir/content", $markdown, ['languages' => ['default' => 'el'], 'content_types' => ['pages', 'posts', 'forms', 'books']]);
+    $repository->storeParsedIn("$dir/cache", 'search-test');
+    return new ContentSearch($repository, $docs);
+};
+$bucketFile = $cacheDir . '/' . hash('sha256', 'pages|el') . '.ser';
+$cachedSearch()->search('αθηνα', 'el', true);
+$stored = unserialize(file_get_contents($bucketFile), ['allowed_classes' => false]);
+check('cached drafts carry normalized text', [isset($stored['entries']['draft']), $stored['entries']['draft'][1]['normal']['title'] ?? null], [true, 'αθηνα κρυφη']);
+touch($bucketFile, time() - 100);
+clearstatcache();
+$before = [filemtime($bucketFile), md5_file($bucketFile)];
+$public = $slugs($cachedSearch()->search('αθηνα', 'el'));
+clearstatcache();
+check('a public search after a signed-in one leaves the cache file alone', [filemtime($bucketFile), md5_file($bucketFile)], $before);
+check('and does not expose cached drafts or hidden entries', in_array('draft', $public) || in_array('hidden', $public), false);
+unlink("$dir/content/pages/draft.md");
+$cachedSearch()->search('αθηνα', 'el', true);
+$stored = unserialize(file_get_contents($bucketFile), ['allowed_classes' => false]);
+check('a signed-in scan prunes entries that no longer exist', isset($stored['entries']['draft']), false);
+
 $remove = function (string $path) use (&$remove): void {
     if (is_dir($path)) { foreach (scandir($path) as $name) { if ($name !== '.' && $name !== '..') { $remove($path . '/' . $name); } } rmdir($path); }
     else { unlink($path); }
