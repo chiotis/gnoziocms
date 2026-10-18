@@ -14,7 +14,8 @@ custom_fields:
   publisher: 'William Heinemann'
   year: 1895
   language: Αγγλικά
-  buy_url: 'https://example.org/books/the-time-machine'
+  buy_links:
+    - {url: 'https://example.org/books/the-time-machine'}
 ---
 
 Το πρώτο μεγάλο μυθιστόρημα ταξιδιού στον χρόνο, και μια κοινωνική παραβολή ντυμένη με επιστημονική φαντασία.

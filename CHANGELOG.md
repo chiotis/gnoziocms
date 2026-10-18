@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.158 — 2026-10-18 — Books: several buy links
+- **A book can have up to six buy links**, one per shop, each with its own text; the first is the main button, the others secondary. Books saved with a single buy link show it as the first row and keep their button; saving the book writes the list and drops the old fields.
+- Content types can declare `legacy` on a repeater to read flat fields it replaces as its first row; templates can read checked field values with `content_values(item)`.
+
 ## 0.1.157 — 2026-10-18 — Hero slider: a slide's buttons are a list
 - **Each slide of the Hero slider has a list of buttons** (up to three), each with its text, link and style, instead of two fixed buttons. Slides saved before are converted when they are read, each button keeping its style, and are written in the new shape on the next save; pages look the same. The importer, the block checker, the starter page and the skill know the new shape.
 

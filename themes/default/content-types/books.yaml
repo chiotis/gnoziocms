@@ -24,14 +24,30 @@ fields:
   language:
     type: text
     label: { el: Γλώσσα, en: Language }
+  buy_links:
+    type: repeater
+    label: { el: 'Σύνδεσμοι αγοράς', en: 'Where to buy' }
+    item_label: { el: Κατάστημα, en: Shop }
+    max: 6
+    show: false
+    # Books saved with one buy link (buy_url, buy_label) show it as the first row; saving the book writes the list and drops them.
+    legacy: { url: buy_url, label: buy_label }
+    fields:
+      label:
+        type: text
+        label: { el: 'Κατάστημα ή κείμενο κουμπιού', en: 'Shop or button text' }
+        placeholder: Buy the book
+      url:
+        type: link
+        label: { el: Σύνδεσμος, en: Link }
+  # Retired: replaced by buy_links. Kept readable so books saved before it still show their button.
   buy_url:
     type: link
-    label: { el: 'Σύνδεσμος αγοράς', en: 'Where to buy' }
+    hidden: true
     show: false
   buy_label:
     type: text
-    label: { el: 'Κείμενο συνδέσμου αγοράς', en: 'Buy link text' }
-    placeholder: Buy the book
+    hidden: true
     show: false
 # Options of the book page and of the list, drawn on the cards of Theme > Single Layouts and Archive Layouts (see ContentTypes.php).
 # The page draws its own sidebar and sits under a transparent header when the card asks for one.

@@ -14,7 +14,8 @@ custom_fields:
   publisher: 'Harper & Brothers'
   year: 1851
   language: English
-  buy_url: 'https://example.org/books/moby-dick'
+  buy_links:
+    - {url: 'https://example.org/books/moby-dick'}
 ---
 
 A sea novel that is at once an adventure, a manual of whaling and a meditation on obsession.

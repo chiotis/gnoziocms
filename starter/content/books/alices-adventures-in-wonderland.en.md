@@ -14,7 +14,8 @@ custom_fields:
   publisher: 'Macmillan'
   year: 1865
   language: English
-  buy_url: 'https://example.org/books/alices-adventures-in-wonderland'
+  buy_links:
+    - {url: 'https://example.org/books/alices-adventures-in-wonderland'}
 ---
 
 A children’s book for grown-ups: wordplay, paradox and a logic that is turned upside down with joy.

@@ -14,7 +14,8 @@ custom_fields:
   publisher: 'T. Egerton'
   year: 1813
   language: Αγγλικά
-  buy_url: 'https://example.org/books/pride-and-prejudice'
+  buy_links:
+    - {url: 'https://example.org/books/pride-and-prejudice'}
 ---
 
 Μια κωμωδία ηθών για τον έρωτα, το χρήμα και τις πρώτες εντυπώσεις, στην αγγλική επαρχία των αρχών του 19ου αιώνα.

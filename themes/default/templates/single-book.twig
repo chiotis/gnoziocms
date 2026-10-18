@@ -13,7 +13,8 @@
   {% set prefix = lang_prefix|default('') %}
   {% set cover = item.meta.main_image ?? '' %}
   {% set fields = item.meta.custom_fields ?? {} %}
-  {% set buy = link_url(fields.buy_url ?? '', prefix) %}
+  {# One button per shop: the first is the main one. Books saved with a single link (buy_url) arrive here as a one-row list. #}
+  {% set buy_links = content_values(item).buy_links|default([]) %}
   <section class="book-hero is-cover-{{ opt.cover|default('left') }}">
     <div class="site-wrap book-hero-inner{% if not cover %} no-cover{% endif %}">
       {% if cover %}
@@ -24,7 +25,11 @@
         {% if (opt.show_author ?? true) and fields.author|default('') %}<p class="book-author">{{ fields.author }}</p>{% endif %}
         {% if (opt.show_summary ?? true) and item.meta.excerpt|default('') %}<p class="book-lead">{{ item.meta.excerpt }}</p>{% endif %}
         {% if opt.show_facts ?? true %}{% include 'components/type-fields.twig' with {item: item, lang_prefix: prefix} only %}{% endif %}
-        {% if (opt.show_buy ?? true) and buy %}<p class="book-buy"><a class="btn btn-primary" href="{{ buy }}">{{ fields.buy_label|default('') ?: t('book.buy', 'Buy the book') }}{{ icon('arrow-right', 'btn-icon') }}</a></p>{% endif %}
+        {% if opt.show_buy ?? true %}
+          {% set buttons = [] %}
+          {% for row in buy_links %}{% set href = link_url(row.url|default(''), prefix) %}{% if href %}{% set buttons = buttons|merge([{href: href, label: row.label|default('') ?: t('book.buy', 'Buy the book')}]) %}{% endif %}{% endfor %}
+          {% if buttons %}<p class="book-buy">{% for b in buttons %}<a class="btn {{ loop.first ? 'btn-primary' : 'btn-secondary' }}" href="{{ b.href }}">{{ b.label }}{{ icon('arrow-right', 'btn-icon') }}</a>{% endfor %}</p>{% endif %}
+        {% endif %}
       </div>
     </div>
   </section>

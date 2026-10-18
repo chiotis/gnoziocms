@@ -14,7 +14,8 @@ custom_fields:
   publisher: 'Lackington, Hughes, Harding, Mavor & Jones'
   year: 1818
   language: Αγγλικά
-  buy_url: 'https://example.org/books/frankenstein'
+  buy_links:
+    - {url: 'https://example.org/books/frankenstein'}
 ---
 
 Το βιβλίο που ξεκίνησε την επιστημονική φαντασία, και μια ιστορία για το τι οφείλουμε σε ό,τι δημιουργούμε.

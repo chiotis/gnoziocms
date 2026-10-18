@@ -317,6 +317,9 @@ final class ContentTypes
         $stored = is_array($meta['custom_fields'] ?? null) ? $meta['custom_fields'] : [];
         $values = [];
         foreach ($this->editableFields($type, $lang, $defaultLang) as $key => $field) {
+            if ($field['type'] === 'repeater' && ($field['legacy'] ?? []) !== []) {
+                $stored = self::withLegacyRow((string)$key, $field, $stored);
+            }
             if (!array_key_exists($key, $stored)) {
                 continue;
             }
@@ -421,9 +424,17 @@ final class ContentTypes
     public function fromInput(string $type, array $input, array $existing, string $lang = 'en', string $defaultLang = 'en'): array
     {
         $store = [];
-        foreach ($this->definition($type, $lang, $defaultLang)['fields'] as $key => $field) {
+        $fields = $this->definition($type, $lang, $defaultLang)['fields'];
+        // Flat keys a list replaces are not kept once the form is saved: by then their value is the list's first row.
+        $replaced = [];
+        foreach ($fields as $field) {
+            if ($field['type'] === 'repeater' && !$field['hidden']) {
+                $replaced = array_merge($replaced, array_values($field['legacy'] ?? []));
+            }
+        }
+        foreach ($fields as $key => $field) {
             if ($field['hidden']) {
-                if (array_key_exists($key, $existing)) {
+                if (array_key_exists($key, $existing) && !in_array((string)$key, $replaced, true)) {
                     $store[$key] = $existing[$key];
                 }
                 continue;
@@ -452,6 +463,31 @@ final class ContentTypes
             }
         }
         return $store;
+    }
+
+    /**
+     * Gives a list without rows one row made of the flat keys it replaces (`legacy`), when they hold something: content saved
+     * before the list took over keeps showing, and the editor offers that row first. Rows that exist always win.
+     *
+     * @param array<string, mixed> $field a repeater
+     * @param array<string, mixed> $stored the item's custom_fields
+     * @return array<string, mixed>
+     */
+    private static function withLegacyRow(string $key, array $field, array $stored): array
+    {
+        if (is_array($stored[$key] ?? null) && $stored[$key] !== []) {
+            return $stored;
+        }
+        $row = [];
+        foreach ($field['legacy'] as $rowKey => $oldKey) {
+            if (is_scalar($stored[$oldKey] ?? null) && trim((string)$stored[$oldKey]) !== '') {
+                $row[$rowKey] = $stored[$oldKey];
+            }
+        }
+        if ($row !== []) {
+            $stored[$key] = [$row];
+        }
+        return $stored;
     }
 
     /**
