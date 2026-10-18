@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * Responsive images for files in public/uploads.

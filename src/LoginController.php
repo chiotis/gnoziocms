@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * The addresses of the admin that need no sign-in: the login screen and a sign-in with a username and password, signing in with
@@ -214,7 +214,7 @@ final class LoginController
         $email = $accepted['email'];
         $user = $this->users->findByEmail($email);
         if (!$user || !$this->users->isActive($user)) {
-            $this->renderLogin('No active FarosCMS user matches this Google account.');
+            $this->renderLogin('No active GnozioCMS user matches this Google account.');
             return;
         }
 

@@ -8,11 +8,11 @@ The choice is stored under `analytics` in the site settings:
 |---|---|
 | **No tracking** (default) | Nothing is added to the pages. |
 | **Your own tracking code** | A Google tag or Tag Manager ID (`G-…`, `GT-…`, `AW-…`, `GTM-…`) is made into its code for you, and two boxes take any other code (Plausible, Matomo, Meta Pixel…): one for the head, one for the start of the body. A person who is signed in gets none of it (unless the site chooses to count them). |
-| **FarosCMS analytics** | The site counts its visits itself, and the reports are in the admin. |
+| **GnozioCMS analytics** | The site counts its visits itself, and the reports are in the admin. |
 
 ## How the platform's analytics count
 
-A small script (`public/assets/js/faros-analytics.js`, about 2 KB, deferred) reports each page view to `/_a/collect` with `navigator.sendBeacon`, so it never slows a page. It also reports clicks on links that leave the site, downloads (pdf, doc, zip…), email and phone links, and `faros.event("name")` for events a page defines itself. A form that is sent is counted on the server, as a goal.
+A small script (`public/assets/js/faros-analytics.js`, about 2 KB, deferred) reports each page view to `/_a/collect` with `navigator.sendBeacon`, so it never slows a page. It also reports clicks on links that leave the site, downloads (pdf, doc, zip…), email and phone links, and `gnozio.event("name")` for events a page defines itself. Existing `faros.event("name")` calls remain supported. A form that is sent is counted on the server, as a goal.
 
 Nothing is stored in the browser, and nothing identifies the person:
 

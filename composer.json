@@ -1,5 +1,5 @@
 {
-  "name": "chiotis/faroscms",
+  "name": "chiotis/gnoziocms",
   "description": "Flat-file CMS with Twig, Markdown, translations, and admin UI",
   "type": "project",
   "license": "MIT",
@@ -10,8 +10,9 @@
     "symfony/yaml": "^6.4"
   },
   "autoload": {
+    "files": ["src/autoload.php"],
     "psr-4": {
-      "FarosCMS\\": "src/"
+      "GnozioCMS\\": "src/"
     }
   }
 }

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * The site-wide search engine settings (Admin > SEO), kept under `seo` in the site settings: how titles are put

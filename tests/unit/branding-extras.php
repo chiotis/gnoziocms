@@ -6,7 +6,7 @@
  */
 $repo = dirname(__DIR__, 2);
 require $repo . '/vendor/autoload.php';
-use FarosCMS\{Branding, BrandingForms, BrandingShape, BrandingTransfer, BrandingTypography, SystemDatabase, SystemMetaRepository, Theme};
+use GnozioCMS\{Branding, BrandingForms, BrandingShape, BrandingTransfer, BrandingTypography, SystemDatabase, SystemMetaRepository, Theme};
 
 $fail = 0;
 function check(string $label, $actual, $expected): void { global $fail; $ok = $actual === $expected; if (!$ok) $fail++; echo ($ok ? 'ok   ' : 'FAIL ') . $label . ($ok ? '' : ' => ' . json_encode($actual, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ' expected ' . json_encode($expected, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) . "\n"; }
@@ -129,7 +129,7 @@ check('the preview lists what changes and changes nothing', [
 ], ['auto', '4', 'medium', 'rose', [['path' => 'fonts/brand.woff2', 'status' => 'new']], [], true, false]);
 $result = $import->apply($read);
 check('applying writes the settings and the font file', [$result['ok'], $result['files'], $result['changed'] > 5, file_get_contents($clean . '/custom/assets/fonts/brand.woff2')], [true, 1, true, 'FONTDATA']);
-$importedPalette = FarosCMS\SitePalettes::active($store2['settings']['design']);
+$importedPalette = GnozioCMS\SitePalettes::active($store2['settings']['design']);
 check('what the other parts add (secondary colour, Duo) travels without being listed anywhere; the colour overrides of this old export became a site palette', [$store2['settings']['design']['light_secondary'], $importedPalette['name'] ?? null, $importedPalette['secondary']['light'] ?? null, $importedPalette['light']['accent'] ?? null, $store2['settings']['design']['light_accent'], $store2['settings']['design']['duo_picker']], ['', 'Rose (custom)', '#aa3355', '#1d4ed8', '', false]);
 check('the CSS and the attributes of the clean site are now identical', [Branding::css($store2['settings'], ''), Branding::attributes($store2['settings'])], [Branding::css($store['settings'], ''), Branding::attributes($store['settings'])]);
 check('and the CSS before was empty', $cleanCss, '');

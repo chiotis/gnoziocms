@@ -5,7 +5,7 @@ visible: true
 translation_id: 98b3c4d5e6f901a2
 excerpt: 'Open roles and the way we build together.'
 seo:
-  title: 'Careers | FarosCMS Demo'
+  title: 'Careers | GnozioCMS Demo'
   description: 'Open positions and team culture.'
 blocks:
   -
@@ -58,9 +58,9 @@ blocks:
     type: cta
     variant: band
     heading: 'Do not see your role?'
-    text: 'Send a CV and portfolio to careers@faroscms.test and tell us what you would like to do.'
+    text: 'Send a CV and portfolio to careers@gnoziocms.test and tell us what you would like to do.'
     actions:
       -
         label: 'Send a message'
-        url: 'mailto:careers@faroscms.test'
+        url: 'mailto:careers@gnoziocms.test'
 ---

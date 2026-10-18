@@ -1,4 +1,4 @@
-# FarosCMS default theme manifest.
+# GnozioCMS default theme manifest.
 #
 # The admin Theme tab is generated from `settings`, and stored values are checked against it on
 # every request: a missing value takes its default and an invalid one falls back to the default.
@@ -7,9 +7,9 @@
 #   - never rename or remove a field or an option value that sites may have stored;
 #   - retire a field by marking it `hidden: true` (it keeps its stored value), not by deleting it.
 name: default
-label: FarosCMS Default
+label: GnozioCMS Default
 version: 1.20.0
-description: All-purpose FarosCMS theme.
+description: All-purpose GnozioCMS theme.
 
 menu_locations:
   header:

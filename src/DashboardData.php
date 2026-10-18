@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * What the dashboard shows. Only what the signed-in role may see is worked out: an editor's dashboard is about

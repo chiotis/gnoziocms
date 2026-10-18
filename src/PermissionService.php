@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 final class PermissionService
 {

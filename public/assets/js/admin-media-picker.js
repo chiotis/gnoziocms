@@ -4,7 +4,7 @@
  * pictures at a time (/admin/media-picker) for the words and tag typed, so a library of any size stays quick, and
  * nothing is embedded in the page.
  *
- *   FarosMediaPicker.open(function (url, item) { ... })     open it; the callback gets the chosen picture
+ *   GnozioMediaPicker.open(function (url, item) { ... })     open it; the callback gets the chosen picture
  *   <input data-image-field>                                 gets a thumbnail and a Library button automatically
  *
  * Without JavaScript the address can still be typed into the field.
@@ -200,5 +200,6 @@
     records.forEach(function (record) { record.addedNodes.forEach(scan); });
   }).observe(document.body, { childList: true, subtree: true });
 
-  window.FarosMediaPicker = { open: open, enhance: enhance };
+  // Both names share one picker, including callbacks and open state.
+  window.GnozioMediaPicker = window.FarosMediaPicker = { open: open, enhance: enhance };
 })();

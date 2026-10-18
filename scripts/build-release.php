@@ -4,7 +4,7 @@
  *
  *   php scripts/build-release.php [output-dir] [--repo=owner/name]
  *
- * Writes faroscms-<version>.zip and release.json (what the Updates screen reads: the version, the lowest PHP, where the
+ * Writes gnoziocms-<version>.zip and release.json (what the Updates screen reads: the version, the lowest PHP, where the
  * package is, its SHA-256 and size) into the output directory (build/ by default). The package is built from a list of
  * what to include, so a site's own content, uploads, custom/, storage or settings can never end up in it, whatever is
  * lying around in the folder it is built from. The same version builds to the same bytes.
@@ -60,7 +60,7 @@ if (!is_dir($out) && !mkdir($out, 0775, true)) {
     fwrite(STDERR, "Cannot create $out.\n");
     exit(1);
 }
-$name = "faroscms-$version.zip";
+$name = "gnoziocms-$version.zip";
 $zipPath = $out . '/' . $name;
 @unlink($zipPath);
 $zip = new ZipArchive();

@@ -4,7 +4,7 @@
  *   php tests/unit/archive-builder.php
  */
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
-use FarosCMS\{ArchiveBuilder, ContentItem};
+use GnozioCMS\{ArchiveBuilder, ContentItem};
 
 $fail = 0;
 function check(string $label, $actual, $expected): void { global $fail; $ok = $actual === $expected; if (!$ok) $fail++; echo ($ok ? 'ok   ' : 'FAIL ') . $label . ($ok ? '' : ' => ' . json_encode($actual, JSON_UNESCAPED_UNICODE) . ' expected ' . json_encode($expected, JSON_UNESCAPED_UNICODE)) . "\n"; }
@@ -90,7 +90,7 @@ $fresh = $rnd([]);
 check('a visit with no number gets one, and its links carry it', preg_match('/^\?seed=\d+&page=2$/', $fresh['next']) === 1 && count($fresh['items']) === 4, true);
 check('a number that is not one is replaced', preg_match('/^\?seed=[1-9]\d*&page=2$/', $rnd(['seed' => 'abc'])['next']) === 1 && preg_match('/^\?seed=[1-9]\d*&page=2$/', $rnd(['seed' => '-5'])['next']) === 1, true);
 check('the other orders have no number in their links', [$pg(1)['next'], $b->build(['order' => 'title_asc', 'per_page' => 4, 'taxonomies' => []], [], null, 'en', $many, ['seed' => '9'])['next']], ['?page=2', '?page=2']);
-check('random is one of the orders to choose', isset(\FarosCMS\ContentTypes::ORDERS['random']) && isset(\FarosCMS\ContentTypes::orderOptions([])['random']), true);
+check('random is one of the orders to choose', isset(\GnozioCMS\ContentTypes::ORDERS['random']) && isset(\GnozioCMS\ContentTypes::orderOptions([])['random']), true);
 
 echo $fail === 0 ? "\nALL PASSED\n" : "\n$fail FAILED\n";
 exit($fail === 0 ? 0 : 1);

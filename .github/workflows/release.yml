@@ -1,7 +1,7 @@
 name: Release
 
 # When VERSION changes on main, tag it (v0.1.2) and publish a GitHub Release with that version's CHANGELOG entry and the
-# package a site installs from its Updates screen: faroscms-<version>.zip (the code only) and release.json (its version,
+# package a site installs from its Updates screen: gnoziocms-<version>.zip (the code only) and release.json (its version,
 # lowest PHP, SHA-256 and size). The site's update check reads the VERSION file for "there is a new version" and release.json
 # for what to install.
 on:
@@ -36,8 +36,8 @@ jobs:
             # The CHANGELOG entry whose heading starts with the version, up to the next heading.
             awk -v v="$version" '$0 ~ ("^## " v "( |$)") {p=1; next} /^## / {p=0} p' CHANGELOG.md > notes.md
             if [ ! -s notes.md ]; then echo "See [CHANGELOG.md](CHANGELOG.md)." > notes.md; fi
-            gh release create "$tag" --target "$GITHUB_SHA" --title "FarosCMS ${version}" --notes-file notes.md
+            gh release create "$tag" --target "$GITHUB_SHA" --title "GnozioCMS ${version}" --notes-file notes.md
           fi
           # The package and its manifest; run again to replace them.
           php scripts/build-release.php build --repo="$GITHUB_REPOSITORY"
-          gh release upload "$tag" "build/faroscms-${version}.zip" build/release.json --clobber
+          gh release upload "$tag" "build/gnoziocms-${version}.zip" build/release.json --clobber

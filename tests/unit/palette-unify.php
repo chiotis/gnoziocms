@@ -7,7 +7,7 @@
  */
 $repo = dirname(__DIR__, 2);
 require $repo . '/vendor/autoload.php';
-use FarosCMS\{Branding, BrandingTransfer, BuiltinPalettes, Contrast, DuoPairings, Oklch, PaletteAdmin, SitePalettes, SystemDatabase, SystemMetaRepository, Theme};
+use GnozioCMS\{Branding, BrandingTransfer, BuiltinPalettes, Contrast, DuoPairings, Oklch, PaletteAdmin, SitePalettes, SystemDatabase, SystemMetaRepository, Theme};
 
 $fail = 0;
 function check(string $label, $actual, $expected): void { global $fail; $ok = $actual === $expected; if (!$ok) $fail++; echo ($ok ? 'ok   ' : 'FAIL ') . $label . ($ok ? '' : ' => ' . json_encode($actual, JSON_UNESCAPED_SLASHES) . ' expected ' . json_encode($expected, JSON_UNESCAPED_SLASHES)) . "\n"; }

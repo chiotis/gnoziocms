@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /** Public search over the repository's parsed-content cache. Extraction, matching and presentation are independent. */
 final class ContentSearch

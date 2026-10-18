@@ -6,7 +6,7 @@ translation_id: 43c6d7e8f901a2b3
 excerpt: "We define information architecture and priorities before execution."
 template: sidebar
 seo:
-  title: "Workplace Strategy | FarosCMS Demo"
+  title: "Workplace Strategy | GnozioCMS Demo"
   description: "Research, goals, and a clear roadmap for your next website."
 blocks:
   - type: cta

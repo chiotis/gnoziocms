@@ -160,7 +160,7 @@
         {% elseif not remote_listing.ok %}
           <div class="px-4 py-6 text-sm text-red-700" role="alert">Could not read remote storage: {{ remote_listing.message }}</div>
         {% elseif remote_listing.backups is empty %}
-          <div class="px-4 py-8 text-center text-sm text-slate-400">No FarosCMS backups in remote storage yet.</div>
+          <div class="px-4 py-8 text-center text-sm text-slate-400">No GnozioCMS backups in remote storage yet.</div>
         {% else %}
           <div class="overflow-x-auto">
             <table class="w-full text-sm">

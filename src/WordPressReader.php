@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * Reads what a WordPress site shows to everybody through its public REST API (/wp-json/wp/v2): pages, posts, media,

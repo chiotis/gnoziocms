@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * The palettes a site makes for itself (Theme > Branding > Colour), kept next to the theme's ready-made ones.

@@ -5,7 +5,7 @@ visible: true
 translation_id: 10f3a6b7c8d9e0f1
 excerpt: 'Σχεδιάζουμε και υλοποιούμε εταιρικές ιστοσελίδες με έμφαση στη σαφήνεια και την απόδοση.'
 seo:
-  title: 'FarosCMS Demo | Digital Studio'
+  title: 'GnozioCMS Demo | Digital Studio'
   description: 'Ενδεικτική εταιρική παρουσίαση για μικρές και μεσαίες επιχειρήσεις.'
 blocks:
   -

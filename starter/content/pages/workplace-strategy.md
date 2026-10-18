@@ -6,7 +6,7 @@ translation_id: 43c6d7e8f901a2b3
 excerpt: "Ορίζουμε τη σωστή αρχιτεκτονική περιεχομένου πριν ξεκινήσει η υλοποίηση."
 template: sidebar
 seo:
-  title: "Στρατηγική Χώρου | FarosCMS Demo"
+  title: "Στρατηγική Χώρου | GnozioCMS Demo"
   description: "Research, στόχοι και σαφές πλάνο για το νέο σας website."
 blocks:
   - type: cta

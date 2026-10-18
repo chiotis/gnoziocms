@@ -5,7 +5,7 @@ visible: true
 translation_id: 10f3a6b7c8d9e0f1
 excerpt: 'We design and deliver company websites focused on clarity, trust, and performance.'
 seo:
-  title: 'FarosCMS Demo | Digital Studio'
+  title: 'GnozioCMS Demo | Digital Studio'
   description: 'Starter company website content for small and medium businesses.'
 blocks:
   - type: hero

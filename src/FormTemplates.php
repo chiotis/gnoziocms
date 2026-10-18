@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * The ready-made forms the "New form" screen offers: a contact form, a newsletter sign-up, a quote request, and so on.

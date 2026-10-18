@@ -14,7 +14,7 @@
  */
 require __DIR__ . '/../vendor/autoload.php';
 
-use FarosCMS\{ContentRepository, FormTranslationMigration};
+use GnozioCMS\{ContentRepository, FormTranslationMigration};
 use League\CommonMark\Environment\Environment;
 use League\CommonMark\Extension\CommonMark\CommonMarkCoreExtension;
 use League\CommonMark\MarkdownConverter;

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * The pictures of a playlist's videos, kept on this site. A page that shows them from YouTube sends every visitor's address to

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * The optional secondary brand colour (`design.light_secondary` and `design.dark_secondary`) as CSS variables. Nothing is

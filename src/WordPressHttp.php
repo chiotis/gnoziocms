@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * The web as the WordPress import needs it: read an address, or save one into a file. Only http and https, redirects
@@ -10,7 +10,7 @@ namespace FarosCMS;
  */
 final class WordPressHttp
 {
-    private const AGENT = 'FarosCMS-import (+https://github.com/chiotis/faroscms)';
+    private const AGENT = 'GnozioCMS-import (+https://github.com/chiotis/faroscms)';
 
     /** @return array{status: int, body: string}|null null when the site could not be reached */
     public static function get(string $url, int $maxBytes = 20 * 1024 * 1024): ?array

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * What a template needs to draw a map of content: the data of a set of entries (for the archive layout and the Map block), the

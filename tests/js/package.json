@@ -1,9 +1,9 @@
 {
-  "name": "faroscms-js-tests",
+  "name": "gnoziocms-js-tests",
   "private": true,
   "description": "Test tooling for the admin JavaScript. Production servers never see it: it is not part of the release package.",
   "scripts": {
-    "test": "node serializer.test.js && node editor-tools.test.js && node seo-count.test.js && node entry-preview.test.js && node branding-preview.test.js && node branding-controls.test.js && node branding-inheritance.test.js && node branding-buttons.test.js && node sortable.test.js && node block-containers.test.js"
+    "test": "node brand-compatibility.test.js && node serializer.test.js && node editor-tools.test.js && node seo-count.test.js && node entry-preview.test.js && node branding-preview.test.js && node branding-controls.test.js && node branding-inheritance.test.js && node branding-buttons.test.js && node sortable.test.js && node block-containers.test.js"
   },
   "devDependencies": {
     "jsdom": "27.0.0"

@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * What the System screen says about the cron job a site should have (`php src/cron-backup.php`, once a day): the line to add, whether
  * this server can start due work after a visit instead, when the cron job was last seen (it records the time each time it runs), and the
- * health check that follows from those. Without a cron job FarosCMS still works: due work starts after a visit (PHP-FPM, LiteSpeed)
+ * health check that follows from those. Without a cron job GnozioCMS still works: due work starts after a visit (PHP-FPM, LiteSpeed)
  * or when someone opens the admin; the cron job is what makes it happen on time on a quiet site.
  */
 final class CronStatus

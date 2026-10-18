@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /** The form editor's field definitions: which types exist, how submitted field rows are cleaned before they are stored, and how stored ones are read back for the form on the site and for the editor. */
 final class FormFields

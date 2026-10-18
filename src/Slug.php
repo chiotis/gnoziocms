@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * Turns text into a web address: Greek is converted to Latin letters with the usual ELOT 743 rules

@@ -6,7 +6,7 @@
  *   php tests/unit/login-controller.php
  */
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
-use FarosCMS\{Auth, LoginController, LoginThrottle, NotificationRepository, SystemDatabase, UserRepository};
+use GnozioCMS\{Auth, LoginController, LoginThrottle, NotificationRepository, SystemDatabase, UserRepository};
 
 $fail = 0;
 function check(string $label, $actual, $expected): void { global $fail; $ok = $actual === $expected; if (!$ok) $fail++; echo ($ok ? 'ok   ' : 'FAIL ') . $label . ($ok ? '' : ' => ' . json_encode($actual, JSON_UNESCAPED_UNICODE) . ' expected ' . json_encode($expected, JSON_UNESCAPED_UNICODE)) . "\n"; }
@@ -109,11 +109,11 @@ $google['token'] = ['body' => '{"access_token":"tok"}', 'status' => 200, 'error'
 $google['profile'] = ['body' => '', 'status' => 500, 'error' => ''];
 check('a profile it does not give', $back(['state' => 'STATE', 'code' => 'c']), 'Google profile lookup failed.');
 $google['profile'] = ['body' => '{"email":"ada@other.org","sub":"g1","email_verified":true}', 'status' => 200, 'error' => ''];
-check('an account of another domain', $back(['state' => 'STATE', 'code' => 'c']), 'This Google account is not allowed for this FarosCMS installation.');
+check('an account of another domain', $back(['state' => 'STATE', 'code' => 'c']), 'This Google account is not allowed for this GnozioCMS installation.');
 $google['profile'] = ['body' => '{"email":"nobody@example.org","sub":"g9","email_verified":true}', 'status' => 200, 'error' => ''];
-check('an account no user has', $back(['state' => 'STATE', 'code' => 'c']), 'No active FarosCMS user matches this Google account.');
+check('an account no user has', $back(['state' => 'STATE', 'code' => 'c']), 'No active GnozioCMS user matches this Google account.');
 $google['profile'] = ['body' => '{"email":"off@example.org","sub":"g8","email_verified":true}', 'status' => 200, 'error' => ''];
-check('an account whose user is switched off', [$back(['state' => 'STATE', 'code' => 'c']), $auth->check()], ['No active FarosCMS user matches this Google account.', false]);
+check('an account whose user is switched off', [$back(['state' => 'STATE', 'code' => 'c']), $auth->check()], ['No active GnozioCMS user matches this Google account.', false]);
 $google['profile'] = ['body' => '{"email":"Ada@Example.org","sub":"g1","email_verified":true}', 'status' => 200, 'error' => ''];
 $site->went = [];
 $back(['state' => 'STATE', 'code' => 'c']);

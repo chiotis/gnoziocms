@@ -1,6 +1,6 @@
-# FarosCMS System Database
+# GnozioCMS System Database
 
-FarosCMS uses a hybrid storage model:
+GnozioCMS uses a hybrid storage model:
 
 - Markdown files remain the source of truth for content and content metadata.
 - Site/theme/admin settings are stored in SQLite system metadata.

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * A form is built once, in the site's first language; every other language is a set of translations kept in the same file.

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * What the Roles screen does: the permission table of the built-in and custom roles (saved, or one built-in role set

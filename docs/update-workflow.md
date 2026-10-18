@@ -1,6 +1,6 @@
-# FarosCMS Update Workflow
+# GnozioCMS Update Workflow
 
-How a live FarosCMS site is updated safely. Part 1 (status, backup before updating) and Part 2 (installing from the admin) are built.
+How a live GnozioCMS site is updated safely. Part 1 (status, backup before updating) and Part 2 (installing from the admin) are built.
 
 ## Principles
 
@@ -41,14 +41,14 @@ The Install button on Admin > Updates installs a release package with every safe
 
 ### Release package and manifest
 
-`scripts/build-release.php` builds `faroscms-<version>.zip` from an allow-list (`src`, `admin`, `vendor`, `themes`, `starter`, `public/assets`, and a few single files), so a site's own data can never be in it, and the same version always builds to the same bytes. A single file added to the package must also be added to `UpdateInstaller::FILES`, and an installer refuses files it does not know, so a site on an older version could no longer update to it: `tests/unit/release-package.php` keeps a list of the files the installer of 0.1.23 accepts and fails on any other. It also writes `release.json`:
+`scripts/build-release.php` builds `gnoziocms-<version>.zip` from an allow-list (`src`, `admin`, `vendor`, `themes`, `starter`, `public/assets`, and a few single files), so a site's own data can never be in it, and the same version always builds to the same bytes. A single file added to the package must also be added to `UpdateInstaller::FILES`, and an installer refuses files it does not know, so a site on an older version could no longer update to it: `tests/unit/release-package.php` keeps a list of the files the installer of 0.1.23 accepts and fails on any other. It also writes `release.json`:
 
 ```json
 {
   "version": "0.2.0",
   "min_php": "8.5",
-  "package": "faroscms-0.2.0.zip",
-  "package_url": "https://github.com/chiotis/faroscms/releases/download/v0.2.0/faroscms-0.2.0.zip",
+  "package": "gnoziocms-0.2.0.zip",
+  "package_url": "https://github.com/chiotis/faroscms/releases/download/v0.2.0/gnoziocms-0.2.0.zip",
   "sha256": "…",
   "size": 1234567,
   "files": 1100,

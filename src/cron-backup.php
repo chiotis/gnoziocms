@@ -16,7 +16,7 @@ if (PHP_SAPI !== 'cli') {
 $root = dirname(__DIR__);
 require $root . '/vendor/autoload.php';
 
-$app = new FarosCMS\App($root);
+$app = new GnozioCMS\App($root);
 $result = $app->runScheduledBackup();
 echo $result . PHP_EOL;
 exit($result === 'failed' ? 1 : 0);

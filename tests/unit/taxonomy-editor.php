@@ -5,7 +5,7 @@
  *   php tests/unit/taxonomy-editor.php
  */
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
-use FarosCMS\{ContentRepository, Menus, RedirectRepository, SystemDatabase, Taxonomies, TaxonomyEditor};
+use GnozioCMS\{ContentRepository, Menus, RedirectRepository, SystemDatabase, Taxonomies, TaxonomyEditor};
 use League\CommonMark\Environment\Environment;
 use League\CommonMark\Extension\CommonMark\CommonMarkCoreExtension;
 use League\CommonMark\MarkdownConverter;

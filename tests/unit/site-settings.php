@@ -5,9 +5,9 @@
  *   php tests/unit/site-settings.php
  */
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
-use FarosCMS\SiteSettings;
-use FarosCMS\SystemDatabase;
-use FarosCMS\SystemMetaRepository;
+use GnozioCMS\SiteSettings;
+use GnozioCMS\SystemDatabase;
+use GnozioCMS\SystemMetaRepository;
 use Symfony\Component\Yaml\Yaml;
 
 $fail = 0;
@@ -111,7 +111,7 @@ check('limits are stored', [$d['limits']['storage_mb'], $d['limits']['upload_mb'
 // ---- no database: nothing is saved
 $dead = new SiteSettings(new SystemMetaRepository(new SystemDatabase('/nonexistent/' . getmypid())), $dir . '/content');
 check('without a database, save says no', $dead->save('', $base), false);
-check('without a database, load gives the defaults', $dead->load()['title'], 'FarosCMS');
+check('without a database, load gives the defaults', $dead->load()['title'], 'GnozioCMS');
 
 // ---- the form as it arrives
 $f = SiteSettings::formFromPost(['title' => 'T', 'backup_auto_enabled' => 'on', 'google_enabled' => '', 'clear_secret' => ['smtp_pass', 7], 'robots_disallow' => "/a\nDisallow: /b\nhttps://x.test/c"]);

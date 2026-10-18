@@ -5,7 +5,7 @@
  *   php tests/unit/translations.php
  */
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
-use FarosCMS\{ContentRepository, EntryTranslations, LanguageAlternates, Taxonomies, Theme, ThemeStrings};
+use GnozioCMS\{ContentRepository, EntryTranslations, LanguageAlternates, Taxonomies, Theme, ThemeStrings};
 use League\CommonMark\Environment\Environment;
 use League\CommonMark\Extension\CommonMark\CommonMarkCoreExtension;
 use League\CommonMark\MarkdownConverter;

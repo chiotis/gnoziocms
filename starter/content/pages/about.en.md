@@ -5,7 +5,7 @@ visible: true
 translation_id: 21a4b5c6d7e8f901
 excerpt: "Meet our approach, process, and delivery mindset."
 seo:
-  title: "About | FarosCMS Demo"
+  title: "About | GnozioCMS Demo"
   description: "Who we are and how we work with growing companies."
 blocks:
   - type: content
@@ -26,7 +26,7 @@ blocks:
     eyebrow: The team
     heading: The people behind the work
     members:
-      - { name: Anna Raftopoulou, role: Strategy & content, bio: 'Shapes the structure, message, and copy of every project.', email: anna@faroscms.test }
+      - { name: Anna Raftopoulou, role: Strategy & content, bio: 'Shapes the structure, message, and copy of every project.', email: anna@gnoziocms.test }
       - { name: Dimitris Laskaris, role: Design lead, bio: 'Designs systems that stay consistent as the site grows.' }
       - { name: Katerina Vlachou, role: Development, bio: 'Looks after speed, accessibility, and clean code.' }
       - { name: Petros Zafeiriou, role: Project management, bio: 'Keeps timelines, updates, and priorities in order.' }

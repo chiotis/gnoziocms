@@ -5,7 +5,7 @@
  *   php tests/unit/dashboard.php
  */
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
-use FarosCMS\{DashboardAttention, FormSubmissionRepository, RedirectRepository, SystemDatabase};
+use GnozioCMS\{DashboardAttention, FormSubmissionRepository, RedirectRepository, SystemDatabase};
 
 $fail = 0;
 function check(string $label, $actual, $expected): void { global $fail; $ok = $actual === $expected; if (!$ok) $fail++; echo ($ok ? 'ok   ' : 'FAIL ') . $label . ($ok ? '' : ' => ' . json_encode($actual, JSON_UNESCAPED_UNICODE) . ' expected ' . json_encode($expected, JSON_UNESCAPED_UNICODE)) . "\n"; }
@@ -25,7 +25,7 @@ check('facts that are fine say nothing', DashboardAttention::items([
 ], $now), []);
 
 // ---- one by one
-check('a new version', DashboardAttention::items(['update' => ['latest' => '0.2.0', 'current' => '0.1.9']], $now)[0]['title'], 'FarosCMS 0.2.0 is available');
+check('a new version', DashboardAttention::items(['update' => ['latest' => '0.2.0', 'current' => '0.1.9']], $now)[0]['title'], 'GnozioCMS 0.2.0 is available');
 $full = DashboardAttention::items(['storage' => ['level' => 'danger', 'used_human' => '9.5 MB', 'limit' => 10485760, 'limit_human' => '10.0 MB', 'can_change' => true]], $now)[0];
 check('storage nearly full is serious, and offers the limit to those who may change it', [$full['level'], $full['title'], $full['action'], $full['href']], ['bad', 'Storage is almost full', 'Change the limit', '/admin/settings']);
 check('the note says how much of the limit', str_contains($full['note'], '9.5 MB used of the 10.0 MB limit'), true);

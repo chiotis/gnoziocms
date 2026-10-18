@@ -6,7 +6,7 @@
  *   php tests/unit/content-screens.php
  */
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
-use FarosCMS\{BlockRegistry, ContentAdmin, ContentCsv, ContentEditor, ContentIndex, ContentPaths, ContentRepository, ContentTransfer, ContentTypes, EntryForm, EntryTranslations, Format, FormsAdmin, FormSubmissionRepository, HtmlGuard, LinkScanner, MediaAdmin, MediaLibrary, MediaUsage, PresetLibrary, PublicPaths, RedirectRepository, RevisionAdmin, RevisionRepository, Slug, SystemDatabase, Taxonomies, Theme};
+use GnozioCMS\{BlockRegistry, ContentAdmin, ContentCsv, ContentEditor, ContentIndex, ContentPaths, ContentRepository, ContentTransfer, ContentTypes, EntryForm, EntryTranslations, Format, FormsAdmin, FormSubmissionRepository, HtmlGuard, LinkScanner, MediaAdmin, MediaLibrary, MediaUsage, PresetLibrary, PublicPaths, RedirectRepository, RevisionAdmin, RevisionRepository, Slug, SystemDatabase, Taxonomies, Theme};
 use League\CommonMark\Environment\Environment;
 use League\CommonMark\Extension\CommonMark\CommonMarkCoreExtension;
 use League\CommonMark\MarkdownConverter;

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * Adding and changing a user from the admin: reading the form (a person who may not change access, or who may not
@@ -92,7 +92,7 @@ final class UserAdmin
             return 'Passwords must be at least ' . self::MIN_PASSWORD_LENGTH . ' characters long.';
         }
         if ($password !== '' && $this->auth->isShippedDefaultPassword($username, $password)) {
-            return 'Choose a password other than the one shipped with FarosCMS.';
+            return 'Choose a password other than the one shipped with GnozioCMS.';
         }
         return '';
     }

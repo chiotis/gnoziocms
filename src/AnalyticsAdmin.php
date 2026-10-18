@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * Admin > Analytics: the choice between no tracking, tracking code of the owner's own and the platform's analytics, the options of

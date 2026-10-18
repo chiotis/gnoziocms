@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * Where each uploaded file is used. Content refers to uploads by address (`/uploads/media/photo.jpg`), in the front

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * The container row of the block builder: a section with columns (1 to 6), and blocks inside each column. It is an entry of the

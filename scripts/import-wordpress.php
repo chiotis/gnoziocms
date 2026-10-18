@@ -23,7 +23,7 @@
  */
 require __DIR__ . '/../vendor/autoload.php';
 
-use FarosCMS\{MediaLibrary, Menus, Taxonomies, WordPressHttp, WordPressImporter, WordPressReader, WordPressScraper};
+use GnozioCMS\{MediaLibrary, Menus, Taxonomies, WordPressHttp, WordPressImporter, WordPressReader, WordPressScraper};
 use Symfony\Component\Yaml\Yaml;
 
 $root = dirname(__DIR__);

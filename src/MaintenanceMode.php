@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * The flag that closes the public site while an update replaces the code. Visitors get a short "back in a moment"

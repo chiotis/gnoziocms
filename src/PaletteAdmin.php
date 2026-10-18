@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * The two requests the palette studio of Theme > Branding makes (as JSON): a palette made from two colours, and the list of

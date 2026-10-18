@@ -1,4 +1,4 @@
-# FarosCMS Backups and Restore
+# GnozioCMS Backups and Restore
 
 ## Archives
 
@@ -11,7 +11,7 @@ Archives live in `storage/backups/` and are listed in Admin `Backups`.
 
 Every archive contains `faroscms-backup.json`:
 
-- `type`, `reason` (`manual`, `scheduled`, `pre-update`, `pre-restore`), `created_at`, FarosCMS `version` and git `commit`
+- `type`, `reason` (`manual`, `scheduled`, `pre-update`, `pre-restore`), `created_at`, GnozioCMS `version` and git `commit`
 - `files`: the size and SHA-256 of every file in the archive
 
 The database is copied with SQLite `VACUUM INTO`, so the archive holds one clean file even while WAL mode has unflushed pages. Archives are written under a temporary name and renamed when complete, so a half-written archive never appears in the list.
@@ -31,13 +31,13 @@ A site that nobody visits, on a server without FPM and with no cron job, takes n
 ## Retention and remote copies
 
 - `Settings > Backups > Backups to keep on this server` limits how many archives stay in `storage/backups/` (all types together). It is a number of backups, not days. Pre-restore safety snapshots never trigger pruning, so the archive being restored cannot be deleted by it.
-- With remote storage enabled, each new archive is uploaded (streamed) to the S3-compatible bucket. Remote pruning only deletes FarosCMS archive names directly under the configured prefix; other objects in the bucket are never touched.
-- `Backups to keep in remote storage` (`backup.remote.keep`, 20 by default) is a separate number, also a count of backups. Right after each successful upload the newest that many stay in the bucket and the older FarosCMS archives are deleted, so a lower number takes effect with the next backup, not when it is saved.
+- With remote storage enabled, each new archive is uploaded (streamed) to the S3-compatible bucket. Remote pruning only deletes GnozioCMS archive names directly under the configured prefix; other objects in the bucket are never touched.
+- `Backups to keep in remote storage` (`backup.remote.keep`, 20 by default) is a separate number, also a count of backups. Right after each successful upload the newest that many stay in the bucket and the older GnozioCMS archives are deleted, so a lower number takes effect with the next backup, not when it is saved.
 - A failed remote upload marks the run as a **warning**. The local archive is kept and the schedule advances.
 - **No copy stays on the server by default.** Once a scheduled or manual backup (full or database-only) is confirmed uploaded, its local archive is deleted, so the server holds nothing but what it needs. Tick `Also keep a copy on this server` (`backup.remote.keep_local`) to keep both. A failed upload never deletes anything, and `pre-update` and `pre-restore` snapshots always stay on the server (an update is undone, and a restore started, from them).
-- Because the Backups screen lists the archives on this server, a backup kept only in remote storage is not under *Local backups*. A superadmin can bring it back from the same screen: **Remote storage > Show backups in remote storage** reads the bucket (only when asked, never on every visit) and lists the FarosCMS archives in it, and **Fetch to this server** downloads one into `storage/backups/`, where it appears under *Local backups* and is restored like any other (*Restore*). Fetching never restores anything by itself.
+- Because the Backups screen lists the archives on this server, a backup kept only in remote storage is not under *Local backups*. A superadmin can bring it back from the same screen: **Remote storage > Show backups in remote storage** reads the bucket (only when asked, never on every visit) and lists the GnozioCMS archives in it, and **Fetch to this server** downloads one into `storage/backups/`, where it appears under *Local backups* and is restored like any other (*Restore*). Fetching never restores anything by itself.
   - The file is downloaded under a temporary name, compared with the size the bucket listed, and checked against its own checksums; a file that is cut short, is not a valid backup or has a checksum that does not match is deleted, and the message says why. It keeps the date it was made.
-  - Only archives the bucket lists under the configured prefix with a FarosCMS name can be fetched. There has to be room on the disk for it, and it is limited to superadmins, like restoring.
+  - Only archives the bucket lists under the configured prefix with a GnozioCMS name can be fetched. There has to be room on the disk for it, and it is limited to superadmins, like restoring.
   - A fetched archive counts with the local ones: after the next backup the oldest are removed down to *Backups to keep on this server*, so restore soon after fetching. The same file can also be put in `storage/backups/` by hand (download the zip from the provider).
   - Needs the PHP cURL extension (with `curl_exec` allowed), like the upload. The dashboard and the system check still know when the last backup was taken (from the run history).
 

@@ -5,7 +5,7 @@ visible: true
 translation_id: 32b5c6d7e8f901a2
 excerpt: 'Από στρατηγική μέχρι υλοποίηση, καλύπτουμε όλο τον κύκλο του έργου.'
 seo:
-  title: 'Υπηρεσίες | FarosCMS Demo'
+  title: 'Υπηρεσίες | GnozioCMS Demo'
   description: 'Στρατηγική, design & build και διαχείριση έργου για εταιρικές ιστοσελίδες.'
 blocks:
   -

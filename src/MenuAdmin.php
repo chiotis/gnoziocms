@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * What the Menus screens do on top of `Menus`: the list of menus, creating one (empty or as a copy of another), and

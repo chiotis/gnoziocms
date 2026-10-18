@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * The words the theme prints ("Read more", form messages, and so on) as the Translations screen edits them. The theme

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * The look of the search page (Admin > Theme > Archive Layouts, the Search card): the title area above the search box, as

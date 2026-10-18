@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * What the Content types screen does: making a type of the site's own (a name, a folder), saving a submitted

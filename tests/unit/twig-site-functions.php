@@ -7,7 +7,7 @@
  *   php tests/unit/twig-site-functions.php
  */
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
-use FarosCMS\{ContentItem, GeoMap, GeoLibrary, GeoTwigFunctions, GeoView, Images, PageTwigFunctions};
+use GnozioCMS\{ContentItem, GeoMap, GeoLibrary, GeoTwigFunctions, GeoView, Images, PageTwigFunctions};
 use Twig\Environment;
 use Twig\Loader\ArrayLoader;
 

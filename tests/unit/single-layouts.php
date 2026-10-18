@@ -7,7 +7,7 @@
  */
 $repo = dirname(__DIR__, 2);
 require $repo . '/vendor/autoload.php';
-use FarosCMS\{SingleLayouts, Theme};
+use GnozioCMS\{SingleLayouts, Theme};
 
 $root = sys_get_temp_dir() . '/single' . getmypid();
 mkdir("$root/custom/templates", 0775, true);

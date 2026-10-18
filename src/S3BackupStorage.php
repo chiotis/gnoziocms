@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 final class S3BackupStorage
 {
-    /** Only archives FarosCMS created itself are eligible for remote pruning. */
+    /** Only archives GnozioCMS created itself are eligible for remote pruning. */
     private const BACKUP_FILENAME_PATTERN = '/-(?:database-)?backup-\d{8}-\d{6}-[0-9a-f]{6}\.zip$/';
 
     /** @param array<string, mixed> $config */
@@ -82,7 +82,7 @@ final class S3BackupStorage
         }
 
         $key = $this->objectKey('.faroscms-connection-test-' . date('YmdHis') . '.txt');
-        $response = $this->request('PUT', $key, 'FarosCMS backup connection test ' . date('c') . "\n", [
+        $response = $this->request('PUT', $key, 'GnozioCMS backup connection test ' . date('c') . "\n", [
             'content-type' => 'text/plain; charset=utf-8',
         ]);
         if (($response['ok'] ?? false) !== true) {
@@ -137,7 +137,7 @@ final class S3BackupStorage
     }
 
     /**
-     * Streams one of FarosCMS's own archives from the bucket into $destination (a file this writes; it is removed again when the
+     * Streams one of GnozioCMS's own archives from the bucket into $destination (a file this writes; it is removed again when the
      * download fails). Only a name that listBackups() would list is accepted, so nothing else in the bucket can be fetched.
      *
      * @return array{ok: bool, message: string, size?: int}
@@ -149,7 +149,7 @@ final class S3BackupStorage
             return $validation;
         }
         if ($filename !== basename($filename) || !preg_match(self::BACKUP_FILENAME_PATTERN, $filename)) {
-            return ['ok' => false, 'message' => 'That is not a FarosCMS backup name.'];
+            return ['ok' => false, 'message' => 'That is not a GnozioCMS backup name.'];
         }
 
         $response = $this->request('GET', $this->objectKey($filename), '', [], [], null, $destination);

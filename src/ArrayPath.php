@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /** Reading and writing a value deep inside nested arrays by its path: ['a', 'b'] is `$data['a']['b']`. */
 final class ArrayPath

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * What the Activity logs and Email logs screens show: the page of entries asked for with its search and filters,

@@ -2,7 +2,7 @@
 {% set page_heading = 'Analytics' %}
 
 {#
-  Admin > Analytics: the choice between no tracking, tracking code of your own and the analytics of FarosCMS, its options, and
+  Admin > Analytics: the choice between no tracking, tracking code of your own and the analytics of GnozioCMS, its options, and
   (when the platform's analytics are on) the reports. A plain form; admin-analytics.js only shows what belongs to the choice and
   switches the lists of a card.
 #}
@@ -18,7 +18,7 @@
   {% set platform_on = a.mode == 'platform' %}
 
   <header class="mb-3 flex flex-col gap-2">
-    <p class="text-xs text-slate-500">How visits to the site are counted. Use the analytics of FarosCMS (no cookies, in your admin), or put the tracking code of a service you already use on every page.</p>
+    <p class="text-xs text-slate-500">How visits to the site are counted. Use the analytics of GnozioCMS (no cookies, in your admin), or put the tracking code of a service you already use on every page.</p>
     {% if platform_on %}
       <nav class="flex gap-1 border-b border-slate-200" aria-label="Analytics sections">
         <a href="{{ url('admin/analytics') }}" class="border-b-2 px-3 py-2 text-sm font-medium {{ tab == 'reports' ? 'border-blue-600 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-800' }}"{% if tab == 'reports' %} aria-current="page"{% endif %}>Reports</a>
@@ -162,7 +162,7 @@
 
         <div class="space-y-3">
           <section class="{{ card }} pb-3" data-when-mode="platform" aria-labelledby="an-h-opt">
-            <h2 id="an-h-opt" class="{{ card_title }}">FarosCMS analytics</h2>
+            <h2 id="an-h-opt" class="{{ card_title }}">GnozioCMS analytics</h2>
             <p class="{{ card_note }}">What is counted, and what is not.</p>
             <div class="space-y-1 p-3 pb-0">
               {{ f.flag('respect_dnt', 'Respect Do Not Track', 'A visitor whose browser asks not to be tracked (Do Not Track, Global Privacy Control) is not counted.', a.respect_dnt) }}

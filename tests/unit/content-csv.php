@@ -5,7 +5,7 @@
  *   php tests/unit/content-csv.php
  */
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
-use FarosCMS\{ArrayPath, ContentCsv, ContentRepository, Format, HtmlGuard, RevisionRepository, SystemDatabase};
+use GnozioCMS\{ArrayPath, ContentCsv, ContentRepository, Format, HtmlGuard, RevisionRepository, SystemDatabase};
 use League\CommonMark\Environment\Environment;
 use League\CommonMark\Extension\CommonMark\CommonMarkCoreExtension;
 use League\CommonMark\MarkdownConverter;

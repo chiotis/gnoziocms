@@ -4,7 +4,7 @@
  *   php tests/unit/omni-report.php
  */
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
-use FarosCMS\OmniReport;
+use GnozioCMS\OmniReport;
 
 $fail = 0;
 function check(string $label, $actual, $expected): void { global $fail; $ok = $actual === $expected; if (!$ok) $fail++; echo ($ok ? 'ok   ' : 'FAIL ') . $label . ($ok ? '' : ' => ' . json_encode($actual, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ' expected ' . json_encode($expected, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) . "\n"; }
@@ -71,7 +71,7 @@ check('no remote storage: every archive stays on the server', [$b['remote'], $b[
 check('never backed up: no last run and no success', [$b['last'], $b['last_success_at'], $b['failed_last_7_days']], [null, null, 0]);
 
 check('analytics: on, and which kind', $r['analytics'], ['enabled' => true, 'mode' => 'custom']);
-check('FarosCMS analytics', OmniReport::analytics(['analytics' => ['mode' => 'platform']]), ['enabled' => true, 'mode' => 'platform']);
+check('GnozioCMS analytics', OmniReport::analytics(['analytics' => ['mode' => 'platform']]), ['enabled' => true, 'mode' => 'platform']);
 check('no tracking, or a mode that is not known, is off', [OmniReport::analytics([]), OmniReport::analytics(['analytics' => ['mode' => 'spy']])], [['enabled' => false, 'mode' => 'off'], ['enabled' => false, 'mode' => 'off']]);
 
 check('updates from the cached check', $r['updates'], ['current' => '0.1.100', 'latest' => '0.2.0', 'has_update' => true, 'checked_at' => '2026-10-13T08:12:00Z', 'source_status' => 'ok']);

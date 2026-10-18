@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * What the Taxonomies screen does with a submitted form: the terms and the page layout are checked and saved, a term

@@ -7,7 +7,7 @@ declare(strict_types=1);
 $repo = dirname(__DIR__, 2);
 require $repo . '/vendor/autoload.php';
 
-use FarosCMS\{BlockContainer, BlockRegistry, ContentItem, ContentTypes, FieldSchema, SearchDocument, Theme};
+use GnozioCMS\{BlockContainer, BlockRegistry, ContentItem, ContentTypes, FieldSchema, SearchDocument, Theme};
 use League\CommonMark\Environment\Environment;
 use League\CommonMark\Extension\CommonMark\CommonMarkCoreExtension;
 use League\CommonMark\MarkdownConverter;

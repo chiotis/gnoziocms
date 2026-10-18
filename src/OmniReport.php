@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * The report a site sends to Omni (docs/omni-protocol.md): the version, storage, backups, analytics, the update check

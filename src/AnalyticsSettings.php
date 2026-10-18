@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * The choices of Admin > Analytics, kept under `analytics` in the site settings. The site either has no tracking, tracking code
@@ -12,7 +12,7 @@ namespace FarosCMS;
  */
 final class AnalyticsSettings
 {
-    public const MODES = ['off' => 'No tracking', 'custom' => 'Your own tracking code', 'platform' => 'FarosCMS analytics'];
+    public const MODES = ['off' => 'No tracking', 'custom' => 'Your own tracking code', 'platform' => 'GnozioCMS analytics'];
     public const KEEP = [12 => '1 year', 24 => '2 years', 60 => '5 years', 0 => 'Forever'];
     public const CODE_LIMIT = 20000;
 

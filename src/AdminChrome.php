@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * What every admin screen gets besides its own data: the notifications and how many are unread, whether an update is
@@ -77,7 +77,7 @@ final class AdminChrome
             if ((string)($account['email'] ?? '') === '') {
                 continue;
             }
-            $siteName = (string)((($this->settings)())['title'] ?? 'FarosCMS');
+            $siteName = (string)((($this->settings)())['title'] ?? 'GnozioCMS');
             $email = (string)$account['email'];
             return [
                 'name' => (string)($account['display_name'] ?: $account['username']),

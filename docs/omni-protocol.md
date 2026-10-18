@@ -1,8 +1,8 @@
-# FarosCMS Omni Protocol (v1)
+# GnozioCMS Omni Protocol (v1)
 
-Omni is a separate web app where one person, its owner, sees every FarosCMS site connected to it: storage, backups, analytics, updates and the health checks, with a link to each site's admin. The public instance is `https://omni.faroscms.com`; anyone can run their own Omni and connect their own sites to it, so the Omni address is a setting of each site, never fixed in the code.
+Omni is a separate web app where one person, its owner, sees every GnozioCMS site connected to it: storage, backups, analytics, updates and the health checks, with a link to each site's admin. The public instance is `https://omni.faroscms.com`; anyone can run their own Omni and connect their own sites to it, so the Omni address is a setting of each site, never fixed in the code.
 
-This page is the contract between the two apps. FarosCMS (the site) and Omni are built against it separately.
+This page is the contract between the two apps. GnozioCMS (the site) and Omni are built against it separately.
 
 ## Overview
 
@@ -187,7 +187,7 @@ A report holds the state of the site at the time it was sent. Omni keeps the lat
 
 All sizes are bytes (integers) and all times are ISO 8601 in UTC. A value that the site cannot know is `null`, never left out, so Omni can tell "unknown" from "an older site that does not send this".
 
-| Field | Source in FarosCMS | Notes |
+| Field | Source in GnozioCMS | Notes |
 |---|---|---|
 | `site.*` | site settings, the request's base URL | `admin_url` is the link Omni shows |
 | `faros.version`, `faros.commit` | `UpdateService::currentVersion()`, `currentGitCommit()` | `commit` is `""` outside git |
@@ -199,7 +199,7 @@ All sizes are bytes (integers) and all times are ISO 8601 in UTC. A value that t
 | `backups.failed_last_7_days` | runs with `failed` in the last 7 days | |
 | `backups.cron` | `CronStatus::info()` | `state` is `fresh`, `stale` or `never`; never the command or a path |
 | `analytics.enabled` | `AnalyticsSettings::from()` | `false` when the mode is `off` |
-| `analytics.mode` | `AnalyticsSettings::from()` | `off` (no tracking), `custom` (the site's own tracking code) or `platform` (FarosCMS analytics) |
+| `analytics.mode` | `AnalyticsSettings::from()` | `off` (no tracking), `custom` (the site's own tracking code) or `platform` (GnozioCMS analytics) |
 | `updates.*` | `UpdateService::status()`, from its cache | sending a report never triggers a fresh version check; `source_status` is `ok`, `unreachable` or `not_configured`; before the first check only `current` is known and the rest is `null` |
 | `system.summary`, `checks` | `SystemStatus::summarize()`, `checks()` | `status` is `ok`, `warning` or `error` |
 | `system.extensions` | `SystemStatus::extensions()` | without the `purpose` column |

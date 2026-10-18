@@ -4,7 +4,7 @@
  *   php tests/unit/system-status.php
  */
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
-use FarosCMS\{ActivityLogRepository, ContentRepository, DashboardData, EmailLogRepository, SiteLimits, SystemDatabase, SystemMetaRepository, SystemStatus, UserRepository};
+use GnozioCMS\{ActivityLogRepository, ContentRepository, DashboardData, EmailLogRepository, SiteLimits, SystemDatabase, SystemMetaRepository, SystemStatus, UserRepository};
 use League\CommonMark\Environment\Environment;
 use League\CommonMark\Extension\CommonMark\CommonMarkCoreExtension;
 use League\CommonMark\MarkdownConverter;
@@ -64,8 +64,8 @@ check('every extension has a purpose and a verdict', [count($extensions), array_
 $sqlite = array_values(array_filter($extensions, fn($e) => $e['name'] === 'pdo_sqlite'))[0];
 check('a loaded one is ok', [$sqlite['loaded'], $sqlite['status']], [true, 'ok']);
 $env = $status->environment('1.2.3', 'abc123', true);
-check('the environment names the version with its commit', [$env['FarosCMS'], $env['HTTPS'], str_starts_with($env['PHP'], PHP_VERSION)], ['1.2.3 @ abc123', 'yes', true]);
-check('no commit, no at-sign', $status->environment('1.2.3', '', false)['FarosCMS'], '1.2.3');
+check('the environment names the version with its commit', [$env['GnozioCMS'], $env['HTTPS'], str_starts_with($env['PHP'], PHP_VERSION)], ['1.2.3 @ abc123', 'yes', true]);
+check('no commit, no at-sign', $status->environment('1.2.3', '', false)['GnozioCMS'], '1.2.3');
 check('the database version is shown', $env['SQLite'] === $status->sqliteVersion() && $env['SQLite'] !== 'unavailable', true);
 check('a database that cannot open has no version', [$dead->sqliteVersion(), $dead->environment('v', '', false)['SQLite']], ['', 'unavailable']);
 

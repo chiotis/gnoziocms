@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * The first visit to a site that has no accounts yet (a new install, which ships none): the sign-in page asks for
@@ -46,7 +46,7 @@ final class FirstAdmin
             filter_var($payload['email'], FILTER_VALIDATE_EMAIL) === false => 'Enter a valid email address.',
             mb_strlen($password) < UserAdmin::MIN_PASSWORD_LENGTH => 'The password needs at least ' . UserAdmin::MIN_PASSWORD_LENGTH . ' characters.',
             $password !== (string)($post['password_confirm'] ?? '') => 'The two passwords are not the same.',
-            $this->auth->isShippedDefaultPassword($payload['username'], $password) => 'Choose a password other than the one shipped with FarosCMS.',
+            $this->auth->isShippedDefaultPassword($payload['username'], $password) => 'Choose a password other than the one shipped with GnozioCMS.',
             default => '',
         };
         if ($error !== '') {

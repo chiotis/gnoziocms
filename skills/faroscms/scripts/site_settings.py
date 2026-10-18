@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Reads and changes the settings of a FarosCMS site when you have the installation's files (not the browser).
+Reads and changes the settings of a GnozioCMS site when you have the installation's files (not the browser).
 
 The settings are not files: they are two YAML documents in the SQLite database storage/db/app.sqlite
 (`site_settings`: title, languages, mail, backups…; `theme_settings`: look, header, footer, branding…). This script
@@ -158,7 +158,7 @@ def main():
     if args.cmd == "schema":
         sections = theme_schema(root)
         if args.markdown:
-            print("# Theme settings of this installation (FarosCMS %s)\n" % f.version(root))
+            print("# Theme settings of this installation (GnozioCMS %s)\n" % f.version(root))
             print("Set with `python3 scripts/site_settings.py set theme section.field=value`. A text marked *translatable* takes a plain text or a map `{default: …, en: …}`.\n")
             for key, section in sections.items():
                 print("## `%s` — %s\n" % (key, section["label"]))

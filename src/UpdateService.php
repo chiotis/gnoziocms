@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * Read-only update information: local version, remote VERSION/CHANGELOG from the configured
@@ -338,7 +338,7 @@ final class UpdateService
         if ($url === '' || !preg_match('#^https?://#i', $url)) {
             return '';
         }
-        $headers = ['User-Agent: FarosCMS update checker'];
+        $headers = ['User-Agent: GnozioCMS update checker'];
         $token = trim((string)($this->settings['github_token'] ?? ''));
         if ($token !== '' && preg_match('#^https?://(raw\.githubusercontent\.com|api\.github\.com)/#i', $url)) {
             $headers[] = 'Authorization: Bearer ' . $token;

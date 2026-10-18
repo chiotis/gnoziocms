@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * Colours in OKLCH (lightness, chroma, hue), where equal steps look equal. Used to derive tints and shades that stay

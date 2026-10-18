@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * Signing in with a Google account: the settings it needs, the address that sends the person to Google, the two calls
@@ -122,7 +122,7 @@ final class GoogleSignIn
             return ['ok' => false, 'message' => 'Google account email is not verified.', 'email' => $email, 'sub' => $sub];
         }
         if ($config['allowed_domain'] !== '' && !str_ends_with($email, '@' . $config['allowed_domain'])) {
-            return ['ok' => false, 'message' => 'This Google account is not allowed for this FarosCMS installation.', 'email' => $email, 'sub' => $sub];
+            return ['ok' => false, 'message' => 'This Google account is not allowed for this GnozioCMS installation.', 'email' => $email, 'sub' => $sub];
         }
         return ['ok' => true, 'message' => '', 'email' => $email, 'sub' => $sub];
     }

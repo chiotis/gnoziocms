@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 use PDO;
 use Throwable;
@@ -558,7 +558,7 @@ final class BackupService
             return ['ok' => false, 'message' => 'The database in the archive failed its integrity check.'];
         }
         if (!$hasMeta) {
-            return ['ok' => false, 'message' => 'The archive database is not a FarosCMS system database.'];
+            return ['ok' => false, 'message' => 'The archive database is not a GnozioCMS system database.'];
         }
         return ['ok' => true, 'message' => 'Database is valid.'];
     }

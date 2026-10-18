@@ -92,9 +92,6 @@ $prefixes = [
     'Dflydev\\DotAccessData\\' => [
         $baseDir . '/dflydev/dot-access-data/src/',
     ],
-    'FarosCMS\\' => [
-        $baseDir . '/../src/',
-    ],
 ];
 spl_autoload_register(function ($class) use ($classmap, $prefixes) {
     if (isset($classmap[$class])) { $file = $classmap[$class]; if (is_file($file)) { require $file; return true; } }
@@ -111,3 +108,5 @@ spl_autoload_register(function ($class) use ($classmap, $prefixes) {
     }
     return false;
 });
+
+require_once $baseDir . '/../src/autoload.php';

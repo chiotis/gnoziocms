@@ -1,6 +1,6 @@
 # Theme developer guide
 
-A hands-on guide to changing how a FarosCMS site looks and behaves without breaking updates. [theming.md](theming.md) is the reference (the contract); this page is the how-to. Every recipe below was tried on a clean install.
+A hands-on guide to changing how a GnozioCMS site looks and behaves without breaking updates. [theming.md](theming.md) is the reference (the contract); this page is the how-to. Every recipe below was tried on a clean install.
 
 ## The picture in one minute
 

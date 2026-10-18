@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * What the Settings screen does with a submitted form: saving the site settings, noting when the storage or upload
@@ -149,14 +149,14 @@ final class SettingsAdmin
         if ($to === '') {
             return '/admin/settings?saved=1&tab=smtp&test=missing';
         }
-        $title = trim((string)($settings['title'] ?? 'FarosCMS'));
+        $title = trim((string)($settings['title'] ?? 'GnozioCMS'));
         $notifications = $settings['forms']['notifications'] ?? [];
         $from = trim((string)($notifications['from'] ?? ''));
         $fromName = trim((string)($notifications['from_name'] ?? ''));
         if ($from === '') {
             $from = 'noreply@localhost';
         }
-        $ok = ($this->sendMail)($to, ($title !== '' ? $title : 'FarosCMS') . ' - email test', 'This is a test email from FarosCMS.', [
+        $ok = ($this->sendMail)($to, ($title !== '' ? $title : 'GnozioCMS') . ' - email test', 'This is a test email from GnozioCMS.', [
             'From' => $fromName !== '' ? $fromName . ' <' . $from . '>' : $from,
         ]);
         ($this->log)($ok ? 'email.test_success' : 'email.test_failure', $ok ? 'info' : 'error', 'email', $to, $ok ? 'Test email sent.' : 'Test email failed.', ['recipient' => $to]);

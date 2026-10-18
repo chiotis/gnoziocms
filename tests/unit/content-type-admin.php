@@ -6,7 +6,7 @@
  */
 $repo = dirname(__DIR__, 2);
 require $repo . '/vendor/autoload.php';
-use FarosCMS\{ContentTypeAdmin, ContentTypes, Theme};
+use GnozioCMS\{ContentTypeAdmin, ContentTypes, Theme};
 
 $root = sys_get_temp_dir() . '/ctadmin' . getmypid();
 mkdir("$root/custom", 0775, true);

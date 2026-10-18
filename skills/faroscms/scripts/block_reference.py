@@ -148,7 +148,7 @@ def main():
         for b in chosen:
             print("%-14s %-9s %s | layouts: %s" % (b["type"], b["category"] or "-", b["label"], ", ".join(b["variants"])))
     else:
-        print("# Blocks of this installation (FarosCMS %s)\n" % f.version(root))
+        print("# Blocks of this installation (GnozioCMS %s)\n" % f.version(root))
         print(COMMON)
         for b in chosen:
             print(render(b, not args.no_help))

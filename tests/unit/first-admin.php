@@ -5,7 +5,7 @@
  *   php tests/unit/first-admin.php
  */
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
-use FarosCMS\{Auth, FirstAdmin, SystemDatabase, UserRepository};
+use GnozioCMS\{Auth, FirstAdmin, SystemDatabase, UserRepository};
 
 $fail = 0;
 function check(string $label, $actual, $expected): void { global $fail; $ok = $actual === $expected; if (!$ok) $fail++; echo ($ok ? 'ok   ' : 'FAIL ') . $label . ($ok ? '' : ' => ' . json_encode($actual, JSON_UNESCAPED_UNICODE) . ' expected ' . json_encode($expected, JSON_UNESCAPED_UNICODE)) . "\n"; }

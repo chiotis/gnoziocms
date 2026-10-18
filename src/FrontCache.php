@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * A cache in front of the site (Varnish) that keeps public pages: emptied whenever the site changes, so a change shows at once

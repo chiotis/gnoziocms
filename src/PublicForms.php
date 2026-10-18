@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * Forms on the public site: what happens when one is sent (the honeypot, the wait between submissions, checking

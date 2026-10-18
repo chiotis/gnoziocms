@@ -5,7 +5,7 @@ visible: true
 translation_id: bac5d6e7f801a2b3
 excerpt: 'Core terms governing the use of this website and services.'
 seo:
-  title: 'Terms of Use | FarosCMS Demo'
+  title: 'Terms of Use | GnozioCMS Demo'
   description: 'Legal terms for using this website.'
 template: sidebar
 ---

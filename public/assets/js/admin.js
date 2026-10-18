@@ -1,4 +1,4 @@
-/* FarosCMS Admin — vanilla JS interactions.
+/* GnozioCMS Admin — vanilla JS interactions.
  * No framework. All behaviors are delegated and data-attribute driven
  * so partials can be composed freely in PHP views.
  *

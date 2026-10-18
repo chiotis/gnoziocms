@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * The things on the dashboard that ask for a person's eye: a new version, a system check that is not fine, storage nearly
@@ -36,7 +36,7 @@ final class DashboardAttention
 
         $update = is_array($facts['update'] ?? null) ? $facts['update'] : null;
         if ($update !== null) {
-            $add('info', 'FarosCMS ' . (string)($update['latest'] ?? '') . ' is available', 'You run ' . (string)($update['current'] ?? '') . '. Read what changed and take a backup first.', '/admin/updates', 'See the update');
+            $add('info', 'GnozioCMS ' . (string)($update['latest'] ?? '') . ' is available', 'You run ' . (string)($update['current'] ?? '') . '. Read what changed and take a backup first.', '/admin/updates', 'See the update');
         }
 
         $storage = is_array($facts['storage'] ?? null) ? $facts['storage'] : null;
@@ -111,7 +111,7 @@ final class DashboardAttention
         $analytics = is_array($facts['analytics'] ?? null) ? $facts['analytics'] : null;
         if ($analytics !== null) {
             if (($analytics['mode'] ?? 'off') === 'off') {
-                $add('info', 'Visits are not being counted', 'Use the analytics of FarosCMS, or add the tracking code of the service you use.', '/admin/analytics?tab=settings', 'Set up');
+                $add('info', 'Visits are not being counted', 'Use the analytics of GnozioCMS, or add the tracking code of the service you use.', '/admin/analytics?tab=settings', 'Set up');
             } elseif (($analytics['mode'] ?? '') === 'custom' && !empty($analytics['empty'])) {
                 $add('warn', 'Your own tracking code is chosen, but empty', 'Nothing is counted until a tag ID or code is added.', '/admin/analytics?tab=settings', 'Add the code');
             }

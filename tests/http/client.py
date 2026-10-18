@@ -1,4 +1,4 @@
-"""Tiny browser-like client for exercising the FarosCMS admin in the scratch copy."""
+"""Tiny browser-like client for exercising the GnozioCMS admin in the scratch copy."""
 import http.cookiejar
 import os
 import urllib.parse

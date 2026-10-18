@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * Reads from the pages of a WordPress site what its REST API does not give: custom post types (books, events, slides

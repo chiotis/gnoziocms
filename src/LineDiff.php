@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /** A line-by-line comparison of two texts, for showing what changed between two versions of a file. */
 final class LineDiff

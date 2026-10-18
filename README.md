@@ -1,6 +1,6 @@
 <div align="center">
 
-# FarosCMS
+# GnozioCMS
 
 **A flat-file CMS for websites that look great and stay easy to run.**
 
@@ -14,17 +14,19 @@ Markdown and YAML content · Twig themes with a block editor · multilingual · 
 
 <br>
 
-<img src="docs/images/hero.jpg" alt="A FarosCMS site: a full-width cover hero with the header over it" width="900">
+<img src="docs/images/hero.jpg" alt="A GnozioCMS site: a full-width cover hero with the header over it" width="900">
 
 </div>
 
 <br>
 
-FarosCMS keeps your pages, posts and projects as plain **Markdown files with YAML front matter**, renders them with **Twig**, and gives the people who edit the site a clean **admin with a block editor**. Settings, users and history live in a single SQLite file, so there is no database to install and nothing to configure before the first page loads. Copy the folder to any PHP host and it runs.
+GnozioCMS keeps your pages, posts and projects as plain **Markdown files with YAML front matter**, renders them with **Twig**, and gives the people who edit the site a clean **admin with a block editor**. Settings, users and history live in a single SQLite file, so there is no database to install and nothing to configure before the first page loads. Copy the folder to any PHP host and it runs.
+
+GnozioCMS was previously named FarosCMS. See the [rename and compatibility notes](docs/rebranding.md).
 
 It is built for the kind of site an agency or freelancer hands to a client: a good-looking business website, in more than one language, that the client can change without breaking.
 
-## Why FarosCMS
+## Why GnozioCMS
 
 | | |
 |---|---|
@@ -176,12 +178,12 @@ npm install && npm run build:css
 | [update.md](update.md), [docs/update-workflow.md](docs/update-workflow.md) | Putting a site on a server, installing updates from the admin, and how that stays safe |
 | [docs/system-database.md](docs/system-database.md) | What lives in SQLite |
 | [custom/README.md](custom/README.md) | How site-specific overrides work |
-| [skills/faroscms](skills/faroscms/README.md) | A skill for AI assistants (Claude, ChatGPT…): how to create pages with blocks, import content and change settings on a FarosCMS site, with scripts that check what the CMS would silently change |
+| [skills/faroscms](skills/faroscms/README.md) | A skill for AI assistants (Claude, ChatGPT…): how to create pages with blocks, import content and change settings on a GnozioCMS site, with scripts that check what the CMS would silently change |
 | [CHANGELOG.md](CHANGELOG.md), [ROADMAP.md](ROADMAP.md) | What changed and what is next |
 
 ## Status
 
-FarosCMS is under active development and is **pre-1.0** (see [VERSION](VERSION) and the [releases](https://github.com/chiotis/faroscms/releases)). It runs real sites, and the content format (Markdown and YAML) is deliberately simple and stable, but the code is still moving quickly: read the [changelog](CHANGELOG.md) before updating and take a backup first. Issues and ideas are welcome.
+GnozioCMS is under active development and is **pre-1.0** (see [VERSION](VERSION) and the [releases](https://github.com/chiotis/faroscms/releases)). It runs real sites, and the content format (Markdown and YAML) is deliberately simple and stable, but the code is still moving quickly: read the [changelog](CHANGELOG.md) before updating and take a backup first. Issues and ideas are welcome.
 
 ## License
 

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * The site's own stylesheet, `custom/assets/css/custom.css`, which base.twig loads after the theme's. Theme > Custom CSS shows it

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-A one-screen picture of a FarosCMS installation, so you start from facts instead of guesses: the version, the
+A one-screen picture of a GnozioCMS installation, so you start from facts instead of guesses: the version, the
 languages, what content exists in which language, the menus, forms, taxonomies, ready-made page layouts, the block
 types (including the site's own) and the current look. Read-only.
 
@@ -146,7 +146,7 @@ def main():
     if args.json:
         f.out(info)
         return 0
-    print("FarosCMS %s at %s" % (info["version"], root))
+    print("GnozioCMS %s at %s" % (info["version"], root))
     print("Site: %s   languages: default %s, available %s   home page: %s.md" % (info["site_title"], default_lang, ", ".join(available), info["home_page"]))
     if not info["system_database"]:
         print("! storage/db/app.sqlite does not exist: settings are the defaults. Open /admin once (it creates the database and asks for the first administrator).")

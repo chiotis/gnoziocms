@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /** Where content lives on disk and on the site: file names and public paths, from the language and home page settings. */
 final class ContentPaths

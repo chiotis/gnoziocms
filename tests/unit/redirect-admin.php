@@ -5,7 +5,7 @@
  *   php tests/unit/redirect-admin.php
  */
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
-use FarosCMS\{ContentRepository, PublicPaths, RedirectAdmin, RedirectRepository, SystemDatabase, Taxonomies};
+use GnozioCMS\{ContentRepository, PublicPaths, RedirectAdmin, RedirectRepository, SystemDatabase, Taxonomies};
 use League\CommonMark\Environment\Environment;
 use League\CommonMark\Extension\CommonMark\CommonMarkCoreExtension;
 use League\CommonMark\MarkdownConverter;

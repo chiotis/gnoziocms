@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * The notifications the site raises by itself for the admin: a new version is available, and a system check that
@@ -30,7 +30,7 @@ final class AdminNotices
             // Title carries the version, so each release notifies once even after being read.
             $this->notifications->createIfMissing([
                 'type' => 'update.available',
-                'title' => 'FarosCMS ' . $latest . ' is available',
+                'title' => 'GnozioCMS ' . $latest . ' is available',
                 'body' => 'You are running ' . (string)($status['current_version'] ?? '') . '. Review the release notes and create a backup before updating.',
                 'severity' => 'info',
                 'target_url' => '/admin/updates',
@@ -55,8 +55,8 @@ final class AdminNotices
             $this->notifications->create([
                 'type' => $installed ? 'update.installed' : 'update.install_failed',
                 'title' => match ($result['status']) {
-                    'installed' => 'FarosCMS ' . $result['to'] . ' is installed',
-                    'unverified' => 'FarosCMS ' . $result['to'] . ' is installed, but was not checked',
+                    'installed' => 'GnozioCMS ' . $result['to'] . ' is installed',
+                    'unverified' => 'GnozioCMS ' . $result['to'] . ' is installed, but was not checked',
                     'rolled_back' => 'Update to ' . $result['to'] . ' was undone',
                     default => 'Update to ' . $result['to'] . ' did not happen',
                 },

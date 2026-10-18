@@ -5,7 +5,7 @@ visible: true
 translation_id: 87a2b3c4d5e6f901
 excerpt: 'Answers to common questions about timelines, process, and support.'
 seo:
-  title: 'FAQ | FarosCMS Demo'
+  title: 'FAQ | GnozioCMS Demo'
   description: 'Frequently asked questions about working together.'
 blocks:
   -

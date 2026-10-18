@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * Taking backups on top of `BackupService`: the schedule (when one is due, and only one request runs it), a full or

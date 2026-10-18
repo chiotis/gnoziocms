@@ -5,7 +5,7 @@
  *   php tests/unit/admin-screens.php
  */
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
-use FarosCMS\{ActivityLogRepository, AdminNotices, BackupAdmin, BackupManager, BackupRunRepository, BackupService, ContentRepository, EmailLogRepository, LogAdmin, MenuAdmin, Menus, NotificationRepository, RedirectRepository, SystemDatabase, SystemMetaRepository, TaxonomyEditor, Taxonomies, MaintenanceMode, UpdateAdmin, UpdateInstaller, UpdateService};
+use GnozioCMS\{ActivityLogRepository, AdminNotices, BackupAdmin, BackupManager, BackupRunRepository, BackupService, ContentRepository, EmailLogRepository, LogAdmin, MenuAdmin, Menus, NotificationRepository, RedirectRepository, SystemDatabase, SystemMetaRepository, TaxonomyEditor, Taxonomies, MaintenanceMode, UpdateAdmin, UpdateInstaller, UpdateService};
 use League\CommonMark\Environment\Environment;
 use League\CommonMark\Extension\CommonMark\CommonMarkCoreExtension;
 use League\CommonMark\MarkdownConverter;
@@ -55,7 +55,7 @@ $editorAdmin = new MenuAdmin(
     $editorMenus,
     fn() => $settings,
     $logger,
-    new FarosCMS\MenuSources(new ContentRepository("$dir/content", $md, $settings), fn() => new Taxonomies("$dir/content", ['el', 'en']), fn() => $settings),
+    new GnozioCMS\MenuSources(new ContentRepository("$dir/content", $md, $settings), fn() => new Taxonomies("$dir/content", ['el', 'en']), fn() => $settings),
     fn(string $key, string $lang) => $key === 'nav.main.about' ? ['el' => 'Σχετικά', 'en' => 'About us'][$lang] : '',
     function (string $location, string $menu) use (&$placed): bool { $placed[] = "$location=$menu"; return true; }
 );
@@ -155,9 +155,9 @@ check('no update, no notice', $notes->unreadCount(), 0);
 $status = $updates->status();
 $notices->syncUpdate($status);
 $notices->syncUpdate($status);
-check('a new version is told once', [$notes->unreadCount(), $notes->recent(5)[0]['title']], [1, 'FarosCMS 9.9.9 is available']);
+check('a new version is told once', [$notes->unreadCount(), $notes->recent(5)[0]['title']], [1, 'GnozioCMS 9.9.9 is available']);
 $notices->sync(false);
-check('a system check that is not fine raises a notice, the fine one does not', array_map(fn($n) => $n['title'], $notes->recent(5)), ['System check: Disk space', 'FarosCMS 9.9.9 is available']);
+check('a system check that is not fine raises a notice, the fine one does not', array_map(fn($n) => $n['title'], $notes->recent(5)), ['System check: Disk space', 'GnozioCMS 9.9.9 is available']);
 $notices->sync(true);
 check('and syncing again raises nothing twice', $notes->unreadCount(), 2);
 $broken = new AdminNotices($notes, fn() => throw new RuntimeException('no'), fn() => throw new RuntimeException('no'));

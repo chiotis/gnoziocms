@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * Which kind of public page an address asks for: the sitemap, robots.txt, a feed, an old /pages/... address (sent to the

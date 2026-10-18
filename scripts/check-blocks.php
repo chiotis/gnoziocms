@@ -8,7 +8,7 @@
  */
 $root = dirname(__DIR__);
 require $root . '/vendor/autoload.php';
-use FarosCMS\{Theme, BlockRegistry, BlockContainer, FieldSchema};
+use GnozioCMS\{Theme, BlockRegistry, BlockContainer, FieldSchema};
 use Symfony\Component\Yaml\Yaml;
 $reg = new BlockRegistry(new Theme($root, 'default'), ['content_types' => fn() => ['posts' => 'Posts', 'projects' => 'Projects'], 'forms' => fn() => ['' => '—', 'contact' => 'Contact']]);
 $problems = 0; $files = 0; $blocksTotal = 0;

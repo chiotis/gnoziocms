@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * A whole palette from two colours: an accent and a base (the background or the ink). Everything is worked out in OKLCH, so

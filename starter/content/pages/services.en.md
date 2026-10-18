@@ -5,7 +5,7 @@ visible: true
 translation_id: 32b5c6d7e8f901a2
 excerpt: 'From strategy to delivery, we cover the full project cycle.'
 seo:
-  title: 'Services | FarosCMS Demo'
+  title: 'Services | GnozioCMS Demo'
   description: 'Strategy, design & build, and project management for company websites.'
 blocks:
   -

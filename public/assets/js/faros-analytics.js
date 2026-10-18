@@ -1,8 +1,8 @@
 /*
- * The analytics of FarosCMS (Admin > Analytics): reports a page view, and the clicks on links that leave the site, downloads, email and
+ * The analytics of GnozioCMS (Admin > Analytics): reports a page view, and the clicks on links that leave the site, downloads, email and
  * phone links. No cookie is set and nothing is kept in the browser. What is sent is the page, where the visitor came from, the width of
  * the window and the kind of click; the server keeps no address. Visitors who ask not to be tracked (Do Not Track, Global Privacy Control)
- * are not counted, and neither are robots that say what they are. `faros.event("name")` counts an event of the page's own.
+ * are not counted, and neither are robots that say what they are. `gnozio.event("name")` counts an event of the page's own.
  */
 (function () {
   'use strict';
@@ -48,5 +48,6 @@
     }, true);
   }
 
-  win.faros = { event: function (name) { event('custom', String(name || '').slice(0, 100)); } };
+  // Preserve existing sites' custom event calls while exposing the new product name.
+  win.gnozio = win.faros = { event: function (name) { event('custom', String(name || '').slice(0, 100)); } };
 })();

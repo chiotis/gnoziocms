@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * The colour pairings of Duo (duo.alexpate.com, by Alex Pate), fetched live for the palette picker in the admin.
@@ -111,7 +111,7 @@ final class DuoPairings
                 CURLOPT_MAXREDIRS => 3,
                 CURLOPT_CONNECTTIMEOUT => self::TIMEOUT,
                 CURLOPT_TIMEOUT => self::TIMEOUT,
-                CURLOPT_USERAGENT => 'FarosCMS admin',
+                CURLOPT_USERAGENT => 'GnozioCMS admin',
                 CURLOPT_FAILONERROR => true,
                 CURLOPT_PROTOCOLS => CURLPROTO_HTTPS | CURLPROTO_HTTP,
                 CURLOPT_REDIR_PROTOCOLS => str_starts_with(strtolower($url), 'https://') ? CURLPROTO_HTTPS : CURLPROTO_HTTPS | CURLPROTO_HTTP,
@@ -124,7 +124,7 @@ final class DuoPairings
             unset($ch);
             return $ok ? $body : null;
         }
-        $in = @fopen($url, 'rb', false, stream_context_create(['http' => ['timeout' => self::TIMEOUT, 'follow_location' => 1, 'max_redirects' => 3, 'user_agent' => 'FarosCMS admin']]));
+        $in = @fopen($url, 'rb', false, stream_context_create(['http' => ['timeout' => self::TIMEOUT, 'follow_location' => 1, 'max_redirects' => 3, 'user_agent' => 'GnozioCMS admin']]));
         if ($in === false) {
             return null;
         }

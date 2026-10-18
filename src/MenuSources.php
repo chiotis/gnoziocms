@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * What a menu can link to, as the menu editor offers it: the pages and entries of every content type, the lists of the

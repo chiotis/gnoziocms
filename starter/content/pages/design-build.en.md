@@ -5,7 +5,7 @@ visible: true
 translation_id: 54d7e8f901a2b3c4
 excerpt: 'We turn strategy into a working product through focused delivery cycles.'
 seo:
-  title: 'Design & Build | FarosCMS Demo'
+  title: 'Design & Build | GnozioCMS Demo'
   description: 'UX/UI and development with speed, maintainability, and quality in mind.'
 blocks:
   -

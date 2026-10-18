@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * Admin > SEO: one screen with a tab for each part of how the site meets search engines and social networks (the overview,

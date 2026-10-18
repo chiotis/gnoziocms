@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * What the Backups screens do: verifying, creating (a full one or the database alone), deleting and fetching from remote storage an archive, the

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * Turns what a page's script sent into one row of the analytics, or refuses it: no bots, no one who is signed in (when the site says

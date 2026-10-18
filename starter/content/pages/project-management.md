@@ -5,7 +5,7 @@ visible: true
 translation_id: 65e8f901a2b3c4d5
 excerpt: 'Συντονισμός ομάδων, χρονοδιαγραμμάτων και προτεραιοτήτων χωρίς περιττή πολυπλοκότητα.'
 seo:
-  title: 'Διαχείριση Έργου | FarosCMS Demo'
+  title: 'Διαχείριση Έργου | GnozioCMS Demo'
   description: 'Διαφανής οργάνωση και delivery για συνέπεια σε κάθε στάδιο.'
 blocks:
   -

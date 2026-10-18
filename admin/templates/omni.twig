@@ -5,14 +5,14 @@
 
 {% block content %}
   {% set tone = {'ok': 'green', 'success': 'green', 'warn': 'amber', 'warning': 'amber', 'danger': 'red', 'error': 'red', 'failed': 'red'} %}
-  {% set modes = {'off': 'Off', 'custom': 'Own tracking code', 'platform': 'FarosCMS analytics'} %}
+  {% set modes = {'off': 'Off', 'custom': 'Own tracking code', 'platform': 'GnozioCMS analytics'} %}
   {% set btn = 'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium shadow-sm' %}
   {% set removed = connection.status|default('') == 'removed' %}
 
   {{ ui.flash(message, done == 'ok' ? 'success' : 'error') }}
 
   <header class="mb-4 border-b border-slate-200 pb-4">
-    <p class="text-xs text-slate-400">Omni is a separate app where one person follows many FarosCMS sites: health, storage, backups and updates, with a link to each admin. The public one is omni.faroscms.com; anyone can run their own.</p>
+    <p class="text-xs text-slate-400">Omni is a separate app where one person follows many GnozioCMS sites: health, storage, backups and updates, with a link to each admin. The public one is omni.faroscms.com; anyone can run their own.</p>
   </header>
 
   <div class="space-y-4">

@@ -5,7 +5,7 @@ visible: true
 translation_id: 98b3c4d5e6f901a2
 excerpt: 'Δείτε ανοιχτούς ρόλους και γνωρίστε τον τρόπο που δουλεύουμε.'
 seo:
-  title: 'Καριέρα | FarosCMS Demo'
+  title: 'Καριέρα | GnozioCMS Demo'
   description: 'Ανοιχτές θέσεις και κουλτούρα ομάδας.'
 blocks:
   -
@@ -58,9 +58,9 @@ blocks:
     type: cta
     variant: band
     heading: 'Δεν βλέπεις τη θέση σου;'
-    text: 'Στείλε CV και portfolio στο careers@faroscms.test και πες μας τι θα ήθελες να κάνεις.'
+    text: 'Στείλε CV και portfolio στο careers@gnoziocms.test και πες μας τι θα ήθελες να κάνεις.'
     actions:
       -
         label: 'Στείλε μήνυμα'
-        url: 'mailto:careers@faroscms.test'
+        url: 'mailto:careers@gnoziocms.test'
 ---

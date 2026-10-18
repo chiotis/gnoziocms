@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * Turns the choices of Theme > Branding into what a page needs: the CSS that changes the default theme's design tokens

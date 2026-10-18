@@ -1175,7 +1175,8 @@
     if (preferred === 'visual') { toVisual(true); } else { show('markdown'); }
   }
 
-  window.FarosEditor = {
+  // Keep the old global available to existing integrations.
+  window.GnozioEditor = window.FarosEditor = {
     /** For tests: the Markdown the visual side writes (every block written again, unless full is false). */
     markdownOf: function (full) { return serialize(full !== false); },
     load: load,

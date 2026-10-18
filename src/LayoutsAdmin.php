@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * The two tabs of Admin > Theme that gather how pages look: Single Layouts (one card for each content type, for the page

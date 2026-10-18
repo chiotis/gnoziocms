@@ -5,7 +5,7 @@
  *   php tests/unit/public-site.php
  */
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
-use FarosCMS\{ArchiveBuilder, ContentItem, ContentRepository, FormProcessor, FormSubmissionRepository, Images, LanguageAlternates, PublicForms, Sitemap, StructuredData, Taxonomies, TaxonomyPage, Theme, TwigFunctions};
+use GnozioCMS\{ArchiveBuilder, ContentItem, ContentRepository, FormProcessor, FormSubmissionRepository, Images, LanguageAlternates, PublicForms, Sitemap, StructuredData, Taxonomies, TaxonomyPage, Theme, TwigFunctions};
 use League\CommonMark\Environment\Environment;
 use League\CommonMark\Extension\CommonMark\CommonMarkCoreExtension;
 use League\CommonMark\MarkdownConverter;

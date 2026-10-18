@@ -6,7 +6,7 @@
  *   php scripts/check-slugs.php
  */
 require __DIR__ . '/../vendor/autoload.php';
-use FarosCMS\{Slug, SystemDatabase, RedirectRepository as R};
+use GnozioCMS\{Slug, SystemDatabase, RedirectRepository as R};
 
 $bad = 0;
 function t(string $label, bool $ok, $detail = ''): void { global $bad; if (!$ok) { $bad++; } echo ($ok ? 'ok   ' : 'FAIL ') . $label . ($ok ? '' : ' ' . json_encode($detail, JSON_UNESCAPED_UNICODE)) . "\n"; }

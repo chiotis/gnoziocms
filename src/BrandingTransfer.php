@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * Carries the look of a site (Theme > Branding) from one site to another, and puts it back.
@@ -145,7 +145,7 @@ final class BrandingTransfer
         }
         $document = json_decode($json, true);
         if (!is_array($document) || ($document['format'] ?? '') !== self::FORMAT || !is_array($document['settings'] ?? null)) {
-            return ['ok' => false, 'error' => 'This is not a FarosCMS Branding export.'];
+            return ['ok' => false, 'error' => 'This is not a GnozioCMS Branding export.'];
         }
         $settings = [];
         foreach (self::TREES as $tree) {

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * What the site may use: the storage limit the super admin sets (Settings > Limits) against what the content, the

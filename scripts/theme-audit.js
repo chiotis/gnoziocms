@@ -1,5 +1,5 @@
 /*
- * FarosCMS theme audit: run it in the browser console of a LOCAL or staging copy of the site.
+ * GnozioCMS theme audit: run it in the browser console of a LOCAL or staging copy of the site.
  *
  *   1. Start the site (php -S 127.0.0.1:8087 -t public public/index.php) and open any page.
  *   2. Paste this whole file into the browser console (or copy it to custom/assets/js/ and add a

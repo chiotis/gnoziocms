@@ -1,5 +1,5 @@
 /*
- * FarosCMS block editor (Admin > Edit > Blocks).
+ * GnozioCMS block editor (Admin > Edit > Blocks).
  *
  * Reads block definitions and the page's blocks from #block-editor-data, renders a form per block
  * from its block.yaml fields, and writes the result as JSON into [data-block-editor-output] before

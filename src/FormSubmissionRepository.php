@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * Form submissions stored as JSON files in content/forms-submissions/<form-slug>/<id>.json.

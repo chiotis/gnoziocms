@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * How the page of one entry looks, for each content type (Admin > Theme > Single Layouts): the page layout (a template

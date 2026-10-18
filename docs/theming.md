@@ -1,6 +1,6 @@
 # Theming
 
-FarosCMS has one all-purpose theme, `themes/default`. It grows over time: new blocks, header and footer variants, and page templates are added to it, and every site picks what it needs through settings. Sites are not meant to switch themes.
+GnozioCMS has one all-purpose theme, `themes/default`. It grows over time: new blocks, header and footer variants, and page templates are added to it, and every site picks what it needs through settings. Sites are not meant to switch themes.
 
 For step-by-step recipes (a new block, a page template, a brand colour, a content type) and the testing checklist, see [theme-developer-guide.md](theme-developer-guide.md). This page is the reference.
 

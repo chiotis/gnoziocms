@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Checks FarosCMS content files before (or after) they are put on a site, using the installation's own block
+Checks GnozioCMS content files before (or after) they are put on a site, using the installation's own block
 definitions, languages and taxonomies. Run it on every file you wrote or changed.
 
     python3 validate_content.py                     # every content file of the installation in the current folder

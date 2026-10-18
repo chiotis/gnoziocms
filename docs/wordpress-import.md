@@ -1,6 +1,6 @@
 # Moving a WordPress site over
 
-`scripts/import-wordpress.php` (it is in the repository, not in the update package: run it from a copy of the repository, `git clone`, pointing `--content` and `--uploads` at the site) reads a WordPress site through its public REST API (`/wp-json/wp/v2`, no password) and brings its pages, posts, categories, tags and pictures into a FarosCMS site. It says what it would do first and changes nothing until you add `--apply`.
+`scripts/import-wordpress.php` (it is in the repository, not in the update package: run it from a copy of the repository, `git clone`, pointing `--content` and `--uploads` at the site) reads a WordPress site through its public REST API (`/wp-json/wp/v2`, no password) and brings its pages, posts, categories, tags and pictures into a GnozioCMS site. It says what it would do first and changes nothing until you add `--apply`.
 
 ```bash
 php scripts/import-wordpress.php https://example.com            # what would happen

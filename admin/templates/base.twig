@@ -6,7 +6,7 @@
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <meta name="media-picker-url" content="{{ url('admin/media-picker') }}">
   <meta name="geo-leaflet" data-js="{{ theme_asset('vendor/leaflet/leaflet.js') }}" data-css="{{ theme_asset('vendor/leaflet/leaflet.css') }}" data-tiles="{{ 'https://tile.openstreetmap.org/{z}/{x}/{y}.png' }}">
-  <title>{{ title|default('Admin') }} - FarosCMS</title>
+  <title>{{ title|default('Admin') }} - GnozioCMS</title>
   {% include '@admin/partials/theme-init.twig' %}
   <link rel="stylesheet" href="{{ asset('css/admin.build.css') }}">
   <link rel="stylesheet" href="{{ asset('css/app.css') }}">
@@ -34,7 +34,7 @@
 
     <aside data-sidebar class="fixed inset-y-0 left-0 z-40 flex w-64 -translate-x-full flex-col border-r border-slate-200 bg-white transition-transform duration-200 lg:static lg:translate-x-0">
       <div class="flex h-14 shrink-0 items-center gap-2.5 border-b border-slate-200 px-4">
-        <span class="min-w-0 truncate text-sm font-semibold tracking-tight text-slate-900" title="{{ site.title|default('FarosCMS') }}">{{ site.title|default('FarosCMS') }}</span>
+        <span class="min-w-0 truncate text-sm font-semibold tracking-tight text-slate-900" title="{{ site.title|default('GnozioCMS') }}">{{ site.title|default('GnozioCMS') }}</span>
         <a href="{{ url('') }}" target="_blank" rel="noopener" class="ml-auto inline-flex shrink-0 items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600 hover:bg-slate-50">View site<span class="sr-only"> (opens in a new tab)</span><svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M7 17L17 7M8 7h9v9"/></svg></a>
         <button type="button" data-sidebar-close class="ml-1 rounded p-1 text-slate-400 hover:bg-slate-100 lg:hidden" aria-label="Close sidebar">
           <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></svg>
@@ -186,11 +186,11 @@
       <div class="shrink-0 border-t border-slate-200 p-3">
         <div class="mb-2 flex justify-center">
           {% if admin_update_available|default(false) and can('updates.manage') %}
-            <a href="{{ url('admin/updates') }}" class="inline-flex shrink-0 items-center gap-1 rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700 ring-1 ring-inset ring-blue-200 hover:bg-blue-100" title="FarosCMS {{ admin_update_latest }} is available">
-              <span class="h-1.5 w-1.5 rounded-full bg-blue-500"></span>FarosCMS v{{ admin_version|default('base') }}
+            <a href="{{ url('admin/updates') }}" class="inline-flex shrink-0 items-center gap-1 rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700 ring-1 ring-inset ring-blue-200 hover:bg-blue-100" title="GnozioCMS {{ admin_update_latest }} is available">
+              <span class="h-1.5 w-1.5 rounded-full bg-blue-500"></span>GnozioCMS v{{ admin_version|default('base') }}
             </a>
           {% else %}
-            <span class="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500" title="Installed FarosCMS version">FarosCMS v{{ admin_version|default('base') }}</span>
+            <span class="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500" title="Installed GnozioCMS version">GnozioCMS v{{ admin_version|default('base') }}</span>
           {% endif %}
         </div>
         <div class="rounded-md bg-slate-50 p-2.5">
@@ -327,7 +327,7 @@
       <main class="scroll-thin relative flex-1 overflow-y-auto p-4 lg:p-6">
         {% if admin_default_password|default(false) %}
           <div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-            <span><strong class="font-semibold">Default password in use.</strong> This account still uses the password shipped with FarosCMS. Change it before this site is reachable by anyone else.</span>
+            <span><strong class="font-semibold">Default password in use.</strong> This account still uses the password shipped with GnozioCMS. Change it before this site is reachable by anyone else.</span>
             <a href="{{ url('admin/users-edit?id=' ~ current_user.id|default(0)) }}" class="shrink-0 rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700">Change password</a>
           </div>
         {% endif %}

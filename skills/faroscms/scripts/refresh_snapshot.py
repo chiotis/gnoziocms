@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Maintainer tool: refreshes what the skill carries of one FarosCMS version, from a checkout or an installation of that version.
+Maintainer tool: refreshes what the skill carries of one GnozioCMS version, from a checkout or an installation of that version.
 
     python3 skills/faroscms/scripts/refresh_snapshot.py --root /path/to/faroscms
 
@@ -23,12 +23,12 @@ SKILL = os.path.dirname(HERE)
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--root", required=True, help="a FarosCMS checkout or installation")
+    parser.add_argument("--root", required=True, help="a GnozioCMS checkout or installation")
     args = parser.parse_args()
     root = os.path.abspath(args.root)
     theme = os.path.join(root, "themes", "default")
     if not os.path.isfile(os.path.join(root, "VERSION")) or not os.path.isdir(theme):
-        raise SystemExit("%s is not a FarosCMS installation" % root)
+        raise SystemExit("%s is not a GnozioCMS installation" % root)
 
     target = os.path.join(SKILL, "snapshot")
     shutil.rmtree(target, ignore_errors=True)
@@ -60,7 +60,7 @@ def main():
             raise SystemExit(result.stderr or "%s failed" % script)
         with open(os.path.join(SKILL, "references", out), "w", encoding="utf-8", newline="\n") as handle:
             handle.write(result.stdout)
-    print("Snapshot of FarosCMS %s written; references/blocks.md and references/theme-settings.md regenerated." % open(os.path.join(root, "VERSION")).read().strip())
+    print("Snapshot of GnozioCMS %s written; references/blocks.md and references/theme-settings.md regenerated." % open(os.path.join(root, "VERSION")).read().strip())
     return 0
 
 

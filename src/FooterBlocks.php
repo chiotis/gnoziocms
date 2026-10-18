@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * The blocks of Theme > Footer Blocks, which show above the footer. They are stored in the theme settings as `footer_blocks`:

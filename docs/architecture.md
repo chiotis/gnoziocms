@@ -1,6 +1,6 @@
-# FarosCMS Code Map
+# GnozioCMS Code Map
 
-FarosCMS is a single-entry PHP application (`public/index.php` → `FarosCMS\App::handle()`), with Markdown/YAML content files, Twig templates, and a SQLite system database.
+GnozioCMS is a single-entry PHP application (`public/index.php` → `GnozioCMS\App::handle()`), with Markdown/YAML content files, Twig templates, and a SQLite system database.
 
 ## Request flow
 

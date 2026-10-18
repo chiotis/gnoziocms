@@ -19,7 +19,7 @@ check('it shows the site name from Settings', name is not None and name.group(1)
 aside = re.search(r'<aside.*?</aside>', html, re.S).group(0)
 bottom = aside.split('</nav>')[-1]
 check('the top has the View site button, opening a new tab', 'View site' in top and 'target="_blank"' in top and 'rel="noopener"' in top and '(opens in a new tab)' in top, top[-500:])
-check('and the version, now at the bottom, reads "FarosCMS v…"', re.search(r'>\s*(?:<span[^>]*></span>)?FarosCMS v[^<]+<', bottom) is not None and 'FarosCMS v' not in top, bottom[:400])
+check('and the version, now at the bottom, reads "GnozioCMS v…"', re.search(r'>\s*(?:<span[^>]*></span>)?GnozioCMS v[^<]+<', bottom) is not None and 'GnozioCMS v' not in top, bottom[:400])
 check('the bottom no longer has the big View site button', 'View site' not in bottom)
 
 # change the name in Settings and see it here
@@ -30,7 +30,7 @@ st, _, html = root.get('/admin/content?type=pages')
 top = head(html)
 check('a new site name shows on every screen', 'Acme Studio' in top, top[:400])
 check('the name has a tooltip for when it is cut off', 'title="Acme Studio"' in top)
-check('the browser tab title is unchanged', '- FarosCMS</title>' in html)
+check('the browser tab title is unchanged', '- GnozioCMS</title>' in html)
 
 # ---- Content types, Redirects and Translations are in Manage
 def groups(side):

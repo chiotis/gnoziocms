@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * What the History screens do on top of `RevisionRepository`: bringing back an earlier version or a deleted

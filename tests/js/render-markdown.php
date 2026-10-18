@@ -9,8 +9,8 @@
 ini_set('display_errors', '0');
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
-use FarosCMS\App;
-use FarosCMS\VisualMarkdown;
+use GnozioCMS\App;
+use GnozioCMS\VisualMarkdown;
 
 $app = (new ReflectionClass(App::class))->newInstanceWithoutConstructor();
 $environment = new ReflectionMethod(App::class, 'markdownEnvironment');

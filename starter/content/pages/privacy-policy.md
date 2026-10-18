@@ -5,7 +5,7 @@ visible: true
 translation_id: a9c4d5e6f901a2b3
 excerpt: 'Πώς συλλέγουμε και επεξεργαζόμαστε προσωπικά δεδομένα.'
 seo:
-  title: 'Πολιτική Απορρήτου | FarosCMS Demo'
+  title: 'Πολιτική Απορρήτου | GnozioCMS Demo'
   description: 'Ενημέρωση για την επεξεργασία προσωπικών δεδομένων.'
 template: sidebar
 ---

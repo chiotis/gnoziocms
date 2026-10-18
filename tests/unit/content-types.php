@@ -5,7 +5,7 @@
  */
 $repo = dirname(__DIR__, 2);
 require $repo . '/vendor/autoload.php';
-use FarosCMS\{Theme, ContentTypes, FieldSchema};
+use GnozioCMS\{Theme, ContentTypes, FieldSchema};
 // A throwaway site whose theme is the real one, so the test can write custom/ files.
 $root = sys_get_temp_dir() . '/faros-ct-' . getmypid();
 mkdir($root . '/custom', 0775, true);

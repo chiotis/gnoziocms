@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 use Symfony\Component\Yaml\Yaml;
 
@@ -67,7 +67,7 @@ final class SiteSettings
     public function defaults(): array
     {
         return [
-            'title' => 'FarosCMS',
+            'title' => 'GnozioCMS',
             'tagline' => 'A flat-file CMS powered by Markdown and Twig.',
             'base_url' => '',
             'theme' => 'default',
@@ -472,7 +472,7 @@ final class SiteSettings
             $existingSecrets[$field] = (string)(ArrayPath::get($data, $path) ?? '');
         }
 
-        $data['title'] = $form['title'] !== '' ? $form['title'] : ($data['title'] ?? 'FarosCMS');
+        $data['title'] = $form['title'] !== '' ? $form['title'] : ($data['title'] ?? 'GnozioCMS');
         $data['tagline'] = $form['tagline'] !== '' ? $form['tagline'] : ($data['tagline'] ?? '');
         $data['base_url'] = $form['base_url'];
         $data['theme'] = $form['theme'] !== '' ? $form['theme'] : ($data['theme'] ?? 'default');

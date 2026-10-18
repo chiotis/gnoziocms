@@ -1,4 +1,4 @@
-# FarosCMS Security Notes
+# GnozioCMS Security Notes
 
 This page lists the protections built into the admin and what the server operator still has to configure.
 

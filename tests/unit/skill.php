@@ -105,7 +105,7 @@ if ($python === '' || trim((string)@shell_exec('python3 -c "import yaml" 2>&1'))
     [$code, $out] = $run('block_reference.py --root ' . escapeshellarg($site) . ' --list');
     check('block_reference lists every block', [$code, substr_count($out, "\n") + 1], [0, count(glob($theme . '/blocks/*/block.yaml'))]);
     [$code, $out] = $run('site_info.py --root ' . escapeshellarg($site));
-    check('site_info reads the demo site', [$code, str_contains($out, 'pages'), str_contains($out, 'FarosCMS ' . trim((string)file_get_contents($root . '/VERSION')))], [0, true, true]);
+    check('site_info reads the demo site', [$code, str_contains($out, 'pages'), str_contains($out, 'GnozioCMS ' . trim((string)file_get_contents($root . '/VERSION')))], [0, true, true]);
 
     // A page written the way the skill says reads back as the CMS reads it.
     $blocksFile = $site . '/blocks.yaml';
@@ -115,7 +115,7 @@ if ($python === '' || trim((string)@shell_exec('python3 -c "import yaml" 2>&1'))
     [$code, $out] = $run('new_entry.py --out ' . escapeshellarg($writable) . ' --type pages --title "Δοκιμή Σελίδας" --blocks ' . escapeshellarg($blocksFile) . ' --status draft');
     check('new_entry writes a page with a Latin address from a Greek title', [$code, is_file($writable . '/content/pages/dokimi-selidas.md')], [0, true]);
     $written = (string)@file_get_contents($writable . '/content/pages/dokimi-selidas.md');
-    [$yaml] = FarosCMS\FrontMatter::split($written);
+    [$yaml] = GnozioCMS\FrontMatter::split($written);
     $meta = Symfony\Component\Yaml\Yaml::parse($yaml);
     check('and the CMS reads its blocks', array_column($meta['blocks'] ?? [], 'type'), ['hero', 'faq']);
     file_put_contents($blocksFile, "- type: hero\n  variant: huge\n- type: pricng\n");
@@ -126,7 +126,7 @@ if ($python === '' || trim((string)@shell_exec('python3 -c "import yaml" 2>&1'))
     file_put_contents($blocksFile, "- type: hero\n  heading: Hi\n- type: container\n  settings: { gap: l, justify: center }\n  columns:\n    - settings: { width: 1/3 }\n      blocks:\n        - { type: text, heading: A }\n    - blocks:\n        - { type: cta, heading: B }\n");
     [$code, $out] = $run('new_entry.py --out ' . escapeshellarg($writable) . ' --type pages --title "Στήλες" --blocks ' . escapeshellarg($blocksFile) . ' --status draft');
     check('new_entry writes a page with a container', [$code, is_file($writable . '/content/pages/stiles.md')], [0, true]);
-    [$yaml] = FarosCMS\FrontMatter::split((string)@file_get_contents($writable . '/content/pages/stiles.md'));
+    [$yaml] = GnozioCMS\FrontMatter::split((string)@file_get_contents($writable . '/content/pages/stiles.md'));
     $meta = Symfony\Component\Yaml\Yaml::parse($yaml);
     check('and the CMS reads its columns and the blocks in them', [$meta['blocks'][1]['type'] ?? '', count($meta['blocks'][1]['columns'] ?? []), $meta['blocks'][1]['columns'][0]['blocks'][0]['type'] ?? ''], ['container', 2, 'text']);
     [$code, $out] = $run('validate_content.py --root ' . escapeshellarg($site) . ' ' . escapeshellarg($writable . '/content/pages/stiles.md'));

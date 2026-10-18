@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * The feed (RSS 2.0) readers and aggregators follow: the newest posts of the site at /feed, the entries of a content type at

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * Reads a route file: GPX, KML or GeoJSON. The result is the lines of the route (each a list of [lat, lng, height]; the

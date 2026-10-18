@@ -7,7 +7,7 @@
  */
 $repo = dirname(__DIR__, 2);
 require $repo . '/vendor/autoload.php';
-use FarosCMS\{Branding, BrandingFonts, FontFile};
+use GnozioCMS\{Branding, BrandingFonts, FontFile};
 
 $fail = 0;
 function check(string $label, $actual, $expected): void { global $fail; $ok = $actual === $expected; if (!$ok) $fail++; echo ($ok ? 'ok   ' : 'FAIL ') . $label . ($ok ? '' : ' => ' . json_encode($actual, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ' expected ' . json_encode($expected, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) . "\n"; }
@@ -217,7 +217,7 @@ check('and exactly its preload', Branding::head($old), "<link rel=\"preload\" hr
 check('even with the new settings present but empty', [Branding::css(['design' => $old['design'] + ['fonts' => [], 'heading_family' => '', 'body_family' => '']]), Branding::head(['design' => $old['design'] + ['fonts' => [], 'heading_family' => '', 'body_family' => '']])], [$expected, Branding::head($old)]);
 check('a role with a family and a role with the old file can live together', has(Branding::css(['design' => ['heading_font' => 'custom', 'heading_family' => 'Acme Sans', 'body_font' => 'custom', 'font_file' => 'fonts/brand.woff2', 'fonts' => $design['fonts']]]), 'font-family:"Brand Font"') , true);
 check('a legacy file is not loaded when both roles use families', has(Branding::css(['design' => $design + ['font_file' => 'fonts/brand.woff2']]), 'Brand Font'), false);
-check('the defaults of the theme give nothing', [Branding::css((new FarosCMS\Theme($repo, 'default'))->defaultSettings()), Branding::head((new FarosCMS\Theme($repo, 'default'))->defaultSettings())], ['', '']);
+check('the defaults of the theme give nothing', [Branding::css((new GnozioCMS\Theme($repo, 'default'))->defaultSettings()), Branding::head((new GnozioCMS\Theme($repo, 'default'))->defaultSettings())], ['', '']);
 
 // ---- the old file becomes a family
 is_dir($custom . '/assets/fonts') || mkdir($custom . '/assets/fonts', 0775, true);

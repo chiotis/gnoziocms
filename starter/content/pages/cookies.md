@@ -5,7 +5,7 @@ visible: true
 translation_id: cbd6e7f801a2b3c4
 excerpt: 'Τι είναι τα cookies και πώς τα χρησιμοποιούμε.'
 seo:
-  title: 'Cookies | FarosCMS Demo'
+  title: 'Cookies | GnozioCMS Demo'
   description: 'Πληροφορίες για τα cookies του ιστότοπου.'
 template: sidebar
 ---

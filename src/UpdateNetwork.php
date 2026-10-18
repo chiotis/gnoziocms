@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * The two things an update asks of the network: fetching the package, and asking the site whether the new version
@@ -54,7 +54,7 @@ final class UpdateNetwork
                 CURLOPT_MAXREDIRS => 5,
                 CURLOPT_CONNECTTIMEOUT => 15,
                 CURLOPT_TIMEOUT => 300,
-                CURLOPT_USERAGENT => 'FarosCMS updater',
+                CURLOPT_USERAGENT => 'GnozioCMS updater',
                 CURLOPT_FAILONERROR => true,
                 CURLOPT_PROTOCOLS => CURLPROTO_HTTPS | CURLPROTO_HTTP,
                 // A redirect may only go to https, unless the address itself is on this machine (tests).
@@ -69,7 +69,7 @@ final class UpdateNetwork
             }
             unset($ch);
         } else {
-            $in = @fopen($url, 'rb', false, stream_context_create(['http' => ['timeout' => 60, 'follow_location' => 1, 'max_redirects' => 5, 'user_agent' => 'FarosCMS updater']]));
+            $in = @fopen($url, 'rb', false, stream_context_create(['http' => ['timeout' => 60, 'follow_location' => 1, 'max_redirects' => 5, 'user_agent' => 'GnozioCMS updater']]));
             if ($in === false) {
                 $error = 'The address could not be reached (cURL is not available here and PHP may not be allowed to open web addresses: allow_url_fopen).';
             } else {
@@ -158,7 +158,7 @@ final class UpdateNetwork
         if (self::hasCurl()) {
             $body = '';
             $ch = curl_init($url);
-            curl_setopt_array($ch, [CURLOPT_TIMEOUT_MS => max(1, (int)($timeout * 1000)), CURLOPT_CONNECTTIMEOUT_MS => max(1, (int)($timeout * 1000)), CURLOPT_FOLLOWLOCATION => false, CURLOPT_HTTPHEADER => $headers, CURLOPT_USERAGENT => 'FarosCMS updater',
+            curl_setopt_array($ch, [CURLOPT_TIMEOUT_MS => max(1, (int)($timeout * 1000)), CURLOPT_CONNECTTIMEOUT_MS => max(1, (int)($timeout * 1000)), CURLOPT_FOLLOWLOCATION => false, CURLOPT_HTTPHEADER => $headers, CURLOPT_USERAGENT => 'GnozioCMS updater',
                 CURLOPT_HEADERFUNCTION => static function ($handle, string $line) use (&$proof): int {
                     if (stripos($line, self::CHECK_HEADER . ':') === 0) {
                         $proof = trim(substr($line, strlen(self::CHECK_HEADER) + 1));

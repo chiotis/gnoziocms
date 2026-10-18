@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * What search engines will make of the site's published entries (Admin > SEO > Overview): which have no description or

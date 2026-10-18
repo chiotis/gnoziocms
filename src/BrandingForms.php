@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * The form styling of Theme > Branding: field background, border colour and width, label size and weight, and the look of focus

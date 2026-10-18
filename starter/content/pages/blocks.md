@@ -206,7 +206,7 @@ blocks:
     eyebrow: 'Team · compact'
     heading: Συμπαγής λίστα
     members:
-      - { name: Άννα Ραφτοπούλου, role: Στρατηγική, email: anna@faroscms.test }
+      - { name: Άννα Ραφτοπούλου, role: Στρατηγική, email: anna@gnoziocms.test }
       - { name: Δημήτρης Λάσκαρης, role: Design, linkedin: 'https://www.linkedin.com/' }
       - { name: Κατερίνα Βλάχου, role: Ανάπτυξη }
   - type: timeline
@@ -232,7 +232,7 @@ blocks:
     eyebrow: 'Contact · cards'
     heading: Στοιχεία σε κάρτες
     items:
-      - { icon: mail, label: Email, value: hello@faroscms.test, url: 'mailto:hello@faroscms.test' }
+      - { icon: mail, label: Email, value: hello@gnoziocms.test, url: 'mailto:hello@gnoziocms.test' }
       - { icon: phone, label: Τηλέφωνο, value: '+30 210 000 0000', url: 'tel:+302100000000' }
       - { icon: map-pin, label: Γραφείο, value: Αθήνα }
   - type: map

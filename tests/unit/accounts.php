@@ -4,7 +4,7 @@
  *   php tests/unit/accounts.php
  */
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
-use FarosCMS\{Auth, GoogleSignIn, LoginThrottle, PermissionService, RoleAdmin, SignIn, SystemDatabase, SystemMetaRepository, UserAdmin, UserRepository};
+use GnozioCMS\{Auth, GoogleSignIn, LoginThrottle, PermissionService, RoleAdmin, SignIn, SystemDatabase, SystemMetaRepository, UserAdmin, UserRepository};
 
 $fail = 0;
 function check(string $label, $actual, $expected): void { global $fail; $ok = $actual === $expected; if (!$ok) $fail++; echo ($ok ? 'ok   ' : 'FAIL ') . $label . ($ok ? '' : ' => ' . json_encode($actual, JSON_UNESCAPED_UNICODE) . ' expected ' . json_encode($expected, JSON_UNESCAPED_UNICODE)) . "\n"; }
@@ -61,7 +61,7 @@ $withDomain['allowed_domain'] = 'example.org';
 check('a verified email from the domain is accepted, in lower case', $g->accept(['email' => ' Ada@Example.org ', 'email_verified' => true, 'sub' => ' g1 '], $withDomain), ['ok' => true, 'message' => '', 'email' => 'ada@example.org', 'sub' => 'g1']);
 check('an unverified email is refused', $g->accept(['email' => 'a@example.org', 'email_verified' => false], $withDomain)['message'], 'Google account email is not verified.');
 check('so is a missing one', $g->accept([], $withDomain)['ok'], false);
-check('another domain is refused', $g->accept(['email' => 'a@other.org', 'email_verified' => true], $withDomain)['message'], 'This Google account is not allowed for this FarosCMS installation.');
+check('another domain is refused', $g->accept(['email' => 'a@other.org', 'email_verified' => true], $withDomain)['message'], 'This Google account is not allowed for this GnozioCMS installation.');
 check('a look-alike domain is refused', $g->accept(['email' => 'a@notexample.org', 'email_verified' => true], $withDomain)['ok'], false);
 check('without a domain rule any verified account is accepted', $g->accept(['email' => 'a@other.org', 'email_verified' => true], $cfg)['ok'], true);
 
@@ -105,7 +105,7 @@ foreach ([
 }
 $longShipped = ['username' => 'shipped', 'password' => '12345678', 'password_confirm' => '12345678'] + $new;
 file_put_contents("$dir/content/users/users.yaml", "- username: shipped\n  password: 'plain:12345678'\n  role: admin\n");
-check('the password shipped with the CMS is refused even when long enough', $ua->save(0, null, $actorAdmin, $longShipped)['error'], 'Choose a password other than the one shipped with FarosCMS.');
+check('the password shipped with the CMS is refused even when long enough', $ua->save(0, null, $actorAdmin, $longShipped)['error'], 'Choose a password other than the one shipped with GnozioCMS.');
 check('what was typed comes back to show again', $ua->save(0, null, $actorAdmin, ['username' => 'bob'] + $new)['payload']['email'], 'bob@x.test');
 $bobId = (int)$users->findByUsername('bob')['id'];
 $bob = $users->find($bobId);

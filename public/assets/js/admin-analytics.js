@@ -1,5 +1,5 @@
 /*
- * Admin > Analytics: the settings show what belongs to the choice (no tracking, your own code, FarosCMS analytics) and the reports
+ * Admin > Analytics: the settings show what belongs to the choice (no tracking, your own code, GnozioCMS analytics) and the reports
  * switch between the lists of a card. Without this script every part is shown and every list is open.
  */
 (function () {

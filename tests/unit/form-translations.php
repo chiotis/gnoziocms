@@ -7,7 +7,7 @@
  *   php tests/unit/form-translations.php
  */
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
-use FarosCMS\{ContentItem, ContentRepository, FormFields, FormProcessor, FormsAdmin, FormSubmissionRepository, FormTranslationMigration, FormTranslations, PublicForms};
+use GnozioCMS\{ContentItem, ContentRepository, FormFields, FormProcessor, FormsAdmin, FormSubmissionRepository, FormTranslationMigration, FormTranslations, PublicForms};
 use League\CommonMark\Environment\Environment;
 use League\CommonMark\Extension\CommonMark\CommonMarkCoreExtension;
 use League\CommonMark\MarkdownConverter;

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * What a map needs to know about content: where each entry is, how to describe it in a popup, the line of a route, and which

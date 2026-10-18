@@ -5,7 +5,7 @@ visible: true
 translation_id: bac5d6e7f801a2b3
 excerpt: 'Βασικοί όροι χρήσης του ιστότοπου και των υπηρεσιών.'
 seo:
-  title: 'Όροι Χρήσης | FarosCMS Demo'
+  title: 'Όροι Χρήσης | GnozioCMS Demo'
   description: 'Νομικοί όροι για τη χρήση του ιστότοπου.'
 template: sidebar
 ---

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * The site's side of the Omni protocol (docs/omni-protocol.md): checks an address, connects with a code, sends signed reports
@@ -101,7 +101,7 @@ final class OmniClient
             return ['ok' => false, 'message' => 'No Omni answered at ' . $url . ($ping['error'] !== '' ? ' (' . $ping['error'] . ')' : ($ping['status'] > 0 ? ' (HTTP ' . $ping['status'] . ')' : '')) . '. Check the address.'];
         }
         if (!in_array(self::PROTOCOL, (array)($about['protocols'] ?? []), true)) {
-            return ['ok' => false, 'message' => 'This Omni does not speak protocol ' . self::PROTOCOL . ', the one this version of FarosCMS uses.'];
+            return ['ok' => false, 'message' => 'This Omni does not speak protocol ' . self::PROTOCOL . ', the one this version of GnozioCMS uses.'];
         }
 
         $body = (string)json_encode(['protocol' => self::PROTOCOL, 'code' => trim($code), 'site' => ($this->site)()], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
@@ -256,7 +256,7 @@ final class OmniClient
      */
     public static function request(string $method, string $url, array $headers, string $body, int $timeout): array
     {
-        $headers[] = 'User-Agent: FarosCMS Omni client';
+        $headers[] = 'User-Agent: GnozioCMS Omni client';
         if (filter_var(ini_get('allow_url_fopen'), FILTER_VALIDATE_BOOLEAN)) {
             $context = stream_context_create(['http' => [
                 'method' => $method,

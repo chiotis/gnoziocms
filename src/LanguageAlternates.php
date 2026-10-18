@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * The other languages of a page: the links of the language switcher for an entry, and the alternate addresses

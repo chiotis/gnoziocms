@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /** Content files are YAML front matter between --- lines, then the Markdown body. */
 final class FrontMatter

@@ -5,7 +5,7 @@
  *   php tests/unit/visual-markdown.php
  */
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
-use FarosCMS\VisualMarkdown;
+use GnozioCMS\VisualMarkdown;
 use League\CommonMark\Environment\Environment;
 use League\CommonMark\Extension\Attributes\AttributesExtension;
 use League\CommonMark\Extension\CommonMark\CommonMarkCoreExtension;

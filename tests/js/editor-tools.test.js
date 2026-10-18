@@ -73,6 +73,7 @@ async function page(drawn) {
 
 (async function main() {
   let t = await page();
+  check('old and new editor APIs share the same editor state', t.window.GnozioEditor === t.window.FarosEditor && typeof t.window.GnozioEditor.markdownOf === 'function');
   check('the editor starts, with the toolbar and the text drawn', t.surface.children.length === 3 && t.$('[data-cmd=image]') !== null, t.surface.innerHTML);
   check('and four alignment buttons', ['alignleft', 'aligncenter', 'alignright', 'alignjustify'].every((c) => t.$('[data-cmd=' + c + ']') !== null));
 

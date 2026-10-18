@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * Signing in with a username and password: repeated failures from one place block it for a while, every attempt is
- * logged, and a sign-in with the password that ships with FarosCMS is flagged so the person is told to change it.
+ * logged, and a sign-in with the password that ships with GnozioCMS is flagged so the person is told to change it.
  */
 final class SignIn
 {

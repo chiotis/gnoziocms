@@ -54,7 +54,7 @@
 
     <div class="flex flex-col gap-3 border-b border-slate-200 pb-4 lg:flex-row lg:items-center lg:justify-between">
       <div class="min-w-0">
-        <p class="truncate text-xs text-slate-400">Configure your FarosCMS installation</p>
+        <p class="truncate text-xs text-slate-400">Configure your GnozioCMS installation</p>
       </div>
     </div>
 
@@ -217,7 +217,7 @@
             </label>
             <label class="block">
               <span class="mb-1 block text-sm font-medium text-slate-700">From name</span>
-              <input type="text" name="mail_from_name" value="{{ settings_form.mail_from_name }}" placeholder="FarosCMS" class="{{ input_class }}">
+              <input type="text" name="mail_from_name" value="{{ settings_form.mail_from_name }}" placeholder="GnozioCMS" class="{{ input_class }}">
             </label>
           </div>
           <div class="mt-3 flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
@@ -285,12 +285,12 @@
         <div class="{{ section_class }}">
           <div class="{{ section_header_class }}">
             <h2 class="text-sm font-semibold text-slate-900">Google Sign-In</h2>
-            <p class="mt-0.5 text-xs text-slate-400">Allow existing FarosCMS users to sign in with matching Google accounts.</p>
+            <p class="mt-0.5 text-xs text-slate-400">Allow existing GnozioCMS users to sign in with matching Google accounts.</p>
           </div>
           <label class="flex items-start justify-between gap-4 py-2.5">
             <span>
               <span class="block text-sm font-medium text-slate-800">Enable Google Sign-In</span>
-              <span class="block text-xs text-slate-400">Users must already exist in FarosCMS with the same email address.</span>
+              <span class="block text-xs text-slate-400">Users must already exist in GnozioCMS with the same email address.</span>
             </span>
             <span class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center">
               <input type="checkbox" name="google_enabled" value="1" {% if settings_form.google_enabled %}checked{% endif %} class="peer sr-only">
@@ -310,7 +310,7 @@
             <label class="block sm:col-span-2">
               <span class="mb-1 block text-sm font-medium text-slate-700">Allowed domain</span>
               <input type="text" name="google_allowed_domain" value="{{ settings_form.google_allowed_domain }}" placeholder="example.com" class="{{ input_class }}">
-              <span class="mt-1 block text-xs text-slate-400">Leave empty to allow any Google account that matches an active FarosCMS user email.</span>
+              <span class="mt-1 block text-xs text-slate-400">Leave empty to allow any Google account that matches an active GnozioCMS user email.</span>
             </label>
           </div>
         </div>
@@ -393,7 +393,7 @@
             </label>
             <label class="block">
               <span class="mb-1 block text-sm font-medium text-slate-700">Bucket</span>
-              <input type="text" name="backup_remote_bucket" value="{{ settings_form.backup_remote_bucket }}" placeholder="faroscms-backups" class="{{ input_class }}">
+              <input type="text" name="backup_remote_bucket" value="{{ settings_form.backup_remote_bucket }}" placeholder="gnoziocms-backups" class="{{ input_class }}">
             </label>
             <label class="block">
               <span class="mb-1 block text-sm font-medium text-slate-700">Access key / key ID</span>

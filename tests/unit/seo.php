@@ -5,8 +5,8 @@
  *   php tests/unit/seo.php
  */
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
-use FarosCMS\RobotsTxt;
-use FarosCMS\SeoSettings as S;
+use GnozioCMS\RobotsTxt;
+use GnozioCMS\SeoSettings as S;
 
 $fail = 0;
 function check(string $label, $actual, $expected): void { global $fail; $ok = $actual === $expected; if (!$ok) $fail++; echo ($ok ? 'ok   ' : 'FAIL ') . $label . ($ok ? '' : ' => ' . json_encode($actual, JSON_UNESCAPED_UNICODE) . ' expected ' . json_encode($expected, JSON_UNESCAPED_UNICODE)) . "\n"; }

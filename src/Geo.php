@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * Small geography helpers: reading and writing a position ("35.2012, 26.2744"), distances, the box around some points, and a

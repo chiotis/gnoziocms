@@ -32,7 +32,7 @@ def collect(payload, ua=UA, headers=None, client=None):
 
 # ---- the screen, and who may
 st, _, html = root.get('/admin/analytics')
-check('the screen opens, with the three choices', st == 200 and 'No tracking' in html and 'Your own tracking code' in html and 'FarosCMS analytics' in html, st)
+check('the screen opens, with the three choices', st == 200 and 'No tracking' in html and 'Your own tracking code' in html and 'GnozioCMS analytics' in html, st)
 check('and Analytics is in the System menu', 'href="/admin/analytics"' in html)
 check('an editor cannot open it, nor see it in the menu', ed.get('/admin/analytics')[0] == 403 and 'href="/admin/analytics"' not in ed.get('/admin')[2])
 check('a visitor is sent to sign in', anon.get('/admin/analytics')[0] in (302, 303))
@@ -123,7 +123,7 @@ check('an editor cannot read the reports, the lists or who is on the site', all(
 st, hdrs, body = root.get('/admin/analytics?realtime=1')
 live = json.loads(body)
 check('who is on the site now', hdrs.get('Content-Type', '').startswith('application/json') and live['visitors'] >= 1 and '/dnt' in live['pages'] or live['visitors'] >= 1, live)
-check('the settings are one tab away', 'FarosCMS analytics' in root.get('/admin/analytics?tab=settings')[2])
+check('the settings are one tab away', 'GnozioCMS analytics' in root.get('/admin/analytics?tab=settings')[2])
 
 # ---- what is kept can be deleted
 st, _, shown = root.get('/admin/analytics?tab=settings')

@@ -60,14 +60,14 @@ check('nor save by sending a form', 'editor-was-here-1' not in head('/')[1])
 # ---- by default nothing about the pages changes
 st, html = head('/plain')
 before_title = title(html)
-check('a page is titled as before', before_title.endswith(' | FarosCMS') or ' | ' in before_title, before_title)
+check('a page is titled as before', before_title.endswith(' | GnozioCMS') or ' | ' in before_title, before_title)
 check('open pages ask for large previews', 'max-image-preview:large' in (meta(html, 'robots') or ''), meta(html, 'robots'))
 check('the search results are kept out', 'noindex' in (meta(head('/search?q=a')[1], 'robots') or ''))
 
 # ---- search appearance
 save('search', 'title_format', {'separator': '–', 'title_format': '{site} {sep} {title}', 'home_title': 'Home of the studio', 'home_description': 'About the studio home.', 'default_description': 'The site in a line.'})
 st, html = head('/plain'); t = title(html)
-check('the title follows the format and the separator', t.endswith('Plain page') and ' – ' in t and not t.endswith('| FarosCMS'), t)
+check('the title follows the format and the separator', t.endswith('Plain page') and ' – ' in t and not t.endswith('| GnozioCMS'), t)
 check('a page without a description gets the default', meta(html, 'description') == 'The site in a line.', meta(html, 'description'))
 st, html = head('/')
 check('the home page has a title and a description of its own (its SEO tab wins)', title(html) == 'FarosCMS Demo | Digital Studio' and 'Ενδεικτική' in (meta(html, 'description') or ''))

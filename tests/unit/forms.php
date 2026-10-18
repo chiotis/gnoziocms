@@ -5,7 +5,7 @@
  *   php tests/unit/forms.php
  */
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
-use FarosCMS\{ContentItem, ContentRepository, FormFields, FormProcessor, FormsAdmin, FormSubmissionRepository};
+use GnozioCMS\{ContentItem, ContentRepository, FormFields, FormProcessor, FormsAdmin, FormSubmissionRepository};
 use League\CommonMark\Environment\Environment;
 use League\CommonMark\Extension\CommonMark\CommonMarkCoreExtension;
 use League\CommonMark\MarkdownConverter;

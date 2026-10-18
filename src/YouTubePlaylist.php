@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * The videos of a YouTube playlist, for the Playlist block. With an API key (Admin > Settings > APIs) the YouTube Data API gives
@@ -289,13 +289,13 @@ final class YouTubePlaylist
         }
         if (UpdateNetwork::hasCurl()) {
             $ch = curl_init($url);
-            curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => $timeout, CURLOPT_CONNECTTIMEOUT => 3, CURLOPT_FOLLOWLOCATION => false, CURLOPT_MAXFILESIZE => 3_000_000, CURLOPT_USERAGENT => 'Mozilla/5.0 (compatible; FarosCMS)', CURLOPT_HTTPHEADER => ['Accept: application/json, application/atom+xml, application/xml;q=0.9']]);
+            curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => $timeout, CURLOPT_CONNECTTIMEOUT => 3, CURLOPT_FOLLOWLOCATION => false, CURLOPT_MAXFILESIZE => 3_000_000, CURLOPT_USERAGENT => 'Mozilla/5.0 (compatible; GnozioCMS)', CURLOPT_HTTPHEADER => ['Accept: application/json, application/atom+xml, application/xml;q=0.9']]);
             $body = curl_exec($ch);
             $status = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
             unset($ch);
             return is_string($body) ? [$status, $body] : [0, ''];
         }
-        $body = @file_get_contents($url, false, stream_context_create(['http' => ['timeout' => $timeout, 'ignore_errors' => true, 'follow_location' => 0, 'header' => "User-Agent: Mozilla/5.0 (compatible; FarosCMS)\r\n"]]));
+        $body = @file_get_contents($url, false, stream_context_create(['http' => ['timeout' => $timeout, 'ignore_errors' => true, 'follow_location' => 0, 'header' => "User-Agent: Mozilla/5.0 (compatible; GnozioCMS)\r\n"]]));
         $status = 0;
         foreach ($http_response_header ?? [] as $line) {
             if (preg_match('#^HTTP/\S+\s+(\d{3})#', $line, $m)) {

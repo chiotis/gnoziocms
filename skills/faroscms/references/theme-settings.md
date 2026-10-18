@@ -1,4 +1,4 @@
-# Theme settings of this installation (FarosCMS 0.1.146)
+# Theme settings of this installation (GnozioCMS 0.1.146)
 
 Set with `python3 scripts/site_settings.py set theme section.field=value`. A text marked *translatable* takes a plain text or a map `{default: …, en: …}`.
 

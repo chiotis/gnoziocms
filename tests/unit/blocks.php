@@ -5,7 +5,7 @@
  */
 $root = dirname(__DIR__, 2);
 require $root . '/vendor/autoload.php';
-use FarosCMS\{Theme, BlockRegistry, BlockRenderer, FieldSchema};
+use GnozioCMS\{Theme, BlockRegistry, BlockRenderer, FieldSchema};
 use Symfony\Component\Yaml\Yaml;
 $fail = 0;
 function check(string $label, $actual, $expected) { global $fail; $ok = $actual === $expected; if (!$ok) $fail++; echo ($ok ? 'ok   ' : 'FAIL ') . $label . ($ok ? '' : ' => ' . var_export($actual, true) . ' expected ' . var_export($expected, true)) . "\n"; }

@@ -1,6 +1,6 @@
 # Content format
 
-Everything a visitor reads is a file. The facts below were checked against FarosCMS 0.1.118 (read `VERSION` in the installation; the format is deliberately stable, but check `CHANGELOG.md` if the version is much newer).
+Everything a visitor reads is a file. The facts below were checked against GnozioCMS 0.1.146 (read `VERSION` in the installation; the format is deliberately stable, but check `CHANGELOG.md` if the version is much newer).
 
 ## Where things live
 

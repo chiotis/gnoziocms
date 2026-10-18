@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * "On this page" contents for rendered Markdown: gives every <h2> (and <h3>) an id when it has

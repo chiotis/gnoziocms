@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * The files a visitor attaches to a form: which kinds are allowed (and that the content really is what the name says), the

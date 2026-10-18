@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * The type overrides of Theme > Branding: a step of the type scale, a weight, a line height and a letter spacing for H1, H2, H3,

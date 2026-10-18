@@ -13,10 +13,10 @@ $version = trim((string)file_get_contents($root . '/VERSION'));
 $run = function (string $dir, string $extra = '') use ($root): string { return (string)shell_exec('php ' . escapeshellarg($root . '/scripts/build-release.php') . ' ' . escapeshellarg($dir) . ' ' . $extra . ' 2>&1'); };
 
 $said = $run($out . '/a', '--repo=acme/site');
-check('it says what it built', str_starts_with($said, "Built faroscms-$version.zip: "), true);
+check('it says what it built', str_starts_with($said, "Built gnoziocms-$version.zip: "), true);
 $manifest = json_decode((string)file_get_contents($out . '/a/release.json'), true);
-$zipPath = $out . "/a/faroscms-$version.zip";
-check('the manifest names the version, the package and where it is', [$manifest['version'], $manifest['package'], $manifest['package_url']], [$version, "faroscms-$version.zip", "https://github.com/acme/site/releases/download/v$version/faroscms-$version.zip"]);
+$zipPath = $out . "/a/gnoziocms-$version.zip";
+check('the manifest names the version, the package and where it is', [$manifest['version'], $manifest['package'], $manifest['package_url']], [$version, "gnoziocms-$version.zip", "https://github.com/acme/site/releases/download/v$version/gnoziocms-$version.zip"]);
 check('and the lowest PHP, from composer.json', $manifest['min_php'], '8.5');
 check('and the checksum and size of the package', [$manifest['sha256'], $manifest['size']], [hash_file('sha256', $zipPath), filesize($zipPath)]);
 check('a backup is required before installing it', $manifest['requires_backup'], true);
@@ -33,7 +33,7 @@ $leaks = array_values(array_filter($names, fn($n) => (bool)preg_match('#^(conten
 check('and nothing of a site: no content, uploads, custom/, storage, tests, or settings', $leaks, []);
 check('uploads keep the file that stops code running in them', in_array('public/uploads/.htaccess', $names, true), true);
 require_once $root . '/vendor/autoload.php';
-check('every file of the package is one an update is allowed to write (the two lists have not drifted apart)', array_values(array_filter($names, fn($n) => !FarosCMS\UpdateInstaller::isAllowedPath($n))), []);
+check('every file of the package is one an update is allowed to write (the two lists have not drifted apart)', array_values(array_filter($names, fn($n) => !GnozioCMS\UpdateInstaller::isAllowedPath($n))), []);
 // An update is installed by the installer of the site being updated, which is older than the package. It refuses any file
 // it does not know, so a new single file (outside the folders below) would stop every older site from updating. This is the
 // list of 0.1.23; add to it only when the oldest site that must still update is past the release that taught the installer
@@ -62,7 +62,7 @@ file_put_contents($work . '/custom/custom.css', 'x');
 mkdir($work . '/storage/db', 0775, true);
 file_put_contents($work . '/storage/db/app.sqlite', 'x');
 shell_exec('php ' . escapeshellarg($work . '/scripts/build-release.php') . ' ' . escapeshellarg($out . '/b') . ' 2>&1');
-$zip->open($out . "/b/faroscms-$version.zip");
+$zip->open($out . "/b/gnoziocms-$version.zip");
 $names = [];
 for ($i = 0; $i < $zip->numFiles; $i++) { $names[] = $zip->getNameIndex($i); }
 $zip->close();
@@ -70,7 +70,7 @@ check('a folder with a site in it gives a package without the site', array_value
 
 // The same version builds to the same bytes.
 $run($out . '/c', '--repo=acme/site');
-check('the same version builds to the same package', hash_file('sha256', $out . "/c/faroscms-$version.zip"), $manifest['sha256']);
+check('the same version builds to the same package', hash_file('sha256', $out . "/c/gnoziocms-$version.zip"), $manifest['sha256']);
 
 // A version that is not one is refused.
 $bogus = $out . '/bogus';

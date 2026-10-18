@@ -1,11 +1,11 @@
 ---
 name: faroscms
-description: How to work on a website that runs FarosCMS, a flat-file PHP CMS with Markdown/YAML content, Twig themes and a block editor. Use this skill whenever the job involves a FarosCMS site (a `content/` folder with pages and posts as Markdown, an admin at /admin, blocks like hero, features, faq, cta, pricing), or whenever someone asks to create or edit pages with blocks, import or migrate content (WordPress, spreadsheets, Word or Google Docs, another website, CSV), change site or theme settings (palette, header, footer, logo, languages, menus, forms, SEO, redirects), translate a page into another language, or build a whole website with this CMS, even if they only say "my site", "the CMS" or "faros". It tells you which access you have (the site's files, a browser in the admin, or nothing but the chat), the exact content format, every block and theme setting, scripts that write and check content the way the CMS reads it, and what must be left to a person.
+description: How to work on a website that runs GnozioCMS (previously FarosCMS), a flat-file PHP CMS with Markdown/YAML content, Twig themes and a block editor. Use this skill whenever the job involves a GnozioCMS site (a `content/` folder with pages and posts as Markdown, an admin at /admin, blocks like hero, features, faq, cta, pricing), or whenever someone asks to create or edit pages with blocks, import or migrate content (WordPress, spreadsheets, Word or Google Docs, another website, CSV), change site or theme settings (palette, header, footer, logo, languages, menus, forms, SEO, redirects), translate a page into another language, or build a whole website with this CMS, even if they only say "my site", "the CMS", "gnozio", "gnoziocms" or "faros". It tells you which access you have (the site's files, a browser in the admin, or nothing but the chat), the exact content format, every block and theme setting, scripts that write and check content the way the CMS reads it, and what must be left to a person.
 ---
 
-# FarosCMS
+# GnozioCMS
 
-FarosCMS keeps a site's pages, posts and projects as **Markdown files with YAML front matter** in `content/`, draws them with a Twig theme made of ~35 ready-made **blocks** (hero, features, text and image, FAQ, pricing, gallery, forms…), and gives editors an admin at `/admin`. It is multilingual (Greek and English by default). **Settings, users, redirects and history live in one SQLite file, not in files.** Nothing needs a build step.
+GnozioCMS keeps a site's pages, posts and projects as **Markdown files with YAML front matter** in `content/`, draws them with a Twig theme made of ~35 ready-made **blocks** (hero, features, text and image, FAQ, pricing, gallery, forms…), and gives editors an admin at `/admin`. It is multilingual (Greek and English by default). **Settings, users, redirects and history live in one SQLite file, not in files.** Nothing needs a build step.
 
 The hard part of working with it is not the syntax. It is that **the CMS never complains**: a wrong block option is silently replaced by the default, an unknown field is ignored, a YAML typo turns the whole page into an unpublished draft. So you must write values the CMS accepts, and then *check* them. The bundled scripts do both.
 
@@ -19,7 +19,7 @@ The hard part of working with it is not the syntax. It is that **the CMS never c
 
 If you have files, start with `python3 scripts/site_info.py`: it prints the version, languages, home page, content per type and language, menus, forms, taxonomies, the current look, the blocks (including the site's own), and whether the database exists. Read `custom/` and `VERSION`/`CHANGELOG.md` in the installation if something differs from this skill. Ask the person only for what you cannot find: which pages, in which languages, what the content is, whether to publish.
 
-The scripts are in this skill's `scripts/` folder. Run them with the installation as the current folder, for example `cd /var/www/site && python3 /path/to/faroscms-skill/scripts/site_info.py` (`scripts/…` in the commands below means that folder), or pass `--root /var/www/site`. They need Python 3.8+ and PyYAML. Without an installation they fall back to the definitions of one FarosCMS version bundled in `snapshot/` and say so.
+The scripts are in this skill's `scripts/` folder. Run them with the installation as the current folder, for example `cd /var/www/site && python3 /path/to/faroscms-skill/scripts/site_info.py` (`scripts/…` in the commands below means that folder), or pass `--root /var/www/site`. They need Python 3.8+ and PyYAML. Without an installation they fall back to the definitions of one GnozioCMS version bundled in `snapshot/` and say so.
 
 ## 2. Rules that keep a client's site safe
 
@@ -101,7 +101,7 @@ Colours: a palette is the one place where colours are set. Admin > Theme > Brand
 - `references/admin-ui.md`: browser-driven work and the screen map.
 - `references/troubleshooting.md`: symptom → cause → fix; the final checklist.
 
-The shipped references describe FarosCMS 0.1.118 (`snapshot/VERSION`). If the installation is newer, the installed files win: `block_reference.py`, `site_settings.py schema theme --markdown` and its `CHANGELOG.md` are always current.
+The shipped references describe GnozioCMS 0.1.146 (`snapshot/VERSION`). If the installation is newer, the installed files win: `block_reference.py`, `site_settings.py schema theme --markdown` and its `CHANGELOG.md` are always current.
 
 ## 9. Finish
 

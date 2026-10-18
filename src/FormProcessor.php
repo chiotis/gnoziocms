@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * What happens to a form someone fills in on the site: the values a form starts with, checking what was sent against

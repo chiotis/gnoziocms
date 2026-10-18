@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * Theme > Branding: the colours and shape of links and of the three button styles (Primary, Secondary, Text).

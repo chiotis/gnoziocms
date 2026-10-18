@@ -6,7 +6,7 @@
  */
 $repo = dirname(__DIR__, 2);
 require $repo . '/vendor/autoload.php';
-use FarosCMS\{ContentRepository, ContentTypeAdmin, ContentTypes, LayoutsAdmin, Menus, RedirectRepository, SingleLayouts, SystemDatabase, Taxonomies, TaxonomyEditor, Theme};
+use GnozioCMS\{ContentRepository, ContentTypeAdmin, ContentTypes, LayoutsAdmin, Menus, RedirectRepository, SingleLayouts, SystemDatabase, Taxonomies, TaxonomyEditor, Theme};
 use League\CommonMark\Environment\Environment;
 use League\CommonMark\Extension\CommonMark\CommonMarkCoreExtension;
 use League\CommonMark\MarkdownConverter;

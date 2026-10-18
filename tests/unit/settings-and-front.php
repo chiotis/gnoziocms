@@ -5,7 +5,7 @@
  *   php tests/unit/settings-and-front.php
  */
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
-use FarosCMS\{AdminChrome, AdminNotices, BackupAdmin, BackupManager, BackupRunRepository, BackupService, FrontRoute, MediaLibrary, NotificationRepository, SettingsAdmin, SiteLimits, SiteSettings, SystemDatabase, SystemMetaRepository, UpdateService, UserRepository};
+use GnozioCMS\{AdminChrome, AdminNotices, BackupAdmin, BackupManager, BackupRunRepository, BackupService, FrontRoute, MediaLibrary, NotificationRepository, SettingsAdmin, SiteLimits, SiteSettings, SystemDatabase, SystemMetaRepository, UpdateService, UserRepository};
 
 $fail = 0;
 function check(string $label, $actual, $expected): void { global $fail; $ok = $actual === $expected; if (!$ok) $fail++; echo ($ok ? 'ok   ' : 'FAIL ') . $label . ($ok ? '' : ' => ' . json_encode($actual, JSON_UNESCAPED_UNICODE) . ' expected ' . json_encode($expected, JSON_UNESCAPED_UNICODE)) . "\n"; }

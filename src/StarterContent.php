@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * Adds the demo site of starter/ to a site that already has content (Admin > System > Demo content): pages, posts, projects,

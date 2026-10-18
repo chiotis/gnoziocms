@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * What the Redirects screen does: checking and saving a redirect typed in the form, switching one on or off, deleting,

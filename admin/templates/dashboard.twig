@@ -232,7 +232,7 @@
           {% endfor %}
           {% if can('updates.manage') %}
             <div>
-              <dt>FarosCMS</dt>
+              <dt>GnozioCMS</dt>
               <dd class="{{ admin_update_available|default(false) ? 'text-blue-700' : 'text-emerald-700' }}"><a href="{{ url('admin/updates') }}" class="hover:underline">{{ admin_update_available|default(false) ? 'Update ' ~ admin_update_latest ~ ' available' : 'v' ~ admin_version|default('base') }}</a></dd>
             </div>
           {% endif %}

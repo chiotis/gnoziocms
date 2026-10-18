@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * The translations of an entry, as the admin shows them: which languages each entry of a list also exists in, and

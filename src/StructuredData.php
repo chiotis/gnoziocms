@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * The JSON-LD that describes a page to search engines: who the site is (an organization, a local business or a person,
@@ -50,7 +50,7 @@ final class StructuredData
         $organization = [
             '@type' => $identity['type'],
             '@id' => $siteUrl . '#organization',
-            'name' => $identity['name'] !== '' ? $identity['name'] : (string)($this->settings()['title'] ?? 'FarosCMS'),
+            'name' => $identity['name'] !== '' ? $identity['name'] : (string)($this->settings()['title'] ?? 'GnozioCMS'),
             'url' => $siteUrl,
         ];
         if ($identity['alternate_name'] !== '') {
@@ -123,7 +123,7 @@ final class StructuredData
                 '@type' => 'WebSite',
                 '@id' => $siteUrl . '#website',
                 'url' => $homeUrl,
-                'name' => (string)($this->settings()['title'] ?? 'FarosCMS'),
+                'name' => (string)($this->settings()['title'] ?? 'GnozioCMS'),
                 'inLanguage' => $lang,
                 'publisher' => $organization,
             ];
@@ -142,7 +142,7 @@ final class StructuredData
         $seo = is_array($item->meta['seo'] ?? null) ? $item->meta['seo'] : [];
         $description = trim((string)($seo['description'] ?? '')) ?: trim((string)($item->meta['excerpt'] ?? ''));
         $absolute = fn(string $url): string => preg_match('#^https?://#i', $url) ? $url : ($this->absoluteUrl)($url);
-        $website = ['@type' => 'WebSite', '@id' => $siteUrl . '#website', 'url' => $homeUrl, 'name' => (string)($this->settings()['title'] ?? 'FarosCMS')];
+        $website = ['@type' => 'WebSite', '@id' => $siteUrl . '#website', 'url' => $homeUrl, 'name' => (string)($this->settings()['title'] ?? 'GnozioCMS')];
 
         if ($item->type === 'posts' || $item->type === 'projects') {
             // A post is a blog posting, a project an article; both name the author, the dates, and a picture.

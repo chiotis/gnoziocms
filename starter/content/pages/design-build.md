@@ -5,7 +5,7 @@ visible: true
 translation_id: 54d7e8f901a2b3c4
 excerpt: 'Μετατρέπουμε τη στρατηγική σε λειτουργικό προϊόν με γρήγορους κύκλους παράδοσης.'
 seo:
-  title: 'Design & Build | FarosCMS Demo'
+  title: 'Design & Build | GnozioCMS Demo'
   description: 'Σχεδιασμός εμπειρίας και ανάπτυξη με έμφαση στην ταχύτητα και ποιότητα.'
 blocks:
   -

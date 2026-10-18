@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * WCAG 2 contrast: the relative luminance of a colour, the ratio between two colours, the level a ratio reaches, and the

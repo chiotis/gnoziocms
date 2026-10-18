@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * What the Analytics reports show for a stretch of days: the totals with their change from the stretch before, the chart (an hour

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * The health of the installation as the dashboard and the System screen show it: one check per thing that can go
@@ -113,7 +113,7 @@ final class SystemStatus
         return [
             'PHP' => PHP_VERSION . ' (' . PHP_SAPI . ')',
             'SQLite' => $this->sqliteVersion() ?: 'unavailable',
-            'FarosCMS' => $version . ($commit !== '' ? ' @ ' . $commit : ''),
+            'GnozioCMS' => $version . ($commit !== '' ? ' @ ' . $commit : ''),
             'Memory limit' => (string)ini_get('memory_limit'),
             'Upload max / post max' => ini_get('upload_max_filesize') . ' / ' . ini_get('post_max_size'),
             'Max execution time' => (string)ini_get('max_execution_time') . 's',

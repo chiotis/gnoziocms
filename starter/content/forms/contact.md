@@ -8,7 +8,7 @@ success_message: 'Ευχαριστούμε. Το μήνυμά σας καταχ�
 store_submissions: true
 notifications:
   enabled: true
-  to: hello@faroscms.test
+  to: hello@gnoziocms.test
   subject: 'Νέα υποβολή φόρμας επικοινωνίας'
   reply_to_field: email
   auto_reply: true

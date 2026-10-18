@@ -5,7 +5,7 @@ declare(strict_types=1);
 if (PHP_VERSION_ID < 80500) {
     http_response_code(503);
     header('Content-Type: text/plain; charset=utf-8');
-    exit("FarosCMS requires PHP 8.5 or newer. Please update the site's PHP version.\n");
+    exit("GnozioCMS requires PHP 8.5 or newer. Please update the site's PHP version.\n");
 }
 
 // PHP's built-in server (`php -S … -t public public/index.php`): let it serve files that exist.
@@ -28,13 +28,13 @@ if (!trait_exists('Nette\\SmartObject') && file_exists($smartObject)) {
 }
 
 // Theme and custom/ assets live outside public/; serve them before the application boots.
-if (FarosCMS\ThemeAssets::handle(dirname(__DIR__), (string)($_SERVER['REQUEST_URI'] ?? '/'))) {
+if (GnozioCMS\ThemeAssets::handle(dirname(__DIR__), (string)($_SERVER['REQUEST_URI'] ?? '/'))) {
     return;
 }
 // Missing responsive image variants are generated once, then served statically by the web server.
-if (FarosCMS\Images::handle(__DIR__, (string)($_SERVER['REQUEST_URI'] ?? '/'))) {
+if (GnozioCMS\Images::handle(__DIR__, (string)($_SERVER['REQUEST_URI'] ?? '/'))) {
     return;
 }
 
-$app = new FarosCMS\App(dirname(__DIR__));
+$app = new GnozioCMS\App(dirname(__DIR__));
 $app->handle();

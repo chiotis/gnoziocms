@@ -1,5 +1,5 @@
 """
-Shared helpers for the FarosCMS skill scripts (Python 3.8+, needs PyYAML).
+Shared helpers for the GnozioCMS skill scripts (Python 3.8+, needs PyYAML).
 
 Everything here mirrors what the CMS itself does, read from the installation's own files, so it stays right when
 the installation is updated: block definitions come from themes/<theme>/blocks and custom/blocks, theme settings from
@@ -32,7 +32,7 @@ def find_root(start=None, allow_snapshot=False):
     """
     The installation folder: the one that holds VERSION and themes/ (looked for here and in the parents).
     `--root snapshot`, or no installation at all when allow_snapshot is true, gives the definitions bundled with the skill
-    (the blocks, the theme settings and the ready-made layouts of one FarosCMS version): enough to write and check content
+    (the blocks, the theme settings and the ready-made layouts of one GnozioCMS version): enough to write and check content
     for a site you cannot see, not enough to know what that site has (its content types, forms, taxonomies, uploads).
     """
     if start == "snapshot":
@@ -44,9 +44,9 @@ def find_root(start=None, allow_snapshot=False):
         parent = os.path.dirname(path)
         if parent == path:
             if allow_snapshot and not start:
-                sys.stderr.write("note: no FarosCMS installation here; using the definitions bundled with the skill (FarosCMS %s). The site may have a different version or its own blocks.\n" % version(SNAPSHOT))
+                sys.stderr.write("note: no GnozioCMS installation here; using the definitions bundled with the skill (GnozioCMS %s). The site may have a different version or its own blocks.\n" % version(SNAPSHOT))
                 return SNAPSHOT
-            raise SystemExit("This is not a FarosCMS installation (no VERSION and themes/ here or above). Pass --root PATH%s." % (", or --root snapshot to use the definitions bundled with the skill" if allow_snapshot else ""))
+            raise SystemExit("This is not a GnozioCMS installation (no VERSION and themes/ here or above). Pass --root PATH%s." % (", or --root snapshot to use the definitions bundled with the skill" if allow_snapshot else ""))
         path = parent
 
 
@@ -136,7 +136,7 @@ MAX_SLUG = 80
 
 
 def slugify(text):
-    """The address FarosCMS makes from a title (Slug::fromText): Greek to Latin by ELOT 743, accents dropped."""
+    """The address GnozioCMS makes from a title (Slug::fromText): Greek to Latin by ELOT 743, accents dropped."""
     text = text.strip().lower()
     text = "".join(_STRESS.get(c, c) for c in text)
     text = "".join(_LATIN.get(c, c) for c in text)

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * Route files of the site, read once and kept: the lines (simplified so a page stays light), the places the file marks, and the

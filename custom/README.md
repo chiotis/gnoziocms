@@ -1,6 +1,6 @@
 # custom/ — site-specific customizations
 
-Everything in this folder belongs to this site. FarosCMS updates replace `src/`, `admin/`, `themes/`, `vendor/`, and `public/assets/`, but never touch `custom/`. Backups include it, and a restore can bring it back ("Site customizations").
+Everything in this folder belongs to this site. GnozioCMS updates replace `src/`, `admin/`, `themes/`, `vendor/`, and `public/assets/`, but never touch `custom/`. Backups include it, and a restore can bring it back ("Site customizations").
 
 Files here mirror the theme's layout (`themes/default/`). The same relative path in `custom/` wins:
 

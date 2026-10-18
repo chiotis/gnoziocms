@@ -5,7 +5,7 @@
  *   php tests/unit/feed.php
  */
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
-use FarosCMS\{ContentRepository, Feed, FrontRoute, SeoSettings, Taxonomies};
+use GnozioCMS\{ContentRepository, Feed, FrontRoute, SeoSettings, Taxonomies};
 use League\CommonMark\Environment\Environment;
 use League\CommonMark\Extension\CommonMark\CommonMarkCoreExtension;
 use League\CommonMark\MarkdownConverter;

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * The colours of the seven ready-made palettes of the default theme (the rules of `:root[data-theme="…"]` in its style sheet),

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /** Matching text and display text stay separate: snippets keep the spelling the author wrote. */
 final class SearchText

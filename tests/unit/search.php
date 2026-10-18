@@ -2,7 +2,7 @@
 /* Public search: Greek matching, ranking, safe display parts, filters, pagination and fresh repository reads. */
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
-use FarosCMS\{BlockRegistry, ContentRepository, ContentSearch, ContentTypes, SearchDocument, SearchText, Theme};
+use GnozioCMS\{BlockRegistry, ContentRepository, ContentSearch, ContentTypes, SearchDocument, SearchText, Theme};
 use League\CommonMark\Environment\Environment;
 use League\CommonMark\Extension\CommonMark\CommonMarkCoreExtension;
 use League\CommonMark\MarkdownConverter;

@@ -5,7 +5,7 @@
  *   php tests/unit/wordpress-import.php
  */
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
-use FarosCMS\{FrontMatter, MediaLibrary, Menus, Taxonomies, WordPressImporter, WordPressReader, WordPressScraper};
+use GnozioCMS\{FrontMatter, MediaLibrary, Menus, Taxonomies, WordPressImporter, WordPressReader, WordPressScraper};
 use Symfony\Component\Yaml\Yaml;
 
 $fail = 0;

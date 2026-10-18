@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * What the Media screen does on top of `MediaLibrary`: which page of which list is asked for (and how the list the

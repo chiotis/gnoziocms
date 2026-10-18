@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * The site's robots.txt: everything is open to crawlers, minus the paths the site owner listed (Admin > SEO > Crawling),

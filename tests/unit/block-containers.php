@@ -6,7 +6,7 @@
  */
 $root = dirname(__DIR__, 2);
 require $root . '/vendor/autoload.php';
-use FarosCMS\{Theme, BlockRegistry, BlockContainer, HtmlGuard, MediaUsage, LinkScanner, FieldSchema};
+use GnozioCMS\{Theme, BlockRegistry, BlockContainer, HtmlGuard, MediaUsage, LinkScanner, FieldSchema};
 use Symfony\Component\Yaml\Yaml;
 
 $fail = 0;

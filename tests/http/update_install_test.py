@@ -76,7 +76,7 @@ base = 'http://127.0.0.1:%d' % server.server_port
 def publish(outdir, version, tamper=False):
     """Makes this release the latest one: the package and its manifest, pointing at the local server."""
     for n in os.listdir(served): os.remove(os.path.join(served, n))
-    zip_name = 'faroscms-%s.zip' % version
+    zip_name = 'gnoziocms-%s.zip' % version
     shutil.copy(os.path.join(outdir, zip_name), os.path.join(served, zip_name))
     manifest = json.load(open(os.path.join(outdir, 'release.json')))
     manifest['package_url'] = '%s/%s' % (base, zip_name)

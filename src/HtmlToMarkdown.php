@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * Turns the HTML of another site (WordPress, Joomla, a page pasted from Word) into Markdown: paragraphs, headings, lists,

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * The public page of one term of a taxonomy (a category or a tag): the entries filed under it, from the content

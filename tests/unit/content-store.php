@@ -5,7 +5,7 @@
  *   php tests/unit/content-store.php
  */
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
-use FarosCMS\ContentRepository;
+use GnozioCMS\ContentRepository;
 use League\CommonMark\Environment\Environment;
 use League\CommonMark\Extension\CommonMark\CommonMarkCoreExtension;
 use League\CommonMark\MarkdownConverter;

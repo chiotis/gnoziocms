@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * Reads what the CMS needs to know about a font file: its names, weight (or weight range of a variable font), style, the scripts

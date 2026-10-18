@@ -7,7 +7,7 @@
  */
 $root = dirname(__DIR__, 2);
 require $root . '/vendor/autoload.php';
-use FarosCMS\{BlockRegistry, BlockRenderer, BlockRuntime, ContentItem, ContentRepository, ContentTypes, GeoView, Images, SystemDatabase, SystemMetaRepository, Theme, YouTubePlaylist, YouTubeThumbs};
+use GnozioCMS\{BlockRegistry, BlockRenderer, BlockRuntime, ContentItem, ContentRepository, ContentTypes, GeoView, Images, SystemDatabase, SystemMetaRepository, Theme, YouTubePlaylist, YouTubeThumbs};
 use League\CommonMark\Environment\Environment;
 use League\CommonMark\Extension\CommonMark\CommonMarkCoreExtension;
 use League\CommonMark\MarkdownConverter;

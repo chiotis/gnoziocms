@@ -1,12 +1,14 @@
-# The FarosCMS skill
+# The GnozioCMS skill
 
-A skill is a folder an AI assistant reads before it works: `SKILL.md` (what to do and when), `references/` (the details, read when needed) and `scripts/` (tools it can run). This one teaches an assistant (Claude, ChatGPT, or any agent that reads the same format) to work on **a website that runs FarosCMS**: create pages with blocks, import content, change settings and the look, translate, build a whole site, and to do it without the silent mistakes the CMS would otherwise let through.
+A skill is a folder an AI assistant reads before it works: `SKILL.md` (what to do and when), `references/` (the details, read when needed) and `scripts/` (tools it can run). This one teaches an assistant (Claude, ChatGPT, or any agent that reads the same format) to work on **a website that runs GnozioCMS**: create pages with blocks, import content, change settings and the look, translate, build a whole site, and to do it without the silent mistakes the CMS would otherwise let through.
 
-It does not need the CMS source and it carries no site data. What it knows of one FarosCMS version (the blocks, the theme settings, the ready-made layouts) is in `snapshot/` and the generated `references/blocks.md` and `references/theme-settings.md`; when it can see the installation it reads the installation's own files instead, so it stays right after updates.
+It does not need the CMS source and it carries no site data. What it knows of one GnozioCMS version (the blocks, the theme settings, the ready-made layouts) is in `snapshot/` and the generated `references/blocks.md` and `references/theme-settings.md`; when it can see the installation it reads the installation's own files instead, so it stays right after updates.
+
+The product was previously named FarosCMS. The skill keeps its installed `faroscms` identifier, `faroscms/` folder, `faros_lib.py` helper and `faroscms-skill.zip` archive name for compatibility with existing installations. Requests about GnozioCMS or Gnozio use this same skill.
 
 ## Install it
 
-**Claude** (claude.ai or the desktop app): Settings > Capabilities > Skills > upload `faroscms-skill.zip` (see *Build the zip*). **Claude Code**: copy the `faroscms` folder to `~/.claude/skills/` (for you everywhere) or `.claude/skills/` in a project. **Codex**: copy the `faroscms` folder to `~/.codex/skills/` and start a new Codex session in the site's folder (it needs Python 3 with PyYAML: `pip3 install pyyaml`). In all of them, the skill is picked up when a request is about a FarosCMS site; you can also name it ("use the faroscms skill").
+**Claude** (claude.ai or the desktop app): Settings > Capabilities > Skills > upload `faroscms-skill.zip` (see *Build the zip*). **Claude Code**: copy the `faroscms` folder to `~/.claude/skills/` (for you everywhere) or `.claude/skills/` in a project. **Codex**: copy the `faroscms` folder to `~/.codex/skills/` and start a new Codex session in the site's folder (it needs Python 3 with PyYAML: `pip3 install pyyaml`). In all of them, the skill is picked up when a request is about a GnozioCMS site; you can also name it ("use the faroscms skill").
 
 **ChatGPT**: where your plan offers *Skills*, upload the same zip (the format is the same: a folder with `SKILL.md`). Where it does not, use a Project or a Custom GPT: paste the text of `SKILL.md` (without the first lines between `---`) into the instructions, upload everything in `references/` as knowledge files, and turn on the code tool and upload the `scripts/` folder and `snapshot/` too if you want the assistant to run the checks. The settings of ChatGPT change often: if a menu is not where this says, look for "skills", "instructions" and "knowledge files".
 
@@ -36,7 +38,7 @@ It creates pages as drafts unless you say publish, never makes up prices, testim
 SKILL.md                what to do first, the rules, the workflows
 references/             content-format, blocks (generated), page-recipes, settings, theme-settings (generated), importing, admin-ui, troubleshooting
 scripts/                site_info, block_reference, new_entry, validate_content, add_media, entries_to_csv, site_settings (Python 3.8+ and PyYAML)
-snapshot/               the blocks, theme settings, ready-made layouts and icon names of one FarosCMS version, for working without the site
+snapshot/               the blocks, theme settings, ready-made layouts and icon names of one GnozioCMS version, for working without the site
 ```
 
 ## Build the zip

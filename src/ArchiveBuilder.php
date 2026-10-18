@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * The archive of any list of entries (a content type, or the entries of a category or tag): the filters it offers,

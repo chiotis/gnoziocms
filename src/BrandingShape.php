@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FarosCMS;
+namespace GnozioCMS;
 
 /**
  * The shape and depth presets of Theme > Branding: shadows (none, soft, medium, strong), the corners of cards and images (the

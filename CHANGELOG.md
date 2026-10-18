@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased — GnozioCMS rename
+- Rename the product to **GnozioCMS** in admin labels, messages, defaults, documentation and starter content. Login/setup text initials are now **GC**; layout, CSS, colours and typography are unchanged.
+- Use the `GnozioCMS\` PHP namespace with `FarosCMS\` aliases for existing custom code. JavaScript exposes the new product names alongside the existing globals.
+- Name release packages `gnoziocms-<version>.zip`, keeping the manifest format and existing repository URLs. Preserve backup/import formats, updater headers, Omni's protocol, browser preferences and existing site data. See `docs/rebranding.md`.
+
 ## 0.1.146 — 2026-10-16 — Public search: content, relevance and results
 - **Search finds the content in blocks and declared public fields**, including repeaters and container columns, book authors and ISBNs. Hidden blocks, retired/private fields, technical settings, URLs and form definitions are excluded. Field definitions may opt out with `searchable: false`.
 - **Greek matching ignores case, accents and final sigma.** All words in a query must match, in any order and across fields; titles rank above mentions in the body. The original spelling stays in the results. Results belong to the current language, without links to missing translations.

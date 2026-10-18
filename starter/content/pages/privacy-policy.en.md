@@ -5,7 +5,7 @@ visible: true
 translation_id: a9c4d5e6f901a2b3
 excerpt: 'How we collect and process personal data.'
 seo:
-  title: 'Privacy Policy | FarosCMS Demo'
+  title: 'Privacy Policy | GnozioCMS Demo'
   description: 'Information about personal data processing.'
 template: sidebar
 ---
