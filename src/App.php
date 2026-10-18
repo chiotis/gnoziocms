@@ -996,12 +996,14 @@ final class App
             }
             ksort($counts);
             foreach ($counts as $type => $count) {
-                $definition = $this->contentTypes()->definition($type, $lang, $this->defaultLanguage());
-                $label = $definition['origin'] === '' ? $this->translate('type.' . $type, $definition['label']) : $definition['label'];
-                $search['types'][] = ['value' => $type, 'label' => $label, 'count' => $count,
+                $search['types'][] = ['value' => $type, 'label' => $this->searchTypeLabel($type, $lang), 'count' => $count,
                     'url' => $link($type), 'active' => $type === $search['type']];
             }
         }
+        foreach ($search['hits'] as &$hit) {
+            $hit['type_label'] = $this->searchTypeLabel($hit['item']->type, $lang);
+        }
+        unset($hit);
         $numbers = $search['pages'] > 1
             ? array_values(array_unique(array_merge([1], range(max(1, $search['page'] - 2), min($search['pages'], $search['page'] + 2)), [$search['pages']]))) : [];
         $search['pagination'] = [
@@ -1014,6 +1016,12 @@ final class App
             'query' => $search['query'], 'results' => $search['results'], 'search' => $search,
             'seo_kind' => 'search', 'noindex_page' => true,
         ] + $viewDefaults);
+    }
+
+    private function searchTypeLabel(string $type, string $lang): string
+    {
+        $definition = $this->contentTypes()->definition($type, $lang, $this->defaultLanguage());
+        return $definition['origin'] === '' ? $this->translate('type.' . $type, $definition['label']) : $definition['label'];
     }
 
     private function blockRuntime(): BlockRuntime

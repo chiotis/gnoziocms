@@ -54,7 +54,7 @@
             {% set path = item_path(item, prefix) %}
             <li class="search-result">
               <article>
-                <p class="search-result-type">{{ t('type.' ~ item.type, item.type|title) }}</p>
+                <p class="search-result-type">{{ hit.type_label|default(t('type.' ~ item.type, item.type|title)) }}</p>
                 <h3 class="search-result-title"><a href="{{ url(path) }}">{% for part in hit.title_parts %}{% if part.match %}<mark>{{ part.text }}</mark>{% else %}{{ part.text }}{% endif %}{% endfor %}</a></h3>
                 {% if hit.snippet_parts %}<p class="search-result-snippet">{% for part in hit.snippet_parts %}{% if part.match %}<mark>{{ part.text }}</mark>{% else %}{{ part.text }}{% endif %}{% endfor %}</p>{% endif %}
               </article>
