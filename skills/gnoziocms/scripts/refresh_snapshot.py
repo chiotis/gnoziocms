@@ -2,7 +2,7 @@
 """
 Maintainer tool: refreshes what the skill carries of one GnozioCMS version, from a checkout or an installation of that version.
 
-    python3 skills/faroscms/scripts/refresh_snapshot.py --root /path/to/faroscms
+    python3 skills/gnoziocms/scripts/refresh_snapshot.py --root /path/to/gnoziocms
 
 It rewrites
   snapshot/             VERSION, themes/default/theme.yaml, every blocks/*/block.yaml, every presets/*.yaml and the names of the icons

@@ -35,7 +35,7 @@ import sqlite3
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import faros_lib as f  # noqa: E402
+import gnozio_lib as f  # noqa: E402
 
 SECRET = re.compile(r"(secret|password|pass$|token|api_?key|\bkey$|access_key|private)", re.I)
 SITE_KEYS = {

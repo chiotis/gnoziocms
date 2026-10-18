@@ -7,6 +7,7 @@ GnozioCMS is the new product name. This change updates labels, messages, the PHP
 - New PHP code uses `GnozioCMS\`. The bundled autoloader and Composer's `autoload.files` load `src/autoload.php`, which also publishes `FarosCMS\` class aliases. Existing custom code can construct classes and pass instances through old type hints without being rewritten first.
 - The Composer project name is `chiotis/gnoziocms`. No dependency versions change, and production installations still need neither Composer nor Node.
 - Release packages are named `gnoziocms-<version>.zip`. Their layout and `release.json` format stay the same. Existing installers read the package URL from the manifest, so they can install the renamed package.
+- The skill for AI assistants is now `skills/gnoziocms`, with the skill ID `gnoziocms`, the helper `gnozio_lib.py` and the archive `gnoziocms-skill.zip`. Remove an installed `faroscms` skill and install the new one in its place. The skill still recognises requests that name FarosCMS or Faros.
 - JavaScript exposes `GnozioEditor`, `GnozioMediaPicker`, `gnozioSlug` and `gnozio.event(name)`. The corresponding `FarosEditor`, `FarosMediaPicker`, `farosSlug` and `faros.event(name)` names refer to the same functions or objects.
 
 ## Repository transition
@@ -32,7 +33,6 @@ Some old names deliberately remain because they identify a stored format, a depl
 | Legacy `chiotis/faroscms` source values and GitHub links | Recognised official source settings resolve to the new repository; GitHub redirects must remain available for older installations and existing links after the rename. |
 | `/assets/js/faros-analytics.js` | Existing custom templates and cached pages can still load the analytics script. Both analytics API names work. |
 | Browser storage keys, preview element IDs and demo image filenames | Saved preferences, custom integrations and existing media URLs retain their meaning. |
-| `skills/faroscms`, the `faroscms` skill ID and `faros_lib.py` | Existing skill installations, links and Python imports remain valid. The skill describes GnozioCMS and recognises both names. |
 | `FAROS_TEST_*` environment variables | Existing CI and local test commands continue to work. |
 
 No automatic migration rewrites a site's saved title, stored settings, content, custom code or uploaded files. Update source values are saved only through the explicit Settings save described above. New installations default to GnozioCMS, and the distributed starter content uses the new name. Historical changelog entries and old-content test fixtures retain their original names.

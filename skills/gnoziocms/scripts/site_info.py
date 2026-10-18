@@ -16,7 +16,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import faros_lib as f  # noqa: E402
+import gnozio_lib as f  # noqa: E402
 
 
 def label(value, lang="en"):

@@ -25,7 +25,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import faros_lib as f  # noqa: E402
+import gnozio_lib as f  # noqa: E402
 
 FIXED = ["content_type", "language", "slug", "title", "status", "visible", "date", "author", "tags", "categories", "translation_id", "main_image", "excerpt", "body"]
 

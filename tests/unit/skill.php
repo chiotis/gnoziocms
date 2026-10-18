@@ -1,20 +1,20 @@
 <?php
 /*
- * The skill for other chats (skills/faroscms): that what it says about the blocks, the theme settings and the ready-made layouts is
+ * The skill for other chats (skills/gnoziocms): that what it says about the blocks, the theme settings and the ready-made layouts is
  * what this version of the theme has, that its files hold together, and that its scripts agree with the CMS on the demo site.
- * When a block, a preset or a theme setting changes, run  python3 skills/faroscms/scripts/refresh_snapshot.py --root .
+ * When a block, a preset or a theme setting changes, run  python3 skills/gnoziocms/scripts/refresh_snapshot.py --root .
  *   php tests/unit/skill.php
  */
 $root = dirname(__DIR__, 2);
 require $root . '/vendor/autoload.php';
-$skill = $root . '/skills/faroscms';
+$skill = $root . '/skills/gnoziocms';
 $fail = 0;
 function check(string $label, $actual, $expected): void { global $fail; $ok = $actual === $expected; if (!$ok) $fail++; echo ($ok ? 'ok   ' : 'FAIL ') . $label . ($ok ? '' : ' => ' . json_encode($actual, JSON_UNESCAPED_UNICODE) . ' expected ' . json_encode($expected, JSON_UNESCAPED_UNICODE)) . "\n"; }
 
 // ---- the skill's own description
 $text = (string)file_get_contents($skill . '/SKILL.md');
 preg_match('/\A---\nname: (.+)\ndescription: (.+)\n---\n/', $text, $m);
-check('SKILL.md has a name equal to its folder and a description under the limit', [$m[1] ?? '', strlen($m[2] ?? '') > 200 && strlen($m[2] ?? '') <= 1024], ['faroscms', true]);
+check('SKILL.md has a name equal to its folder and a description under the limit', [$m[1] ?? '', strlen($m[2] ?? '') > 200 && strlen($m[2] ?? '') <= 1024], ['gnoziocms', true]);
 check('SKILL.md stays short enough to be read whole', substr_count($text, "\n") <= 250, true);
 preg_match_all('#`((?:references|scripts)/[A-Za-z0-9_.-]+)`#', $text, $paths);
 $missing = array_values(array_filter(array_unique($paths[1]), fn(string $p): bool => !is_file($skill . '/' . $p) && !is_file($root . '/' . $p)));
@@ -45,7 +45,7 @@ $same = function (string $pattern) use ($theme, $snapshot): array {
     sort($differ);
     return $differ;
 };
-$refresh = 'run python3 skills/faroscms/scripts/refresh_snapshot.py --root .';
+$refresh = 'run python3 skills/gnoziocms/scripts/refresh_snapshot.py --root .';
 check("block definitions are the theme's ($refresh)", $same('blocks/*/block.yaml'), []);
 check('theme settings are the theme\'s', $same('theme.yaml'), []);
 check('ready-made layouts are the theme\'s', $same('presets/*.yaml'), []);

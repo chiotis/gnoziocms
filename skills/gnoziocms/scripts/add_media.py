@@ -24,7 +24,7 @@ import urllib.parse
 import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import faros_lib as f  # noqa: E402
+import gnozio_lib as f  # noqa: E402
 
 GROUPS = {
     "images": ["jpg", "jpeg", "png", "gif", "webp", "avif", "bmp", "ico"],
@@ -58,7 +58,7 @@ def fetch(source):
     """(local path, original name) of a file or an http(s) address (downloaded to a temporary file)."""
     if re.match(r"^https?://", source, re.I):
         name = os.path.basename(urllib.parse.urlparse(source).path) or "download"
-        request = urllib.request.Request(source, headers={"User-Agent": "faroscms-skill/1"})
+        request = urllib.request.Request(source, headers={"User-Agent": "gnoziocms-skill/1"})
         handle, tmp = tempfile.mkstemp(suffix="-" + name)
         with os.fdopen(handle, "wb") as out, urllib.request.urlopen(request, timeout=30) as response:
             shutil.copyfileobj(response, out)

@@ -20,7 +20,7 @@ import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import faros_lib as f  # noqa: E402
+import gnozio_lib as f  # noqa: E402
 
 BUILT_IN_TEMPLATES = {"default", "landing", "sidebar", "standard"}
 STATUSES = {"published", "draft"}
@@ -90,7 +90,7 @@ def check_file(root, path, ctx):
     if lang is not None and lang not in available:
         add("WARN", "language `%s` is not one of the site's languages (%s): the page exists but is not linked from anywhere" % (lang, ", ".join(available)))
     if not re.match(r"^[a-z0-9][a-z0-9_-]*$", slug):
-        add("ERROR", "the file name %r is not a clean address (lowercase Latin letters, digits, - and _); use faros_lib.slugify() / new_entry.py" % slug)
+        add("ERROR", "the file name %r is not a clean address (lowercase Latin letters, digits, - and _); use gnozio_lib.slugify() / new_entry.py" % slug)
     if len(slug) > f.MAX_SLUG:
         add("WARN", "the address is longer than %d characters" % f.MAX_SLUG)
     if ctype in ("pages", "posts") and slug in f.ROOT_RESERVED:

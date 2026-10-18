@@ -178,7 +178,7 @@ npm install && npm run build:css
 | [update.md](update.md), [docs/update-workflow.md](docs/update-workflow.md) | Putting a site on a server, installing updates from the admin, and how that stays safe |
 | [docs/system-database.md](docs/system-database.md) | What lives in SQLite |
 | [custom/README.md](custom/README.md) | How site-specific overrides work |
-| [skills/faroscms](skills/faroscms/README.md) | A skill for AI assistants (Claude, ChatGPT…): how to create pages with blocks, import content and change settings on a GnozioCMS site, with scripts that check what the CMS would silently change |
+| [skills/gnoziocms](skills/gnoziocms/README.md) | A skill for AI assistants (Claude, ChatGPT…): how to create pages with blocks, import content and change settings on a GnozioCMS site, with scripts that check what the CMS would silently change |
 | [CHANGELOG.md](CHANGELOG.md), [ROADMAP.md](ROADMAP.md) | What changed and what is next |
 
 ## Status

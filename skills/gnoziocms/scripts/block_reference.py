@@ -15,7 +15,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import faros_lib as f  # noqa: E402
+import gnozio_lib as f  # noqa: E402
 
 KIND = {
     "text": "text", "textarea": "text (several lines)", "markdown": "Markdown", "email": "email", "url": "web address",

@@ -4,11 +4,11 @@ A skill is a folder an AI assistant reads before it works: `SKILL.md` (what to d
 
 It does not need the CMS source and it carries no site data. What it knows of one GnozioCMS version (the blocks, the theme settings, the ready-made layouts) is in `snapshot/` and the generated `references/blocks.md` and `references/theme-settings.md`; when it can see the installation it reads the installation's own files instead, so it stays right after updates.
 
-The product was previously named FarosCMS. The skill keeps its installed `faroscms` identifier, `faroscms/` folder, `faros_lib.py` helper and `faroscms-skill.zip` archive name for compatibility with existing installations. Requests about GnozioCMS or Gnozio use this same skill.
+The product was previously named FarosCMS, and so was this skill (`faroscms`, with a `faros_lib.py` helper and a `faroscms-skill.zip` archive). It is now `gnoziocms`. If you installed the old one, remove it and install this one in its place, so the assistant does not see two skills for the same CMS. Requests that still say FarosCMS or Faros use this skill too.
 
 ## Install it
 
-**Claude** (claude.ai or the desktop app): Settings > Capabilities > Skills > upload `faroscms-skill.zip` (see *Build the zip*). **Claude Code**: copy the `faroscms` folder to `~/.claude/skills/` (for you everywhere) or `.claude/skills/` in a project. **Codex**: copy the `faroscms` folder to `~/.codex/skills/` and start a new Codex session in the site's folder (it needs Python 3 with PyYAML: `pip3 install pyyaml`). In all of them, the skill is picked up when a request is about a GnozioCMS site; you can also name it ("use the faroscms skill").
+**Claude** (claude.ai or the desktop app): Settings > Capabilities > Skills > upload `gnoziocms-skill.zip` (see *Build the zip*). **Claude Code**: copy the `gnoziocms` folder to `~/.claude/skills/` (for you everywhere) or `.claude/skills/` in a project. **Codex**: copy the `gnoziocms` folder to `~/.codex/skills/` and start a new Codex session in the site's folder (it needs Python 3 with PyYAML: `pip3 install pyyaml`). In all of them, the skill is picked up when a request is about a GnozioCMS site; you can also name it ("use the gnoziocms skill").
 
 **ChatGPT**: where your plan offers *Skills*, upload the same zip (the format is the same: a folder with `SKILL.md`). Where it does not, use a Project or a Custom GPT: paste the text of `SKILL.md` (without the first lines between `---`) into the instructions, upload everything in `references/` as knowledge files, and turn on the code tool and upload the `scripts/` folder and `snapshot/` too if you want the assistant to run the checks. The settings of ChatGPT change often: if a menu is not where this says, look for "skills", "instructions" and "knowledge files".
 
@@ -44,7 +44,7 @@ snapshot/               the blocks, theme settings, ready-made layouts and icon 
 ## Build the zip
 
 ```bash
-cd skills && python3 -m zipfile -c faroscms-skill.zip faroscms     # then upload faroscms-skill.zip
+cd skills && python3 -m zipfile -c gnoziocms-skill.zip gnoziocms     # then upload gnoziocms-skill.zip
 ```
 
 ## Keep it true (maintainers)
@@ -52,7 +52,7 @@ cd skills && python3 -m zipfile -c faroscms-skill.zip faroscms     # then upload
 The skill describes one version of the theme. When a block, a preset or a theme setting changes in this repository, run
 
 ```bash
-python3 skills/faroscms/scripts/refresh_snapshot.py --root .
+python3 skills/gnoziocms/scripts/refresh_snapshot.py --root .
 ```
 
 and commit the result. `tests/unit/skill.php` fails until you do, and it also runs the scripts against the demo site so the skill cannot drift from the CMS. When the content format itself changes (front matter keys, addresses, menus, forms, media), edit `references/content-format.md` by hand.
