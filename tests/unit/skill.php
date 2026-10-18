@@ -135,6 +135,11 @@ if ($python === '' || trim((string)@shell_exec('python3 -c "import yaml" 2>&1'))
     file_put_contents($writable . '/content/pages/bad-container.md', "---\ntitle: Bad\nstatus: draft\nblocks:\n" . preg_replace('/^/m', '  ', $bad) . "---\n");
     [$code, $out] = $run('validate_content.py --root ' . escapeshellarg($site) . ' ' . escapeshellarg($writable . '/content/pages/bad-container.md'));
     check('and it names what is wrong in a bad one', [str_contains($out, 'container.gap'), str_contains($out, 'unknown setting `wide`'), str_contains($out, 'column.width'), str_contains($out, 'column.order'), str_contains($out, 'cannot be inside a column')], [true, true, true, true, true]);
+    // A Hero slider slide saved with its two fixed buttons (until 0.1.156) is read as its list of buttons, as the CMS does.
+    $slides = "- type: hero-slider\n  items:\n    - { heading: A, label: Go, url: /go, label_2: More, url_2: /more }\n    - { heading: B, buttons: [{ label: New, url: /new, style: loud }] }\n";
+    file_put_contents($writable . '/content/pages/old-slides.md', "---\ntitle: Slides\nstatus: draft\nblocks:\n" . preg_replace('/^/m', '  ', $slides) . "---\n");
+    [$code, $out] = $run('validate_content.py --root ' . escapeshellarg($site) . ' ' . escapeshellarg($writable . '/content/pages/old-slides.md'));
+    check('the old buttons of a slide are not unknown fields, and a wrong style in the list is named', [str_contains($out, 'unknown field'), str_contains($out, 'items[1].buttons[0].style')], [false, true]);
 
     exec('rm -rf ' . escapeshellarg($site));
 }

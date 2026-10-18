@@ -686,6 +686,9 @@ def check_block(blocks, block, where):
         # the block's own old `width` (the divider's line) is read as its new field, as the CMS does
         block = {k: v for k, v in block.items() if k != "width"}
         block.setdefault(moved, original_width)
+    if type_ == "hero-slider" and isinstance(block.get("items"), list):
+        # a slide's two fixed buttons (until 0.1.156) are read as its list of buttons, as the CMS does
+        block = {**block, "items": [slide_buttons(slide) if isinstance(slide, dict) else slide for slide in block["items"]]}
     for key, value in block.items():
         if key == "type":
             continue
@@ -702,6 +705,31 @@ def check_block(blocks, block, where):
         if field["required"] and not block.get(key) and block.get("hidden") is not True:
             problems.append("%s (%s): `%s` is required (the editor marks it, the page looks empty without it)" % (where, type_, key))
     return problems
+
+
+SLIDE_BUTTONS = (("label", "url", "style", "primary"), ("label_2", "url_2", "style_2", "secondary"))
+
+
+def slide_buttons(slide):
+    """A slide of the Hero slider with the two fixed buttons it had until 0.1.156 as its list of `buttons` (as the CMS reads it)."""
+    old = [key for pair in SLIDE_BUTTONS for key in pair[:3]]
+    if not any(key in slide for key in old):
+        return slide
+    slide = dict(slide)
+    if "buttons" not in slide:
+        filled = lambda value: value not in (None, "", [], {})
+        buttons = []
+        for label, url, style, default in SLIDE_BUTTONS:
+            if not filled(slide.get(label)) and not filled(slide.get(url)):
+                continue
+            button = {to: slide[key] for to, key in (("label", label), ("url", url)) if key in slide}
+            button["style"] = slide[style] if isinstance(slide.get(style), str) and slide[style] != "" else default
+            buttons.append(button)
+        if buttons:
+            slide["buttons"] = buttons
+    for key in old:
+        slide.pop(key, None)
+    return slide
 
 
 def check_rows(field, value, at):

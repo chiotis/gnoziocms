@@ -173,6 +173,7 @@ $nested = $search->extract($item(['blocks' => [[
 ]]]))['body'];
 check('a list inside a row of a block is searched too, with its own limit, privacy and language', $nested, 'OuterRow ΚουμπίΈνα OnlyInnerWords');
 check('and in the entry\'s language', $search->extract($item(['blocks' => [['type' => 'search-fixture', 'items' => [['buttons' => [['label' => ['default' => 'ΚουμπίΈνα', 'en' => 'ButtonOne']]]]]]]], '', 'pages', 'en'))['body'], 'ButtonOne');
+check('the buttons of a Hero slider slide saved before they were a list are searched', $search->extract($item(['blocks' => [['type' => 'hero-slider', 'items' => [['heading' => 'SlideHeading', 'label' => 'OldFirstButton', 'url' => '/a', 'label_2' => 'OldSecondButton', 'url_2' => '/b']]]]]))['body'], 'SlideHeading OldFirstButton OldSecondButton');
 
 $container = ['type' => BlockContainer::TYPE, 'settings' => ['class' => 'ContainerClassSecret'], 'columns' => [
     ['settings' => ['width' => 'ColumnWidthSecret'], 'blocks' => [['type' => 'text', 'heading' => 'InsideColumn'], ['type' => 'text', 'heading' => 'HiddenColumnBlockSecret', 'hidden' => true]]],

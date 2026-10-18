@@ -366,17 +366,20 @@ blocks:
         eyebrow: Ξενοδοχεία
         heading: Ανακαίνιση με θέα
         text: Ένας χώρος που ανοίγει προς το τοπίο.
-        label: Δείτε το έργο
-        url: projects
+        buttons:
+          - label: Δείτε το έργο
+            url: projects
       - layout: split
         image: /uploads/media/faros-demo-path.jpg
         eyebrow: Γραφεία
         heading: Χώροι που εμπνέουν
         text: Φως, υλικά και ροή για την καθημερινότητα της ομάδας.
-        label: Δείτε το έργο
-        url: projects
-        label_2: Επικοινωνία
-        url_2: contact
+        buttons:
+          - label: Δείτε το έργο
+            url: projects
+          - label: Επικοινωνία
+            url: contact
+            style: secondary
         highlight_1: Μελέτη
         highlight_2: Υλοποίηση
       - layout: cover-centered
@@ -384,8 +387,9 @@ blocks:
         eyebrow: Λιανική
         heading: Εμπειρία καταστήματος
         text: Από την πρώτη ματιά μέχρι το ταμείο.
-        label: Δείτε το έργο
-        url: projects
+        buttons:
+          - label: Δείτε το έργο
+            url: projects
       - layout: minimal
         eyebrow: Χωρίς εικόνα
         heading: Και ένα slide μόνο με κείμενο

@@ -140,6 +140,22 @@ ok, html = over('/lead-slider-split')
 check('over a first slide that is not a picture the header opens over it too, in dark colours', ok and 'is-transparent' in html and 'is-on-dark' not in html and 'class="single-hero' not in html, ok)
 ok, html = over('/lead-slider-old')
 check('a page saved with the old Slider block is a hero slider now', ok and 'block-hero-slider' in html and 'is-on-dark' in html, ok)
+# ---- the buttons of a slide: saved as two fixed buttons (until 0.1.156) or as a list, the page is the same
+slide = "  - type: hero-slider\n    items:\n      - layout: split\n        heading: Buttons\n%s      - layout: cover\n        heading: One button\n%s"
+put('pages/buttons-old.md', "title: Buttons\nstatus: published\nvisible: true\nblocks:\n" + slide % (
+    "        label: Go\n        url: contact\n        label_2: More\n        url_2: /more\n        style_2: text\n",
+    "        label_2: Only\n        url_2: /only\n"))
+put('pages/buttons-new.md', "title: Buttons\nstatus: published\nvisible: true\nblocks:\n" + slide % (
+    "        buttons:\n          - label: Go\n            url: contact\n          - label: More\n            url: /more\n            style: text\n",
+    "        buttons:\n          - label: Only\n            url: /only\n            style: secondary\n"))
+def slides(path):
+    st, _, html = pub.get(path)
+    start = html.find('<div class="slider-track"')
+    return st, html[start:html.find('</section>', start)] if start >= 0 else ''
+st_old, old_slides = slides('/buttons-old')
+st_new, new_slides = slides('/buttons-new')
+check('a slide saved with two fixed buttons shows them as before: the first primary, the second as chosen', st_old == 200 and re.findall(r'<a class="btn ([^"]+)" href="[^"]*/(contact|more|only)"', old_slides) == [('btn-primary', 'contact'), ('btn-text', 'more'), ('btn-secondary', 'only')], re.findall(r'<a class="btn[^>]*>', old_slides))
+check('and the same slides saved as a list of buttons give the same page', st_new == 200 and old_slides != '' and old_slides == new_slides, (len(old_slides), len(new_slides)))
 ok, html = over('/lead-slider-off')
 check('an entry can switch the transparent header off, and then it has its title area as before', not ok and 'class="single-hero' in html, ok)
 theme(header={'transparent': 'false'})

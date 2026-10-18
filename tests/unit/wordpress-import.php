@@ -237,7 +237,7 @@ $noTabs = $front("$root/content/books/no-tabs.md");
 check('a page without tabs has only the description', array_column($noTabs['blocks'], 'type'), ['text-image']);
 $home = $front("$root/content/pages/index.md");
 check('the home page is blocks over a landing page', [$home['template'], array_column($home['blocks'], 'type'), $home['blocks'][0]['items'][0]['layout']], ['landing', ['hero-slider', 'text-image', 'columns'], 'cover']);
-check('a slide has its picture, text and buttons', [$home['blocks'][0]['items'][0]['heading'], str_starts_with($home['blocks'][0]['items'][0]['image'], '/uploads/media/'), array_intersect_key($home['blocks'][0]['items'][1], array_flip(['label', 'url', 'label_2', 'url_2']))], ['First', true, ['label' => 'Shop A', 'url' => 'https://shop.example/a', 'label_2' => 'About', 'url_2' => '/about']]);
+check('a slide has its picture, text and buttons', [$home['blocks'][0]['items'][0]['heading'], str_starts_with($home['blocks'][0]['items'][0]['image'], '/uploads/media/'), $home['blocks'][0]['items'][1]['buttons']], ['First', true, [['label' => 'Shop A', 'url' => 'https://shop.example/a'], ['label' => 'About', 'url' => '/about', 'style' => 'secondary']]]);
 check('and the home text goes to the block with the picture split off', [$home['blocks'][1]['body'], $home['blocks'][1]['image']], ['Welcome. [About](/about), [old home](/).', '']);
 check('with the menus option the menu is written, addresses on the new site', [array_keys($menusWritten), array_map(fn($r) => $r['url'], $menusWritten['main']['items']), $menusWritten['main']['items'][1]['children'][0]['url']], [['main'], ['/', '/books', 'https://elsewhere.test/'], '/category/news']);
 $cols = $home['blocks'][2]['items'];
