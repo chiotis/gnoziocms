@@ -24,16 +24,18 @@ During the current development phase (decided 2026-10-16), pushes and releases s
 
 The client sites accept for now what the work below improves: pictures that floated beside the text sit in the flow until the importer writes them as `{align=left}`. Gaps a site finds go to the requests file in its folder and come here as items, never as code in the site.
 
-## Next: the owner's priorities (2026-10-18)
+## Next: the order of implementation (2026-10-19)
 
-The order was agreed on 2026-10-18. Relationships and repeaters share the existing field schema (`FieldSchema`), so the schema is extended once and both build on it. Each step starts with a short design the owner approves before code is written.
+The owner's priorities, in the order set on 2026-10-19 by what builds on what. Each step starts with a short design the owner approves before code is written. Steps 1 and 2 run in parallel; the design of step 4 can run alongside step 3.
 
-0. **A small split of `src/App.php` first** *(proposal)*. All three steps below touch it; moving the Twig functions and the rendering into a service of their own, behaviour identical and checked, lowers the conflicts when work runs in parallel sessions.
-1. **General repeaters**: done. Two levels in `FieldSchema`, repeaters in content-type fields, both editors, storage, CSV, search and the default fact sheet (0.1.156; *Repeaters* in `docs/theming.md`); the Hero slider's buttons as a list per slide (0.1.157) and several buy links per book (0.1.158), both read from the old flat fields.
-2. **Content relationships**: a field that points at other entries (a book's author, a route's points, related posts), declared in the same schema and usable inside a repeater (related books, each with a note). Needs: a picker in the editor, stored references by type and slug that survive a slug change (with the existing redirects), what happens when the target is deleted or unpublished, the reverse question ("all books of this author") for templates, and output in single and archive templates. The reverse lookups need the **data and index cache** (layer 2 under Caching), designed together with this step rather than later; the same cache serves the maps' "what is near what" and search on larger sites.
-3. **Block settings in a fixed off-canvas panel** for every block: one place for a block's Content and Design settings instead of settings that open inside the block list. Mostly the block editor's JS, CSS and admin templates, so it can run in parallel with step 2. It comes before the template builder, which reuses the panel. Nested repeaters from step 1 get their editing UI inside this panel.
-4. **A block builder for single and archive templates**, after the panel: needs dynamic field bindings (a block shows a field of the current entry) and an archive/loop context.
-5. **A shop, later**: the catalogue can use repeaters, relationships and the template builder; transactions are a separate future scope.
+- **Done: general repeaters.** Two levels in `FieldSchema`, repeaters in content-type fields, both editors, storage, CSV, search and the default fact sheet (0.1.156; *Repeaters* in `docs/theming.md`); the Hero slider's buttons as a list per slide (0.1.157) and several buy links per book (0.1.158), both read from the old flat fields.
+
+1. **Block settings in a fixed off-canvas panel** for every block: one place for a block's Content and Design settings instead of settings that open inside the block list, with an API the template builder reuses. Admin JS, CSS and templates only; stored content does not change. *(in progress)*
+2. **A small split of `src/App.php`**: the Twig wiring and rendering move into a service of their own, behaviour identical and checked, so the template builder works on code of its own. *(in progress)*
+3. **Template builder, phase 1: single templates.** The page of an entry (a book, a project, a place) is built from blocks bound to its fields: title, picture, text, the fact sheet and repeaters such as the buy links. Needs dynamic field bindings (a block shows a field of the current entry), a per-type template stored with the theme settings, and a fallback to today's Twig templates.
+4. **Content relationships**, with the **data and index cache** (layer 2 under Caching): a field that points at other entries (a book's author, a route's points, related posts), declared in the same schema and usable inside a repeater (related books, each with a note). Needs a picker in the editor, references that survive a slug change, what happens when the target is deleted or unpublished, and the reverse question ("all books of this author"), which the cache answers. Relationships then become one more kind of field the template builder can bind; the cache also serves archives, the maps' "what is near what" and search on larger sites.
+5. **Template builder, phase 2: archive templates.** A "list of entries" block with a template for each card, pagination and filters (an archive/loop context). After step 4, so archives stay fast with the cache and cards can show relationships.
+6. **A shop, later**: the catalogue can use repeaters, relationships and the template builder; transactions are a separate future scope.
 
 Saved working drafts for published pages are not a current priority.
 

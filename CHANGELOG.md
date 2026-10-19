@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.162 — 2026-10-19 — Roadmap: the order of implementation
+- **`ROADMAP.md`** sets the order by what builds on what: the off-canvas block settings panel and a small split of `src/App.php` first (in parallel), then the template builder for single templates, content relationships with the data and index cache, the template builder for archive templates, and a shop later. Repeaters are marked done.
+
 ## 0.1.161 — 2026-10-19 — Tests that say what is wrong
 - **`tests/run.sh` checks the environment first**: the PHP version and extensions (from `composer.json` and the installer), python3 and curl for the HTTP tests, Node 20 for the JavaScript checks. On a mismatch it prints one line per problem and runs nothing (exit code 3); `GNOZIO_TESTS_SKIP_PREFLIGHT=1` skips the check.
 - **No test waits forever**: HTTP tests share a `wait_until` with a deadline, every request has a timeout, and each HTTP test has a time limit (`GNOZIO_TEST_TIMEOUT`, 180 seconds by default). A test that runs out is reported as `TIMEOUT <name>` and the rest carry on.
