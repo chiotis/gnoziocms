@@ -18,11 +18,6 @@
 # GNOZIO_TESTS_SKIP_PREFLIGHT=1 turns that off for deliberate experiments. Each HTTP test is also limited in time:
 # GNOZIO_TEST_TIMEOUT seconds (default 180) or what test_timeout() gives it; one that runs out is reported as
 # "TIMEOUT <name> (<n> s)" and the rest carry on.
-#
-# Before anything runs, preflight() checks the environment (PHP version and extensions from composer.json and the installer,
-# python3, curl, and Node 20 for the js group) and stops with exit code 3 and one line per problem. GNOZIO_TESTS_SKIP_PREFLIGHT=1
-# turns that off for deliberate experiments. Each HTTP test is also limited in time: GNOZIO_TEST_TIMEOUT seconds (default 180),
-# or the value test_timeout() gives it; one that runs out is reported as "TIMEOUT <name> (<n> s)" and the rest carry on.
 set -u
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 MODE="${1:-all}"
@@ -42,39 +37,9 @@ fi
 PREFLIGHT_EXIT=3
 preflight() { # which groups will run: unit, js, http (any of them)
   [ "${GNOZIO_TESTS_SKIP_PREFLIGHT:-}" = "1" ] && return 0
-  local problems="" groups=" $* " line
-  if ! command -v php >/dev/null 2>&1; then
-    problems+="php is not installed or not on PATH (PHP $(sed -n 's/.*"php": *"[^0-9]*\([0-9.]*\)".*/\1/p' "$ROOT/composer.json" | head -1) or newer is needed)"$'\n'
-  else
-    problems+="$(php "$ROOT/tests/preflight.php" "$ROOT" 2>&1)"$'\n'
-  fi
-  case "$groups" in *" http "*)
-    command -v python3 >/dev/null 2>&1 || problems+="python3 is missing (the HTTP tests need it)"$'\n'
-    command -v curl >/dev/null 2>&1 || problems+="curl is missing (the HTTP tests wait for the server with it)"$'\n'
-  esac
-  case "$groups" in *" js "*)
-    if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
-      problems+="node and npm are missing (Node 20 or newer is needed for the JavaScript checks)"$'\n'
-    else
-      local major
-      major="$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null)"
-      case "$major" in ''|*[!0-9]*) major=0 ;; esac
-      [ "$major" -ge 20 ] || problems+="Node 20 or newer is needed for the JavaScript checks; this is $(node -v 2>/dev/null) (node -v)"$'\n'
-    fi
-  esac
-  problems="$(printf '%s' "$problems" | grep -v '^$')"
-  [ -z "$problems" ] && return 0
-  echo "Environment check failed, nothing was run (GNOZIO_TESTS_SKIP_PREFLIGHT=1 skips this check):"
-  printf '%s\n' "$problems" | sed 's/^/  /'
-  exit "$PREFLIGHT_EXIT"
-}
-
-PREFLIGHT_EXIT=3
-preflight() { # the groups about to run: unit, js, http
-  [ "${GNOZIO_TESTS_SKIP_PREFLIGHT:-}" = "1" ] && return 0
   local problems="" groups=" $* "
   if ! command -v php >/dev/null 2>&1; then
-    problems+="php is not installed or not on PATH"$'\n'
+    problems+="php is not installed or not on PATH (PHP $(sed -n 's/.*"php": *"[^0-9]*\([0-9.]*\)".*/\1/p' "$ROOT/composer.json" | head -1) or newer is needed)"$'\n'
   else
     problems+="$(php "$ROOT/tests/preflight.php" "$ROOT" 2>&1)"$'\n'
   fi
