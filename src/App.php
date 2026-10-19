@@ -50,6 +50,7 @@ final class App
     private ?BlockRuntime $blockRuntime = null;
     private ?PresetLibrary $presetLibrary = null;
     private ?ContentTypes $contentTypes = null;
+    private ?Relations $relationsService = null;
     private string $currentLang;
     private array $translations = [];
     private array $formStates = [];
@@ -147,7 +148,8 @@ final class App
             fn(int $bytes): bool => $this->siteLimits()->allows($bytes),
             fn(int $bytes) => $this->siteLimits()->formFilesChanged($bytes)
         );
-        $this->contentIndex = new ContentIndex($this->systemDatabase, $this->contentDir);
+        $this->contentIndex = new ContentIndex($this->systemDatabase, $this->contentDir, $this->systemMeta);
+        $this->contentIndex->keepReferences(fn(string $type): array => $this->contentTypes()->definition($type, 'en', $this->defaultLanguage())['fields']);
         $this->media = new MediaLibrary($this->contentDir, $this->basePath . '/public/uploads');
         $this->media->restrictTo(is_array($this->settings['limits']['upload_types'] ?? null) ? $this->settings['limits']['upload_types'] : []);
         $this->mediaUsage = new MediaUsage($this->contentDir, fn(): array => $this->mediaUsageSettingsSources(), (string)($this->settings['languages']['default'] ?? 'en'), $this->systemMeta);
@@ -315,8 +317,15 @@ final class App
             $this->htmlGuard(),
             fn(): BlockRegistry => $this->blockRuntime()->registry(),
             fn(): array => $this->taxonomies()->names(),
-            $this->revisions
+            $this->revisions,
+            $this->relations()
         );
+    }
+
+    /** References between entries (the relation field) and the questions asked about them. */
+    private function relations(): Relations
+    {
+        return $this->relationsService ??= new Relations($this->contentIndex, $this->content, $this->contentTypes(), $this->settings, $this->contentDir, $this->revisions);
     }
 
     private function revisionAdmin(): RevisionAdmin
@@ -346,7 +355,8 @@ final class App
             fn(): Taxonomies => $this->taxonomies(),
             fn(): PublicPaths => $this->publicPaths(),
             fn(): LinkScanner => $this->linkScanner(),
-            fn(string $action, string $level, ?string $type, ?string $id, string $message, array $context) => $this->logActivity($action, $level, $type, $id, $message, $context)
+            fn(string $action, string $level, ?string $type, ?string $id, string $message, array $context) => $this->logActivity($action, $level, $type, $id, $message, $context),
+            $this->relations()
         );
     }
 
@@ -369,7 +379,8 @@ final class App
             fn(): LinkScanner => $this->linkScanner(),
             fn(): BlockRegistry => $this->blockRuntime()->registry(),
             fn(): PresetLibrary => $this->presetLibrary(),
-            fn(string $path): string => $this->buildAbsoluteUrl($path)
+            fn(string $path): string => $this->buildAbsoluteUrl($path),
+            $this->relations()
         );
     }
 
@@ -1069,6 +1080,8 @@ final class App
         'content' => 'handleAdminList',
         'content-bulk' => 'handleContentBulk',
         'search' => 'handleAdminSearch',
+        'relations' => 'handleAdminRelations',
+        'broken-references' => 'handleBrokenReferences',
         'system' => 'handleSystem',
         'activity-logs' => 'handleActivityLogs',
         'email-logs' => 'handleEmailLogs',
@@ -1975,7 +1988,11 @@ final class App
 
     private function contentTypes(): ContentTypes
     {
-        return $this->contentTypes ??= new ContentTypes($this->theme);
+        if ($this->contentTypes === null) {
+            $this->contentTypes = new ContentTypes($this->theme);
+            $this->contentTypes->showRelationsWith(fn(array $ids, array $types, string $lang): array => $this->relations()->resolve($ids, $types, $lang));
+        }
+        return $this->contentTypes;
     }
 
     /**
@@ -2860,6 +2877,29 @@ final class App
         ]);
     }
 
+    /** The entries a relation field's search box offers (JSON): `q` is the text typed, `types` the content types the field allows. */
+    private function handleAdminRelations(): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: no-store');
+        $types = array_values(array_filter(array_map(static fn(string $t): string => Slug::plain($t), explode(',', (string)($_GET['types'] ?? '')))));
+        $allowed = array_values(array_filter($this->content->getTypes(), fn(string $type): bool => $this->canAccessContentType($type) && $type !== 'forms'));
+        echo json_encode($this->relations()->search((string)($_GET['q'] ?? ''), $types, $allowed), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+    }
+
+    /** The references that lead to an entry that is gone, so they can be fixed or cleared. */
+    private function handleBrokenReferences(): void
+    {
+        $this->render('@admin/broken-references.twig', [
+            'title' => 'Broken references',
+            'broken' => array_values(array_filter($this->relations()->broken(), fn(array $row): bool => $this->canAccessContentType($row['type']))),
+            'types' => $this->content->getTypes(),
+            'user' => $this->auth->user(),
+            'admin_section' => 'content',
+            'current_type' => 'pages',
+        ]);
+    }
+
     private function handleSystem(): void
     {
         if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (string)($_POST['system_action'] ?? '') === 'rebuild_index') {
@@ -3389,7 +3429,8 @@ final class App
             fn(string $taxonomy, string $termId, string $prefix): string => $this->buildTaxonomyPath($taxonomy, $termId, $prefix),
             fn(): BlockRuntime => $this->blockRuntime(),
             fn(): bool => $this->feed()->hasSiteFeed(),
-            fn(): array => $this->siteLanguageCodes()
+            fn(): array => $this->siteLanguageCodes(),
+            fn(): Relations => $this->relations()
         );
     }
 
@@ -3911,6 +3952,9 @@ final class App
                 $facts['links'] = array_sum($found ?? []);
             }
         }
+        if ($can('content.manage')) {
+            $facts['broken_references'] = count($this->relations()->broken(200));
+        }
         if ($can('analytics.manage')) {
             $a = AnalyticsSettings::from($this->settings);
             $facts['analytics'] = ['mode' => $a['mode'], 'empty' => $a['tag_id'] === '' && trim($a['head_code']) === '' && trim($a['body_code']) === ''];
@@ -3939,7 +3983,8 @@ final class App
             fn(): HtmlGuard => $this->htmlGuard(),
             fn(string $date): string => $this->normalizeDateForStorage($date),
             fn(): string => $this->currentUsername(),
-            fn(): bool => $this->permissions->can($this->auth->user(), 'content.raw_html')
+            fn(): bool => $this->permissions->can($this->auth->user(), 'content.raw_html'),
+            $this->relations()
         );
     }
 

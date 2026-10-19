@@ -1,0 +1,39 @@
+{% extends '@admin/base.twig' %}
+{% set page_heading = 'Broken references' %}
+{% import '@admin/partials/ui.twig' as ui %}
+
+{% block content %}
+  <header class="mb-4 border-b border-slate-200 pb-4">
+    <p class="text-xs text-slate-400">Entries that point at another entry that has been deleted. Open one and remove or replace the reference; restoring the deleted entry from its history brings the reference back to life.</p>
+  </header>
+
+  <div class="rounded-lg border border-slate-200 bg-white">
+    {% if broken is empty %}
+      {{ ui.empty_state('Nothing is broken', 'Every reference points at an entry that exists.') }}
+    {% else %}
+      <div class="border-b border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700">{{ broken|length }} reference{{ broken|length == 1 ? '' : 's' }}</div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-slate-100 bg-slate-50/50 text-left text-xs font-medium text-slate-400">
+              <th class="px-4 py-2 font-medium">Entry</th>
+              <th class="px-4 py-2 font-medium">Type</th>
+              <th class="px-4 py-2 font-medium">Language</th>
+              <th class="px-4 py-2 font-medium">Field</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-50">
+            {% for row in broken %}
+              <tr class="hover:bg-slate-50">
+                <td class="px-4 py-2.5"><a href="{{ url(row.edit_url) }}" class="font-medium text-slate-900 hover:text-blue-600">{{ row.title }}</a></td>
+                <td class="px-4 py-2.5 text-slate-600">{{ row.type|title }}</td>
+                <td class="px-4 py-2.5"><span class="inline-flex h-5 min-w-7 items-center justify-center rounded bg-slate-100 px-1 text-[10px] font-semibold text-slate-600">{{ row.lang|upper }}</span></td>
+                <td class="px-4 py-2.5 text-slate-600"><code>{{ row.field }}</code></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}

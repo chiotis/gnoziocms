@@ -54,6 +54,7 @@ check('the site hidden from search comes first, then pages without a description
 ]);
 check('links that use an old address', DashboardAttention::items(['links' => 2], $now)[0]['href'], '/admin/redirects');
 check('addresses that were not found go to that tab', DashboardAttention::items(['not_found' => 5], $now)[0]['href'], '/admin/redirects?tab=missing');
+check('references to entries that are gone open their list', [$titles(['broken_references' => 3]), DashboardAttention::items(['broken_references' => 3], $now)[0]['href']], [['3 references point at an entry that is gone'], '/admin/broken-references']);
 check('forgotten drafts open the drafts', [$titles(['drafts_stale' => 2]), DashboardAttention::items(['drafts_stale' => 2], $now)[0]['href']], [['2 drafts not touched for over ' . DashboardAttention::STALE_DRAFT_DAYS . ' days'], '/admin/content?status=draft']);
 check('entries missing a language', $titles(['untranslated' => 1]), ['1 entry is missing a language']);
 check('no analytics is a hint, a custom code that is empty is a warning, the platform is silent', [

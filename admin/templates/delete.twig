@@ -31,6 +31,13 @@
     </div>
   {% endif %}
 
+  {% if referenced_by %}
+    <div class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900" role="status">
+      {{ referenced_by|length }} {{ referenced_by|length == 1 ? 'entry points' : 'entries point' }} at this one and will lead nowhere:
+      {% for ref in referenced_by|slice(0, 8) %}<a class="font-semibold underline" href="{{ url(ref.edit_url|trim('/')) }}">{{ ref.title }}</a>{{ loop.last ? '' : ', ' }}{% endfor %}{% if referenced_by|length > 8 %} and {{ referenced_by|length - 8 }} more{% endif %}.
+    </div>
+  {% endif %}
+
   <form method="post" action="{{ url('admin/delete') }}" class="space-y-4">
     {{ csrf_field() }}
     <input type="hidden" name="type" value="{{ type }}">

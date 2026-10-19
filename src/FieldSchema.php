@@ -17,7 +17,7 @@ namespace GnozioCMS;
  */
 final class FieldSchema
 {
-    public const TYPES = ['text', 'textarea', 'markdown', 'email', 'url', 'link', 'image', 'video', 'file', 'location', 'color', 'tone', 'number', 'decimal', 'date', 'select', 'icon', 'toggle', 'repeater'];
+    public const TYPES = ['text', 'textarea', 'markdown', 'email', 'url', 'link', 'image', 'video', 'file', 'location', 'color', 'tone', 'number', 'decimal', 'date', 'select', 'icon', 'toggle', 'repeater', 'relation'];
 
     /** How many repeaters can sit inside one another: a repeater, and a repeater in its rows. */
     public const MAX_DEPTH = 2;
@@ -167,6 +167,17 @@ final class FieldSchema
             }
             if ($type === 'color') {
                 $field['hex'] = ($definition['hex'] ?? false) === true;
+            }
+            // A pointer to other entries (see RelationFields): the content types it may point at, one or several, and an optional cap.
+            if ($type === 'relation') {
+                $types = array_values(array_unique(array_filter(
+                    array_map('strval', is_array($definition['types'] ?? null) ? $definition['types'] : (isset($definition['types']) ? [$definition['types']] : [])),
+                    static fn(string $t): bool => (bool)preg_match('/^[a-z0-9][a-z0-9_-]*$/', $t)
+                )));
+                $field['types'] = $types;
+                $field['multiple'] = ($definition['multiple'] ?? false) === true;
+                $field['max'] = $field['multiple'] && isset($definition['max']) && is_numeric($definition['max']) && (int)$definition['max'] > 0 ? (int)$definition['max'] : null;
+                $field['reverse_label'] = trim((string)($definition['reverse_label'] ?? ''));
             }
             if ($type === 'repeater') {
                 // The fields of a row; a row of a top-level repeater may hold a repeater of its own (MAX_DEPTH).
@@ -445,6 +456,20 @@ final class FieldSchema
                 }
                 return $field['max'] !== null ? array_slice($items, 0, max(0, $field['max'])) : $items;
 
+            case 'relation':
+                // The stable ids of the entries pointed at (RelationFields::ID): one, or a list when the field takes several.
+                $ids = [];
+                foreach (is_array($value) ? $value : [$value] as $one) {
+                    $one = is_scalar($one) ? trim((string)$one) : '';
+                    if (preg_match(RelationFields::ID, $one) === 1 && !in_array($one, $ids, true)) {
+                        $ids[] = $one;
+                    }
+                }
+                if (!($field['multiple'] ?? false)) {
+                    return $ids[0] ?? '';
+                }
+                return ($field['max'] ?? null) !== null ? array_slice($ids, 0, $field['max']) : $ids;
+
             case 'markdown':
             case 'textarea':
                 if (!is_scalar($value)) {
@@ -574,6 +599,7 @@ final class FieldSchema
             'toggle' => false,
             'number' => ($field['blank'] ?? false) ? '' : ($field['min'] ?? 0),
             'repeater' => [],
+            'relation' => ($field['multiple'] ?? false) ? [] : '',
             default => '',
         };
     }

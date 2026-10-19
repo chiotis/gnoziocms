@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.167 — 2026-10-19 — Content relationships
+- **A content type can declare a `relation` field** that points at other entries: one or several, of the types it allows, also inside a list (related books, each with a note). Any type works, including one added later in `custom/content-types/`.
+- **A reference survives a change of address.** It stores the `translation_id` of the entry pointed at and shows that entry in the language of the page. An older entry gets its id, as a single line, the first time something points at it.
+- **Drafts, hidden and deleted entries are left out for visitors** and kept in the file, so publishing or restoring them brings them back.
+- **The editor** picks entries with a search box and chips that can be reordered, also inside a list. A *Referenced by* tab shows who points at an entry, the delete page warns about references, and **Admin → Broken references** and the dashboard list references to entries that are gone.
+- Templates can ask who points at an entry (`referenced_by(...)`), from the content index. Relations go through CSV import and export as addresses or ids. See the relations section in `docs/theming.md`.
+
 ## 0.1.166 — 2026-10-19 — Single templates: lists and starting points
 - **A block's list can come from the entry's list.** The ⛓ button on a repeater, such as a block's buttons or cards, binds it to one of the entry's repeaters, such as a book's `buy_links`. A compact table in the settings panel maps each column to a field of the entry's rows, to a fixed value for every row, or leaves it empty. Rows are checked and limited like typed ones. A missing column shows a warning instead of an error.
 - **A template built with blocks starts from a sensible page, not an empty one.** Any content type gets a starting template generated from its definition (entry title, fact sheet, text, its own blocks, and blocks for its picture and link lists), also a type added later in `custom/content-types/`. A theme can ship hand-made ones in `single-templates/<type>.yaml`, and the default theme has them for its six types, close to their current pages. **Start again** on the template screen goes back to it.

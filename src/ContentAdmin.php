@@ -35,7 +35,8 @@ final class ContentAdmin
         private \Closure $taxonomies,
         private \Closure $publicPaths,
         private \Closure $linkScanner,
-        private \Closure $log
+        private \Closure $log,
+        private ?Relations $relations = null
     ) {
     }
 
@@ -145,6 +146,15 @@ final class ContentAdmin
         $changed = 0;
         $skipped = 0;
         $publicDeleted = 0;
+        // Entries that point at one that is about to go (delete) or hide (draft): told in the message afterwards.
+        $pointedAt = 0;
+        if ($this->relations !== null && in_array($action, ['draft', 'delete'], true)) {
+            foreach ($slugs as $slug) {
+                if (is_file($this->path($type, $slug, $lang)) && $this->relations->referrers($type, $slug) !== []) {
+                    $pointedAt++;
+                }
+            }
+        }
         foreach ($slugs as $slug) {
             $path = $this->path($type, $slug, $lang);
             if (!is_file($path)) {
@@ -203,6 +213,10 @@ final class ContentAdmin
         if ($publicDeleted > 0) {
             $message .= ' ' . $publicDeleted . ' of them ' . ($publicDeleted === 1 ? 'was' : 'were') . ' public: visitors of ' . ($publicDeleted === 1 ? 'its address' : 'their addresses') . ' will see "not found".'
                 . ($canRedirects ? ' Add redirects in Admin > Redirects, or delete them one at a time to choose where visitors go.' : '');
+        }
+        if ($pointedAt > 0 && $changed > 0) {
+            $message .= ' ' . $pointedAt . ($pointedAt === 1 ? ' of them is' : ' of them are') . ' pointed at by other entries'
+                . ($action === 'delete' ? ', which now lead nowhere (Admin > Broken references lists them).' : ', which no longer show ' . ($pointedAt === 1 ? 'it' : 'them') . ' to visitors.');
         }
         return $back . '&' . http_build_query(['bulk' => $changed > 0 ? 'ok' : 'fail', 'bulk_msg' => $message]);
     }
@@ -310,6 +324,7 @@ final class ContentAdmin
             'home_path' => '/' . ($lang === $defaultLang ? '' : $lang),
             'known_paths' => array_slice($known, 0, 500, true),
             'links' => $counts !== null ? array_sum($counts) : null,
+            'referenced_by' => $this->relations?->referrers($type, $slug) ?? [],
             'siblings' => array_column($this->editor->translationSiblings($type, $slug, $lang), 'lang'),
             'choice' => $choice !== '' ? $choice : ($type === 'pages' ? 'none' : 'archive'),
             'custom_target' => $custom,

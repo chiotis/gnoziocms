@@ -21,13 +21,13 @@ $put = fn(string $path, int $bytes) => file_put_contents("$dir/$path", str_repea
 
 // ---- measuring
 check('a folder that does not exist is empty', SiteLimits::directorySize("$dir/nothing"), 0);
-$put('public/uploads/media/a.png', 300000);
+$put('public/uploads/media/a.png', 150000);
 $put('public/uploads/media/b.png', 100000);
 $put('content/pages/a.md', 50000);
 $usedSystem = SiteLimits::directorySize("$dir/storage");
-check('a folder is the sum of its files, in every level', SiteLimits::directorySize("$dir/public/uploads"), 400000);
+check('a folder is the sum of its files, in every level', SiteLimits::directorySize("$dir/public/uploads"), 250000);
 $s = $limits->summary();
-check('the summary adds up the three parts', [$s['used'], $s['used'] === 400000 + 50000 + $usedSystem], [450000 + $usedSystem, true]);
+check('the summary adds up the three parts', [$s['used'], $s['used'] === 250000 + 50000 + $usedSystem], [300000 + $usedSystem, true]);
 check('against a limit of 1 MB', [$s['limit'], $s['percent_of_limit'], $s['level'], $s['full']], [1048576, (int)round($s['used'] / 1048576 * 100), 'ok', false]);
 check('the label says used and limit', $s['label'], $s['used_human'] . ' / 1.0 MB');
 check('the parts are readable sizes', array_keys($s['parts']), ['uploads', 'content', 'system', 'forms']);
@@ -37,9 +37,9 @@ check('the measurement time is now', abs($s['measured_at'] - time()) <= 2, true)
 $put('public/uploads/media/c.png', 500000);
 check('a file added later is not seen yet: the measurement is kept', (new SiteLimits($meta, $dir, "$dir/content", fn() => $settings))->summary()['used'], $s['used']);
 $limits->measure();
-check('measuring again sees it', $meta->getJson('storage_usage')['parts']['uploads'], 900000);
+check('measuring again sees it', $meta->getJson('storage_usage')['parts']['uploads'], 750000);
 $limits->uploadsChanged(1000);
-check('an upload adjusts the kept figure at once', $meta->getJson('storage_usage')['parts']['uploads'], 901000);
+check('an upload adjusts the kept figure at once', $meta->getJson('storage_usage')['parts']['uploads'], 751000);
 check('and the summary follows', $limits->summary()['used'] - $s['used'] > 500000, true);
 $limits->uploadsChanged(-2000000);
 check('a deletion never takes the figure below zero', $meta->getJson('storage_usage')['parts']['uploads'], 0);

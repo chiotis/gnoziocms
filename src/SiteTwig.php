@@ -40,6 +40,7 @@ final class SiteTwig
      * @param \Closure(): BlockRuntime $blockRuntime
      * @param \Closure(): bool $hasSiteFeed
      * @param \Closure(): array<int, string> $siteLanguages
+     * @param (\Closure(): Relations)|null $relations
      */
     public function __construct(
         private string $basePath,
@@ -62,7 +63,8 @@ final class SiteTwig
         private \Closure $termPath,
         private \Closure $blockRuntime,
         private \Closure $hasSiteFeed,
-        private \Closure $siteLanguages
+        private \Closure $siteLanguages,
+        private ?\Closure $relations = null
     ) {
     }
 
@@ -125,6 +127,28 @@ final class SiteTwig
                 return [];
             }
             return ($this->contentTypes)()->values($item->type, $item->meta, $language(), $defaultLanguage());
+        }));
+
+        // The entries an entry points at through a relation field: related(item, 'author'), or related(row.book) for the ids stored
+        // in a row of a list. Each is {id, type, slug, lang, title, excerpt, main_image, date, url}; only what a visitor may see.
+        $twig->addFunction(new TwigFunction('related', function (mixed $source, string $field = '') use ($language): array {
+            if ($this->relations === null) {
+                return [];
+            }
+            $relations = ($this->relations)();
+            if ($source instanceof ContentItem) {
+                return $field === '' ? [] : $relations->related($source, $field, $language());
+            }
+            return $relations->resolve(RelationFields::idList($source), [], $language());
+        }));
+
+        // The entries of a content type that point at this one through a field: referenced_by(author, 'books', 'author'), newest first
+        // (`related.book` for a field in a row of a list).
+        $twig->addFunction(new TwigFunction('referenced_by', function (mixed $item, string $type, string $field) use ($language): array {
+            if ($this->relations === null || !$item instanceof ContentItem) {
+                return [];
+            }
+            return ($this->relations)()->referencedBy($item, $type, $field, $language());
         }));
 
         GeoTwigFunctions::register(

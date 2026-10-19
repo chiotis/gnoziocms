@@ -28,7 +28,8 @@ final class ContentCsv
         private $guard,
         private $normalizeDate,
         private $currentUser,
-        private $mayUseRawHtml
+        private $mayUseRawHtml,
+        private ?Relations $relations = null
     ) {
     }
 
@@ -67,7 +68,7 @@ final class ContentCsv
 
         $flatMetaRows = [];
         foreach ($items as $item) {
-            $flatMeta = $this->flattenMeta($item->meta, 'meta');
+            $flatMeta = $this->flattenMeta($this->relations?->withAddresses($item->type, $item->meta) ?? $item->meta, 'meta');
             $flatMetaRows[$item->slug . '|' . $item->lang] = $flatMeta;
             foreach (array_keys($flatMeta) as $key) {
                 if (in_array($key, $reservedMetaHeaders, true)) {
@@ -654,10 +655,23 @@ final class ContentCsv
             }
         }
 
+        // A reference typed as an address (`books/my-book`) becomes the id of that entry, also when it comes with this file.
+        $known = [];
+        foreach ($writable as $entry) {
+            [$knownSlug] = $this->contentIdentity((string)($entry['new_path'] ?? ''));
+            $knownId = trim((string)($entry['data']['translation_id'] ?? ''));
+            if ($knownId !== '') {
+                $known[$type . '/' . $knownSlug] = $knownId;
+            }
+        }
+
         $temps = [];
         foreach ($writable as $entry) {
             $newPath = (string)($entry['new_path'] ?? '');
             $data = is_array($entry['data'] ?? null) ? $entry['data'] : [];
+            if ($this->relations !== null && is_array($data['custom_fields'] ?? null)) {
+                $data['custom_fields'] = $this->relations->normalize($type, $data['custom_fields'], true, $known);
+            }
             $body = (string)($entry['body'] ?? '');
             $dir = dirname($newPath);
             if (!is_dir($dir)) {

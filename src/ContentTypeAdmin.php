@@ -206,7 +206,7 @@ final class ContentTypeAdmin
                 'show' => $field['show'],
                 'retired' => $field['hidden'],
                 'from_theme' => isset($themeDefinition['fields'][$key]),
-                'sub_fields' => $field['type'] === 'repeater' ? self::subFieldSummary($field['fields']) : '',
+                'sub_fields' => $field['type'] === 'repeater' ? self::subFieldSummary($field['fields']) : ($field['type'] === 'relation' ? ($field['types'] !== [] ? implode(', ', $field['types']) : 'any type') . (($field['multiple'] ?? false) ? ' (several)' : '') : ''),
             ];
         }
         return $rows;
@@ -313,8 +313,8 @@ final class ContentTypeAdmin
 
             // A site field: everything can change. Details the form does not offer are kept.
             $entry = is_array($fields[$key] ?? null) ? $fields[$key] : [];
-            // A repeater keeps its kind and its own fields: they are written in the YAML file, the form shows them only.
-            $type_ = ($entry['type'] ?? '') === 'repeater' ? 'repeater'
+            // A repeater (and a relation, with the types it points at) keeps its kind and its own fields: they are written in the YAML file, the form shows them only.
+            $type_ = in_array($entry['type'] ?? '', ['repeater', 'relation'], true) ? (string)$entry['type']
                 : (in_array((string)($row['type'] ?? ''), ContentTypes::FORM_FIELD_TYPES, true) ? (string)$row['type'] : 'text');
             $entry['type'] = $type_;
             $label = trim((string)preg_replace('/\s+/', ' ', (string)($row['label'] ?? '')));

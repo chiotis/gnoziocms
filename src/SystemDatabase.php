@@ -102,6 +102,52 @@ final class SystemDatabase
         $this->applyMigration($pdo, '202609290002_content_revisions', fn(PDO $db) => $this->createRevisionTable($db));
         $this->applyMigration($pdo, '202610030001_analytics', fn(PDO $db) => $this->createAnalyticsTables($db));
         $this->applyMigration($pdo, '202610130001_not_found_ignored', fn(PDO $db) => $this->addNotFoundIgnoredColumn($db));
+        $this->applyMigration($pdo, '202610190001_content_relations', fn(PDO $db) => $this->createContentRelations($db));
+        $this->applyMigration($pdo, '202610190002_content_title_key', fn(PDO $db) => $this->addContentTitleKey($db));
+    }
+
+    /**
+     * The id every language of an entry shares and a small card of it (title, excerpt, picture, date) in the content index, and
+     * the references between entries (content_refs). All of it is read from the files and can be rebuilt at any time.
+     */
+    private function createContentRelations(PDO $pdo): void
+    {
+        $columns = [];
+        foreach ($pdo->query('PRAGMA table_info(content_index)') as $row) {
+            $columns[] = (string)$row['name'];
+        }
+        if (!in_array('translation_id', $columns, true)) {
+            $pdo->exec("ALTER TABLE content_index ADD COLUMN translation_id TEXT NOT NULL DEFAULT ''");
+        }
+        if (!in_array('summary', $columns, true)) {
+            $pdo->exec("ALTER TABLE content_index ADD COLUMN summary TEXT NOT NULL DEFAULT ''");
+        }
+        $pdo->exec('CREATE INDEX IF NOT EXISTS idx_content_index_translation ON content_index (translation_id)');
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS content_refs (
+                from_type TEXT NOT NULL,
+                from_slug TEXT NOT NULL,
+                from_lang TEXT NOT NULL,
+                field_path TEXT NOT NULL,
+                row_path TEXT NOT NULL DEFAULT '',
+                pos INTEGER NOT NULL DEFAULT 0,
+                to_id TEXT NOT NULL
+            )"
+        );
+        $pdo->exec('CREATE INDEX IF NOT EXISTS idx_content_refs_to ON content_refs (to_id, from_type, field_path)');
+        $pdo->exec('CREATE INDEX IF NOT EXISTS idx_content_refs_from ON content_refs (from_type, from_slug, from_lang)');
+    }
+
+    /** The title in lower case (any alphabet) so a search for a title is not case sensitive in Greek either; SQLite lowers ASCII only. */
+    private function addContentTitleKey(PDO $pdo): void
+    {
+        $columns = [];
+        foreach ($pdo->query('PRAGMA table_info(content_index)') as $row) {
+            $columns[] = (string)$row['name'];
+        }
+        if (!in_array('title_key', $columns, true)) {
+            $pdo->exec("ALTER TABLE content_index ADD COLUMN title_key TEXT NOT NULL DEFAULT ''");
+        }
     }
 
     /** Addresses the owner chose to ignore stay in the log (their visits are still counted) but are no longer listed. */

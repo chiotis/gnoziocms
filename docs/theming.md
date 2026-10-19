@@ -275,7 +275,7 @@ archive:
   show_meta: true          # category and card fields
 ```
 
-- **Field types:** `text`, `textarea`, `markdown`, `email`, `url`, `link`, `image`, `color`, `number`, `decimal`, `date`, `select`, `toggle`, and `repeater` (a list of rows, see *Repeaters* below). Per field: `card: true` shows it on the item's card (a repeater as one line naming its rows), `show: false` hides it on the item's own page, `filterable: true` (select fields only, never a repeater) adds an archive filter, `hidden: true` retires it. Admin > Content types creates every kind but a repeater: its row fields are written in the type's YAML file, and the screen shows it read-only (how it is used can still change).
+- **Field types:** `text`, `textarea`, `markdown`, `email`, `url`, `link`, `image`, `color`, `number`, `decimal`, `date`, `select`, `toggle`, `repeater` (a list of rows, see *Repeaters* below) and `relation` (a pointer to other entries, see *Relationships* below). Per field: `card: true` shows it on the item's card (a repeater as one line naming its rows), `show: false` hides it on the item's own page, `filterable: true` (select fields only, never a repeater) adds an archive filter, `hidden: true` retires it. Admin > Content types creates every kind but a repeater: its row fields are written in the type's YAML file, and the screen shows it read-only (how it is used can still change).
 - **Storage:** values are saved in the item's front matter under `custom_fields`, checked against the definition on every read and write, so a stored value can never push markup into a template. Fields you declare get their own inputs in the editor (a "<Type> details" tab) and no longer appear under free-form Custom Fields.
 - **Compatibility:** follow the same rules as theme settings. Never rename a field key, retire it with `hidden: true` instead (stored values are kept), and give a `select` a stable set of option values.
 - **On the page:** every single page shows its declared fields as a fact sheet (`components/type-fields.twig`, included by `components/page-body.twig`); a repeater is a list there, each row its fields with their labels, an inner list nested in its row. In templates, `content_fields(item)` returns the fields to print and `content_fields(item, 'card')` those marked for cards (each `{key, label, type, value, display}`; a repeater's entry also has `rows`, a list of rows that are lists of entries of the same shape); `content_type('projects')` returns the definition. `item.meta.custom_fields.<key>` holds the raw stored rows, unchecked.
@@ -318,6 +318,30 @@ editions:
 - **Search** reads the text of rows and inner rows like other fields (`searchable: false` works inside rows too).
 - **Replacing flat fields (`legacy`).** A content-type repeater can say which flat keys it replaces: `legacy: {url: buy_url, label: buy_label}` (a row field => the old `custom_fields` key). Content saved before the list existed has no rows but holds the old keys, so reading gives the list one row made of them (rows that exist always win), the editor shows it as the first row, and saving the form writes the list and drops the old keys. Keep the old fields declared with `hidden: true` so they stay readable and never appear under free-form Custom Fields. The Books type does this for `buy_url` / `buy_label` → `buy_links` (`label` is the shop or button text, `url` the link); a template reads the checked rows with `content_values(item).buy_links`, which has the old link as one row too.
 - **Editors.** The block builder and the forms of content types and theme settings add, remove and reorder rows of either list; an action acts on the nearest list only.
+
+## Relationships
+
+A `relation` field points at other entries: a book's author, a route's points, the editions a book was reprinted from. It is declared in a content type's YAML like any field, so it works for every type, also one that exists only as a file in `custom/content-types`, and it can sit inside a repeater's rows (two levels):
+
+```yaml
+author:   { type: relation, types: [authors], label: Author }
+team:     { type: relation, types: [authors], multiple: true, max: 5, label: Also by }
+editions:
+  type: repeater
+  item_label: Edition
+  fields:
+    year: { type: number }
+    earlier: { type: relation, types: [books] }   # a relation inside a row
+```
+
+- `types` lists the content types the field may point at (none: any that is on). `multiple: true` takes a list in the order the editor chose it, up to `max`.
+- **What is stored** is the `translation_id` of the entry pointed at (16 characters, written when the entry is first saved), not its address: `author: 8f3a4c19d20b7e55`, or a list. The id does not change when the entry gets another address, and it is shared by every language of the entry, so a reference shows the entry in the language of the page, else in the site's own. Nothing has to be rewritten when an address changes. An entry written before ids existed gets one, as a single `translation_id` line, when it is first pointed at (the old text is kept in its history).
+- **An entry that is a draft, hidden, deleted or of a type that is switched off** is left out for visitors. The reference stays in the file, so restoring or publishing the entry brings it back; the editor still lists it, marked as a draft or missing.
+- **Editor.** A relation is chips (the entries chosen, each with its title, a draft or missing mark, a link to open it in a new tab, and, for a field that takes several, buttons to move it earlier or later) and a search box that offers the entries of the allowed types whose title or address contains the text (any case, Greek too), the ones starting with it first; a field at its `max` closes the box. It works the same inside a row of a list. Entries the person may not open are never offered. An entry that has no id yet is sent as `type/slug` and gets its id when the entry is saved; an address typed in a CSV cell is turned into the id the same way.
+- **Warnings.** An entry's editor has a *Referenced by* tab when other entries point at it (and says when it is not published, so they do not show it); the page that asks before deleting an entry says who points at it, and a bulk delete or move to draft says how many of the entries were pointed at. A reference to an entry that is gone is listed in **Admin > Broken references** and on the dashboard; restoring the entry from its history brings it back.
+- **Fact sheet.** A relation shows the titles as links. In a template: `related(item, 'author')` returns the entries a field points at, each `{id, type, slug, lang, title, excerpt, main_image, date, url, hidden}`; for an id kept in a row of a list use `related(row.earlier)`. `referenced_by(item, 'books', 'author')` is the other way round: the entries of a type that point at this one through a field (`editions.earlier` for a field in a list), newest first, each the version in the page's language that holds the reference.
+- **CSV.** An export writes each reference as `type/slug`; an import takes an address or an id, a list as JSON, and an address of an entry created by the same file works.
+- **The index.** The references are kept in the system database next to the content index (`content_index` has each entry's id and a small card; `content_refs` has the pointers), so "all books of this author" is one query on an indexed id and never reads the files of the books. It is built from the files, kept up to date by every save, delete, restore, import and link update, looked at again at most every 30 seconds for files changed outside the admin, and built again when a type's relation fields change. Deleting the database only costs speed: Admin > System rebuilds the content index with it, and the first visit that needs it does the same.
 
 ## Search results
 

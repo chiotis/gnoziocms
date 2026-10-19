@@ -362,7 +362,7 @@ final class PermissionService
             'seo' => 'seo.manage',
             'analytics' => 'analytics.manage',
             'users-edit' => null,
-            'edit', 'save', 'delete', 'new', 'block-presets', 'markdown-visual', 'content-bulk', 'search', 'revisions', 'links' => 'content.manage',
+            'edit', 'save', 'delete', 'new', 'block-presets', 'markdown-visual', 'content-bulk', 'search', 'revisions', 'links', 'relations', 'broken-references' => 'content.manage',
             // An action nobody mapped is for administrators only, never for a lower role by accident.
             default => 'settings.manage',
         };
