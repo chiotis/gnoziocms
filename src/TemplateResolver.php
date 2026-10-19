@@ -68,8 +68,33 @@ final class TemplateResolver
         return $default;
     }
 
-    public function forArchive(string $type): string
+    /** The template that draws a list of entries from the blocks of its archive template (Archive Layouts > Edit template). */
+    public const ARCHIVE_BUILT = 'templates/archive-built.twig';
+
+    /**
+     * The blocks of the archive template built for a list (a content type, or `taxonomy:<name>`) and of its card, or null when the list is
+     * not drawn from one: it is not built with blocks, the template has no blocks in this language, or the theme cannot draw it.
+     *
+     * @return array{blocks: array<int, mixed>, card: array<int, mixed>}|null
+     */
+    public function builtArchive(string $key, string $lang): ?array
     {
+        if ($key === 'forms' || $key === 'pages' || !$this->theme->hasTemplate(self::ARCHIVE_BUILT)) {
+            return null;
+        }
+        $settings = ($this->themeSettings)();
+        $default = $this->defaultLanguage !== null ? ($this->defaultLanguage)() : $lang;
+        if (!ArchiveTemplates::applies($settings, $key, $lang, $default)) {
+            return null;
+        }
+        return ['blocks' => ArchiveTemplates::blocks($settings, $key, $lang, $default), 'card' => ArchiveTemplates::card($settings, $key, $lang, $default)];
+    }
+
+    public function forArchive(string $type, string $lang = ''): string
+    {
+        if ($lang !== '' && $this->builtArchive($type, $lang) !== null) {
+            return self::ARCHIVE_BUILT;
+        }
         $singular = self::singular($type);
         return $this->theme->findTemplate([
             'templates/archive-' . $type . '.twig',
@@ -79,8 +104,11 @@ final class TemplateResolver
         ]) ?? 'templates/archive.twig';
     }
 
-    public function forTaxonomy(string $kind, string $slug): string
+    public function forTaxonomy(string $kind, string $slug, string $taxonomy = '', string $lang = ''): string
     {
+        if ($taxonomy !== '' && $lang !== '' && $this->builtArchive(ArchiveTemplates::forTaxonomy($taxonomy), $lang) !== null) {
+            return self::ARCHIVE_BUILT;
+        }
         $safeSlug = Slug::plain(basename($slug));
         return $this->theme->findTemplate([
             'templates/archive-' . $kind . '-' . $safeSlug . '.twig',

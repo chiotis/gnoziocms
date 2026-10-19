@@ -1,0 +1,21 @@
+label: Archive title
+description: 'The title area of a list of entries: its title and subtitle (for a category or tag, its name and description), a picture, and the trail. Only in an archive template built with blocks.'
+category: Archive
+scope: archive
+spacing: none
+variants:
+  auto: As set for the list
+  default: Default
+  centered: Centered
+  split: Split
+  cover: Cover
+  minimal: Minimal
+fields:
+  image:
+    type: image
+    label: Picture
+    help: Optional. Leave empty to use the picture chosen for the list in Archive Layouts.
+  breadcrumbs:
+    type: toggle
+    label: Show the trail above the title
+    default: false

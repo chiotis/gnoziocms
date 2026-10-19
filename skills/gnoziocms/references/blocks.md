@@ -56,6 +56,16 @@ Compact titles that open and close, made to sit in a narrow column. Smaller than
 | `icon` | choice; one of `chevron`, `plus`; default `chevron` |  |
 | `style` | choice; one of `lines`, `cards`; default `lines` |  |
 
+### `archive-title` — Archive title
+The title area of a list of entries: its title and subtitle (for a category or tag, its name and description), a picture, and the trail. Only in an archive template built with blocks.
+
+**Layouts** (`variant`): `auto` (As set for the list), `default` (Default), `centered` (Centered), `split` (Split), `cover` (Cover), `minimal` (Minimal). First is the default.
+
+| field | kind and choices | notes |
+|---|---|---|
+| `image` | image | Optional. Leave empty to use the picture chosen for the list in Archive Layouts. |
+| `breadcrumbs` | true / false; default `false` |  |
+
 ### `banner` — Banner
 An announcement or highlight, as a slim strip or a boxed callout with an optional button. Visitors can dismiss it if you allow that.
 
@@ -263,6 +273,22 @@ The blocks the entry has of its own (its Blocks tab), drawn here. Use it to leav
 | field | kind and choices | notes |
 |---|---|---|
 
+### `entry-list` — Entry list
+The entries of the list, in pages. Each entry is drawn with the card of the template (blocks that show the entry's fields), or with the theme's card when the template has none. Only in an archive template built with blocks.
+
+**Layouts** (`variant`): `grid` (Grid), `list` (List), `compact` (Compact). First is the default.
+
+| field | kind and choices | notes |
+|---|---|---|
+| `columns` | choice; one of `2`, `3`, `4`; default `3` |  |
+| `per_page` | whole number; 0 to 60; default `12` | 0 shows everything on one page. |
+| `order` | text; default `date_desc` |  |
+| `pagination` | true / false; default `true` |  |
+| `empty_text` | text | Optional. Leave empty for the theme's text. |
+| `show_image` | true / false; default `true` |  |
+| `show_excerpt` | true / false; default `true` |  |
+| `show_meta` | true / false; default `true` |  |
+
 ### `entry-title` — Entry title
 The title area of the entry, as its page draws it today: the title, the excerpt, the main image and a line with its terms. Only in a template built with blocks.
 
@@ -320,6 +346,15 @@ A grid of features or services, each with an icon, a title, a short text, and an
 | &nbsp;&nbsp;`items[].text` | text (several lines) |  |
 | &nbsp;&nbsp;`items[].link` | link |  |
 | &nbsp;&nbsp;`items[].link_label` | text |  |
+
+### `filter-bar` — Filters
+The filters of a list of entries (the taxonomies and the select fields chosen for it), as a form with no script. Only values that some entry has are offered. Only in an archive template built with blocks.
+
+**Layouts** (`variant`): `default` (Default). First is the default.
+
+| field | kind and choices | notes |
+|---|---|---|
+| `show_count` | true / false; default `true` |  |
 
 ### `form` — Form
 One of the site's forms (Admin > Forms) with a heading and introduction.
@@ -604,6 +639,15 @@ One large quotation, with who said it and an optional photo.
 | `role` | text |  |
 | `image` | image; only when `variant` is `p` or `h` or `o` or `t` or `o` |  |
 | `mark` | true / false; default `true` |  |
+
+### `result-count` — Result count
+How many entries the list has. By default it appears only when filters are applied. Only in an archive template built with blocks.
+
+**Layouts** (`variant`): `default` (Default). First is the default.
+
+| field | kind and choices | notes |
+|---|---|---|
+| `always` | true / false; default `false` |  |
 
 ### `stats` — Stats
 Key numbers with a short label, e.g. years of experience or completed projects.

@@ -1,0 +1,12 @@
+label: Filters
+description: 'The filters of a list of entries (the taxonomies and the select fields chosen for it), as a form with no script. Only values that some entry has are offered. Only in an archive template built with blocks.'
+category: Archive
+scope: archive
+spacing: compact
+variants:
+  default: Default
+fields:
+  show_count:
+    type: toggle
+    label: Say how many results a filter leaves
+    default: true

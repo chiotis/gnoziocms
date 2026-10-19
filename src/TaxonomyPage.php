@@ -17,6 +17,8 @@ final class TaxonomyPage
      * @param \Closure(): LanguageAlternates $alternates
      * @param \Closure(): array<string, mixed> $settings
      * @param \Closure(string, ?string): string $translate a theme string, with what to show when the theme has none
+     * @param (\Closure(string, string, array<string, mixed>): array<string, mixed>)|null $listSettings the archive settings a template built
+     *        with blocks asks for: the taxonomy's key (`taxonomy:<name>`), the language and the settings now
      */
     public function __construct(
         private ContentRepository $content,
@@ -25,7 +27,8 @@ final class TaxonomyPage
         private \Closure $archive,
         private \Closure $alternates,
         private \Closure $settings,
-        private \Closure $translate
+        private \Closure $translate,
+        private ?\Closure $listSettings = null
     ) {
     }
 
@@ -60,6 +63,9 @@ final class TaxonomyPage
         // How this taxonomy lists its entries is its own choice (Admin > Taxonomies), the same options a content type has.
         $archive = $taxonomies->archive($key, $lang, $defaultLang);
         $archive['taxonomies'] = array_values(array_diff($archive['taxonomies'], [$key]));
+        if ($this->listSettings !== null) {
+            $archive = ($this->listSettings)(ArchiveTemplates::forTaxonomy($key), $lang, $archive);
+        }
         $includeTypes = $archive['types'];
 
         // The page of a parent also lists what is filed under its sub-terms, unless the taxonomy's archive says not to.
@@ -108,6 +114,7 @@ final class TaxonomyPage
             'items' => $page['items'],
             'archive' => $page,
             'type' => $key,
+            'taxonomy' => $key,
             'archive_title' => $archive['title'] !== '' ? $fill($archive['title']) : $titlePrefix . ': ' . $label,
             'archive_subtitle' => $archive['subtitle'] !== '' ? $fill($archive['subtitle']) : $description,
             'term_description' => $description,

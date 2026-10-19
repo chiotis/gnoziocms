@@ -17,7 +17,8 @@
   {% set field_class = 'w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-900 placeholder:text-slate-400' %}
   {% set heading = kind == 'type' ? item.label : item.title %}
   {% set id = 'archive-' ~ kind ~ '-' ~ (kind == 'type' ? item.type : item.name) %}
-  <article class="lc-card rounded-xl border border-slate-200 bg-white" data-layout-card aria-labelledby="{{ id }}">
+  {% set list_key = kind == 'type' ? item.type : 'taxonomy:' ~ item.name %}
+  <article class="lc-card rounded-xl border border-slate-200 bg-white" data-layout-card data-built="{{ item.built and item.built.use ? 'built' : 'theme' }}" aria-labelledby="{{ id }}">
     <header class="flex items-start gap-3 p-3 pb-2">
       <div class="min-w-0 flex-1">
         <h3 id="{{ id }}" class="truncate text-sm font-semibold text-slate-900">{{ heading }}</h3>
@@ -28,6 +29,23 @@
         <p class="mt-1.5 text-xs font-medium text-slate-700" data-lc-summary>{{ archive_layouts[a.layout] ?? a.layout }} · {{ a.columns }} columns · {{ a.per_page == 0 ? 'all on one page' : a.per_page ~ ' per page' }}</p>
       </div>
     </header>
+    {% if item.built %}
+      {# The page of the list: the theme's template, or one built with blocks (Entry list with a card made of blocks), for any list also of a type added later. #}
+      <div class="lc-built border-t border-slate-100 p-3">
+        <dl class="m-0"><div class="lc-row">
+          <dt>Page</dt>
+          <dd class="m-0 flex flex-wrap items-center gap-2">
+            {{ c.seg('archive_template[' ~ list_key ~ ']', {theme: "The theme's", built: 'Built with blocks'}, item.built.use ? 'built' : 'theme', 'How the list of ' ~ heading ~ ' is made', 'built') }}
+            <a href="{{ url(item.built.url) }}" class="lc-built-edit rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-700 no-underline hover:bg-slate-50">Edit template</a>
+            <button type="button" class="rounded-md px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900" data-built-reset title="Draw the list with the theme's template again. The built template stays stored, so you can switch it on again.">Reset</button>
+          </dd>
+        </div></dl>
+        <p class="mt-1.5 text-[11px] leading-4 text-slate-500" data-built-note>
+          {% if item.built.blocks %}{{ item.built.blocks }} {{ item.built.blocks == 1 ? 'block' : 'blocks' }} in the template{% if item.built.card %}, {{ item.built.card }} in the card{% endif %}.{% else %}No template yet: choose Edit template to build one.{% endif %}
+          While it is on, the Entry list block sets the layout, columns, order and size of a page; the title area, filters and texts below still apply.
+        </p>
+      </div>
+    {% endif %}
     <dl class="m-0 space-y-2.5 border-t border-slate-100 p-3">
       <div class="lc-row">
         <dt>Layout</dt>

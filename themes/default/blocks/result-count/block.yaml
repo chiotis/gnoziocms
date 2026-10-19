@@ -1,0 +1,12 @@
+label: Result count
+description: 'How many entries the list has. By default it appears only when filters are applied. Only in an archive template built with blocks.'
+category: Archive
+scope: archive
+spacing: none
+variants:
+  default: Default
+fields:
+  always:
+    type: toggle
+    label: Show it also when no filter is applied
+    default: false

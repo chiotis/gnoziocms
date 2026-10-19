@@ -1,0 +1,117 @@
+{#
+  Theme > Archive Layouts > Edit template: the blocks that draw a list of entries (the archive of a content type, the page of a category,
+  a tag or a taxonomy of the site's own), edited with the block editor (public/assets/js/admin-blocks.js, context "template") beside a
+  live preview of the real list. Two parts: the page (the blocks around and including the Entry list) and the card (the blocks that draw
+  one entry of the list, bound to its fields). Stored in the theme settings (`archive_templates.<key>`, src/ArchiveTemplates.php).
+
+  key, list_label    the list (a content type, or taxonomy:<name>) and its name
+  part               'page' or 'card'
+  template_starts    the editor shows the starting template (nothing is stored until the template is saved)
+  template_use       whether the list is drawn from the template
+  template_json      what the editor starts from
+  preview_choices    for a taxonomy, the terms the preview can show: [{value: term id, label}]
+#}
+{% extends '@admin/base.twig' %}
+{% set page_heading = list_label ~ ' list template' %}
+
+{% block content %}
+  {% set primary_button_class = 'inline-flex shrink-0 items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700' %}
+  {% set secondary_button_class = 'inline-flex shrink-0 items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50' %}
+  {% set base_url = 'admin/theme?archive_template=' ~ key|url_encode %}
+
+  {% if saved %}
+    <template data-flash data-type="success">Saved.</template>
+  {% endif %}
+  {% if failed %}
+    <template data-flash data-type="error">The template could not be saved because the SQLite system database is unavailable.</template>
+  {% endif %}
+
+  <div class="ep-split" data-entry-split>
+  <div class="ep-main">
+  <form method="post" action="{{ url(base_url) }}" class="editor space-y-3" id="template-form">
+    {{ csrf_field() }}
+    <input type="hidden" name="part" value="{{ part }}">
+
+    <header class="en-head">
+      <p class="en-crumb">
+        <a href="{{ url('admin/theme?tab=archive_layouts') }}">Archive Layouts</a>
+        <span aria-hidden="true">/</span>
+        <strong>{{ list_label }} template</strong>
+      </p>
+      <button type="button" class="ep-toggle" data-entry-preview-toggle aria-expanded="false" aria-controls="entry-preview" title="Show the list as the template draws it">
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path stroke-linecap="round" d="M14 4v16"/></svg>
+        <span>Preview</span>
+      </button>
+    </header>
+
+    <section class="lc-card en-card" aria-labelledby="tpl-title">
+      <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <div class="min-w-0">
+          <h2 id="tpl-title" class="text-sm font-semibold text-slate-900">{{ is_taxonomy ? 'Page of a ' ~ list_label|lower ~ ' term' : 'List of ' ~ list_label|lower }}</h2>
+          <p class="mt-0.5 text-xs text-slate-500">
+            {% if part == 'card' %}
+              The blocks below draw <strong>one entry</strong> of the list; the list repeats them for every entry. A block shows a field of the entry when you bind it (the chain button beside a field){% if is_taxonomy %}; a page of several content types offers the fields every entry has{% endif %}. Without a card the theme's card is used.
+            {% else %}
+              The blocks below draw the page: the title, the filters, the count and the <strong>Entry list</strong>; any other block can go around them.{% if admin_languages|length > 1 %} Each language can have its own set; one without shows the site's own.{% endif %}
+            {% endif %}
+          </p>
+          {% if template_starts %}<p class="mt-1 text-xs text-slate-500" data-template-starts>This is the default for {{ list_label|lower }}, to start from. Change it, then save.</p>{% endif %}
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <label class="lc-chip"><input type="checkbox" name="use" value="1"{% if template_use %} checked{% endif %}><span>Use this template for {{ list_label|lower }}</span></label>
+          {% if preview_choices %}
+            <label class="flex items-center gap-1.5 text-xs text-slate-600" for="tpl-term">Preview with
+              <select id="tpl-term" name="preview_term" class="lc-input lc-select max-w-[16rem]">
+                {% for choice in preview_choices %}<option value="{{ choice.value }}"{% if choice.value == preview_chosen %} selected{% endif %}>{{ choice.label }}</option>{% endfor %}
+              </select>
+            </label>
+          {% endif %}
+        </div>
+      </div>
+      <nav class="mt-3 flex gap-1.5 border-t border-slate-100 pt-3" aria-label="Parts of the template">
+        <a href="{{ url(base_url ~ '&part=page') }}" class="rounded-md px-3 py-1 text-xs font-medium no-underline {{ part == 'page' ? 'bg-slate-900 text-white' : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50' }}"{% if part == 'page' %} aria-current="page"{% endif %}>Page <span class="opacity-70">({{ page_blocks }})</span></a>
+        <a href="{{ url(base_url ~ '&part=card') }}" class="rounded-md px-3 py-1 text-xs font-medium no-underline {{ part == 'card' ? 'bg-slate-900 text-white' : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50' }}"{% if part == 'card' %} aria-current="page"{% endif %}>Card <span class="opacity-70">({{ card_blocks }})</span></a>
+        <span class="ml-2 self-center text-[11px] text-slate-500">Save before you switch: the other part opens as it was last saved.</span>
+      </nav>
+    </section>
+
+    <section class="rounded-lg border border-slate-200 bg-white p-4" aria-label="{{ part == 'card' ? 'Blocks of the card' : 'Blocks of the page' }}">
+      <div class="mb-3 flex items-center justify-between gap-2 border-b border-slate-100 pb-3">
+        <h2 class="text-sm font-semibold text-slate-900">{{ part == 'card' ? 'Card' : 'Blocks' }} <span data-block-count class="tab-count"></span></h2>
+      </div>
+      <input type="hidden" name="blocks_json" value="" data-block-editor-output>
+      <input type="hidden" name="blocks_editor" value="" data-block-editor-flag>
+      <div data-block-editor class="space-y-3">
+        <p class="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">The block editor needs JavaScript. The template is kept unchanged when you save.</p>
+      </div>
+      <script type="application/json" id="block-editor-data">{{ template_json|raw }}</script>
+    </section>
+
+    {% embed '@admin/partials/action-bar.twig' %}
+      {% block leading %}
+        <a href="{{ url('admin/theme?tab=archive_layouts') }}" class="{{ secondary_button_class }}">Back to Archive Layouts</a>
+        <button type="submit" name="start_again" value="1" formnovalidate class="{{ secondary_button_class }}" data-start-again data-confirm="Replace the blocks of the {{ part }} with the default ones for {{ list_label|lower }}? The blocks you have now (for every language) are replaced, and cannot be brought back from here." data-confirm-button="Start again">Start again from the default</button>
+      {% endblock %}
+      {% block actions %}
+        <button type="submit" class="{{ primary_button_class }}">
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+          Save template
+        </button>
+      {% endblock %}
+    {% endembed %}
+  </form>
+  </div>
+  <div class="ep-panel" id="entry-preview" data-entry-preview data-preview data-mode="entry" data-form="#template-form" data-endpoint="{{ url(base_url ~ '&preview=1') }}" hidden>
+    <button type="button" class="ep-grip" data-entry-preview-grip role="separator" aria-orientation="vertical" aria-label="Width of the preview. Use the left and right arrow keys." aria-valuemin="320" aria-valuemax="900" tabindex="0"></button>
+    <button type="button" class="ep-close" data-entry-preview-close aria-label="Hide the preview">Close</button>
+    {% include '@admin/partials/theme-preview.twig' with {preview_url: '', preview_title: 'Preview of the list template', preview_note: 'The real list drawn with the template as it is now. Nothing is saved. Click a block to open its settings.'} %}
+  </div>
+  </div>
+
+  {% include '@admin/partials/icon-library.twig' %}
+  <script src="{{ asset('js/admin-sortable.js') }}"></script>
+  <script src="{{ asset('js/admin-panel.js') }}"></script>
+  <script src="{{ asset('js/admin-blocks.js') }}"></script>
+  <script src="{{ asset('js/admin-preview.js') }}" defer></script>
+  <script src="{{ asset('js/admin-entry-preview.js') }}" defer></script>
+{% endblock %}

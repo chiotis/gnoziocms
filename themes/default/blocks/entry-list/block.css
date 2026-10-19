@@ -1,0 +1,53 @@
+/* Entry list: the entries drawn with a card built from blocks. The blocks of a card are ordinary blocks; here they lose the room a
+   section has on a page, so a card is as big as its place in the grid. */
+.entry-grid {
+  display: grid;
+  gap: clamp(1rem, 2.4vw, 1.75rem);
+  grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.entry-grid.cols-2 { --cols: 2; }
+.entry-grid.cols-3 { --cols: 3; }
+.entry-grid.cols-4 { --cols: 4; }
+.entry-grid--list,
+.entry-grid--compact { --cols: 1; }
+@media (max-width: 900px) {
+  .entry-grid.cols-3,
+  .entry-grid.cols-4 { --cols: 2; }
+}
+@media (max-width: 600px) {
+  .entry-grid { --cols: 1 !important; }
+}
+.entry-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--line, rgba(0, 0, 0, .1));
+  border-radius: var(--radius-card, .75rem);
+  background: var(--surface, transparent);
+}
+.entry-grid--list .entry-card,
+.entry-grid--compact .entry-card { flex-direction: row; align-items: stretch; }
+.entry-grid--list .entry-card > .block-row,
+.entry-grid--list .entry-card > .block,
+.entry-grid--compact .entry-card > .block { flex: 1 1 0; min-width: 0; }
+.entry-grid--compact .entry-card > .block:first-child { flex: 0 0 9rem; }
+.entry-card .block,
+.entry-card .block-row { padding: 0; margin: 0; background: none; }
+.entry-card .container,
+.entry-card .container-narrow,
+.entry-card .site-wrap { width: auto; max-width: none; margin: 0; padding: 0; }
+.entry-card .image-block { margin: 0; border-radius: 0; }
+.entry-card .text-single,
+.entry-card .container-narrow.text-single { padding: .9rem 1.1rem 1.1rem; }
+.entry-card .section-title { margin: 0 0 .4rem; font-size: 1.15rem; }
+.entry-card .prose { font-size: .95rem; }
+.entry-card .prose > :last-child { margin-bottom: 0; }
+.entry-card-link { position: absolute; inset: 0; z-index: 1; }
+.entry-card-link:focus-visible { outline: 2px solid var(--accent, currentColor); outline-offset: -2px; }
+.entry-card .btn,
+.entry-card a:not(.entry-card-link) { position: relative; z-index: 2; }

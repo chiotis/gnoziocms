@@ -105,6 +105,10 @@ final class App
     private ?LayoutsAdmin $layoutsAdminService = null;
     private ?BlockSets $blockSetsService = null;
     private ?SingleTemplateAdmin $singleTemplateAdminService = null;
+    private ?ArchivePages $archivePagesService = null;
+    private ?ArchiveTemplateAdmin $archiveTemplateAdminService = null;
+    /** Which part of an archive template the live preview marks for the editor: `page` or `card` (when entryPreview is on). */
+    private string $archivePreviewPart = '';
     private ?ArchiveBuilder $archiveBuilderService = null;
     private ?BackupAdmin $backupAdminService = null;
     private ?PublicPaths $publicPathsService = null;
@@ -539,7 +543,8 @@ final class App
             fn(): ArchiveBuilder => $this->archiveBuilder(),
             fn(): LanguageAlternates => $this->languageAlternates(),
             fn(): array => $this->settings,
-            fn(string $key, ?string $fallback = null): string => $this->translate($key, $fallback)
+            fn(string $key, ?string $fallback = null): string => $this->translate($key, $fallback),
+            fn(string $key, string $lang, array $settings): array => $this->archivePages()->settings($key, $lang, $settings)
         );
     }
 
@@ -783,12 +788,13 @@ final class App
             $slug = $route['slug'];
             if ($route['kind'] === 'archive') {
                 $alternates = $this->languageAlternates()->forArchive($type);
-                $archive = $this->archiveContext($type, $lang, $includeHidden);
+                $builtArchive = $this->templates()->builtArchive($type, $lang);
+                $archive = $this->archiveContext($type, $lang, $includeHidden, $builtArchive);
                 if ($archive['page'] > 1 && !$archive['filtered']) {
                     // Each page of a listing is its own page for search engines.
                     $viewDefaults['canonical_url'] = $currentUrl . '?page=' . $archive['page'];
                 }
-                $this->render($this->templates()->forArchive($type), [
+                $view = [
                     'items' => $archive['items'],
                     'archive' => $archive,
                     'type' => $type,
@@ -797,7 +803,12 @@ final class App
                     'block_styles' => [$this->theme->blockStylesheetUrl(rtrim((string)($this->settings['base_url'] ?? ''), '/'), ($archive['settings']['layout'] ?? '') === 'map' ? ['latest', 'map'] : ['latest'])],
                     'block_scripts' => ($archive['settings']['layout'] ?? '') === 'map' ? array_values(array_filter([$this->theme->blockScriptUrl(rtrim((string)($this->settings['base_url'] ?? ''), '/'), ['map'])])) : [],
                     'noindex_page' => $archive['filtered'],
-                ] + $viewDefaults);
+                ] + $viewDefaults;
+                // A list built with blocks (Archive Layouts > Edit template) is drawn from its template's blocks.
+                if ($builtArchive !== null) {
+                    $view = ($this->archivePages()->draw($type, $lang, $path, $this->twig, $view, $this->entryPreview ? $this->archivePreviewPart : '') ?? []) + $view;
+                }
+                $this->render($this->templates()->forArchive($type, $lang), $view);
                 return;
             }
 
@@ -955,9 +966,11 @@ final class App
      * @param ContentItem[] $items
      * @return array<string, mixed>
      */
-    private function archiveContext(string $type, string $lang, bool $includeHidden): array
+    private function archiveContext(string $type, string $lang, bool $includeHidden, ?array $built = null): array
     {
         $definition = $this->contentTypes()->definition($type, $lang, $this->defaultLanguage());
+        // The list block of a template built with blocks chooses the size of a page and the order.
+        $definition['archive'] = $this->archivePages()->settings($type, $lang, $definition['archive'], $built);
         // The content index answers when it can (only the entries on the page are read); otherwise every entry of the type is looked at.
         $indexed = $this->archiveBuilder()->buildIndexed(['types' => [$type], 'term' => null], $includeHidden, $definition['archive'], $definition['fields'], $definition, $lang, $_GET);
         return $indexed ?? $this->archiveBuilder()->build($definition['archive'], $definition['fields'], $definition, $lang, $this->content->getItems($type, $lang, $includeHidden, false), $_GET);
@@ -2281,6 +2294,11 @@ final class App
             $this->handleSingleTemplate((string)$_GET['template']);
             return;
         }
+        // The template built with blocks for a list of entries (Archive Layouts > Edit template).
+        if (isset($_GET['archive_template'])) {
+            $this->handleArchiveTemplate((string)$_GET['archive_template']);
+            return;
+        }
         if ($branding && $_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['preview'] ?? '') === 'styles') {
             // An admin-only specimen, using the site's actual styles. It is never content and stores nothing.
             header('Cache-Control: no-store');
@@ -2350,7 +2368,8 @@ final class App
                 is_array($_POST['single_layouts'] ?? null) ? $_POST['single_layouts'] : null,
                 ($_POST['blocks_editor'] ?? '') === '1' ? json_decode((string)($_POST['blocks_json'] ?? ''), true) : null,
                 is_array($_POST['archive_search'] ?? null) ? $_POST['archive_search'] : null,
-                is_array($_POST['single_template'] ?? null) ? $_POST['single_template'] : null
+                is_array($_POST['single_template'] ?? null) ? $_POST['single_template'] : null,
+                is_array($_POST['archive_template'] ?? null) ? $_POST['archive_template'] : null
             );
             $this->themeSettings = $this->loadThemeSettings();
             if (($save['ok'] ?? false) === true && is_string($_POST['custom_css'] ?? null)) {
@@ -2404,7 +2423,7 @@ final class App
             'single_fields' => $single->fields(),
             'single_templates' => $single->templates(),
             'single_cards' => $single->declared() ? $this->layoutsAdmin()->singleCards($this->themeSettings, $default) : [],
-            'archive_cards' => $this->layoutsAdmin()->archiveCards($default),
+            'archive_cards' => $this->layoutsAdmin()->archiveCards($default, $this->themeSettings),
             'archive_layouts' => ContentTypes::LAYOUTS,
             'archive_title_layouts' => ContentTypes::TITLE_LAYOUTS,
             'search_page' => SearchPage::values($this->themeSettings),
@@ -2632,6 +2651,36 @@ final class App
             fn(string $lang): array => $this->presetLibrary()->forEditor($lang, $lang),
             fn(): array => $this->settings
         );
+    }
+
+    private function archivePages(): ArchivePages
+    {
+        return $this->archivePagesService ??= new ArchivePages($this->templates(), fn(): BlockRuntime => $this->blockRuntime(), $this->contentTypes(), fn(): string => $this->defaultLanguage());
+    }
+
+    private function archiveTemplateAdmin(): ArchiveTemplateAdmin
+    {
+        return $this->archiveTemplateAdminService ??= new ArchiveTemplateAdmin(
+            $this->theme,
+            $this->contentTypes(),
+            $this->blockRuntime()->registry(),
+            $this->blockSets(),
+            new StartingArchives($this->theme, $this->blockRuntime()->registry(), fn(string $key): array => $this->archiveSettingsOf($key)),
+            $this->archivePages(),
+            $this->taxonomies(),
+            fn(): array => $this->content->getTypes(),
+            fn(): string => $this->defaultLanguage()
+        );
+    }
+
+    /** The archive settings a list has now (a content type's, or a taxonomy's): what its starting template takes its size, order and columns from. @return array<string, mixed> */
+    private function archiveSettingsOf(string $key): array
+    {
+        $default = $this->defaultLanguage();
+        if (str_starts_with($key, 'taxonomy:')) {
+            return $this->taxonomies()->archive(substr($key, 9), $default, $default);
+        }
+        return $this->contentTypes()->definition($key, $default, $default)['archive'];
     }
 
     private function singleTemplateAdmin(): SingleTemplateAdmin
@@ -3720,9 +3769,10 @@ final class App
      * @param array<string, mixed> $input submitted `theme_settings[section][field]` values
      * @param array<string, mixed>|null $singleInput submitted `single_layouts[<type>][...]` values, when the form had the Single Layouts cards
      * @param array<string, mixed>|null $builtInput submitted `single_template[<type>]` (`theme` or `built`), when the form had the Single Layouts cards
+     * @param array<string, mixed>|null $archiveBuiltInput submitted `archive_template[<key>]` (`theme` or `built`), when the form had the Archive Layouts cards
      * @return array{ok: bool, message?: string}
      */
-    private function saveThemeSettings(array $input, ?array $singleInput = null, mixed $footerBlocks = null, ?array $searchInput = null, ?array $builtInput = null): array
+    private function saveThemeSettings(array $input, ?array $singleInput = null, mixed $footerBlocks = null, ?array $searchInput = null, ?array $builtInput = null, ?array $archiveBuiltInput = null): array
     {
         if (!$this->systemDatabase->isAvailable()) {
             return ['ok' => false, 'message' => 'Theme settings could not be saved because the SQLite system database is unavailable.'];
@@ -3755,6 +3805,10 @@ final class App
         if ($builtInput !== null) {
             // Which content types draw their pages from the template built with blocks (Single Layouts); the blocks stay stored when it is off.
             $data = SingleTemplates::withChoices($data, $builtInput, $this->content->getTypes(), fn(string $type): array => $this->singleTemplateAdmin()->startingSets($type));
+        }
+        if ($archiveBuiltInput !== null) {
+            // Which lists draw their pages from the template built with blocks (Archive Layouts); the blocks stay stored when it is off.
+            $data = ArchiveTemplates::withChoices($data, $archiveBuiltInput, $this->archiveTemplateAdmin()->keys(), fn(string $key): array => $this->archiveTemplateAdmin()->startingSets($key));
         }
         $this->setSystemMeta('theme_settings', Yaml::dump($data, 6, 2));
         return ['ok' => true];
@@ -3800,6 +3854,55 @@ final class App
         $this->themeSettings = $this->loadThemeSettings();
         $this->logActivity('theme.update', 'info', 'settings', $this->theme->name(), 'Template of ' . $type . ($again ? ' started again from the default.' : ' updated.'), ['tab' => 'single_layouts', 'type' => $type]);
         $this->redirect('/admin/theme?template=' . urlencode($type) . '&saved=1' . (isset($_POST['preview_entry']) ? '&entry=' . urlencode((string)$_POST['preview_entry']) : ''));
+    }
+
+    /** Archive Layouts > Edit template (`ArchiveTemplateAdmin`): the screen, saving, and the live preview of the real list. */
+    private function handleArchiveTemplate(string $key): void
+    {
+        $key = strtolower(trim($key));
+        $admin = $this->archiveTemplateAdmin();
+        if (!$admin->available($key)) {
+            $this->redirect('/admin/theme?tab=archive_layouts');
+            return;
+        }
+        $current = $this->loadThemeSettings();
+        $back = '/admin/theme?archive_template=' . urlencode($key);
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->render('@admin/theme-archive-template.twig', $admin->view($key, $current, $_GET) + ['user' => $this->auth->user(), 'types' => $this->content->getTypes(), 'admin_section' => 'theme']);
+            return;
+        }
+        if (($_GET['preview'] ?? '') === '1') {
+            $this->previewArchiveTemplate($admin->preview($key, $current, $_POST));
+            return;
+        }
+        $part = ($_POST['part'] ?? '') === 'card' ? 'card' : 'page';
+        if (!$this->systemDatabase->isAvailable()) {
+            $this->redirect($back . '&part=' . $part . '&fail=1');
+            return;
+        }
+        $again = ($_POST['start_again'] ?? '') === '1';
+        $this->setSystemMeta('theme_settings', Yaml::dump($again ? $admin->startedAgain($key, $part, $current) : $admin->saved($key, $current, $_POST), 6, 2));
+        $this->themeSettings = $this->loadThemeSettings();
+        $this->logActivity('theme.update', 'info', 'settings', $this->theme->name(), 'Archive template of ' . $key . ($again ? ' started again from the default.' : ' updated.'), ['tab' => 'archive_layouts', 'list' => $key]);
+        $this->redirect($back . '&part=' . $part . '&saved=1' . (isset($_POST['preview_term']) ? '&term=' . urlencode((string)$_POST['preview_term']) : ''));
+    }
+
+    /** JSON for the live preview of an archive template: the list drawn with the unsaved blocks (nothing is stored). @param array{path: string, part: string, settings: array<string, mixed>}|null $preview */
+    private function previewArchiveTemplate(?array $preview): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: no-store');
+        if ($preview === null) {
+            echo json_encode(['html' => ArchiveTemplateAdmin::NOTHING], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+        $this->archivePreviewPart = $preview['part'];
+        try {
+            $html = $this->drawFront($preview['settings'], $preview['path'], [], true);
+        } finally {
+            $this->archivePreviewPart = '';
+        }
+        echo json_encode(['html' => $html, 'path' => '/' . $preview['path']], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
     }
 
     /** The public page at `path` as a visitor's GET with these theme settings, as markup, nothing stored (`$marked`: blocks carry their place, for the template preview). @param array<string, mixed> $themeSettings @param array<string, mixed> $query */
@@ -4084,7 +4187,12 @@ final class App
             $page['data']['block_styles'] = array_values(array_filter(array_merge((array)($page['data']['block_styles'] ?? []), [$this->theme->blockStylesheetUrl($base, ['latest', 'map'])])));
             $page['data']['block_scripts'] = array_values(array_filter(array_merge((array)($page['data']['block_scripts'] ?? []), [$this->theme->blockScriptUrl($base, ['map'])])));
         }
-        $this->render($this->templates()->forTaxonomy($page['kind'], $page['slug']), $page['data']);
+        $listKey = ArchiveTemplates::forTaxonomy((string)($page['data']['taxonomy'] ?? ''));
+        if ($this->templates()->builtArchive($listKey, $lang) !== null) {
+            // A category, tag or taxonomy of the site's own built with blocks (Archive Layouts > Edit template).
+            $page['data'] = ($this->archivePages()->draw($listKey, $lang, (string)($viewDefaults['path_no_lang'] ?? ''), $this->twig, $page['data'], $this->entryPreview ? $this->archivePreviewPart : '') ?? []) + $page['data'];
+        }
+        $this->render($this->templates()->forTaxonomy($page['kind'], $page['slug'], (string)($page['data']['taxonomy'] ?? ''), $lang), $page['data']);
     }
 
     private function buildTaxonomyPath(string $taxonomy, string $termId, string $prefix = ''): string

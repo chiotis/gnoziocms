@@ -83,12 +83,22 @@ final class LayoutsAdmin
     /**
      * The cards of Archive Layouts: the content types that have a list, then the taxonomies.
      *
+     * @param array<string, mixed> $themeSettings the theme settings now (which lists are built with blocks)
      * @return array{types: array<int, array<string, mixed>>, taxonomies: array<int, array<string, mixed>>, taxonomy_names: string[], type_labels: array<string, string>}
      */
-    public function archiveCards(string $default): array
+    public function archiveCards(string $default, array $themeSettings = []): array
     {
         $names = $this->taxonomies->names();
         $cards = [];
+        // A list drawn with blocks (Edit template): any list the theme has the template for.
+        $built = function (string $key) use ($themeSettings): ?array {
+            if (!$this->theme->hasTemplate(TemplateResolver::ARCHIVE_BUILT)) {
+                return null;
+            }
+            $stored = ArchiveTemplates::entry($themeSettings, $key);
+            $count = static fn(mixed $blocks): int => array_sum(array_map('count', FooterBlocks::sets($blocks, array_merge(['default'], is_array($blocks) && !array_is_list($blocks) ? array_map('strval', array_keys($blocks)) : []))));
+            return ['use' => $stored['use'], 'blocks' => $count($stored['blocks']), 'card' => $count($stored['card']), 'url' => 'admin/theme?archive_template=' . $key];
+        };
         foreach (($this->typeList)() as $type) {
             if (in_array($type, ['pages', 'forms'], true)) {
                 continue;
@@ -102,6 +112,7 @@ final class LayoutsAdmin
                 'options' => $definition['archive_options'],
                 'orders' => ContentTypes::orderOptions($definition['fields']),
                 'filters' => $names,
+                'built' => $built($type),
             ];
         }
         $listable = array_values(array_filter(($this->typeList)(), static fn(string $t): bool => !in_array($t, ['pages', 'forms'], true)));
@@ -118,6 +129,7 @@ final class LayoutsAdmin
                 'archive' => $this->taxonomies->archive($name, $default, $default),
                 'filters' => array_values(array_diff($names, [$name])),
                 'listable' => $listable,
+                'built' => $built(ArchiveTemplates::forTaxonomy($name)),
             ];
         }
         $labels = [];

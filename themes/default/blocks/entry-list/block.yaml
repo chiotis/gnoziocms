@@ -1,0 +1,46 @@
+label: Entry list
+description: 'The entries of the list, in pages. Each entry is drawn with the card of the template (blocks that show the entry''s fields), or with the theme''s card when the template has none. Only in an archive template built with blocks.'
+category: Archive
+scope: archive
+variants:
+  grid: Grid
+  list: List
+  compact: Compact
+fields:
+  columns:
+    type: select
+    label: Columns (grid)
+    default: '3'
+    options: { '2': '2', '3': '3', '4': '4' }
+  per_page:
+    type: number
+    label: Entries on a page
+    default: 12
+    min: 0
+    max: 60
+    help: 0 shows everything on one page.
+  order:
+    type: text
+    label: Order
+    default: date_desc
+    source: sort_order
+  pagination:
+    type: toggle
+    label: Page links under the list
+    default: true
+  empty_text:
+    type: text
+    label: Text when there is nothing to list
+    help: Optional. Leave empty for the theme's text.
+  show_image:
+    type: toggle
+    label: Theme card - show images
+    default: true
+  show_excerpt:
+    type: toggle
+    label: Theme card - show the excerpt
+    default: true
+  show_meta:
+    type: toggle
+    label: Theme card - show date and category
+    default: true

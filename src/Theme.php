@@ -232,18 +232,18 @@ final class Theme
     }
 
     /**
-     * The files that can hold the starting template of a content type (`single-templates/<type>.yaml`, the blocks a template built with
-     * blocks starts from): the site's own in custom/ first, then the theme's.
+     * The files that can hold the starting template of a content type (`single-templates/<type>.yaml`, or `archive-templates/<name>.yaml`
+     * for a list: the blocks a template built with blocks starts from): the site's own in custom/ first, then the theme's.
      *
      * @return string[]
      */
-    public function startingTemplateFiles(string $type): array
+    public function startingTemplateFiles(string $type, string $folder = 'single-templates'): array
     {
         $files = [];
-        if (preg_match('/^[a-z][a-z0-9_-]*$/', $type) === 1) {
+        if (preg_match('/^[a-z][a-z0-9_-]*$/', $type) === 1 && in_array($folder, ['single-templates', 'archive-templates'], true)) {
             foreach ($this->templateRoots() as $root) {
-                if (is_file($root . '/single-templates/' . $type . '.yaml')) {
-                    $files[] = $root . '/single-templates/' . $type . '.yaml';
+                if (is_file($root . '/' . $folder . '/' . $type . '.yaml')) {
+                    $files[] = $root . '/' . $folder . '/' . $type . '.yaml';
                 }
             }
         }

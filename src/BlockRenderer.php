@@ -75,6 +75,10 @@ final class BlockRenderer
             }
             if ($isFirst) {
                 $lead = ['type' => $type, 'variant' => (string)$values['variant'], 'tone' => (string)$values['tone']];
+                if ($type === 'archive-title' && is_array($context['archive'] ?? null)) {
+                    // The title area of a list opens the page; with a picture behind it the header can sit over it.
+                    $lead['opens_under'] = ArchiveBlocks::title($values, is_array($context['archive']['settings'] ?? null) ? $context['archive']['settings'] : [])['behind'];
+                }
             }
             $section = $this->section($type, $definition, $values, $context, $index, $isFirst, '', $found);
             if ($section !== null) {
@@ -145,6 +149,10 @@ final class BlockRenderer
     private function section(string $type, array $definition, array $values, array $context, int $index, bool $isFirst, string $uid, array &$found): ?array
     {
         $values = $this->withData($type, $definition, $values, $context);
+        // What a block drew inside itself (the cards of a list) needs the styles of the blocks it used.
+        foreach ($values['_types'] ?? [] as $used) {
+            $found['types'][(string)$used] = true;
+        }
         if ($type === 'entry-blocks') {
             $values = $this->entryBlocks($values, $context, $found);
         }
@@ -159,7 +167,7 @@ final class BlockRenderer
         if ($found['image'] === '' && is_string($values['video_poster'] ?? null) && $values['video_poster'] !== '' && ($values['_video'] ?? null) !== null) {
             $found['image'] = $values['video_poster'];
         }
-        $uid = $uid !== '' ? $uid : ($values['anchor'] !== '' ? $values['anchor'] : 'block-' . ($index + 1));
+        $uid = $uid !== '' ? $uid : ($values['anchor'] !== '' ? $values['anchor'] : (string)($context['block_uid_prefix'] ?? 'block-') . ($index + 1));
 
         // The block that opens the page stays full width: the header, the title and the page's <h1> belong to it.
         if ($isFirst && ($type === 'hero' || self::isOpeningSlider($type, $values))) {
@@ -174,9 +182,9 @@ final class BlockRenderer
             // A layout that is a variant of another also carries the other's class (a centred cover is a cover).
             'block_extra_class' => isset($definition['variant_extends'][(string)$values['variant']]) ? 'block--' . $definition['variant_extends'][(string)$values['variant']] : '',
             // The hero that opens the page is the page title; everything else is a section.
-            'heading_tag' => $isFirst && $type === 'hero' ? 'h1' : 'h2',
+            'heading_tag' => $isFirst && $type === 'hero' ? 'h1' : (string)($context['block_heading_tag'] ?? 'h2'),
             // Items sit one level below their block's heading; a block without a heading has none to sit under.
-            'item_heading_tag' => $isFirst && $type === 'hero' ? 'h2' : (trim((string)($values['heading'] ?? '')) !== '' ? 'h3' : 'h2'),
+            'item_heading_tag' => $isFirst && $type === 'hero' ? 'h2' : (trim((string)($values['heading'] ?? '')) !== '' ? 'h3' : (string)($context['block_heading_tag'] ?? 'h2')),
             'block_labelled' => trim((string)($values['heading'] ?? '')) !== '',
         ]);
         $found['types'][$type] = true;
@@ -218,7 +226,7 @@ final class BlockRenderer
             $html = '';
             foreach ($this->prepareList($column['blocks'], $resolved['_source'] . '.' . $c . '.', false, $context['bindings'] ?? null) as $k => [$type, $definition, $values]) {
                 $values['width'] = (string)BlockContainer::blockWidth($width, $count);
-                $uid = $values['anchor'] !== '' ? $values['anchor'] : 'block-' . ($index + 1) . '-' . ($c + 1) . '-' . ($k + 1);
+                $uid = $values['anchor'] !== '' ? $values['anchor'] : (string)($context['block_uid_prefix'] ?? 'block-') . ($index + 1) . '-' . ($c + 1) . '-' . ($k + 1);
                 $section = $this->section($type, $definition, $values, $context, $index, false, $uid, $found);
                 $html .= $section !== null ? $section[3] : '';
             }
@@ -544,6 +552,29 @@ final class BlockRenderer
         }
         if ($type === 'cards' && ($values['source'] ?? 'manual') !== 'manual' && isset($this->providers['items'])) {
             $values['entries'] = ($this->providers['items'])((string)$values['source'], (string)($context['lang'] ?? ''), (int)($values['limit'] ?? 3));
+        }
+        if (in_array($type, ['archive-title', 'filter-bar', 'result-count'], true) && is_array($context['archive'] ?? null)) {
+            $values = ArchiveBlocks::fill($type, $values, $context['archive']);
+        } elseif (in_array($type, ['archive-title', 'filter-bar', 'result-count', ArchiveTemplates::LIST_BLOCK], true) && !is_array($context['archive'] ?? null)) {
+            // Outside a list there is nothing for these blocks to show.
+            $values['_empty'] = true;
+        }
+        if ($type === ArchiveTemplates::LIST_BLOCK && is_array($context['archive'] ?? null)) {
+            $values['entries'] = $context['archive']['items'];
+            $values['cards'] = null;
+            $values['_types'] = ['latest'];
+            if (isset($this->providers['archive_card'])) {
+                // Each entry is drawn with the card of the template: blocks that show the entry's fields.
+                $cards = [];
+                $used = [];
+                foreach ($values['entries'] as $entry) {
+                    $card = ($this->providers['archive_card'])($entry, $context);
+                    $cards[] = ['item' => $entry, 'html' => $card['html']];
+                    $used = array_merge($used, $card['types']);
+                }
+                $values['cards'] = $cards;
+                $values['_types'] = array_values(array_unique($used));
+            }
         }
         if ($type === 'latest') {
             $values['entries'] = isset($this->providers['items'])
