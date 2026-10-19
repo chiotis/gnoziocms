@@ -128,7 +128,7 @@ final class BlockRuntime
                 'geo' => function (string $source, string $itemLang, int $limit, string $term): array {
                     $view = $this->geoView();
                     $types = $source === 'all' ? $view->placeTypes() : (in_array($source, $view->placeTypes(), true) ? [$source] : []);
-                    return $view->dataset($view->gather($types, $itemLang, Slug::plain($term)), $itemLang, ['limit' => max(1, min(800, $limit))]);
+                    return $view->collection($types, $itemLang, Slug::plain($term), ['limit' => max(1, min(800, $limit))]);
                 },
                 // The entries of a list as a map draws them (the Map of the list block): the dataset of the entries that have a place.
                 'geo_items' => function (array $items, string $itemLang): array {
@@ -217,8 +217,12 @@ final class BlockRuntime
     /** The maps of content: places, routes and what is near what (see GeoView). */
     public function geoView(): GeoView
     {
-        return $this->geoView ??= new GeoView(
-            new GeoMap(new GeoLibrary($this->images, $this->basePath . '/storage/cache'), $this->images),
+        if ($this->geoView !== null) {
+            return $this->geoView;
+        }
+        $library = new GeoLibrary($this->images, $this->basePath . '/storage/cache');
+        return $this->geoView = new GeoView(
+            new GeoMap($library, $this->images),
             fn(string $type, string $lang): array => in_array($type, $this->content->getTypes(), true) ? $this->content->getItems($type, $lang, ($this->signedIn)(), false) : [],
             fn(string $type, string $lang): string => $this->typeLabel($type, $lang),
             fn(string $slug, string $lang): string => ($this->termLabel)('categories', $slug, $lang),
@@ -227,8 +231,39 @@ final class BlockRuntime
             [
                 'tiles_url' => (string)(($this->settings)()['apis']['maps']['tiles_url'] ?? ''),
                 'attribution' => (string)(($this->settings)()['apis']['maps']['attribution'] ?? ''),
-            ]
+            ],
+            new GeoCache($this->basePath . '/storage/cache/geo-data', fn(): ?string => $this->mapsStamp(), $library, fn(): string => ($this->signedIn)() ? 'editor' : 'visitor')
         );
+    }
+
+    /**
+     * The token the data of the maps is kept under (see GeoCache), or null to keep nothing: it holds the revision of the content
+     * (which also looks for files edited outside the admin) and what else the data is made from that is not an
+     * entry: the settings the maps use, the site's own taxonomies and the definitions of the types that have a place.
+     */
+    private function mapsStamp(): ?string
+    {
+        $revision = $this->relations !== null && !$this->content->isPreviewing() ? ($this->relations)()->revision() : '';
+        if ($revision === '') {
+            return null;
+        }
+        $settings = ($this->settings)();
+        $defaultLang = ($this->defaultLanguage)();
+        $languages = array_values(array_unique(array_merge([$defaultLang], array_map('strval', (array)($settings['languages']['available'] ?? [])))));
+        $types = [];
+        foreach ($this->geoView()->placeTypes() as $type) {
+            foreach ($languages as $lang) {
+                $types[$type][$lang] = ($this->contentTypes)()->definition($type, $lang, $defaultLang);
+            }
+        }
+        $taxonomies = [];
+        foreach (glob($this->basePath . '/content/taxonomies/*') ?: [] as $file) {
+            $taxonomies[basename($file)] = (int)@filemtime($file) . '|' . (int)@filesize($file);
+        }
+        return sha1(serialize([
+            $revision, ($this->absoluteUrl)(''), $settings['apis']['maps'] ?? [], $settings['home_page'] ?? '', $languages,
+            $types, $taxonomies,
+        ]));
     }
 
     /** The videos of a YouTube playlist (see YouTubePlaylist), with the key and the time kept that the settings have when it is first asked for. */

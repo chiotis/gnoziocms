@@ -30,7 +30,8 @@ final class GeoView
         private \Closure $termLabel,
         private \Closure $itemUrl,
         private \Closure $placeTypes,
-        private array $maps
+        private array $maps,
+        private ?GeoCache $cache = null
     ) {
     }
 
@@ -73,6 +74,39 @@ final class GeoView
      * @return array<string, mixed>
      */
     public function dataset(array $items, string $lang, array $options = []): array
+    {
+        $identities = array_map(self::identity(...), $items);
+        if ($this->cache === null || in_array(null, $identities, true)) {
+            return $this->makeDataset($items, $lang, $options);
+        }
+        return $this->cache->remember('data', [$lang, $options, $identities], fn(): array => $this->makeDataset($items, $lang, $options));
+    }
+
+    /**
+     * The map of the entries of some types in a language (and under a category), as the Map block shows them. Kept as a whole, so a
+     * visit does not even gather the entries.
+     *
+     * @param array<int, string> $types
+     * @param array{lines?: bool, cluster?: bool, current?: string, limit?: int} $options
+     * @return array<string, mixed>
+     */
+    public function collection(array $types, string $lang, string $term = '', array $options = []): array
+    {
+        $make = fn(): array => $this->makeDataset($this->gather($types, $lang, $term), $lang, $options);
+        return $this->cache === null ? $make() : $this->cache->remember('collection', [$types, $lang, $term, $options], $make);
+    }
+
+    /**
+     * What identifies an entry as it was saved: its address and the file it was read from, with that file's time. Null for an entry that
+     * is not a saved file (the preview of an unsaved one), which nothing is kept for.
+     */
+    private static function identity(ContentItem $item): ?string
+    {
+        return $item->filePath === '' || $item->mtime <= 0 ? null : $item->type . '|' . $item->slug . '|' . $item->lang . '|' . $item->mtime . '|' . md5($item->filePath);
+    }
+
+    /** @param array<int, ContentItem> $items @param array<string, mixed> $options @return array<string, mixed> */
+    private function makeDataset(array $items, string $lang, array $options): array
     {
         $features = [];
         $types = [];
@@ -126,12 +160,22 @@ final class GeoView
      */
     public function single(ContentItem $item, string $lang, array $options = []): array
     {
+        $identity = self::identity($item);
+        if ($this->cache === null || $identity === null) {
+            return $this->makeSingle($item, $lang, $options);
+        }
+        return $this->cache->remember('single', [$identity, $lang, $options], fn(): array => $this->makeSingle($item, $lang, $options));
+    }
+
+    /** @param array<string, mixed> $options @return array<string, mixed> */
+    private function makeSingle(ContentItem $item, string $lang, array $options): array
+    {
         $near = $this->nearby($item, $options['types'] ?? [], (float)($options['radius'] ?? 5), $options['limit'] ?? 12, $lang);
         $set = [$item];
         foreach ($near as $entry) {
             $set[] = $entry['item'];
         }
-        $data = $this->dataset($set, $lang, ['lines' => false, 'cluster' => false, 'current' => $item->type . '/' . $item->slug]);
+        $data = $this->makeDataset($set, $lang, ['lines' => false, 'cluster' => false, 'current' => $item->type . '/' . $item->slug]);
         $track = $this->geo->track($item);
         if ($track !== null) {
             $data['route'] = [
@@ -155,7 +199,32 @@ final class GeoView
         if ($types === []) {
             return [];
         }
-        return $this->geo->nearby($item, $this->gather($types, $lang), max(0.1, min(100.0, $radiusKm)), is_array($limit) ? array_map(static fn($n): int => max(0, min(50, (int)$n)), $limit) : max(0, min(50, $limit)));
+        $radius = max(0.1, min(100.0, $radiusKm));
+        $limit = is_array($limit) ? array_map(static fn($n): int => max(0, min(50, (int)$n)), $limit) : max(0, min(50, $limit));
+        $identity = self::identity($item);
+        if ($this->cache === null || $identity === null) {
+            return $this->geo->nearby($item, $this->gather($types, $lang), $radius, $limit);
+        }
+        // Only the addresses and distances are kept; the entries themselves are the ones the content has now.
+        $kept = $this->cache->remember('near', [$identity, $types, $radius, $limit, $lang], fn(): array => array_map(
+            static fn(array $found): array => [$found['item']->type, $found['item']->slug, $found['km']],
+            $this->geo->nearby($item, $this->gather($types, $lang), $radius, $limit)
+        ));
+        $entries = [];
+        foreach (array_values(array_unique(array_column($kept, 0))) as $type) {
+            foreach (($this->items)($type, $lang) as $candidate) {
+                $entries[$type . '|' . $candidate->slug] = $candidate;
+            }
+        }
+        $near = [];
+        foreach ($kept as [$type, $slug, $km]) {
+            if (!isset($entries[$type . '|' . $slug])) {
+                // Cannot happen while the stamp is right; if it does, work it out again rather than show less.
+                return $this->geo->nearby($item, $this->gather($types, $lang), $radius, $limit);
+            }
+            $near[] = ['item' => $entries[$type . '|' . $slug], 'km' => $km];
+        }
+        return $near;
     }
 
     /** The settings of the tiles every map draws. @return array{url: string, attribution: string, max_zoom: int} */

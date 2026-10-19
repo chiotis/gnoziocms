@@ -30,6 +30,13 @@ final class Relations
     ) {
     }
 
+    /** The index's token for the state of the content, after looking for files changed outside the admin (see ContentIndex::revision()). */
+    public function revision(): string
+    {
+        $this->fresh();
+        return $this->index->revision();
+    }
+
     /** Looks (at most every half minute) for files changed outside the admin before the index is asked anything. */
     private function fresh(): void
     {

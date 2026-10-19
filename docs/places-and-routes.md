@@ -45,6 +45,14 @@ A file is read once: the result (the line cut down to 1500 points for a page of 
 facts) is kept in `storage/cache/geo`, named after the file's path, time and size, so a replaced file is read again. GPX and KML are
 read as a stream, so a long recording does not have to fit in memory.
 
+### What is kept for the maps
+
+Besides the route file's own copy, each route has a **summary** (`*.sum.json` in `storage/cache/geo`, named the same way): its facts, the overview line a map of many routes draws and the short line distances are measured to. Lists of routes, the Map archive and "what is near" read these small summaries and never the 1500-point copies, so showing or comparing a hundred routes does not read a hundred large files. A page of one route still reads its own full copy for the line and the profile.
+
+On top of that, the data a map is made from the whole of the content is kept in `storage/cache/geo-data`: the **markers and lines of a map of entries** (an archive with the Map layout, the Map block, the Map of the list block), the **map of a page of one**, and **what is near** an entry. The caches are disposable and rebuilt on demand: delete the folder and the next visit makes them again, with the same output. A visitor and someone signed in (who also sees drafts) each get their own.
+
+An answer is kept under a token of the content. It changes when an entry is saved, deleted, imported or edited by hand (the content index notices a file changed outside the admin within half a minute), when anything is saved in the admin (settings, taxonomies, a replaced file in Media, a content type), and when a type with a place changes its definition. The route files an answer was made from are also compared, by time and size, on every read, so a route file replaced behind the site's back is not served from an old answer. When the token changes, what the old one kept is deleted. An entry that is not a saved file (the editor's live preview of an unsaved entry) is never kept. The entries listed as "near" are always the content's today; only their addresses and distances are kept.
+
 ## The map
 
 The map is [Leaflet](https://leafletjs.com) (with Leaflet.markercluster), shipped inside the theme (`assets/vendor/leaflet/`); nothing

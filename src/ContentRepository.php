@@ -292,6 +292,12 @@ final class ContentRepository
         $this->draft = $item;
     }
 
+    /** Whether the live preview is showing an unsaved entry in this request (what is derived from saved content must not be kept then). */
+    public function isPreviewing(): bool
+    {
+        return $this->draft !== null;
+    }
+
     /** The folder the content types live in. */
     public function directory(): string
     {

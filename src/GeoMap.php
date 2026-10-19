@@ -33,6 +33,13 @@ final class GeoMap
         return is_string($file) && $file !== '' ? $this->library->track($file) : null;
     }
 
+    /** What a list of routes needs from the entry's route file (its facts and short lines), or null; see GeoLibrary::summary(). @return array<string, mixed>|null */
+    private function summary(ContentItem $item): ?array
+    {
+        $file = self::fields($item)['track'] ?? '';
+        return is_string($file) && $file !== '' ? $this->library->summary($file) : null;
+    }
+
     /** Where an entry is: its `location`, else the start of its route. @return array{lat: float, lng: float}|null */
     public function position(ContentItem $item): ?array
     {
@@ -40,8 +47,7 @@ final class GeoMap
         if ($position !== null) {
             return $position;
         }
-        $track = $this->track($item);
-        $start = $track['stats']['start'] ?? null;
+        $start = $this->summary($item)['stats']['start'] ?? null;
         return is_array($start) ? ['lat' => (float)$start[0], 'lng' => (float)$start[1]] : null;
     }
 
@@ -54,13 +60,13 @@ final class GeoMap
     public function routeFacts(ContentItem $item): ?array
     {
         $fields = self::fields($item);
-        $track = $this->track($item);
-        $stats = $track['stats'] ?? [];
+        $summary = $this->summary($item);
+        $stats = $summary['stats'] ?? [];
         $typed = static fn(string $key): ?float => isset($fields[$key]) && is_numeric($fields[$key]) ? (float)$fields[$key] : null;
         $distance = $typed('distance_km') ?? (isset($stats['distance_km']) ? (float)$stats['distance_km'] : null);
         $ascent = $typed('ascent_m') ?? (isset($stats['ascent_m']) && !empty($stats['has_height']) ? (float)$stats['ascent_m'] : null);
         $descent = $typed('descent_m') ?? (isset($stats['descent_m']) && !empty($stats['has_height']) ? (float)$stats['descent_m'] : null);
-        if ($track === null && $distance === null && $ascent === null) {
+        if ($summary === null && $distance === null && $ascent === null) {
             return null;
         }
         return [
@@ -71,7 +77,7 @@ final class GeoMap
             'max_m' => $stats['max_m'] ?? null,
             'loop' => (bool)($stats['loop'] ?? false),
             'profile' => $stats['profile'] ?? [],
-            'has_file' => $track !== null,
+            'has_file' => $summary !== null,
         ];
     }
 
@@ -103,8 +109,8 @@ final class GeoMap
             if ($route['ascent_m'] !== null && $route['ascent_m'] > 0) {
                 $facts[] = '↑ ' . $route['ascent_m'] . ' m';
             }
-            if ($context['lines'] && ($track = $this->track($item)) !== null) {
-                $line = GeoLibrary::overview($track);
+            if ($context['lines'] && ($summary = $this->summary($item)) !== null) {
+                $line = $summary['overview'];
             }
         }
         $image = isset($item->meta['main_image']) && is_string($item->meta['main_image']) ? $item->meta['main_image'] : '';
@@ -190,16 +196,6 @@ final class GeoMap
     /** @return array<int, array{0: float, 1: float}> */
     private function buildLine(ContentItem $item): array
     {
-        $track = $this->track($item);
-        if ($track === null) {
-            return [];
-        }
-        $all = [];
-        foreach (GeoLibrary::overview($track, 200) as $line) {
-            foreach ($line as $p) {
-                $all[] = $p;
-            }
-        }
-        return $all;
+        return $this->summary($item)['near'] ?? [];
     }
 }
