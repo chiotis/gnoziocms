@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.161 — 2026-10-19 — Tests that say what is wrong
+- **`tests/run.sh` checks the environment first**: the PHP version and extensions (from `composer.json` and the installer), python3 and curl for the HTTP tests, Node 20 for the JavaScript checks. On a mismatch it prints one line per problem and runs nothing (exit code 3); `GNOZIO_TESTS_SKIP_PREFLIGHT=1` skips the check.
+- **No test waits forever**: HTTP tests share a `wait_until` with a deadline, every request has a timeout, and each HTTP test has a time limit (`GNOZIO_TEST_TIMEOUT`, 180 seconds by default). A test that runs out is reported as `TIMEOUT <name>` and the rest carry on.
+- **Step-by-step tests stop at the first failed step**: the installer, update and fresh-install flows mark the checks that depended on it as skipped, and the summary counts skipped checks apart from failures. See `tests/README.md`.
+
 ## 0.1.160 — 2026-10-19 — Search pages follow the SEO setting again
 - **Search result pages follow SEO → Search appearance** for whether search engines may index them (kept out by default). Since 0.1.146 they were always `noindex`, whatever the setting said, and the suite's SEO test failed on every push since then.
 - **`AGENTS.md`** (and `CLAUDE.md`, which imports it) tells coding agents what the tests need (PHP 8.5 and its extensions) and how to report tests their environment cannot run instead of reporting them as code failures. It also covers reading the latest CI run before new work, and how versions and releases go out.

@@ -12,6 +12,12 @@
 # shared hosts often switch off (set_time_limit, ignore_user_abort, disk_free_space, opcache_reset, curl_exec) disabled, because
 # calling a disabled function is a fatal error and the code must cope. They need PHP and Python 3
 # (standard library only).
+#
+# Before anything runs, preflight() checks the environment (PHP version and extensions from composer.json and the installer,
+# python3 and curl for the HTTP tests, Node 20 for the js group) and stops with exit code 3 and one line per problem.
+# GNOZIO_TESTS_SKIP_PREFLIGHT=1 turns that off for deliberate experiments. Each HTTP test is also limited in time:
+# GNOZIO_TEST_TIMEOUT seconds (default 180) or what test_timeout() gives it; one that runs out is reported as
+# "TIMEOUT <name> (<n> s)" and the rest carry on.
 set -u
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 MODE="${1:-all}"
@@ -19,6 +25,8 @@ FAILED=()
 TOTAL_OK=0
 LOG_DIR="${FAROS_TEST_LOG_DIR:-}"
 PHASE=""
+TOTAL_SKIPPED=0
+RUN_TIMEOUT=""
 HTTP_WORK=""
 HTTP_PID=""
 if [ -n "$LOG_DIR" ]; then
@@ -26,33 +34,87 @@ if [ -n "$LOG_DIR" ]; then
   LOG_DIR="$(cd "$LOG_DIR" && pwd)" || exit 1
 fi
 
+PREFLIGHT_EXIT=3
+preflight() { # which groups will run: unit, js, http (any of them)
+  [ "${GNOZIO_TESTS_SKIP_PREFLIGHT:-}" = "1" ] && return 0
+  local problems="" groups=" $* "
+  if ! command -v php >/dev/null 2>&1; then
+    problems+="php is not installed or not on PATH (PHP $(sed -n 's/.*"php": *"[^0-9]*\([0-9.]*\)".*/\1/p' "$ROOT/composer.json" | head -1) or newer is needed)"$'\n'
+  else
+    problems+="$(php "$ROOT/tests/preflight.php" "$ROOT" 2>&1)"$'\n'
+  fi
+  case "$groups" in *" http "*)
+    command -v python3 >/dev/null 2>&1 || problems+="python3 is missing (the HTTP tests need it)"$'\n'
+    command -v curl >/dev/null 2>&1 || problems+="curl is missing (the HTTP tests wait for the server with it)"$'\n'
+  esac
+  case "$groups" in *" js "*)
+    if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
+      problems+="node and npm are missing (Node 20 or newer is needed for the JavaScript checks)"$'\n'
+    else
+      local major
+      major="$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null)"
+      case "$major" in ''|*[!0-9]*) major=0 ;; esac
+      [ "$major" -ge 20 ] || problems+="Node 20 or newer is needed for the JavaScript checks; this is $(node -v 2>/dev/null) (node -v)"$'\n'
+    fi
+  esac
+  problems="$(printf '%s' "$problems" | grep -v '^$')"
+  [ -z "$problems" ] && return 0
+  echo "Environment check failed, nothing was run (GNOZIO_TESTS_SKIP_PREFLIGHT=1 skips this check):"
+  printf '%s\n' "$problems" | sed 's/^/  /'
+  exit "$PREFLIGHT_EXIT"
+}
+
 save_log() { # name output
   if [ -n "$LOG_DIR" ]; then
     printf '%s\n' "$2" > "$LOG_DIR/$PHASE-$1.log" || { echo "  FAIL  cannot save $1 log"; FAILED+=("log write"); }
   fi
 }
 
-run_check() { # name working-directory command [arguments...]
+run_check() { # name working-directory command [arguments...]   (RUN_TIMEOUT, when set, limits the run in seconds)
   local name="$1" directory="$2" out status
   shift 2
-  out=$(cd "$directory" && "$@" 2>&1)
+  if [ -n "$RUN_TIMEOUT" ]; then
+    out=$(cd "$directory" && python3 "$ROOT/tests/with_timeout.py" "$RUN_TIMEOUT" "$@" 2>&1)
+  else
+    out=$(cd "$directory" && "$@" 2>&1)
+  fi
   status=$?
   save_log "$name" "$out"
   report "$name" "$out" "$status"
 }
 
 report() { # name output exit-status
-  local ok bad
+  local ok bad skipped
   ok=$(printf '%s\n' "$2" | grep -c '^ok')
   bad=$(printf '%s\n' "$2" | grep -c '^FAIL')
-  if [ "$3" -eq 0 ] && [ "$bad" -eq 0 ] && printf '%s\n' "$2" | grep -q 'ALL PASSED'; then
-    printf '  pass  %-28s %s checks\n' "$1" "$ok"
+  skipped=$(printf '%s\n' "$2" | grep -c '^skip')
+  TOTAL_SKIPPED=$((TOTAL_SKIPPED + skipped))
+  if [ "$3" -eq 124 ] && [ -n "$RUN_TIMEOUT" ]; then
+    printf '  FAIL  %-28s TIMEOUT %s (%s s)\n' "$1" "$1" "$RUN_TIMEOUT"
+    printf '%s\n' "$2" | grep -vE '^ok|^note|^skip' | tail -8 | sed 's/^/          /'
+    FAILED+=("$1 (TIMEOUT)")
+  elif [ "$3" -eq 0 ] && [ "$bad" -eq 0 ] && printf '%s\n' "$2" | grep -q 'ALL PASSED'; then
+    if [ "$skipped" -gt 0 ]; then
+      printf '  pass  %-28s %s checks, %s skipped\n' "$1" "$ok" "$skipped"
+    else
+      printf '  pass  %-28s %s checks\n' "$1" "$ok"
+    fi
     TOTAL_OK=$((TOTAL_OK + ok))
   else
-    printf '  FAIL  %-28s %s failed (exit %s)\n' "$1" "$bad" "$3"
-    printf '%s\n' "$2" | grep -vE '^ok|^note' | sed 's/^/          /' | head -20
+    if [ "$skipped" -gt 0 ]; then
+      printf '  FAIL  %-28s %s failed, %s skipped (exit %s)\n' "$1" "$bad" "$skipped" "$3"
+    else
+      printf '  FAIL  %-28s %s failed (exit %s)\n' "$1" "$bad" "$3"
+    fi
+    printf '%s\n' "$2" | grep -vE '^ok|^note|^skip' | sed 's/^/          /' | head -20
     FAILED+=("$1")
   fi
+}
+
+test_timeout() { # the seconds one HTTP test may take; add a case line for a test that legitimately needs longer
+  case "$1" in
+    *) echo "${GNOZIO_TEST_TIMEOUT:-180}" ;;
+  esac
 }
 
 run_unit() {
@@ -165,7 +227,9 @@ PYCOPY
     rm -rf "$work/app/content" "$work/app/storage" "$work/app/custom" "$work/app/public/uploads"
     mkdir -p "$work/app/storage/db" "$work/app/storage/backups" "$work/app/custom" "$work/app/public/uploads"
     cp -R "$ROOT/tests/fixtures/content" "$work/app/content"
+    RUN_TIMEOUT="$(test_timeout "$name")"
     run_check "$name" "$work" env FAROS_TEST_BASE="http://127.0.0.1:$port" PYTHONPATH="$ROOT/tests/http" python3 "$ROOT/tests/http/${name}_test.py"
+    RUN_TIMEOUT=""
   done
   if grep -qiE 'fatal|warning:|deprecated' "$work/server.log" 2>/dev/null; then
     echo "  note  the server log has PHP warnings or errors:"; grep -iE 'fatal|warning:|deprecated' "$work/server.log" | sort | uniq -c | head -5 | sed 's/^/          /'
@@ -174,14 +238,15 @@ PYCOPY
 }
 
 case "$MODE" in
-  all) run_unit; echo; run_js; echo; run_http ;;
-  unit) run_unit ;;
-  js) run_js ;;
-  http) run_http ;;
-  search|editor|roles|import|redirects|save|history|taxonomies|links|delete|blocks|hero_layouts|mobile_menu|bottom_bar|logs|users_tabs|sidebar|sidebar_brand|theme_page|media_upload|upload_limits|notifications|bad_yaml|custom_roles|storage|storage_cache|line_endings|media_usage|media_picker|admin_a11y|seo_jsonld|robots|media_usage_cache|update_install|setup|fresh_install|catalogue|menu_editor|form_builder|form_translation|layouts|header_footer|branding|branding_transfer|custom_taxonomies|type_options|demo_content|hero_video|seo|analytics|translations|content_types|media|dashboard|editor_visual|youtube_playlist|blocks_pack|geo|clean_addresses|footer_blocks|updates_screen|backup_schedule|backup_remote|feed|omni|category_tree|form_upload|block_widths|entry_preview|block_reorder|block_containers|accordion|faq_initial|palettes|branding_fonts|installer) run_http "$MODE" ;;
+  all) preflight unit js http; run_unit; echo; run_js; echo; run_http ;;
+  unit) preflight unit; run_unit ;;
+  js) preflight js; run_js ;;
+  http) preflight http; run_http ;;
+  search|editor|roles|import|redirects|save|history|taxonomies|links|delete|blocks|hero_layouts|mobile_menu|bottom_bar|logs|users_tabs|sidebar|sidebar_brand|theme_page|media_upload|upload_limits|notifications|bad_yaml|custom_roles|storage|storage_cache|line_endings|media_usage|media_picker|admin_a11y|seo_jsonld|robots|media_usage_cache|update_install|setup|fresh_install|catalogue|menu_editor|form_builder|form_translation|layouts|header_footer|branding|branding_transfer|custom_taxonomies|type_options|demo_content|hero_video|seo|analytics|translations|content_types|media|dashboard|editor_visual|youtube_playlist|blocks_pack|geo|clean_addresses|footer_blocks|updates_screen|backup_schedule|backup_remote|feed|omni|category_tree|form_upload|block_widths|entry_preview|block_reorder|block_containers|accordion|faq_initial|palettes|branding_fonts|installer) preflight http; run_http "$MODE" ;;
   *) echo "Unknown option: $MODE"; exit 2 ;;
 esac
 
 echo
+[ "$TOTAL_SKIPPED" -gt 0 ] && echo "$TOTAL_SKIPPED checks skipped because an earlier step of their test failed (shown as 'skip' lines in the log)"
 if [ ${#FAILED[@]} -eq 0 ]; then echo "ALL GOOD ($TOTAL_OK checks)"; exit 0; fi
 echo "FAILED: ${FAILED[*]}"; exit 1

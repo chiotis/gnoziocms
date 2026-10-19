@@ -6,9 +6,9 @@ import client
 from client import Client, has_field
 
 fails = []
-def check(label, ok, detail=''):
-    print(('ok   ' + label) if ok else ('FAIL ' + label + '  ' + str(detail)))
-    if not ok: fails.append(label)
+# Each step needs the one before it: a failure is recorded once (critical=True) and the checks after it are skipped.
+flow = client.Flow(fails)
+check = flow.check
 
 root = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(client.__file__)), '..', '..'))
 work = tempfile.mkdtemp()
@@ -18,7 +18,7 @@ zip_path = [os.path.join(work, 'out', n) for n in os.listdir(os.path.join(work, 
 zipfile.ZipFile(zip_path).extractall(site)
 check('the package has no content, no database and no account', not os.path.exists(os.path.join(site, 'content')) and not os.path.exists(os.path.join(site, 'storage')))
 out = subprocess.run(['php', 'scripts/use-starter.php'], cwd=site, capture_output=True, text=True).stdout
-check('the demo is copied in', 'Copied' in out and os.path.isfile(os.path.join(site, 'content/pages/index.md')))
+check('the demo is copied in', 'Copied' in out and os.path.isfile(os.path.join(site, 'content/pages/index.md')), out[-200:], critical=True)
 check('and brings no account of its own', not os.path.exists(os.path.join(site, 'content/users')))
 
 s = socket.socket(); s.bind(('127.0.0.1', 0)); port = s.getsockname()[1]; s.close()
@@ -26,14 +26,12 @@ log = open(os.path.join(work, 'server.log'), 'w')
 server = subprocess.Popen(['php', '-S', '127.0.0.1:%d' % port, '-t', 'public', 'public/index.php'], cwd=site, stdout=log, stderr=log)
 try:
     client.BASE = 'http://127.0.0.1:%d' % port
-    for _ in range(50):
-        try: socket.create_connection(('127.0.0.1', port), 0.2).close(); break
-        except OSError: time.sleep(0.1)
+    client.wait_until(lambda: client.port_open(port), 10, what='the PHP server to accept connections')
     c = Client()
     st, h, html = c.get('/admin/login')
-    check('the first visit asks for the first administrator', st == 200 and 'Welcome' in html)
+    check('the first visit asks for the first administrator', st == 200 and 'Welcome' in html, st, critical=True)
     st, h, html = c.submit('/admin/login', has_field('password_confirm'), {'username': 'owner', 'email': 'owner@example.test', 'password': 'Sturdy-pass-99', 'password_confirm': 'Sturdy-pass-99'})
-    check('who is made and signed in', st in (301, 302) and c.get('/admin')[0] == 200)
+    check('who is made and signed in', st in (301, 302) and c.get('/admin')[0] == 200, st, critical=True)
     pages = ['/', '/about', '/posts', '/projects', '/contact', '/sitemap.xml', '/robots.txt', '/search?q=a', '/admin', '/admin/content?type=pages', '/admin/content?type=posts',
              '/admin/edit?type=pages&slug=about', '/admin/media', '/admin/settings', '/admin/theme', '/admin/updates', '/admin/backups', '/admin/users', '/admin/roles', '/admin/taxonomies',
              '/admin/menus', '/admin/redirects', '/admin/system', '/admin/translations', '/admin/content-types', '/admin/forms', '/admin/revisions', '/admin/activity-logs']

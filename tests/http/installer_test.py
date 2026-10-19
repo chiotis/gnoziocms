@@ -9,9 +9,20 @@ import client
 from client import Client, has_field
 
 fails = []
-def check(label, ok, detail=''):
-    print(('ok   ' + label) if ok else ('FAIL ' + label + '  ' + str(detail)))
-    if not ok: fails.append(label)
+# The install is a sequence: once a step it depends on fails (the server check on a PHP that is too old, the first download, ...),
+# that is recorded once (critical=True) and the checks after it are skipped instead of failing one by one.
+flow = client.Flow(fails)
+check = flow.check
+def err(j): return (j.get('error') or {}).get('key')
+def download_all(s, timeout=60):
+    """Asks for the pieces until the download says it is done or fails; never for ever."""
+    state = {'calls': 0}
+    def once():
+        state['calls'] += 1
+        state['j'] = s.step('download')[1]
+        return state['j'].get('done') or not state['j'].get('ok')
+    client.wait_until(once, timeout, 0, 'the installer to finish the download')
+    return state['calls'], state['j']
 
 root = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(client.__file__)), '..', '..'))
 work = tempfile.mkdtemp()
@@ -47,7 +58,7 @@ def publish(zip_path, sha=None):
     for n in os.listdir(served): os.remove(os.path.join(served, n))
     shutil.copy(zip_path, os.path.join(served, 'package.zip'))
     data = open(zip_path, 'rb').read()
-    manifest = {'version': version, 'min_php': '8.5', 'package': 'package.zip', 'package_url': rel_base + '/package.zip',
+    manifest = {'version': version, 'min_php': client.min_php(), 'package': 'package.zip', 'package_url': rel_base + '/package.zip',
                 'sha256': sha or hashlib.sha256(data).hexdigest(), 'size': len(data), 'requires_backup': True}
     json.dump(manifest, open(os.path.join(served, 'release.json'), 'w'))
     rel.hits.clear()
@@ -56,15 +67,16 @@ def free_port():
     s = socket.socket(); s.bind(('127.0.0.1', 0)); p = s.getsockname()[1]; s.close(); return p
 
 servers = []
+def stop_all():
+    for sv in servers:
+        if sv.poll() is None: stop(sv)
 def serve(docroot, port):
     env = dict(os.environ, GNOZIO_INSTALLER_RELEASE_URL=rel_base + '/release.json', PHP_CLI_SERVER_WORKERS='4')
     log = open(os.path.join(work, 'server-%d.log' % port), 'a')
     p = subprocess.Popen(['php', '-S', '127.0.0.1:%d' % port, '-t', docroot], cwd=docroot, env=env, stdout=log, stderr=log, start_new_session=True)
     servers.append(p)
-    for _ in range(60):
-        try: socket.create_connection(('127.0.0.1', port), 0.2).close(); return p
-        except OSError: time.sleep(0.1)
-    raise RuntimeError('server did not start')
+    client.wait_until(lambda: client.port_open(port), 10, what='the PHP server on port %d to accept connections' % port)
+    return p
 def stop(p):
     try: os.killpg(p.pid, signal.SIGTERM)
     except ProcessLookupError: pass
@@ -89,7 +101,17 @@ class Session(Client):
         try: return st, json.loads(body)
         except ValueError: return st, {'raw': body[:200]}
 
+def finish():
+    stop_all()
+    rel.shutdown()
+    shutil.rmtree(work, ignore_errors=True)
+    print('\nALL PASSED' if not fails else '\n%d FAILED' % len(fails))
+    sys.exit(1 if fails else 0)
+
 publish(good_zip)
+import atexit
+atexit.register(stop_all)   # also when the script dies or is stopped by the runner's time limit
+signal.signal(signal.SIGTERM, lambda n, f: sys.exit(143))
 
 # ---- 1. no key: the installer refuses and says how to set one
 site = new_site('nokey', key='')
@@ -116,14 +138,14 @@ st, h, html = s.unlock('wrong-key-wrong-key')
 check('a wrong key is refused and slowed down', st == 200 and 'name="key"' in html and 'var GZ=' not in html and time.time() - t0 >= 1.5, st)
 check('and gives no access', s.step('check')[0] == 403)
 st, h, html = s.unlock()
-check('the right key is accepted', st == 303 and 'gz_installer' in (h.get('Set-Cookie') or '') and 'HttpOnly' in h.get('Set-Cookie', '') and 'SameSite=Strict' in h.get('Set-Cookie', ''), (st, h.get('Set-Cookie')))
+check('the right key is accepted', st == 303 and 'gz_installer' in (h.get('Set-Cookie') or '') and 'HttpOnly' in h.get('Set-Cookie', '') and 'SameSite=Strict' in h.get('Set-Cookie', ''), (st, h.get('Set-Cookie')), critical=True)
 st, h, html = s.page()
 check('and opens the installer', st == 200 and 'var GZ=' in html and 'nonce-' in h.get('Content-Security-Policy', ''))
 st_get, _, _ = s.request(s.at('/installer.php?step=check'))
 check('a step needs a POST with the installer header', st_get == 403 and s.request(s.at('/installer.php?step=check'), data={})[0] == 403)
 st, j = s.step('check')
-check('the server check lists every line and the release', st == 200 and j['ok'] and not j['blocking'] and j['version'] == version and {r['id'] for r in j['rows']} >= {'php', 'ext_zip', 'ext_pdo_sqlite', 'writable', 'disk', 'network', 'release'}, j)
-check('all of them fine here', all(r['level'] in ('ok', 'warn') for r in j['rows']), [r for r in j['rows'] if r['level'] == 'fail'])
+check('the server check lists every line and the release', st == 200 and j.get('ok') and not j.get('blocking') and j.get('version') == version and {r['id'] for r in j.get('rows', [])} >= {'php', 'ext_zip', 'ext_pdo_sqlite', 'writable', 'disk', 'network', 'release'}, j, critical=True)
+check('all of them fine here', all(r['level'] in ('ok', 'warn') for r in j.get('rows', [])), [r for r in j.get('rows', []) if r['level'] == 'fail'])
 check('a step out of order is refused', s.step('unpack')[1].get('error', {}).get('key') == 'e_nostate')
 
 # ---- 3. an existing site
@@ -143,15 +165,19 @@ check('so is one that has a database', s2.page()[0] == 409)
 stop(p2)
 
 # ---- 4. a package that is not the one published
+if not flow.active:   # everything from here walks the install step by step and needs the checks above
+    print('skip the install itself: download, verify, unpack, document root and the first administrator  (skipped: %s failed)' % flow.blocked)
+    flow.skipped.append('the install itself')
+    finish()
 publish(good_zip, sha='0' * 64)
 st, j = s.step('begin')
-check('the install begins', j.get('ok') is True, j)
+check('the install begins', j.get('ok') is True, j, critical=True)
 for _ in range(10):
     st, j = s.step('download')
     if j.get('done') or not j.get('ok'): break
 check('the download finishes in pieces', j.get('done') is True and len([h for h in rel.hits if h]) >= 2 and all(h.startswith('bytes=') for h in rel.hits if h), (j, rel.hits))
 st, j = s.step('verify')
-check('a package whose checksum is not the published one is refused', j.get('ok') is False and j['error']['key'] == 'e_sha' and j['error']['args'].get('restart') == 'download', j)
+check('a package whose checksum is not the published one is refused', j.get('ok') is False and err(j) == 'e_sha' and j['error']['args'].get('restart') == 'download', j)
 check('and thrown away, with nothing unpacked', not os.path.exists(os.path.join(site, 'storage/install/package.zip')) and not os.path.exists(os.path.join(site, 'src')))
 publish(good_zip)
 for _ in range(10):
@@ -174,10 +200,10 @@ for name, entry, link in [('climb', '../evil.txt', False), ('content', 'content/
     stop(p); shutil.rmtree(site); site = new_site('keyed'); p = serve(site, port); s.jar.clear()
     publish(evil_zip(name, entry, symlink=link))
     s.unlock(); s.step('begin')
-    while not s.step('download')[1].get('done'): pass
+    download_all(s)
     jv = s.step('verify')[1]
     ju = s.step('unpack')[1]
-    key = ju.get('error', {}).get('key')
+    key = err(ju)
     ok_refusals[name] = (jv.get('ok'), key, os.path.exists(os.path.join(site, 'src')), os.path.exists(os.path.join(work, 'evil.txt')) or os.path.exists(os.path.join(site, 'content')))
 check('a path that climbs out of the folder is refused whole', ok_refusals['climb'] == (True, 'e_zip_unsafe', False, False), ok_refusals['climb'])
 check('so is a file of the site itself (content, uploads)', ok_refusals['content'] == (True, 'e_zip_unsafe', False, False) and ok_refusals['uploads'][1] == 'e_zip_unsafe', ok_refusals)
@@ -189,22 +215,18 @@ stop(p); shutil.rmtree(site); site = new_site('keyed'); p = serve(site, port); s
 publish(good_zip)
 RANGES['on'] = False
 s.unlock(); s.step('begin', {'demo': '1'})
-calls = 0
-while True:
-    calls += 1
-    st, j = s.step('download')
-    if j.get('done') or not j.get('ok'): break
+calls, j = download_all(s)
 check('a server without ranges sends the package in one go', j.get('done') is True and calls == 1, (calls, j))
 RANGES['on'] = True
 check('and it verifies', s.step('verify')[1].get('ok') is True)
 st, j = s.step('unpack')
-check('the package unpacks', j.get('ok') is True and j.get('files', 0) > 500, j)
+check('the package unpacks', j.get('ok') is True and j.get('files', 0) > 500, j, critical=True)
 exists = lambda rel_path: os.path.exists(os.path.join(site, rel_path))
 check('with the code of the site in place', all(exists(f) for f in ['VERSION', 'src/App.php', 'public/index.php', 'vendor/autoload.php', 'themes/default/theme.yaml', 'public/uploads/.htaccess']))
 check('and no archive left behind', not exists('storage/install/package.zip'))
 st, j = s.step('prepare')
 docroot = j.get('docroot')
-check('the site is prepared and the document root named', j.get('ok') is True and docroot == os.path.realpath(site) + '/public', j)
+check('the site is prepared and the document root named', j.get('ok') is True and docroot == os.path.realpath(site) + '/public', j, critical=True)
 check('the folders of the site exist', all(os.path.isdir(os.path.join(site, d)) for d in ['content', 'custom', 'storage/db', 'storage/backups', 'public/uploads']))
 check('the demo site is copied', exists('content/pages/index.md') and not exists('content/users'))
 check('the installer is copied into public/ with its key', exists('public/installer.php') and open(os.path.join(site, 'public/installer.php')).read() == open(os.path.join(site, 'installer.php')).read())
@@ -220,7 +242,7 @@ check('while the old folder is served the answer is "not yet"', j.get('ok') is T
 st, j = s.step('docroot', path='/public/installer.php')
 check('the copy in public/ reached by its folder name is not the document root either', j.get('changed') is False and j.get('servedFromPublic') is True, j)
 st, j = s.step('finish')
-check('the finish refuses to go on', j.get('ok') is False and j['error']['key'] == 'e_docroot_wait', j)
+check('the finish refuses to go on', j.get('ok') is False and err(j) == 'e_docroot_wait', j)
 check('and nothing was deleted', exists('installer.php') and exists('public/installer.php') and exists('storage/install/state.json'))
 st, h, html = s.page()
 check('a reload still shows the installer', st == 200 and 'var GZ=' in html)
@@ -252,9 +274,4 @@ check('the home page shows the demo', c.get('/')[0] == 200)
 log = open(os.path.join(work, 'server-%d.log' % port)).read()
 check('with no PHP error in the log', not re.search(r'Fatal|Warning:|Deprecated|Notice:', log), log[-300:])
 
-for sv in servers:
-    if sv.poll() is None: stop(sv)
-rel.shutdown()
-shutil.rmtree(work, ignore_errors=True)
-print('\nALL PASSED' if not fails else '\n%d FAILED' % len(fails))
-sys.exit(1 if fails else 0)
+finish()

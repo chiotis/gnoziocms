@@ -4,12 +4,14 @@ start, a package that is not the one published, and the maintenance page. Throug
 custom files and settings are never touched."""
 import hashlib, http.server, json, os, re, shutil, subprocess, sys, tempfile, threading, urllib.parse
 sys.path.insert(0, '.')
+import client
 from client import Client, has_field
 
 fails = []
-def check(label, ok, detail=''):
-    print(('ok   ' if ok else 'FAIL ') + label + ('' if ok else '  ' + str(detail)))
-    if not ok: fails.append(label)
+# The first install (backup, install) is what the roll back and the checks after it depend on: when it fails that is recorded once
+# (critical=True) and the checks that follow are skipped until the next, independent part (flow.clear()).
+flow = client.Flow(fails)
+check = flow.check
 
 APP = os.path.abspath('app')
 def read(path, default=''):
@@ -124,14 +126,14 @@ check('and an install forced past the screen is refused, nothing changes', (lamb
 
 # ---- the backup, then the install
 st, loc = post_action('pre_update_backup')
-check('the backup before the update is made', 'pre_backup=ok' in loc, loc)
+check('the backup before the update is made', 'pre_backup=ok' in loc, loc, critical=True)
 flash = root.get(loc)[2]
 check('and the message about it is a success, not an error', re.search(r'<template data-flash data-type="success">Verified pre-update backup created', flash) is not None, re.findall(r'<template data-flash[^>]*>[^<]{0,60}', flash))
 html = updates_page()
 check('then the install button is there', any(install_form(root)(f) for f in root.forms(html=html)) and ('Install ' + NEW) in html)
 sessions_before = md5('storage/db/app.sqlite')
 st, loc = post_action('install')
-check('installing goes back to the Updates screen with a success', 'install=installed' in loc, loc)
+check('installing goes back to the Updates screen with a success', 'install=installed' in loc, loc, critical=True)
 check('the result names the login, homepage, published entry and sitemap checked', all(path in urllib.parse.unquote(loc) for path in ['/admin/login', '/about', '/sitemap.xml']), loc)
 check('the code is the new version', read('VERSION').strip() == NEW and read('themes/default/marker.txt') == 'new theme file' and exists('src/UpdateTestMarker.php'))
 check('the site is open: no maintenance flag, and the pages answer', not exists('storage/maintenance.flag') and Client().get('/survives')[0] == 200 and Client().get('/admin/login')[0] == 200)
@@ -154,6 +156,7 @@ has_rollback = lambda: any(install_form(root, 'rollback')(f) for f in root.forms
 check('the site works, and nothing is left to roll back to', Client().get('/survives')[0] == 200 and not has_rollback())
 
 # ---- a new version that does not start is taken out again
+flow.clear()
 publish(os.path.join(work, 'out-broken'), BROKEN)
 root.submit('/admin/updates', lambda f: any(x[0] == 'updates_action' and x[1] == 'check' for x in f['fields']), {})
 post_action('pre_update_backup')
