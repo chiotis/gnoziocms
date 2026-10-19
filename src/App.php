@@ -12,9 +12,6 @@ use League\CommonMark\Extension\Table\TableExtension;
 use League\CommonMark\MarkdownConverter;
 use Symfony\Component\Yaml\Yaml;
 use Twig\Environment as TwigEnvironment;
-use Twig\Loader\FilesystemLoader;
-use Twig\TwigFilter;
-use Twig\TwigFunction;
 
 final class App
 {
@@ -101,6 +98,7 @@ final class App
     private ?ContentTypeAdmin $contentTypeAdminService = null;
     private ?SingleLayouts $singleLayoutsService = null;
     private ?TemplateResolver $templateResolver = null;
+    private ?SiteTwig $siteTwigService = null;
     /** True while the live preview of the editor draws a page: its blocks then carry their place in the list (data-bk-block). */
     private bool $entryPreview = false;
     private ?LayoutsAdmin $layoutsAdminService = null;
@@ -3339,204 +3337,34 @@ final class App
 
     private function initTwig(): TwigEnvironment
     {
-        $adminDir = $this->basePath . '/admin/templates';
+        return $this->siteTwig()->create();
+    }
 
-        $loader = new FilesystemLoader();
-        foreach ($this->theme->templateRoots() as $root) {
-            $loader->addPath($root);
-        }
-        // `{% extends '@theme/templates/single.twig' %}` lets a custom/ override change one block only.
-        $loader->addPath($this->theme->path(), 'theme');
-        $loader->addPath($adminDir, 'admin');
-
-        $twig = new TwigEnvironment($loader, [
-            'cache' => false,
-            'autoescape' => 'html',
-        ]);
-
-        TwigFunctions::register(
-            $twig,
-            (string)($this->settings['base_url'] ?? ''),
+    private function siteTwig(): SiteTwig
+    {
+        return $this->siteTwigService ??= new SiteTwig(
+            $this->basePath,
             $this->theme,
             $this->images,
-            fn(string $path): string => $this->buildAbsoluteUrl($path),
-            fn(): StructuredData => $this->structuredData(),
-            $this->basePath . '/public'
-        );
-
-        // Declared fields of a content item, ready to print: content_fields(item) for its page,
-        // content_fields(item, 'card') for the fields marked for cards.
-        $twig->addFunction(new TwigFunction('content_fields', function (mixed $item, string $context = 'page'): array {
-            if (!$item instanceof ContentItem) {
-                return [];
-            }
-            return $this->contentTypes()->display(
-                $item->type,
-                $item->meta,
-                $context === 'card' ? 'card' : 'page',
-                fn(string $value): string => $this->formatDateValue($value),
-                $this->currentLang,
-                $this->defaultLanguage()
-            );
-        }));
-
-        // The checked values of the declared fields by key (a repeater as a list of rows), for a template that draws them itself.
-        $twig->addFunction(new TwigFunction('content_values', function (mixed $item): array {
-            if (!$item instanceof ContentItem) {
-                return [];
-            }
-            return $this->contentTypes()->values($item->type, $item->meta, $this->currentLang, $this->defaultLanguage());
-        }));
-
-        GeoTwigFunctions::register(
-            $twig,
-            fn(): GeoView => $this->blockRuntime()->geoView(),
-            fn(): string => $this->currentLang,
-            fn(): array => $this->settings
-        );
-
-        // What the page of one entry of a type does (Theme > Single Layouts): title style, header, parts, sidebar.
-        $twig->addFunction(new TwigFunction('single_layout', function (string $type): array {
-            return $this->singleLayouts()->forType($type, $this->themeSettings);
-        }));
-
-        // The title area a term asks for the entries filed under it (Admin > Taxonomies), for an entry that has no choice of its own.
-        $twig->addFunction(new TwigFunction('term_hero_layout', function (mixed $item): string {
-            if (!$item instanceof ContentItem) {
-                return '';
-            }
-            foreach ($this->taxonomies()->names() as $name) {
-                foreach (Format::list($item->meta[$name] ?? null) as $termId) {
-                    $layout = $this->taxonomies()->heroLayout($name, $termId);
-                    if ($layout !== '') {
-                        return $layout;
-                    }
-                }
-            }
-            return '';
-        }));
-
-        $twig->addFunction(new TwigFunction('content_type', function (string $type): array {
-            return $this->contentTypes()->definition($type, $this->currentLang, $this->defaultLanguage());
-        }));
-
-        $twig->addFunction(new TwigFunction('t', function (string $key, ?string $fallback = null): string {
-            return $this->translate($key, $fallback);
-        }));
-
-        $twig->addFunction(new TwigFunction('format_date', function (mixed $value): string {
-            return $this->formatDateValue($value);
-        }));
-
-        // The path of an entry for a link, after the language prefix a template already has ("" or "en/"): about, my-post,
-        // projects/mine, or nothing for the home page.
-        $twig->addFunction(new TwigFunction('item_path', function (mixed $item, string $prefix = ''): string {
-            if (!$item instanceof ContentItem) {
-                return $prefix;
-            }
-            $default = $this->defaultLanguage();
-            $home = (string)(($this->settings['home_page'] ?? '') !== '' ? $this->settings['home_page'] : 'index');
-            return $prefix . ContentPaths::build($item->type, $item->slug, $default, $home, $default);
-        }));
-
-        $twig->addFunction(new TwigFunction('slug', function (string $value): string {
-            return Slug::plain($value);
-        }));
-
-        $twig->addFunction(new TwigFunction('taxonomy_label', function (string $taxonomy, string $termId, ?string $lang = null): string {
-            return $this->taxonomyTermLabel($taxonomy, $termId, $lang);
-        }));
-
-        $twig->addFunction(new TwigFunction('taxonomy_url', function (string $taxonomy, string $termId, string $prefix = ''): string {
-            $path = $this->buildTaxonomyPath($taxonomy, $termId, $prefix);
-            return $this->buildAbsoluteUrl($path);
-        }));
-
-        // The terms an entry has in the taxonomies a site added (categories and tags are drawn by the templates themselves):
-        // [{name, title, terms: [{label, url}]}], each term with a page.
-        $twig->addFunction(new TwigFunction('item_terms', function (mixed $item, string $prefix = ''): array {
-            $meta = is_object($item) && isset($item->meta) && is_array($item->meta) ? $item->meta : [];
-            $groups = [];
-            foreach ($this->taxonomies()->names() as $name) {
-                if (!Taxonomies::isCustom($name)) {
-                    continue;
-                }
-                $terms = [];
-                $known = array_column($this->taxonomies()->load($name)['terms'], 'id');
-                foreach (Format::list($meta[$name] ?? null) as $termId) {
-                    if (!in_array((string)$termId, $known, true)) {
-                        continue;
-                    }
-                    $label = $this->taxonomyTermLabel($name, (string)$termId);
-                    $path = $this->buildTaxonomyPath($name, (string)$termId, $prefix);
-                    if ($label !== '' && $path !== '') {
-                        $terms[] = ['label' => $label, 'url' => $this->buildAbsoluteUrl($path)];
-                    }
-                }
-                if ($terms !== []) {
-                    $groups[] = ['name' => $name, 'title' => $this->taxonomies()->load($name)['title'], 'terms' => $terms];
-                }
-            }
-            return $groups;
-        }));
-
-        // A text a theme setting may have in several languages, as the text for the language of the page.
-        $twig->addFilter(new TwigFilter('localized', fn(array $context, mixed $value): string => Format::localized($value, (string)($context['lang'] ?? $this->currentLang)), ['needs_context' => true]));
-
-        // The blocks of Theme > Footer Blocks, drawn once for each language of a request: the markup for above the footer and the
-        // style sheets and scripts they need (the layout asks for those in the head and the footer for the markup).
-        $footerBlocks = [];
-        $twig->addFunction(new TwigFunction('footer_blocks', function (array $context) use (&$footerBlocks): array {
-            $lang = (string)($context['lang'] ?? $this->currentLang);
-            if (!isset($footerBlocks[$lang])) {
-                $raw = FooterBlocks::forLanguage($this->themeSettings['footer_blocks'] ?? null, $lang, (string)($this->settings['languages']['default'] ?? 'en'));
-                $footerBlocks[$lang] = ['html' => '', 'styles' => [], 'scripts' => []];
-                if ($raw !== []) {
-                    $rendered = $this->blockRuntime()->renderer($lang, (string)($context['path_no_lang'] ?? ''), $this->twig)->render($raw, [
-                        'lang' => $lang,
-                        'lang_prefix' => $context['lang_prefix'] ?? '',
-                        'current_lang' => $lang,
-                        'path_no_lang' => $context['path_no_lang'] ?? '',
-                        'theme_menus' => $context['theme_menus'] ?? [],
-                        'body_html' => '',
-                    ]);
-                    $footerBlocks[$lang] = ['html' => $rendered['html'], 'styles' => $rendered['styles'], 'scripts' => $rendered['scripts']];
-                }
-            }
-            return $footerBlocks[$lang];
-        }, ['needs_context' => true]));
-
-        $twig->addFunction(new TwigFunction('can', function (string $capability): bool {
-            return $this->permissions->can($this->auth->user(), $capability);
-        }));
-
-        $twig->addFunction(new TwigFunction('csrf_token', function (): string {
-            return $this->csrfToken();
-        }));
-
-        $twig->addFunction(new TwigFunction('csrf_field', function (): string {
-            return '<input type="hidden" name="_csrf" value="' . htmlspecialchars($this->csrfToken(), ENT_QUOTES) . '">';
-        }, ['is_safe' => ['html']]));
-
-        // The address of the site's feed in the language of the page, or nothing while the feed is off: the head announces it.
-        $twig->addFunction(new TwigFunction('feed_url', fn(string $prefix = ''): string => $this->feed()->hasSiteFeed() ? $this->buildAbsoluteUrl($prefix . 'feed') : ''));
-
-        PageTwigFunctions::register(
-            $twig,
             fn(): array => $this->settings,
             fn(): array => $this->themeSettings,
+            fn(): string => $this->currentLang,
+            fn(): string => $this->defaultLanguage(),
             fn(): bool => $this->auth->check(),
-            (string)($this->settings['base_url'] ?? '')
+            fn(string $capability): bool => $this->permissions->can($this->auth->user(), $capability),
+            fn(): string => $this->csrfToken(),
+            fn(string $key, ?string $fallback): string => $this->translate($key, $fallback),
+            fn(string $path): string => $this->buildAbsoluteUrl($path),
+            fn(): StructuredData => $this->structuredData(),
+            fn(): ContentTypes => $this->contentTypes(),
+            fn(): SingleLayouts => $this->singleLayouts(),
+            fn(): Taxonomies => $this->taxonomies(),
+            fn(string $taxonomy, string $termId, ?string $lang): string => $this->taxonomyTermLabel($taxonomy, $termId, $lang),
+            fn(string $taxonomy, string $termId, string $prefix): string => $this->buildTaxonomyPath($taxonomy, $termId, $prefix),
+            fn(): BlockRuntime => $this->blockRuntime(),
+            fn(): bool => $this->feed()->hasSiteFeed(),
+            fn(): array => $this->siteLanguageCodes()
         );
-
-        // The languages of the site, its own first: the admin shows a version of each translatable text for each of them.
-        $twig->addGlobal('admin_languages', $this->siteLanguageCodes());
-        $twig->addGlobal('site', $this->settings);
-        $twig->addGlobal('theme_settings', $this->themeSettings);
-        $twig->addGlobal('theme', ['name' => $this->theme->name(), 'version' => $this->theme->version()]);
-        $twig->addGlobal('is_admin', $this->auth->check());
-
-        return $twig;
     }
 
     private function render(string $template, array $data = []): void
@@ -4160,11 +3988,6 @@ final class App
             return $kind . '/' . $slug;
         }
         return $prefix . '/' . $kind . '/' . $slug;
-    }
-
-    private function formatDateValue(mixed $value): string
-    {
-        return Format::dateValue($value, (string)($this->settings['date_format'] ?? 'd/m/Y'));
     }
 
     private function isReservedFrontmatterKey(string $key): bool
