@@ -1,0 +1,14 @@
+# Starting template for the page of projects when it is "Built with blocks" (Admin > Theme > Single Layouts). Data, not code: blocks in the
+# shape they are stored in. A site overrides it with custom/single-templates/projects.yaml. See docs/theming.md, "Starting templates".
+# The title area, the facts of the project, the text, then the blocks of the project.
+blocks:
+  - { type: entry-title }
+  - type: fact-sheet
+    fields:
+      - { field: custom_fields.client }
+      - { field: custom_fields.sector }
+      - { field: custom_fields.location }
+      - { field: custom_fields.year }
+      - { field: custom_fields.duration }
+  - { type: content }
+  - { type: entry-blocks }

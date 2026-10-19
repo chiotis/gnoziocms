@@ -9,7 +9,7 @@
  */
 $repo = dirname(__DIR__, 2);
 require $repo . '/vendor/autoload.php';
-use GnozioCMS\{BlockRegistry, BlockSets, ContentItem, ContentTypes, HtmlGuard, SingleTemplateAdmin, SingleTemplates, Theme};
+use GnozioCMS\{BlockRegistry, BlockSets, ContentItem, ContentTypes, HtmlGuard, SingleTemplateAdmin, SingleTemplates, StartingTemplates, Theme};
 use League\CommonMark\Environment\Environment;
 use League\CommonMark\Extension\CommonMark\CommonMarkCoreExtension;
 
@@ -33,7 +33,7 @@ $sets = new BlockSets(fn() => $registry, fn() => $guard, function () use (&$mayH
 
 $item = static fn(string $slug, string $lang, string $date, string $title = ''): ContentItem => new ContentItem('education', $slug, $lang, ['title' => $title ?: $slug, 'date' => $date], '', '', '', 0);
 $entries = [$item('old', 'el', '2025-01-01'), $item('new', 'el', '2026-05-01'), $item('new', 'en', '2026-05-01', 'New (en)')];
-$admin = new SingleTemplateAdmin($theme, $types, $registry, $sets, fn() => ['pages', 'education', 'forms'], fn(string $type): array => $type === 'education' ? $entries : [], function (string $type, string $slug, string $lang) use ($entries): ?ContentItem {
+$admin = new SingleTemplateAdmin($theme, $types, $registry, $sets, new StartingTemplates($theme, $types, $registry, fn() => 'el'), fn() => ['pages', 'education', 'forms'], fn(string $type): array => $type === 'education' ? $entries : [], function (string $type, string $slug, string $lang) use ($entries): ?ContentItem {
     foreach ($entries as $e) { if ($e->type === $type && $e->slug === $slug && $e->lang === $lang) return $e; }
     return null;
 }, fn() => 'el');

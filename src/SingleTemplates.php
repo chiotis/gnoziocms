@@ -66,13 +66,17 @@ final class SingleTemplates
      * @param array<string, mixed> $data the theme settings being stored
      * @param array<string, mixed> $choices `single_template[<type>]` as sent
      * @param string[] $known the content types the site has
+     * @param (\Closure(string): array<string, array<int, mixed>>)|null $starting the sets a type starts from (StartingTemplates::sets()): a type
+     *        that is switched to `built` while it has no blocks gets them, so it does not start from an empty list
      * @return array<string, mixed>
      */
-    public static function withChoices(array $data, array $choices, array $known): array
+    public static function withChoices(array $data, array $choices, array $known, ?\Closure $starting = null): array
     {
         foreach ($choices as $type => $choice) {
             if (in_array((string)$type, $known, true) && (string)$type !== 'forms' && is_string($choice)) {
-                $data['single_templates'] = self::with($data, (string)$type, $choice === 'built', null);
+                $entry = self::entry($data, (string)$type);
+                $sets = $choice === 'built' && !$entry['use'] && $entry['blocks'] === [] && $starting !== null ? $starting((string)$type) : [];
+                $data['single_templates'] = self::with($data, (string)$type, $choice === 'built', $sets === [] ? null : $sets);
             }
         }
         if (($data['single_templates'] ?? []) === []) {

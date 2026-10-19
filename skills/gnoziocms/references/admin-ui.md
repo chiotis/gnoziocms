@@ -51,6 +51,7 @@ Typing blocks as YAML into the **Advanced** tab (the raw front matter) does **no
 - **Redirect after changing an address**: the editor offers it when a published address changes; or Redirects > Add / Import lines `old-path new-path`.
 - **Publish many**: Content list > tick > Publish.
 - **After changing files outside the admin** on a site behind Varnish/CloudPanel: System > Page cache > *Empty the page cache*.
+- **Build the page of a content type with blocks**: Theme > Single Layouts > the type's card > *Built with blocks* (it starts from a ready template: the theme's for its own types, one made from the type's fields for any other) > *Edit template*. The chain button beside a block's field shows a field of the entry instead of a typed value; on a list (the buttons of a Hero, the Buttons block) it binds the list to a list of the entry (the buy links of a book) and a small table maps each column. *Start again from the default* puts the ready template back (confirm first: it replaces the blocks of every language). Entries are not changed.
 - **Undo a mistake**: History > the entry > compare > Restore; or Backups.
 
 ## Do not press, unless the person asked for exactly that

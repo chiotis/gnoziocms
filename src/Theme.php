@@ -231,6 +231,25 @@ final class Theme
         return $roots;
     }
 
+    /**
+     * The files that can hold the starting template of a content type (`single-templates/<type>.yaml`, the blocks a template built with
+     * blocks starts from): the site's own in custom/ first, then the theme's.
+     *
+     * @return string[]
+     */
+    public function startingTemplateFiles(string $type): array
+    {
+        $files = [];
+        if (preg_match('/^[a-z][a-z0-9_-]*$/', $type) === 1) {
+            foreach ($this->templateRoots() as $root) {
+                if (is_file($root . '/single-templates/' . $type . '.yaml')) {
+                    $files[] = $root . '/single-templates/' . $type . '.yaml';
+                }
+            }
+        }
+        return $files;
+    }
+
     /** First candidate (relative path such as `templates/single.twig`) that exists, or null. */
     public function findTemplate(array $candidates): ?string
     {

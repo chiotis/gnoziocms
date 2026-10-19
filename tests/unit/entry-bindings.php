@@ -81,8 +81,9 @@ $bind = static fn(ContentItem $item, string $lang = 'en'): EntryBindings => new 
 // ---- what a type offers to bind comes from its definition
 $sources = EntryBindings::sources($types, 'education', 'en', 'en');
 $paths = array_column($sources, 'path');
-check('the common fields come first, then the declared ones, a list of rows is left for a list', array_slice($paths, 0, 7), ['title', 'excerpt', 'main_image', 'date', 'author', 'categories', 'tags']);
-check('every declared field of the type is there (a list of rows is not)', array_values(array_filter($paths, fn($p) => str_starts_with($p, 'custom_fields.'))), ['custom_fields.headline', 'custom_fields.level', 'custom_fields.hours', 'custom_fields.starts', 'custom_fields.ratio', 'custom_fields.summary', 'custom_fields.syllabus', 'custom_fields.cover', 'custom_fields.apply', 'custom_fields.website', 'custom_fields.certified', 'custom_fields.place']);
+check('the common fields come first, then the declared ones', array_slice($paths, 0, 7), ['title', 'excerpt', 'main_image', 'date', 'author', 'categories', 'tags']);
+check('every declared field of the type is there, a list of rows as a list with its columns', array_values(array_filter($paths, fn($p) => str_starts_with($p, 'custom_fields.'))), ['custom_fields.headline', 'custom_fields.level', 'custom_fields.hours', 'custom_fields.starts', 'custom_fields.ratio', 'custom_fields.summary', 'custom_fields.syllabus', 'custom_fields.cover', 'custom_fields.apply', 'custom_fields.website', 'custom_fields.certified', 'custom_fields.place', 'custom_fields.modules']);
+check('a list is of the kind list and names its columns', array_values(array_filter($sources, fn($s) => $s['path'] === 'custom_fields.modules'))[0]['columns'] ?? null, [['key' => 'name', 'label' => 'Name', 'kind' => 'text']]);
 check('a field has its label in the language asked and its key', array_values(array_filter($sources, fn($s) => $s['path'] === 'custom_fields.headline')), [['path' => 'custom_fields.headline', 'key' => 'headline', 'label' => 'Headline', 'kind' => 'text', 'group' => 'Courses']]);
 check('in Greek the label is Greek', array_column(EntryBindings::sources($types, 'education', 'el', 'el'), 'label', 'path')['custom_fields.headline'], 'Επικεφαλίδα');
 $of = static fn(string $type) => array_column(EntryBindings::compatible($sources, $type), 'key');
@@ -90,7 +91,7 @@ check('a text takes the title, text, select, number, date, terms and author', $o
 check('a text of several lines or Markdown takes the excerpt and such fields', [$of('textarea'), $of('markdown')], [['excerpt', 'summary', 'syllabus'], ['excerpt', 'summary', 'syllabus']]);
 check('a picture takes the main image and picture fields', $of('image'), ['main_image', 'cover']);
 check('a link or an address takes links and addresses', [$of('link'), $of('url')], [['apply', 'website'], ['apply', 'website']]);
-check('a choice, a switch or a list cannot be bound', [EntryBindings::bindable('select'), EntryBindings::bindable('toggle'), EntryBindings::bindable('repeater'), EntryBindings::bindable('text')], [false, false, false, true]);
+check('a choice or a switch cannot be bound, a list can (to a list)', [EntryBindings::bindable('select'), EntryBindings::bindable('toggle'), EntryBindings::bindable('repeater'), EntryBindings::bindable('text')], [false, false, true, true]);
 
 // ---- the value of each kind
 $item = $course([

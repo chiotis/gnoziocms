@@ -109,7 +109,8 @@ check('the screen has the block editor, a preview, the switch, the entries to pr
 check('the editor is told this is a template for the type', data.get('context') == 'template' and data['bindings']['type'] == 'books', list(data))
 paths = [s['path'] for s in data['bindings']['sources']]
 check('the fields it can bind are the entry\'s and those the type declares', paths[:3] == ['title', 'excerpt', 'main_image'] and 'custom_fields.publisher' in paths and 'custom_fields.year' in paths, paths)
-check('a list of rows (the buy links) is not offered for a field', 'custom_fields.buy_links' not in paths)
+lists = [x for x in data['bindings']['sources'] if x['kind'] == 'list']
+check('a list of rows (the buy links) is offered as a list, with its columns, not as a field', [x['path'] for x in lists] == ['custom_fields.buy_links'] and [c['key'] for c in lists[0]['columns']] == ['label', 'url'] and 'list' not in ' '.join(data['bindings']['accepts']), lists)
 types = [d['type'] for d in data['definitions']]
 check('the blocks of a template are offered here', all(t in types for t in ('entry-title', 'fact-sheet', 'content', 'entry-blocks', 'hero', 'text')), types)
 fact = next(d for d in data['definitions'] if d['type'] == 'fact-sheet')
@@ -281,6 +282,110 @@ check('a field that is removed, or is another kind now, draws nothing: the block
 st, _, html = root.get('/admin/theme?template=education')
 data = editor_data(html)
 check('the editor still holds the bindings, so they can be fixed (the page above is the proof that nothing broke)', st == 200 and any(b.get('heading') == {'bind': 'custom_fields.teacher'} for sets in (data['blocks'].values() if isinstance(data['blocks'], dict) else [data['blocks']]) for b in sets) and 'custom_fields.teacher' not in [s['path'] for s in data['bindings']['sources']], '')
+
+# ---- starting templates: a type switched to "Built with blocks" starts from its starting template
+save_cards(root, {'single_template[books]': 'theme'})
+save_template('books', [], use=False)
+write('app/content/books/kafka.md', """---
+title: The Trial
+status: published
+excerpt: A man is arrested.
+custom_fields:
+  author: Franz Kafka
+  publisher: Schocken
+  year: 1925
+  buy_links:
+    - { label: Shop One, url: 'https://one.example.org/trial' }
+    - { label: Shop Two, url: 'https://two.example.org/trial' }
+    - { label: Shop Three, url: '/local-shop' }
+    - { label: '', url: '' }
+---
+
+The text of the trial.
+""")
+st, _, html = root.get('/admin/theme?template=books')
+data = editor_data(html)
+sets = data['blocks']['default'] if isinstance(data['blocks'], dict) else data['blocks']
+check('the screen of a template with no blocks opens on the starting template, and says so', 'data-template-starts' in html and [b['type'] for b in sets] == ['entry-title', 'fact-sheet', 'buttons', 'content', 'entry-blocks'], [b['type'] for b in sets])
+check('and nothing is stored by looking at it', 'type: buttons' not in stored())
+save_cards(root, {'single_template[books]': 'built'})
+y = stored()
+check('choosing Built with blocks for a type with no blocks stores its starting template', 'type: buttons' in y and 'bind: custom_fields.buy_links' in y and 'use: true' in y and 'first: primary' in y, y[-700:])
+page = pub.get('/books/kafka')[2]
+buttons = re.findall(r'<a class="btn (btn-[a-z]+)" href="([^"]+)">\s*([^<]*?)\s*(?:<svg|</a>)', page)
+check('the book is drawn from it, with one button for each shop of buy_links in order, the first primary and the others secondary, the empty row left out',
+      [(b[0], b[1], b[2]) for b in buttons if 'example.org' in b[1] or 'local-shop' in b[1]] == [('btn-primary', 'https://one.example.org/trial', 'Shop One'), ('btn-secondary', 'https://two.example.org/trial', 'Shop Two'), ('btn-secondary', '/local-shop', 'Shop Three')], buttons)
+check('with the title area, the details of the book and its text', 'block-entry-title' in page and 'Franz Kafka' in page and 'Schocken' in page and '1925' in page and 'The text of the trial.' in page and page.count('<h1') == 1, page[:300])
+check('a book with no shops has no buttons block, and none with no fields at all is an error', 'block-buttons' not in pub.get('/books/dune')[2] and pub.get('/books/plain')[0] == 200 and 'block-buttons' not in pub.get('/books/plain')[2])
+st, a = preview('kafka|el', sets)
+check('the preview of the starting template draws the book too', st == 200 and 'Shop Two' in a.get('html', ''), a)
+
+# Start again: replaces what the template has, for every language, after the editor's confirmation
+save_template('books', {'default': [{'type': 'text', 'heading': 'Mine'}, {'type': 'content'}], 'en': [{'type': 'text', 'heading': 'Mine in English'}]})
+check('a template of its own is drawn as it is', 'Mine' in pub.get('/books/kafka')[2] and 'Shop Two' not in pub.get('/books/kafka')[2])
+st, _, html = root.get('/admin/theme?template=books')
+check('the screen has the Start again button, with a confirmation, and no start note while the template has blocks', 'data-start-again' in html and 'data-confirm="Replace the blocks' in html and 'data-template-starts' not in html, st)
+form = next(f for f in root.forms('/admin/theme?template=books') if any(x[0] == 'blocks_json' for x in f['fields']))
+st, hdr, _ = root.request('/admin/theme?template=books', data=[tuple(x) for x in form['fields'] if x[0] not in ('blocks_json', 'blocks_editor', 'use')] + [('blocks_editor', '1'), ('blocks_json', json.dumps([{'type': 'text', 'heading': 'Typed after'}])), ('start_again', '1')])
+y = stored()
+check('Start again puts the starting template back, the blocks of every language included, and the typed ones are gone', st in (200, 302) and 'type: buttons' in y and 'Mine' not in y and 'Typed after' not in y and re.search(r'\n\s+en:', y) is None and 'use: true' in y, y[-600:])
+check('the book page is the starting template\'s again', 'Shop Two' in pub.get('/books/kafka')[2] and 'Mine' not in pub.get('/books/kafka')[2])
+check('and the English page too', 'Shop Two' in pub.get('/en/books/kafka')[2] or pub.get('/en/books/kafka')[0] == 404)
+check('someone who may not edit the theme cannot start again', ed.request('/admin/theme?template=books', data=[('_csrf', re.search(r'name="_csrf" value="([^"]+)"', ed.get('/admin/content?type=pages')[2]).group(1)), ('start_again', '1')])[0] == 403)
+
+# the site's own starting template (custom/) wins over the theme's, for the next Start again
+write('app/custom/single-templates/books.yaml', "blocks:\n  - { type: entry-title }\n  - { type: content }\n")
+root.request('/admin/theme?template=books', data=[tuple(x) for x in form['fields'] if x[0] not in ('blocks_json', 'blocks_editor', 'use')] + [('blocks_editor', '1'), ('blocks_json', '[]'), ('start_again', '1')])
+y = stored()
+check('custom/single-templates/books.yaml is used instead of the theme\'s', 'type: buttons' not in y and 'type: entry-title' in y and 'Shop Two' not in pub.get('/books/kafka')[2], y[-300:])
+os.remove('app/custom/single-templates/books.yaml')
+
+# ---- a type that exists only as a file, with a picture and a list of links, and no starting template of any theme: generated
+write('app/custom/content-types/workshops.yaml', """label: { en: Workshops }
+singular: { en: Workshop }
+fields:
+  trainer: { type: text, label: Trainer }
+  hours: { type: number, label: Hours }
+  poster: { type: image, label: Poster }
+  materials:
+    type: repeater
+    label: Materials
+    max: 5
+    fields:
+      title: { type: text, label: Title }
+      link: { type: link, label: Link }
+""")
+write('app/content/workshops/clay.md', """---
+title: Working with clay
+status: published
+custom_fields:
+  trainer: Pat Potter
+  hours: 6
+  poster: /uploads/clay.jpg
+  materials:
+    - { title: Reading list, link: '/reading' }
+    - { title: Slides, link: 'https://example.org/slides.pdf' }
+---
+
+Bring an apron.
+""")
+write('app/content/workshops/bare.md', "---\ntitle: A workshop with nothing\nstatus: published\n---\n\nJust words.\n")
+st, _, html = root.get('/admin/theme?template=workshops')
+data = editor_data(html)
+sets = data['blocks']['default'] if isinstance(data['blocks'], dict) else data['blocks']
+check('a type with no starting template of any theme gets one made from its definition', st == 200 and [b['type'] for b in sets] == ['entry-title', 'image', 'fact-sheet', 'buttons', 'content', 'entry-blocks'], [b['type'] for b in sets])
+check('the picture and the links are bound to the type\'s own fields', sets[1]['image'] == {'bind': 'custom_fields.poster'} and sets[3]['actions']['bind'] == 'custom_fields.materials' and sets[3]['actions']['map'] == {'label': 'title', 'url': 'link'}, sets)
+save_cards(root, {'single_template[workshops]': 'built'})
+page = pub.get('/workshops/clay')[2]
+check('switching the type on stores it and every workshop is drawn: title, picture, facts, a button for each material', 'single_templates:' in stored() and 'custom_fields.materials' in stored() and 'block-entry-title' in page and '/uploads/clay.jpg' in page and 'Pat Potter' in page and 'Reading list' in page and 'https://example.org/slides.pdf' in page and 'Bring an apron.' in page, page[:300])
+check('one with no fields leaves out the picture and the buttons and stays whole', pub.get('/workshops/bare')[0] == 200 and 'Just words.' in pub.get('/workshops/bare')[2] and 'block-buttons' not in pub.get('/workshops/bare')[2] and '<img' not in pub.get('/workshops/bare')[2].split('<main')[-1][:3000])
+# the list can be mended in the editor of the type: the mapping stays when a column is renamed away, and the page draws what is left
+write('app/custom/content-types/workshops.yaml', open('app/custom/content-types/workshops.yaml', encoding='utf-8').read().replace('      link: { type: link, label: Link }\n', '      href: { type: link, label: Link }\n'))
+st, _, page = pub.get('/workshops/clay')
+check('a column that is renamed away draws nothing, without an error', st == 200 and 'Working with clay' in page and 'https://example.org/slides.pdf' not in page and 'Fatal' not in page and 'Warning' not in page, st)
+st, _, html = root.get('/admin/theme?template=workshops')
+data = editor_data(html)
+check('and the editor still holds the mapping, so it can be mended', st == 200 and 'link' in json.dumps(data['blocks']) and [c['key'] for x in data['bindings']['sources'] if x['kind'] == 'list' for c in x['columns']] == ['title', 'href'], '')
 
 # ---- the same templates through an HTML-limited editor cannot write raw HTML (the guard is the entry editor's)
 print('\nALL PASSED' if not fails else '\nFAILED: %d' % len(fails))

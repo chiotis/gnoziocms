@@ -59,23 +59,76 @@ final class EntryBindings
     ) {
     }
 
-    /** Whether a block field of this type can be bound to something at all. */
+    /** Whether a block field of this type can be bound to something at all: a single value (ACCEPTS), or a list of rows (a repeater). */
     public static function bindable(string $fieldType): bool
     {
-        return isset(self::ACCEPTS[$fieldType]);
+        return isset(self::ACCEPTS[$fieldType]) || $fieldType === 'repeater';
     }
 
-    /** Whether a stored value is a binding: `{bind: "path"}` with a path written the way paths are (a list binding of delivery 1B adds a `map` beside it). */
+    /**
+     * Whether a stored value is a binding: `{bind: "path"}` with a path written the way paths are. A list binding (a block's repeater
+     * bound to a repeater of the entry) adds `map` and `fixed` beside it, see cleanList().
+     */
     public static function isBinding(mixed $value): bool
     {
         return is_array($value) && is_string($value['bind'] ?? null) && preg_match('/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$/', $value['bind']) === 1;
     }
 
     /**
+     * A list binding as it is stored: `{bind, map: {block column: entry column}, fixed: {block column: value}}`. `map` names, for a
+     * column of the block's rows, the column of the entry's rows it shows (a column left out is empty); `fixed` gives a column one value
+     * for every row, or `{first: value, rest: value}` to give the first row another (a primary button, then secondary ones). Keys that
+     * are not written the way field keys are, and values that are not text, are dropped; the values themselves are checked by the block's
+     * own column when the page is drawn, as typed ones are.
+     *
+     * @param array<string, mixed> $value a binding (isBinding())
+     * @return array<string, mixed>
+     */
+    public static function cleanList(array $value): array
+    {
+        $key = static fn(mixed $k): bool => is_string($k) && preg_match('/^[a-z][a-z0-9_]*$/', $k) === 1;
+        $text = static fn(mixed $v): ?string => is_string($v) || is_int($v) || is_float($v) ? mb_substr(trim((string)$v), 0, 2000) : null;
+        $out = ['bind' => $value['bind']];
+        $map = [];
+        foreach (is_array($value['map'] ?? null) ? $value['map'] : [] as $column => $source) {
+            if ($key($column) && $key($source)) {
+                $map[$column] = $source;
+            }
+        }
+        $fixed = [];
+        foreach (is_array($value['fixed'] ?? null) ? $value['fixed'] : [] as $column => $one) {
+            if (!$key($column)) {
+                continue;
+            }
+            if (is_array($one)) {
+                $first = $text($one['first'] ?? null);
+                $rest = $text($one['rest'] ?? null);
+                if ($first !== null && $first !== '' && $rest !== null && $rest !== '' && $first !== $rest) {
+                    $fixed[$column] = ['first' => $first, 'rest' => $rest];
+                } elseif ($first !== null && $first !== '') {
+                    $fixed[$column] = $first;
+                }
+                continue;
+            }
+            $one = $text($one);
+            if ($one !== null && $one !== '') {
+                $fixed[$column] = $one;
+            }
+        }
+        if ($map !== []) {
+            $out['map'] = $map;
+        }
+        if ($fixed !== []) {
+            $out['fixed'] = $fixed;
+        }
+        return $out;
+    }
+
+    /**
      * What a content type offers to bind, for the picker of the template editor: the common fields, then the declared ones (a retired
      * field is not offered), each with the kind that decides which block fields it fits.
      *
-     * @return list<array{path: string, key: string, label: string, kind: string, group: string}>
+     * @return list<array<string, mixed>> path, key, label, kind and group; a list (kind `list`) also has its `columns`
      */
     public static function sources(ContentTypes $types, string $type, string $lang, string $defaultLang): array
     {
@@ -84,11 +137,18 @@ final class EntryBindings
             $out[] = ['path' => $path, 'key' => $path, 'label' => $label, 'kind' => $kind, 'group' => 'Entry'];
         }
         foreach ($types->editableFields($type, $lang, $defaultLang) as $key => $field) {
-            // A list of rows is bound in a list (delivery 1B); a toggle or a location has no block field to show it in.
+            $source = ['path' => 'custom_fields.' . $key, 'key' => (string)$key, 'label' => $field['label'], 'kind' => $field['type'], 'group' => $types->definition($type, $lang, $defaultLang)['label']];
             if ($field['type'] === 'repeater') {
-                continue;
+                // A list of rows is bound to a block's list, with the columns of its rows to map (an inner list has none to offer).
+                $source['kind'] = 'list';
+                $source['columns'] = [];
+                foreach ($field['fields'] as $columnKey => $column) {
+                    if ($column['type'] !== 'repeater') {
+                        $source['columns'][] = ['key' => (string)$columnKey, 'label' => $column['label'], 'kind' => $column['type']];
+                    }
+                }
             }
-            $out[] = ['path' => 'custom_fields.' . $key, 'key' => (string)$key, 'label' => $field['label'], 'kind' => $field['type'], 'group' => $types->definition($type, $lang, $defaultLang)['label']];
+            $out[] = $source;
         }
         return $out;
     }
@@ -119,7 +179,18 @@ final class EntryBindings
             }
             $bound++;
             $path = $raw[$key]['bind'];
-            $value = self::bindable($field['type']) ? $this->value($path, $field['type']) : null;
+            if ($field['type'] === 'repeater') {
+                $rows = $this->rows($raw[$key], $field, $missing);
+                if ($rows === null) {
+                    $missing[] = $path;
+                    unset($raw[$key]);
+                    continue;
+                }
+                $raw[$key] = $rows;
+                $filled += $rows === [] ? 0 : 1;
+                continue;
+            }
+            $value = isset(self::ACCEPTS[$field['type']]) ? $this->value($path, $field['type']) : null;
             if ($value === null) {
                 $missing[] = $path;
                 unset($raw[$key]);
@@ -155,10 +226,74 @@ final class EntryBindings
             return null;
         }
         $values = $this->types->values($this->item->type, $this->item->meta, $this->lang, $this->defaultLang);
-        if (!array_key_exists($key, $values)) {
-            return '';
+        return array_key_exists($key, $values) ? $this->scalar($field, $values[$key]) : '';
+    }
+
+    /**
+     * The rows of a list binding as a block's repeater takes them: one row for each row of the entry's list, with the columns of the
+     * map filled from the row and the fixed ones given their value. The rows are not checked yet (the block's own field does that, so
+     * `max`, empty rows and unsafe values are handled as for typed rows). Null when the source is not a list of this type any more.
+     *
+     * @param array<string, mixed> $binding the stored binding
+     * @param array<string, mixed> $field the block's repeater
+     * @param list<string> $missing gets the columns the entry's rows no longer have
+     * @return array<int, array<string, mixed>>|null
+     */
+    private function rows(array $binding, array $field, array &$missing): ?array
+    {
+        $path = (string)$binding['bind'];
+        if (!str_starts_with($path, 'custom_fields.') || substr_count($path, '.') !== 1) {
+            return null;
         }
-        $value = $values[$key];
+        $key = substr($path, strlen('custom_fields.'));
+        $source = $this->types->editableFields($this->item->type, $this->lang, $this->defaultLang)[$key] ?? null;
+        if ($source === null || $source['type'] !== 'repeater') {
+            return null;
+        }
+        $binding = self::cleanList($binding);
+        // Each column of the block that takes a column of the entry's rows, if that column is still there and still fits.
+        $columns = [];
+        foreach ($binding['map'] ?? [] as $column => $from) {
+            $to = $field['fields'][$column] ?? null;
+            $has = $source['fields'][$from] ?? null;
+            if ($to === null || $to['type'] === 'repeater' || !isset(self::ACCEPTS[$to['type']])) {
+                continue;
+            }
+            if ($has === null || $has['type'] === 'repeater' || !in_array($has['type'], self::ACCEPTS[$to['type']], true)) {
+                $missing[] = $path . '.' . $from;
+                continue;
+            }
+            $columns[$column] = $from;
+        }
+        $values = $this->types->values($this->item->type, $this->item->meta, $this->lang, $this->defaultLang);
+        $rows = [];
+        foreach (is_array($values[$key] ?? null) ? array_values($values[$key]) : [] as $r => $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $out = [];
+            $any = false;
+            foreach ($columns as $column => $from) {
+                $out[$column] = array_key_exists($from, $row) ? $this->scalar($source['fields'][$from], $row[$from]) : '';
+                $any = $any || $out[$column] !== '';
+            }
+            if (!$any) {
+                continue;
+            }
+            // The first row of the list that is drawn gets the first value of a fixed column, the others the rest.
+            foreach ($binding['fixed'] ?? [] as $column => $one) {
+                if (isset($field['fields'][$column]) && !isset($columns[$column]) && $field['fields'][$column]['type'] !== 'repeater') {
+                    $out[$column] = is_array($one) ? ($rows === [] ? $one['first'] : $one['rest']) : $one;
+                }
+            }
+            $rows[] = $out;
+        }
+        return $rows;
+    }
+
+    /** A value of a field as the text a block's field takes (see value()). @param array<string, mixed> $field */
+    private function scalar(array $field, mixed $value): string
+    {
         if (($field['translatable'] ?? false) === true && is_array($value)) {
             // A text with a version for each language: the one of the page's language, else the site's own.
             $value = (string)(($this->lang !== $this->defaultLang ? ($value[$this->lang] ?? null) : null) ?? $value['default'] ?? '');

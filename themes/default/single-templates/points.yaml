@@ -1,0 +1,9 @@
+# Starting template for the page of points when it is "Built with blocks" (Admin > Theme > Single Layouts). Data, not code: blocks in the
+# shape they are stored in. A site overrides it with custom/single-templates/points.yaml. See docs/theming.md, "Starting templates".
+# The title area, the facts the page shows, the text, then the blocks of the point.
+# Differs: no map (a map block cannot show the place of the entry yet) and no "what is near" list.
+blocks:
+  - { type: entry-title }
+  - { type: fact-sheet }
+  - { type: content }
+  - { type: entry-blocks }

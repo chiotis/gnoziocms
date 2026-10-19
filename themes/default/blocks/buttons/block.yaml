@@ -1,0 +1,17 @@
+label: Buttons
+description: A row of buttons and nothing else. Type them, or, in a template built with blocks, bind the list to a list of the entry (the buy links of a book).
+category: Content
+spacing: compact
+variants:
+  left: Left
+  centered: Centered
+fields:
+  actions:
+    type: repeater
+    label: Buttons
+    item_label: Button
+    max: 12
+    fields:
+      label: { type: text, label: Label }
+      url: { type: link, label: Link, help: 'A page ("contact"), a path ("/en/contact"), a full URL, #anchor, mailto: or tel:' }
+      style: { type: select, label: Style, default: primary, options: { primary: Primary, secondary: Secondary, text: Text } }

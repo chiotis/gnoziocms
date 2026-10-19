@@ -4,6 +4,7 @@
   settings (`single_templates.<type>`, src/SingleTemplates.php), with a set for each language when the site has several.
 
   type, type_label   the content type
+  template_starts    the editor shows the starting template of the type (nothing is stored until the template is saved)
   template_use       whether the type's pages are drawn from the template
   template_json      what the editor starts from (block types, the blocks now there, the fields a block can be bound to)
   preview_choices    the entries the preview can show: [{value: "slug|lang", label}]
@@ -44,6 +45,7 @@
         <div class="min-w-0">
           <h2 id="tpl-title" class="text-sm font-semibold text-slate-900">Page of a {{ type_singular|lower }}</h2>
           <p class="mt-0.5 text-xs text-slate-500">The blocks below draw every {{ type_singular|lower }}. A block shows a field of the entry when you bind it (the chain button beside a field); the entry's title, text, fact sheet and own blocks have blocks of their own.{% if admin_languages|length > 1 %} Each language can have its own set; one without shows the site's own.{% endif %}</p>
+          {% if template_starts %}<p class="mt-1 text-xs text-slate-500" data-template-starts>This is the default for {{ type_label|lower }}, to start from. Change it, then save.</p>{% endif %}
         </div>
         <div class="flex flex-wrap items-center gap-2">
           <label class="lc-chip"><input type="checkbox" name="use" value="1"{% if template_use %} checked{% endif %}><span>Use this template for {{ type_label|lower }}</span></label>
@@ -71,6 +73,7 @@
     {% embed '@admin/partials/action-bar.twig' %}
       {% block leading %}
         <a href="{{ url('admin/theme?tab=single_layouts') }}" class="{{ secondary_button_class }}">Back to Single Layouts</a>
+        <button type="submit" name="start_again" value="1" formnovalidate class="{{ secondary_button_class }}" data-start-again data-confirm="Replace the blocks of this template with the default one for {{ type_label|lower }}? The blocks you have now (for every language) are replaced, and cannot be brought back from here." data-confirm-button="Start again">Start again from the default</button>
       {% endblock %}
       {% block actions %}
         <button type="submit" class="{{ primary_button_class }}">
