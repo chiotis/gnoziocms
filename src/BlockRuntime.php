@@ -130,6 +130,11 @@ final class BlockRuntime
                     $types = $source === 'all' ? $view->placeTypes() : (in_array($source, $view->placeTypes(), true) ? [$source] : []);
                     return $view->dataset($view->gather($types, $itemLang, Slug::plain($term)), $itemLang, ['limit' => max(1, min(800, $limit))]);
                 },
+                // The entries of a list as a map draws them (the Map of the list block): the dataset of the entries that have a place.
+                'geo_items' => function (array $items, string $itemLang): array {
+                    $view = $this->geoView();
+                    return $view->dataset(array_values(array_filter($items, static fn($item): bool => $item instanceof ContentItem)), $itemLang, ['limit' => ArchiveQuery::MAP_LIMIT]);
+                },
                 'geo_load' => fn(): string => (($this->settings)()['apis']['maps']['load'] ?? 'click') === 'auto' ? 'auto' : 'click',
                 'term' => fn(string $id, string $itemLang): string => ($this->termLabel)('categories', $id, $itemLang),
                 'admin' => fn(): bool => ($this->signedIn)(),
@@ -158,17 +163,22 @@ final class BlockRuntime
      * @param array<int, mixed> $card the blocks of one card (none: the theme's card is used)
      * @param array<string, mixed> $context what every block gets: the page's view data with `archive` (no `block_preview`: `$preview` says it)
      * @param string $preview which part the live preview marks for the editor: 'page', 'card' or '' (none)
+     * @param array<string, array<int, mixed>> $cards the card of a content type that has one of its own, by type (the others use `$card`)
+     * @param string $previewType with the card marked, the content type whose card it is ('' for the card of the others)
      * @return array<string, mixed> what BlockRenderer::render() gives
      */
-    public function renderArchive(array $blocks, array $card, string $lang, string $path, Environment $twig, array $context, string $preview = ''): array
+    public function renderArchive(array $blocks, array $card, string $lang, string $path, Environment $twig, array $context, string $preview = '', array $cards = [], string $previewType = ''): array
     {
         $more = [];
-        if ($card !== []) {
-            $more['archive_card'] = function (ContentItem $item, array $page) use ($card, $lang, $path, $twig, $preview): array {
-                // The card is drawn with the entry's fields; the blocks in it are ordinary blocks, one level below the title of the page.
-                $drawn = $this->renderer($lang, $path, $twig)->render($card, [
+        if ($card !== [] || $cards !== []) {
+            $more['archive_card'] = function (ContentItem $item, array $page) use ($card, $cards, $lang, $path, $twig, $preview, $previewType): array {
+                // The card of the entry's content type, or the one for the others. The card is drawn with the entry's fields; the blocks in it
+                // are ordinary blocks, one level below the title of the page.
+                $set = $cards[$item->type] ?? $card;
+                $mine = $previewType === '' ? !isset($cards[$item->type]) : $previewType === $item->type;
+                $drawn = $this->renderer($lang, $path, $twig)->render($set, [
                     'item' => $item, 'body_html' => '', 'template_mode' => true, 'bindings' => $this->bindingsFor($item, $lang),
-                    'block_heading_tag' => 'h2', 'block_preview' => $preview === 'card',
+                    'block_heading_tag' => 'h2', 'block_preview' => $preview === 'card' && $mine,
                     // Every card on the page has ids of its own.
                     'block_uid_prefix' => 'card-' . preg_replace('/[^a-z0-9]+/i', '-', $item->type . '-' . $item->slug) . '-',
                 ] + array_diff_key($page, ['archive' => 1, 'block_preview' => 1, 'page_blocks' => 1]));

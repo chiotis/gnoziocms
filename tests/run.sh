@@ -170,6 +170,7 @@ run_js() {
   run_check "template-bindings" "$ROOT" node tests/js/template-bindings.test.js
   run_check "list-bindings" "$ROOT" node tests/js/list-bindings.test.js
   run_check "relations-picker" "$ROOT" node tests/js/relations.test.js
+  run_check "content-types-kind" "$ROOT" node tests/js/content-types-kind.test.js
 }
 
 cleanup_http() {
@@ -225,7 +226,7 @@ PYCOPY
   fi
 
   echo "HTTP tests (temporary copy on port $port)"
-  for name in search editor roles import redirects save history taxonomies links delete blocks hero_layouts mobile_menu bottom_bar logs users_tabs sidebar sidebar_brand theme_page media_upload upload_limits notifications bad_yaml custom_roles storage storage_cache line_endings media_usage media_picker admin_a11y seo_jsonld robots media_usage_cache update_install setup fresh_install catalogue menu_editor form_builder form_translation layouts header_footer branding branding_transfer custom_taxonomies type_options demo_content hero_video seo analytics translations content_types media dashboard editor_visual youtube_playlist blocks_pack geo clean_addresses footer_blocks single_templates archive_templates relations updates_screen backup_schedule backup_remote feed omni category_tree form_upload block_widths entry_preview block_reorder block_containers accordion faq_initial palettes branding_fonts installer; do
+  for name in search editor roles import redirects save history taxonomies links delete blocks hero_layouts mobile_menu bottom_bar logs users_tabs sidebar sidebar_brand theme_page media_upload upload_limits notifications bad_yaml custom_roles storage storage_cache line_endings media_usage media_picker admin_a11y seo_jsonld robots media_usage_cache update_install setup fresh_install catalogue menu_editor form_builder form_translation layouts header_footer branding branding_transfer custom_taxonomies type_options demo_content hero_video seo analytics translations content_types media dashboard editor_visual youtube_playlist blocks_pack geo clean_addresses footer_blocks single_templates archive_templates archive_lists relations updates_screen backup_schedule backup_remote feed omni category_tree form_upload block_widths entry_preview block_reorder block_containers accordion faq_initial palettes branding_fonts installer; do
     [ -n "$only" ] && [ "$only" != "$name" ] && continue
     # Every test starts from the same clean site.
     rm -rf "$work/app/content" "$work/app/storage" "$work/app/custom" "$work/app/public/uploads"
@@ -246,7 +247,7 @@ case "$MODE" in
   unit) preflight unit; run_unit ;;
   js) preflight js; run_js ;;
   http) preflight http; run_http ;;
-  search|editor|roles|import|redirects|save|history|taxonomies|links|delete|blocks|hero_layouts|mobile_menu|bottom_bar|logs|users_tabs|sidebar|sidebar_brand|theme_page|media_upload|upload_limits|notifications|bad_yaml|custom_roles|storage|storage_cache|line_endings|media_usage|media_picker|admin_a11y|seo_jsonld|robots|media_usage_cache|update_install|setup|fresh_install|catalogue|menu_editor|form_builder|form_translation|layouts|header_footer|branding|branding_transfer|custom_taxonomies|type_options|demo_content|hero_video|seo|analytics|translations|content_types|media|dashboard|editor_visual|youtube_playlist|blocks_pack|geo|clean_addresses|footer_blocks|single_templates|archive_templates|relations|updates_screen|backup_schedule|backup_remote|feed|omni|category_tree|form_upload|block_widths|entry_preview|block_reorder|block_containers|accordion|faq_initial|palettes|branding_fonts|installer) preflight http; run_http "$MODE" ;;
+  search|editor|roles|import|redirects|save|history|taxonomies|links|delete|blocks|hero_layouts|mobile_menu|bottom_bar|logs|users_tabs|sidebar|sidebar_brand|theme_page|media_upload|upload_limits|notifications|bad_yaml|custom_roles|storage|storage_cache|line_endings|media_usage|media_picker|admin_a11y|seo_jsonld|robots|media_usage_cache|update_install|setup|fresh_install|catalogue|menu_editor|form_builder|form_translation|layouts|header_footer|branding|branding_transfer|custom_taxonomies|type_options|demo_content|hero_video|seo|analytics|translations|content_types|media|dashboard|editor_visual|youtube_playlist|blocks_pack|geo|clean_addresses|footer_blocks|single_templates|archive_templates|archive_lists|relations|updates_screen|backup_schedule|backup_remote|feed|omni|category_tree|form_upload|block_widths|entry_preview|block_reorder|block_containers|accordion|faq_initial|palettes|branding_fonts|installer) preflight http; run_http "$MODE" ;;
   *) echo "Unknown option: $MODE"; exit 2 ;;
 esac
 

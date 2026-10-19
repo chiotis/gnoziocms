@@ -18,7 +18,7 @@ use Symfony\Component\Yaml\Yaml;
  *   label / singular / description   text, or a map per language (el: …, en: …)
  *   fields:                          key => definition, see FieldSchema; a repeater (a list of rows) may hold one repeater
  *                                    level of its own, and is stored as a YAML list of maps
- *     filterable: true               select fields only: offered as a filter in the archive
+ *     filterable: true               select and relation fields: offered as a filter in the archive
  *     card: true                     shown on the item's card (a repeater as a short list of its rows)
  *     show: false                    not shown on the item's own page
  *   single:                          how the type's own page can be set in Theme > Single Layouts
@@ -220,7 +220,7 @@ final class ContentTypes
             if ($normalized === null || !in_array($normalized['type'], self::FIELD_TYPES, true)) {
                 continue;
             }
-            $normalized['filterable'] = ($definition['filterable'] ?? false) === true && $normalized['type'] === 'select';
+            $normalized['filterable'] = ($definition['filterable'] ?? false) === true && in_array($normalized['type'], ['select', 'relation'], true);
             $normalized['card'] = ($definition['card'] ?? false) === true;
             $normalized['show'] = ($definition['show'] ?? true) !== false;
             $fields[(string)$fieldKey] = $normalized;

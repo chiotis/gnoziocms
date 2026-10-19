@@ -97,7 +97,7 @@
                 {% endif %}
               </div>
               <div class="ct-flags" role="group" aria-label="How {{ row.key }} is used">
-                <label class="lc-chip" data-only-kind="select"{% if row.type != 'select' %} hidden{% endif %} title="Offer as a filter in the archive"><input type="checkbox" name="fields[{{ i }}][filterable]" value="1"{% if row.filterable %} checked{% endif %}><span>Filter</span></label>
+                <label class="lc-chip" data-only-kind="select relation"{% if row.type not in ['select', 'relation'] %} hidden{% endif %} title="Offer as a filter in the archive"><input type="checkbox" name="fields[{{ i }}][filterable]" value="1"{% if row.filterable %} checked{% endif %}><span>Filter</span></label>
                 <label class="lc-chip" title="Show on the item's card"><input type="checkbox" name="fields[{{ i }}][card]" value="1"{% if row.card %} checked{% endif %}><span>Card</span></label>
                 <label class="lc-chip" title="Show on the item's own page"><input type="checkbox" name="fields[{{ i }}][show]" value="1"{% if row.show %} checked{% endif %}><span>Page</span></label>
                 <label class="lc-chip is-warn" title="Stop using the field; stored values are kept"><input type="checkbox" name="fields[{{ i }}][retired]" value="1"{% if row.retired %} checked{% endif %}><span>Retired</span></label>
@@ -146,7 +146,7 @@
         </select>
       </div>
       <div class="ct-flags" role="group" aria-label="How the new field is used">
-        <label class="lc-chip" data-only-kind="select" hidden title="Offer as a filter in the archive"><input type="checkbox" name="fields[__i__][filterable]" value="1"><span>Filter</span></label>
+        <label class="lc-chip" data-only-kind="select relation" hidden title="Offer as a filter in the archive"><input type="checkbox" name="fields[__i__][filterable]" value="1"><span>Filter</span></label>
         <label class="lc-chip" title="Show on the item's card"><input type="checkbox" name="fields[__i__][card]" value="1"><span>Card</span></label>
         <label class="lc-chip" title="Show on the item's own page"><input type="checkbox" name="fields[__i__][show]" value="1" checked><span>Page</span></label>
         <label class="lc-chip is-warn" title="Stop using the field; stored values are kept"><input type="checkbox" name="fields[__i__][retired]" value="1"><span>Retired</span></label>

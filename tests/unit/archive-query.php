@@ -28,7 +28,7 @@ function check(string $label, mixed $actual, mixed $expected): void
 $root = sys_get_temp_dir() . '/archive-query' . getmypid();
 mkdir($root . '/custom/content-types', 0775, true);
 mkdir($root . '/storage', 0775, true);
-foreach (['recipes', 'posts'] as $dir) {
+foreach (['recipes', 'posts', 'authors', 'works'] as $dir) {
     mkdir($root . '/content/' . $dir, 0775, true);
 }
 symlink($repo . '/themes', $root . '/themes');
@@ -46,6 +46,17 @@ archive:
   per_page: 7
 YAML);
 
+file_put_contents($root . '/custom/content-types/authors.yaml', "label: Authors\nfields: {}\n");
+file_put_contents($root . '/custom/content-types/works.yaml', "label: Works\nfields:\n  author: { type: relation, types: [authors], label: Author, filterable: true }\n  team: { type: relation, types: [authors], multiple: true, label: Team, filterable: true }\narchive:\n  per_page: 4\n");
+foreach ([['ada', 'Ada', 'aaaaaaaa00000001', 'published'], ['bob', 'Bob', 'bbbbbbbb00000002', 'published'], ['cy', 'Cy', 'cccccccc00000003', 'draft']] as [$slug, $title, $id, $status]) {
+    file_put_contents($root . '/content/authors/' . $slug . '.md', "---\ntitle: $title\nstatus: $status\ntranslation_id: $id\n---\n\nx\n");
+}
+$ids = ['aaaaaaaa00000001', 'bbbbbbbb00000002', 'cccccccc00000003', ''];
+for ($i = 0; $i < 14; $i++) {
+    $author = $ids[$i % 4];
+    $team = $i % 3 === 0 ? "\n  team: [bbbbbbbb00000002, aaaaaaaa00000001]" : '';
+    file_put_contents($root . '/content/works/w' . $i . '.md', "---\ntitle: Work $i\nstatus: published\ndate: \"2026-02-" . sprintf('%02d', $i + 1) . "\"\ncustom_fields:" . ($author !== '' ? "\n  author: $author" : "\n  other: x") . $team . "\n---\n\nx\n");
+}
 $courses = ['starter', 'main', 'dessert', ''];
 $chefs = ['Zoe', 'adam', 'Éva', 'Bob', ''];
 $cats = [[], ['soups'], ['soups', 'quick'], ['quick'], 'vegan', ['vegan', 'quick']];
@@ -84,8 +95,10 @@ $index = new ContentIndex($database, $root . '/content', $meta);
 $index->keepReferences(fn(string $type): array => $types->definition($type, 'el', 'el')['fields']);
 $index->keepTerms(fn(): array => ['tags', 'categories']);
 $query = new ArchiveQuery($index, $content);
-$builder = new ArchiveBuilder(fn() => ['tags', 'categories'], fn(string $taxonomy, string $id, string $lang): string => ucfirst($id), $query);
-$scan = new ArchiveBuilder(fn() => ['tags', 'categories'], fn(string $taxonomy, string $id, string $lang): string => ucfirst($id));
+$relations = new \GnozioCMS\Relations($index, $content, $types, $settings, $root . '/content');
+$relationTitles = fn(array $ids, string $lang): array => array_column($relations->resolve($ids, [], $lang), 'title', 'id');
+$builder = new ArchiveBuilder(fn() => ['tags', 'categories'], fn(string $taxonomy, string $id, string $lang): string => ucfirst($id), $query, $relationTitles);
+$scan = new ArchiveBuilder(fn() => ['tags', 'categories'], fn(string $taxonomy, string $id, string $lang): string => ucfirst($id), null, $relationTitles);
 
 check('nothing is indexed yet', $index->isCurrent($content->getTypes()), false);
 check('the first look makes the index, then it can answer', [$query->ready(), $index->isCurrent($content->getTypes())], [true, true]);
@@ -93,7 +106,7 @@ check('the first look makes the index, then it can answer', [$query->ready(), $i
 $definition = $types->definition('recipes', 'el', 'el');
 $shape = static function (array $page): array {
     $page['items'] = array_map(static fn($i) => $i->type . '/' . $i->slug . '.' . $i->lang, $page['items']);
-    unset($page['definition']);
+    unset($page['definition'], $page['map_items']);
     return $page;
 };
 $same = static function (string $label, array $settingsOverride, array $q, string $lang = 'el', bool $hidden = false) use ($builder, $scan, $content, $definition, $shape): void {
@@ -130,6 +143,32 @@ $same('a map lists up to a limit with no pages', ['layout' => 'map'], []);
 $a = $builder->buildIndexed(['types' => ['recipes'], 'term' => null], false, ['order' => 'random'] + $definition['archive'], $definition['fields'], $definition, 'el', ['seed' => '12345']);
 $b = $scan->build(['order' => 'random'] + $definition['archive'], $definition['fields'], $definition, 'el', $content->getItems('recipes', 'el', false, false), ['seed' => '12345']);
 check('a random order with a seed is the same order', $shape($a), $shape($b));
+
+// ---- relations as filters ("works of this author"), and the order a visitor chooses
+$worksDef = $types->definition('works', 'el', 'el');
+$worksSame = static function (string $label, array $override, array $q) use ($builder, $scan, $content, $worksDef, $shape): array {
+    $settings = $override + $worksDef['archive'];
+    $expected = $scan->build($settings, $worksDef['fields'], $worksDef, 'el', $content->getItems('works', 'el', false, false), $q);
+    $got = $builder->buildIndexed(['types' => ['works'], 'term' => null], false, $settings, $worksDef['fields'], $worksDef, 'el', $q);
+    check($label, $got === null ? null : $shape($got), $shape($expected));
+    return $expected;
+};
+$all = $worksSame('a list with relation filters is the same list from the index and from the scan', [], []);
+$byAuthor = array_column($all['filters'], null, 'name');
+check('a relation is a filter naming the entries it points at, only those a visitor may see (a draft author is not offered)', [array_keys($byAuthor), array_column($byAuthor['author']['options'], 'label'), $byAuthor['author']['kind']], [['author', 'team'], ['Ada', 'Bob'], 'relation']);
+check('a field that holds several entries counts each of them', array_column($byAuthor['team']['options'], 'count', 'label'), ['Ada' => 5, 'Bob' => 5]);
+$worksSame('choosing an author', [], ['filter' => ['author' => 'aaaaaaaa00000001']]);
+$chosen = $worksSame('and a page of it', [], ['filter' => ['author' => 'aaaaaaaa00000001'], 'page' => '2']);
+check('the entries of that author, a page at a time', [$chosen['total'], $chosen['filtered']], [4, true]);
+$worksSame('a relation filter with another filter', [], ['filter' => ['author' => 'bbbbbbbb00000002', 'team' => 'aaaaaaaa00000001']]);
+check('an author nobody may see is ignored, not an empty page', $worksSame('a draft author cannot be filtered by', [], ['filter' => ['author' => 'cccccccc00000003']])['filtered'], false);
+$sorting = ['sort_choices' => ['title_asc' => 'A-Z', 'date_asc' => 'Oldest']];
+$base = $worksSame('a list that lets visitors choose, with none chosen, is as before', $sorting, []);
+$asked = $worksSame('the order a visitor chose, from the ones offered', $sorting, ['sort' => 'title_asc']);
+check('is the list in that order, a page that is its own', [$asked['filtered'], $asked['sort'], $asked['next']], [true, 'title_asc', '?sort=title_asc&page=2']);
+check('an order that is not offered is ignored', $worksSame('an order nobody offered', $sorting, ['sort' => 'date_asc,x'])['sort'], '');
+check('and so is a choice when the list does not let visitors choose', $worksSame('no choice offered', [], ['sort' => 'title_asc'])['sort'], '');
+check('the map block gets every entry the filters leave, not the page', [count(($base['map_items'])()), count(($worksSame('map items, filtered', [], ['filter' => ['author' => 'aaaaaaaa00000001']])['map_items'])())], [14, 4]);
 
 // A term's page across types.
 $scope = ['types' => ['recipes', 'posts'], 'term' => ['taxonomy' => 'categories', 'ids' => ['quick', 'vegan']]];

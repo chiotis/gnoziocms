@@ -293,7 +293,7 @@ final class ContentTypeAdmin
                 $base = $theme['fields'][$key];
                 $entry = is_array($fields[$key] ?? null) ? $fields[$key] : [];
                 $flags = ['card' => $card, 'show' => $show, 'hidden' => $retired];
-                if ($base['type'] === 'select') {
+                if (in_array($base['type'], ['select', 'relation'], true)) {
                     $flags['filterable'] = $filterable;
                 }
                 foreach ($flags as $flag => $value) {
@@ -365,7 +365,13 @@ final class ContentTypeAdmin
                     unset($entry['filterable']);
                 }
             } else {
-                unset($entry['options'], $entry['filterable']);
+                unset($entry['options']);
+                // A relation can be a filter too ("books of this author"); any other kind is not.
+                if ($type_ === 'relation' && $filterable) {
+                    $entry['filterable'] = true;
+                } else {
+                    unset($entry['filterable']);
+                }
             }
             foreach (['card' => $card, 'hidden' => $retired] as $flag => $value) {
                 if ($value) {

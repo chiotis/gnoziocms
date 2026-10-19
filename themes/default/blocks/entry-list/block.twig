@@ -5,6 +5,20 @@
 {% set prefix = lang_prefix|default('') %}
 {% set empty_text = block.empty_text ?: (archive.filtered ? t('filter.none', 'Nothing matches these filters.') : (t(type|default('') ~ '.archive_empty', '') ?: t('archive.empty'))) %}
 <div class="container">
+  {% if block.sort_options %}
+    {# The order a visitor chooses: a GET form that keeps the filters; a page in another order is not indexed (archive.filtered). #}
+    <form class="archive-sort" method="get" aria-label="{{ t('sort.label', 'Sort by') }}">
+      {% for name, value in archive.selected|default({}) %}<input type="hidden" name="filter[{{ name }}]" value="{{ value }}">{% endfor %}
+      <label class="archive-filter">
+        <span>{{ t('sort.label', 'Sort by') }}</span>
+        <select name="sort">
+          <option value="">{{ t('sort.default', 'Default order') }}</option>
+          {% for option in block.sort_options %}<option value="{{ option.value }}"{% if option.value == archive.sort %} selected{% endif %}>{{ option.label }}</option>{% endfor %}
+        </select>
+      </label>
+      <button class="btn btn-primary" type="submit">{{ t('filter.apply', 'Apply') }}</button>
+    </form>
+  {% endif %}
   {% if block.entries is empty %}
     <p>{{ empty_text }}</p>
   {% elseif block.cards is not null %}

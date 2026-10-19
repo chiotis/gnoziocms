@@ -44,7 +44,7 @@ final class ArchiveTemplateAdmin
      * @param array<string, mixed> $get
      * @param array<string, mixed> $post
      * @param array<string, mixed> $current the theme settings now
-     * @return array{render?: array<string, mixed>, save?: array<string, mixed>, log?: string, preview?: array{path: string, part: string, settings: array<string, mixed>}|null, redirect?: string}
+     * @return array{render?: array<string, mixed>, save?: array<string, mixed>, log?: string, preview?: array{path: string, part: string, card_type: string, settings: array<string, mixed>}|null, redirect?: string}
      */
     public function respond(string $key, bool $isPost, array $get, array $post, array $current, bool $canStore): array
     {
@@ -59,13 +59,14 @@ final class ArchiveTemplateAdmin
             return ['preview' => $this->preview($key, $current, $post)];
         }
         $part = ($post['part'] ?? '') === 'card' ? 'card' : 'page';
-        $back = '/admin/theme?archive_template=' . urlencode($key) . '&part=' . $part;
+        $cardType = $part === 'card' ? $this->cardType($key, $post['card_type'] ?? '') : '';
+        $back = '/admin/theme?archive_template=' . urlencode($key) . '&part=' . $part . ($cardType !== '' ? '&card_type=' . urlencode($cardType) : '');
         if (!$canStore) {
             return ['redirect' => $back . '&fail=1'];
         }
         $again = ($post['start_again'] ?? '') === '1';
         return [
-            'save' => $again ? $this->startedAgain($key, $part, $current) : $this->saved($key, $current, $post),
+            'save' => $again ? $this->startedAgain($key, $part, $current, $cardType) : $this->saved($key, $current, $post),
             'log' => 'Archive template of ' . $key . ($again ? ' started again from the default.' : ' updated.'),
             'redirect' => $back . '&saved=1' . (isset($post['preview_term']) ? '&term=' . urlencode((string)$post['preview_term']) : ''),
         ];
@@ -75,15 +76,15 @@ final class ArchiveTemplateAdmin
      * The JSON the live preview gets: the list drawn by `$draw` (settings, public path) with the unsaved blocks, or a note when there is
      * nothing to draw.
      *
-     * @param array{path: string, part: string, settings: array<string, mixed>}|null $preview
-     * @param \Closure(array<string, mixed>, string, string): string $draw settings, public path and the part being edited; the page as markup
+     * @param array{path: string, part: string, card_type: string, settings: array<string, mixed>}|null $preview
+     * @param \Closure(array<string, mixed>, string, string, string): string $draw settings, public path, the part being edited and, for a card, the content type it is for; the page as markup
      */
     public function previewJson(?array $preview, \Closure $draw): string
     {
         if ($preview === null) {
             return (string)json_encode(['html' => self::NOTHING], JSON_UNESCAPED_UNICODE);
         }
-        return (string)json_encode(['html' => $draw($preview['settings'], $preview['path'], $preview['part']), 'path' => '/' . $preview['path']], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+        return (string)json_encode(['html' => $draw($preview['settings'], $preview['path'], $preview['part'], $preview['card_type']), 'path' => '/' . $preview['path']], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
     }
 
     /** The key of every list the site has: the content types that have one, then the taxonomies. @return string[] */
@@ -123,17 +124,21 @@ final class ArchiveTemplateAdmin
     {
         $default = ($this->defaultLanguage)();
         $part = ($query['part'] ?? '') === 'card' ? 'card' : 'page';
+        $cardType = $part === 'card' ? $this->cardType($key, $query['card_type'] ?? '') : '';
         $stored = ArchiveTemplates::entry($current, $key);
-        $starting = $this->starting->sets($key);
-        $empty = ($part === 'card' ? ArchiveTemplates::card($current, $key, $default, $default) : ArchiveTemplates::blocks($current, $key, $default, $default)) === [];
+        // The card of one content type on a list of several starts from the card of that type's own list.
+        $starting = $cardType !== '' ? ['card' => $this->starting->sets($cardType)['card']] : $this->starting->sets($key);
+        $kept = $cardType !== '' ? ($stored['card_types'][$cardType] ?? []) : ($part === 'card' ? $stored['card'] : $stored['blocks']);
+        $empty = FooterBlocks::forLanguage($kept, $default, $default) === [];
         $starts = $empty && ($starting[$part] ?? []) !== [];
-        $blocks = $starts ? FooterBlocks::toStore($starting[$part]) : ($part === 'card' ? $stored['card'] : $stored['blocks']);
+        $blocks = $starts ? FooterBlocks::toStore($starting[$part]) : $kept;
         $isTaxonomy = str_starts_with($key, 'taxonomy:');
         $extra = [];
         if ($part === 'card') {
-            // A card shows the fields of the entry it draws: those of the content type, or what every entry has on a page of several types.
-            $sources = $isTaxonomy ? EntryBindings::commonSources() : EntryBindings::sources($this->types, $key, $default, $default);
-            $extra = ['bindings' => ['type' => $isTaxonomy ? '' : $key, 'sources' => $sources, 'accepts' => EntryBindings::ACCEPTS]];
+            // A card shows the fields of the entry it draws: those of its content type, or what every entry has on a page of several types.
+            $of = $cardType !== '' ? $cardType : ($isTaxonomy ? '' : $key);
+            $sources = $of === '' ? EntryBindings::commonSources() : EntryBindings::sources($this->types, $of, $default, $default);
+            $extra = ['bindings' => ['type' => $of, 'sources' => $sources, 'accepts' => EntryBindings::ACCEPTS]];
             $definitions = $this->registry->editorDefinitions(false);
         } else {
             $definitions = $this->registry->editorDefinitions('archive', [], $this->pages->orders($key, $default));
@@ -154,6 +159,8 @@ final class ArchiveTemplateAdmin
             'template_use' => $stored['use'] || ArchiveTemplates::blocks($current, $key, $default, $default) === [],
             'page_blocks' => count(FooterBlocks::forLanguage($stored['blocks'], 'default', 'default')),
             'card_blocks' => count(FooterBlocks::forLanguage($stored['card'], 'default', 'default')),
+            'card_type' => $cardType,
+            'card_types' => $this->cardTypes($key, $stored['card_types']),
             'preview_choices' => $choices,
             'preview_chosen' => $chosen,
             'template_json' => $this->sets->editorJson($default, $blocks, 'template', $definitions, $extra),
@@ -171,13 +178,17 @@ final class ArchiveTemplateAdmin
     public function saved(string $key, array $current, array $post): array
     {
         $part = ($post['part'] ?? '') === 'card' ? 'card' : 'page';
-        $posted = $this->postedSets($key, $part, $current, $post);
+        $cardType = $part === 'card' ? $this->cardType($key, $post['card_type'] ?? '') : '';
+        $posted = $this->postedSets($key, $part, $current, $post, $cardType);
         $page = $part === 'page' ? $posted : null;
         // A card saved before the page has its page: the list is drawn from the template only when it has blocks, so it starts from the default one.
         if ($part === 'card' && $posted !== null && ArchiveTemplates::entry($current, $key)['blocks'] === []) {
             $page = $this->starting->sets($key)['page'] ?: null;
         }
-        $templates = ArchiveTemplates::with($current, $key, isset($post['use']), $page, $part === 'card' ? $posted : null);
+        $templates = ArchiveTemplates::with($current, $key, isset($post['use']), $page, $part === 'card' && $cardType === '' ? $posted : null);
+        if ($cardType !== '' && $posted !== null) {
+            $templates = ArchiveTemplates::withTypeCard([ArchiveTemplates::KEY => $templates], $key, $cardType, $posted);
+        }
         if ($templates === []) {
             unset($current[ArchiveTemplates::KEY]);
         } else {
@@ -203,10 +214,17 @@ final class ArchiveTemplateAdmin
      * @param array<string, mixed> $current the theme settings now
      * @return array<string, mixed>
      */
-    public function startedAgain(string $key, string $part, array $current): array
+    public function startedAgain(string $key, string $part, array $current, string $cardType = ''): array
     {
-        $sets = $this->starting->sets($key);
         $part = $part === 'card' ? 'card' : 'page';
+        $cardType = $part === 'card' ? $this->cardType($key, $cardType) : '';
+        if ($cardType !== '') {
+            $card = $this->starting->sets($cardType)['card'];
+            $current[ArchiveTemplates::KEY] = ArchiveTemplates::with($current, $key, true, null, null);
+            $current[ArchiveTemplates::KEY] = ArchiveTemplates::withTypeCard($current, $key, $cardType, $card === [] ? null : $card);
+            return $current;
+        }
+        $sets = $this->starting->sets($key);
         if ($sets[$part] !== []) {
             $current[ArchiveTemplates::KEY] = ArchiveTemplates::with($current, $key, true, $part === 'page' ? $sets['page'] : null, $part === 'card' ? $sets['card'] : null);
         }
@@ -219,7 +237,7 @@ final class ArchiveTemplateAdmin
      *
      * @param array<string, mixed> $current
      * @param array<string, mixed> $post
-     * @return array{path: string, part: string, settings: array<string, mixed>}|null
+     * @return array{path: string, part: string, card_type: string, settings: array<string, mixed>}|null
      */
     public function preview(string $key, array $current, array $post): ?array
     {
@@ -237,9 +255,42 @@ final class ArchiveTemplateAdmin
         } else {
             $path = ContentPaths::archive($key, $default, $default);
         }
-        $posted = $this->postedSets($key, $part, $current, $post);
-        $templates = ArchiveTemplates::with($current, $key, true, $part === 'page' ? $posted : null, $part === 'card' ? $posted : null);
-        return ['path' => $path, 'part' => $part, 'settings' => $this->theme->resolveSettings([ArchiveTemplates::KEY => $templates] + $current)];
+        $cardType = $part === 'card' ? $this->cardType($key, $post['card_type'] ?? '') : '';
+        $posted = $this->postedSets($key, $part, $current, $post, $cardType);
+        $templates = ArchiveTemplates::with($current, $key, true, $part === 'page' ? $posted : null, $part === 'card' && $cardType === '' ? $posted : null);
+        if ($cardType !== '' && $posted !== null) {
+            $templates = ArchiveTemplates::withTypeCard([ArchiveTemplates::KEY => $templates], $key, $cardType, $posted);
+        }
+        return ['path' => $path, 'part' => $part, 'card_type' => $cardType, 'settings' => $this->theme->resolveSettings([ArchiveTemplates::KEY => $templates] + $current)];
+    }
+
+    /**
+     * The content type a card is for, when a list can have a card for each type (a taxonomy lists entries of several); '' for the card of
+     * the others, and for a list of one type.
+     */
+    private function cardType(string $key, mixed $asked): string
+    {
+        return is_string($asked) && in_array($asked, array_column($this->cardTypes($key, []), 'value'), true) ? $asked : '';
+    }
+
+    /**
+     * The content types a taxonomy page can list, each with whether it has a card of its own: a card can be made for each.
+     *
+     * @param array<string, mixed> $own the cards stored by type
+     * @return list<array{value: string, label: string, own: bool}>
+     */
+    private function cardTypes(string $key, array $own): array
+    {
+        if (!str_starts_with($key, 'taxonomy:')) {
+            return [];
+        }
+        $default = ($this->defaultLanguage)();
+        $listed = $this->taxonomies->archive(substr($key, 9), $default, $default)['types'];
+        $choices = [];
+        foreach (array_filter($this->keys(), static fn(string $k): bool => !str_starts_with($k, 'taxonomy:') && ($listed === [] || in_array($k, $listed, true))) as $type) {
+            $choices[] = ['value' => $type, 'label' => $this->label($type), 'own' => isset($own[$type])];
+        }
+        return $choices;
     }
 
     /** @return list<array{value: string, label: string}> */
@@ -253,10 +304,11 @@ final class ArchiveTemplateAdmin
     }
 
     /** @return array<string, array<int, mixed>>|null null when the form carries no editor data */
-    private function postedSets(string $key, string $part, array $current, array $post): ?array
+    private function postedSets(string $key, string $part, array $current, array $post, string $cardType = ''): ?array
     {
         $posted = ($post['blocks_editor'] ?? '') === '1' ? json_decode((string)($post['blocks_json'] ?? ''), true) : null;
         $stored = ArchiveTemplates::entry($current, $key);
-        return is_array($posted) ? $this->sets->clean($posted, $part === 'card' ? $stored['card'] : $stored['blocks']) : null;
+        $was = $part === 'card' ? ($cardType !== '' ? ($stored['card_types'][$cardType] ?? []) : $stored['card']) : $stored['blocks'];
+        return is_array($posted) ? $this->sets->clean($posted, $was) : null;
     }
 }
