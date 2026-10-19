@@ -37,6 +37,55 @@ final class ArchiveTemplateAdmin
     ) {
     }
 
+    /**
+     * What a request to Archive Layouts > Edit template comes to, for the caller to carry out: the screen to show (`render`), the
+     * settings to store with a note for the log (`save`), the live preview to draw (`preview`), and where to go (`redirect`).
+     *
+     * @param array<string, mixed> $get
+     * @param array<string, mixed> $post
+     * @param array<string, mixed> $current the theme settings now
+     * @return array{render?: array<string, mixed>, save?: array<string, mixed>, log?: string, preview?: array{path: string, part: string, settings: array<string, mixed>}|null, redirect?: string}
+     */
+    public function respond(string $key, bool $isPost, array $get, array $post, array $current, bool $canStore): array
+    {
+        $key = strtolower(trim($key));
+        if (!$this->available($key)) {
+            return ['redirect' => '/admin/theme?tab=archive_layouts'];
+        }
+        if (!$isPost) {
+            return ['render' => $this->view($key, $current, $get)];
+        }
+        if (($get['preview'] ?? '') === '1') {
+            return ['preview' => $this->preview($key, $current, $post)];
+        }
+        $part = ($post['part'] ?? '') === 'card' ? 'card' : 'page';
+        $back = '/admin/theme?archive_template=' . urlencode($key) . '&part=' . $part;
+        if (!$canStore) {
+            return ['redirect' => $back . '&fail=1'];
+        }
+        $again = ($post['start_again'] ?? '') === '1';
+        return [
+            'save' => $again ? $this->startedAgain($key, $part, $current) : $this->saved($key, $current, $post),
+            'log' => 'Archive template of ' . $key . ($again ? ' started again from the default.' : ' updated.'),
+            'redirect' => $back . '&saved=1' . (isset($post['preview_term']) ? '&term=' . urlencode((string)$post['preview_term']) : ''),
+        ];
+    }
+
+    /**
+     * The JSON the live preview gets: the list drawn by `$draw` (settings, public path) with the unsaved blocks, or a note when there is
+     * nothing to draw.
+     *
+     * @param array{path: string, part: string, settings: array<string, mixed>}|null $preview
+     * @param \Closure(array<string, mixed>, string, string): string $draw settings, public path and the part being edited; the page as markup
+     */
+    public function previewJson(?array $preview, \Closure $draw): string
+    {
+        if ($preview === null) {
+            return (string)json_encode(['html' => self::NOTHING], JSON_UNESCAPED_UNICODE);
+        }
+        return (string)json_encode(['html' => $draw($preview['settings'], $preview['path'], $preview['part']), 'path' => '/' . $preview['path']], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+    }
+
     /** The key of every list the site has: the content types that have one, then the taxonomies. @return string[] */
     public function keys(): array
     {

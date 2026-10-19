@@ -17,8 +17,54 @@ final class ArchivePages
      * @param \Closure(): BlockRuntime $runtime
      * @param \Closure(): string $defaultLanguage
      */
-    public function __construct(private TemplateResolver $templates, private \Closure $runtime, private ContentTypes $types, private \Closure $defaultLanguage)
+    /** Which part of an archive template the live preview marks for the editor (`page` or `card`), while one is being drawn. */
+    private string $previewPart = '';
+
+    /**
+     * @param \Closure(): ArchiveBuilder $archive
+     */
+    public function __construct(
+        private TemplateResolver $templates,
+        private \Closure $runtime,
+        private ContentTypes $types,
+        private \Closure $defaultLanguage,
+        private ?\Closure $archive = null,
+        private ?ContentRepository $content = null
+    ) {
+    }
+
+    /**
+     * The archive of a content type for a page: the filters, the order and the entries of the page, from the type's settings and, when
+     * the list is built with blocks, what its list block chose. The content index answers when it can (only the entries on the page are
+     * read); otherwise every entry of the type is looked at.
+     *
+     * @param array<string, mixed> $query the address's query
+     * @return array<string, mixed>
+     */
+    public function forType(string $type, string $lang, bool $includeHidden, array $query): array
     {
+        $definition = $this->types->definition($type, $lang, ($this->defaultLanguage)());
+        $definition['archive'] = $this->settings($type, $lang, $definition['archive']);
+        $builder = ($this->archive)();
+        return $builder->buildIndexed(['types' => [$type], 'term' => null], $includeHidden, $definition['archive'], $definition['fields'], $definition, $lang, $query)
+            ?? $builder->build($definition['archive'], $definition['fields'], $definition, $lang, $this->content->getItems($type, $lang, $includeHidden, false), $query);
+    }
+
+    /**
+     * Runs `$draw` (the drawing of a public page for the live preview) with the part of the template the editor is working on marked.
+     *
+     * @template T
+     * @param \Closure(): T $draw
+     * @return T
+     */
+    public function previewing(string $part, \Closure $draw): mixed
+    {
+        $this->previewPart = $part;
+        try {
+            return $draw();
+        } finally {
+            $this->previewPart = '';
+        }
     }
 
     /** The orders a list can have: the common ones and one for each field of a content type that can be sorted. @return array<string, string> */
@@ -45,24 +91,24 @@ final class ArchivePages
     }
 
     /**
-     * The view data of a list drawn from its template: the page's blocks (`page_blocks`) with their style sheets and scripts. Null when the
-     * list has no template, and the caller draws it as it always did.
+     * The view data of a list drawn from its template: the page's blocks (`page_blocks`) with their style sheets and scripts added to the
+     * data. A list with no template gets its data back as it was, and the caller draws it as it always did.
      *
      * @param array<string, mixed> $data the view data of the list: `archive` (ArchiveBuilder), `type`, titles, the page's defaults
-     * @return array<string, mixed>|null
+     * @return array<string, mixed>
      */
-    public function draw(string $key, string $lang, string $path, Environment $twig, array $data, string $preview = ''): ?array
+    public function drawn(string $key, string $lang, string $path, Environment $twig, array $data): array
     {
         $built = $this->templates->builtArchive($key, $lang);
         if ($built === null) {
-            return null;
+            return $data;
         }
-        $page = ($this->runtime)()->renderArchive($built['blocks'], $built['card'], $lang, $path, $twig, $data, $preview);
+        $page = ($this->runtime)()->renderArchive($built['blocks'], $built['card'], $lang, $path, $twig, $data, $this->previewPart);
         return [
             'page_blocks' => $page,
             'block_styles' => $page['styles'],
             'block_scripts' => $page['scripts'],
             'structured_data' => array_merge((array)($data['structured_data'] ?? []), $page['structured_data'] ?? []),
-        ];
+        ] + $data;
     }
 }

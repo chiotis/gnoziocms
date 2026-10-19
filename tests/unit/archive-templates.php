@@ -62,8 +62,7 @@ $types = new ContentTypes($theme);
 $registry = new BlockRegistry($theme);
 $taxonomies = new Taxonomies("$root/content", ['en']);
 $taxonomies->save('categories', 'Categories', [['id' => 'news', 'slug' => 'news', 'labels' => ['en' => 'News'], 'descriptions' => []]]);
-$archiveOf = fn(string $key): array => str_starts_with($key, 'taxonomy:') ? $taxonomies->archive(substr($key, 9), 'en', 'en') : $types->definition($key, 'en', 'en')['archive'];
-$start = new StartingArchives($theme, $registry, $archiveOf);
+$start = new StartingArchives($theme, $registry, $types, $taxonomies, fn() => 'en');
 $generated = $start->sets('recipes');
 $types_of = fn(array $sets): array => array_column($sets['default'] ?? [], 'type');
 check('a type nobody wrote a template for starts from a generated one: title, filters, count, the list, and a card', [$types_of($generated['page']), $types_of($generated['card']), $start->hasFile('recipes')], [['archive-title', 'filter-bar', 'result-count', 'entry-list'], ['image', 'text'], false]);
@@ -125,6 +124,18 @@ check('forms and pages never take a template', [$resolver->builtArchive('forms',
 $themeSettings = [ArchiveTemplates::KEY => ArchiveTemplates::with([], 'taxonomy:categories', true, $page)];
 check('a taxonomy is drawn by the built template too', [$resolver->forTaxonomy('category', 'news', 'categories', 'en'), $resolver->forTaxonomy('tag', 'x', 'tags', 'en'), $resolver->forTaxonomy('category', 'news')], ['templates/archive-built.twig', 'templates/archive.twig', 'templates/archive.twig']);
 check('the settings the list block chose are applied while the list is built', [$pages->settings('recipes', 'en', ['per_page' => 12, 'order' => 'date_desc'])['per_page'], $pages->settings('taxonomy:categories', 'en', ['per_page' => 12, 'order' => 'date_desc', 'columns' => '3'])['per_page']], [12, 5]);
+
+// ---- what a request comes to (the caller only carries it out)
+check('an unknown list goes back to the cards', $admin->respond('nope', false, [], [], [], true), ['redirect' => '/admin/theme?tab=archive_layouts']);
+check('a GET shows the screen', array_keys($admin->respond('recipes', false, ['part' => 'card'], [], [], true)), ['render']);
+check('a preview request asks for a preview', array_keys($admin->respond('recipes', true, ['preview' => '1'], ['part' => 'page'], [], true)), ['preview']);
+$out = $admin->respond('Recipes', true, [], ['part' => 'card', 'use' => '1', 'blocks_editor' => '1', 'blocks_json' => json_encode([['type' => 'text']]), 'preview_term' => 'a b'], [], true);
+check('saving stores the settings, says what for, and goes back to the part with a message', [isset($out['save'][ArchiveTemplates::KEY]['recipes']), $out['log'], $out['redirect']], [true, 'Archive template of recipes updated.', '/admin/theme?archive_template=recipes&part=card&saved=1&term=a+b']);
+check('without a database nothing is stored', $admin->respond('recipes', true, [], ['part' => 'page'], [], false), ['redirect' => '/admin/theme?archive_template=recipes&part=page&fail=1']);
+check('start again says so in the log', $admin->respond('recipes', true, [], ['part' => 'page', 'start_again' => '1'], [], true)['log'], 'Archive template of recipes started again from the default.');
+check('the preview JSON of nothing is the note, of a list its page and address', [json_decode($admin->previewJson(null, fn() => ''), true)['html'] === ArchiveTemplateAdmin::NOTHING, json_decode($admin->previewJson(['path' => 'recipes', 'part' => 'card', 'settings' => ['a' => 1]], fn(array $s, string $p, string $part) => $part . ':' . $p . ':' . $s['a']), true)], [true, ['html' => 'card:recipes:1', 'path' => '/recipes']]);
+check('a list with no template gets its view data back unchanged', $pages->drawn('recipes', 'en', 'recipes', new \Twig\Environment(new \Twig\Loader\ArrayLoader([])), ['x' => 1]), ['x' => 1]);
+check('the part being previewed is known while drawing, and forgotten after', [$pages->previewing('card', fn() => 'drawn'), $pages->previewing('page', fn() => 1)], ['drawn', 1]);
 
 echo $fail === 0 ? "\nALL PASSED\n" : "\n$fail FAILED\n";
 exit($fail === 0 ? 0 : 1);

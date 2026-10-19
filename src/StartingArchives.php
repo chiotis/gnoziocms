@@ -23,12 +23,14 @@ use Symfony\Component\Yaml\Yaml;
 final class StartingArchives
 {
     /**
-     * @param \Closure(string): array<string, mixed> $archiveSettings the archive settings of a list now (a content type's `archive:`, or a taxonomy's)
+     * @param \Closure(): string $defaultLanguage
      */
     public function __construct(
         private Theme $theme,
         private BlockRegistry $registry,
-        private \Closure $archiveSettings
+        private ContentTypes $types,
+        private Taxonomies $taxonomies,
+        private \Closure $defaultLanguage
     ) {
     }
 
@@ -36,10 +38,17 @@ final class StartingArchives
     public function sets(string $key): array
     {
         $file = $this->fromFile($key);
-        $settings = ($this->archiveSettings)($key);
+        $settings = $this->settingsOf($key);
         $page = $file['blocks'] ?? self::generate($settings);
         $card = $file['card'] ?? self::generateCard($key);
         return ['page' => $this->checked($page), 'card' => $this->checked($card)];
+    }
+
+    /** The archive settings a list has now (a content type's, or a taxonomy's): its size, order and columns are what its starting page keeps. @return array<string, mixed> */
+    private function settingsOf(string $key): array
+    {
+        $default = ($this->defaultLanguage)();
+        return str_starts_with($key, 'taxonomy:') ? $this->taxonomies->archive(substr($key, 9), $default, $default) : $this->types->definition($key, $default, $default)['archive'];
     }
 
     /** Whether a theme or the site ships a starting template for the list (it is not generated). */
