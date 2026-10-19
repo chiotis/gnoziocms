@@ -18,7 +18,7 @@ final class ContentIndex
     private const META_CHECKED = 'content_index_checked_at';
 
     /** Changes when the way references are read or stored changes, so an index made by older code is built again. */
-    private const REFS_VERSION = '1';
+    private const REFS_VERSION = '2';
 
     /** @var (\Closure(string): array<string, array<string, mixed>>)|null the normalized fields of a content type */
     private ?\Closure $fieldsOf = null;
@@ -279,12 +279,12 @@ final class ContentIndex
             trim(strip_tags($item->html)),
         ]));
         $stmt = $this->pdo()->prepare(
-            'INSERT INTO content_index (type, slug, lang, title, status, visible, path, checksum, mtime, search_text, indexed_at, translation_id, summary)
-             VALUES (:type, :slug, :lang, :title, :status, :visible, :path, :checksum, :mtime, :search_text, :indexed_at, :translation_id, :summary)
+            'INSERT INTO content_index (type, slug, lang, title, status, visible, path, checksum, mtime, search_text, indexed_at, translation_id, summary, title_key)
+             VALUES (:type, :slug, :lang, :title, :status, :visible, :path, :checksum, :mtime, :search_text, :indexed_at, :translation_id, :summary, :title_key)
              ON CONFLICT(type, slug, lang) DO UPDATE SET
                 title = excluded.title, status = excluded.status, visible = excluded.visible, path = excluded.path,
                 checksum = excluded.checksum, mtime = excluded.mtime, search_text = excluded.search_text, indexed_at = excluded.indexed_at,
-                translation_id = excluded.translation_id, summary = excluded.summary'
+                translation_id = excluded.translation_id, summary = excluded.summary, title_key = excluded.title_key'
         );
         $stmt->execute([
             'type' => $item->type,
@@ -299,6 +299,7 @@ final class ContentIndex
             'search_text' => mb_substr($searchText, 0, self::SEARCH_TEXT_LIMIT),
             'indexed_at' => gmdate('c'),
             'translation_id' => (string)($meta['translation_id'] ?? ''),
+            'title_key' => mb_strtolower((string)($meta['title'] ?? $item->slug)),
             'summary' => (string)json_encode([
                 'title' => (string)($meta['title'] ?? $item->slug),
                 'excerpt' => mb_substr(trim((string)($meta['excerpt'] ?? '')), 0, 300),
@@ -378,18 +379,67 @@ final class ContentIndex
      * @param string[] $types
      * @return array<int, array<string, mixed>>
      */
-    public function choices(array $types, string $defaultLang, int $limit): array
+    public function choices(array $types, string $defaultLang, int $limit, string $query = ''): array
     {
         if ($types === [] || !$this->isAvailable()) {
             return [];
         }
         $marks = implode(',', array_fill(0, count($types), '?'));
+        $params = array_merge(array_values($types), [$defaultLang, $defaultLang]);
+        $where = '';
+        $order = 'title_key';
+        $query = trim(mb_strtolower($query));
+        if ($query !== '') {
+            // Titles and addresses that contain the text, the ones that start with it first.
+            $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $query);
+            $where = " AND (title_key LIKE ? ESCAPE '\\' OR slug LIKE ? ESCAPE '\\')";
+            $order = "CASE WHEN title_key LIKE ? ESCAPE '\\' THEN 0 ELSE 1 END, title_key";
+            $params = array_merge($params, ['%' . $escaped . '%', '%' . $escaped . '%', $escaped . '%']);
+        }
         $stmt = $this->pdo()->prepare(
-            "SELECT type, slug, lang, title, status, translation_id FROM content_index
-             WHERE type IN ($marks) AND (lang = ? OR NOT EXISTS (SELECT 1 FROM content_index c2 WHERE c2.type = content_index.type AND c2.slug = content_index.slug AND c2.lang = ?))
-             ORDER BY lower(title) LIMIT " . max(1, $limit)
+            "SELECT type, slug, lang, title, status, visible, translation_id FROM content_index
+             WHERE type IN ($marks) AND (lang = ? OR NOT EXISTS (SELECT 1 FROM content_index c2 WHERE c2.type = content_index.type AND c2.slug = content_index.slug AND c2.lang = ?))$where
+             ORDER BY $order LIMIT " . max(1, $limit)
         );
-        $stmt->execute(array_merge(array_values($types), [$defaultLang, $defaultLang]));
+        $stmt->execute($params);
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * Every entry that points at an id, with its title and status: type, slug, language, title, status, the field paths.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function referrers(string $id): array
+    {
+        if ($id === '' || !$this->isAvailable()) {
+            return [];
+        }
+        $stmt = $this->pdo()->prepare(
+            'SELECT r.from_type AS type, r.from_slug AS slug, r.from_lang AS lang, r.field_path AS field, c.title, c.status
+             FROM content_refs r LEFT JOIN content_index c ON c.type = r.from_type AND c.slug = r.from_slug AND c.lang = r.from_lang
+             WHERE r.to_id = :id ORDER BY lower(c.title)'
+        );
+        $stmt->execute(['id' => $id]);
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * References that lead to no entry at all (the entry was deleted): who holds them, through which field.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function brokenReferences(int $limit = 500): array
+    {
+        if (!$this->isAvailable()) {
+            return [];
+        }
+        $stmt = $this->pdo()->query(
+            'SELECT r.from_type AS type, r.from_slug AS slug, r.from_lang AS lang, r.field_path AS field, r.to_id, c.title
+             FROM content_refs r LEFT JOIN content_index c ON c.type = r.from_type AND c.slug = r.from_slug AND c.lang = r.from_lang
+             WHERE NOT EXISTS (SELECT 1 FROM content_index t WHERE t.translation_id = r.to_id)
+             ORDER BY r.from_type, lower(c.title) LIMIT ' . max(1, $limit)
+        );
         return $stmt->fetchAll();
     }
 

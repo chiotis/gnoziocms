@@ -44,24 +44,16 @@
       </span>
       <input type="checkbox" name="{{ name }}" value="1" {% if value %}checked{% endif %} class="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500">
     </label>
+  {% elseif field.type == 'relation' %}
+    <div class="block{{ span }}" role="group" aria-label="{{ field.label }}">
+      <span class="mb-1 block text-sm font-medium text-slate-700">{{ field.label }}</span>
+      {{ m.relation(field, name, value, control) }}
+      {% if field.help %}<span class="mt-1 block text-xs text-slate-400">{{ field.help }}</span>{% endif %}
+    </div>
   {% else %}
     <label class="block{{ span }}">
       <span class="mb-1 block text-sm font-medium text-slate-700">{{ field.label }}</span>
-      {% if field.type == 'relation' %}
-        {# Entries pointed at, by their stable id. Ones already chosen come first in their saved order; a choice not made yet is `@type/slug` until the entry has an id. #}
-        {% set chosen = value is iterable ? value : (value ? [value] : []) %}
-        {% if field.choices_all|default(true) %}
-          <select name="{{ name }}{{ field.multiple ? '[]' : '' }}" class="{{ control }}"{% if field.multiple %} multiple size="{{ min(8, max(4, field.choices|length)) }}"{% endif %} data-relation-field>
-            {% if not field.multiple %}<option value="">—</option>{% endif %}
-            {% for id in chosen %}{% set found = field.choices|filter(c => c.value is same as(id ~ ''))|first %}<option value="{{ id }}" selected>{{ found ? found.label : 'Missing entry (' ~ id ~ ')' }}</option>{% endfor %}
-            {% for choice in field.choices|filter(c => c.value not in chosen) %}<option value="{{ choice.value }}">{{ choice.label }}</option>{% endfor %}
-          </select>
-          {% if field.multiple %}<span class="mt-1 block text-xs text-slate-400">Hold Ctrl or Cmd to choose several{% if field.max %}; up to {{ field.max }}{% endif %}. Chosen entries stay in this order.</span>{% endif %}
-        {% else %}
-          <input type="text" name="{{ name }}" value="{{ chosen|join(', ') }}" placeholder="{{ field.types|first|default('type') }}/slug{{ field.multiple ? ', …' : '' }}" class="{{ control }}" autocomplete="off">
-          <span class="mt-1 block text-xs text-slate-400">Too many entries to list: type their address (type/slug){{ field.multiple ? ', separated by commas' : '' }}.</span>
-        {% endif %}
-      {% elseif field.type == 'select' or field.type == 'icon' %}
+      {% if field.type == 'select' or field.type == 'icon' %}
         <select name="{{ name }}" class="{{ control }}"{% if field.type == 'icon' %} data-icon-picker{% endif %}>
           {% for option_value, option_label in field.options %}
             <option value="{{ option_value }}" {% if value ~ '' == option_value ~ '' %}selected{% endif %}>{{ option_label }}</option>
@@ -90,6 +82,39 @@
       {% if field.help %}<span class="mt-1 block text-xs text-slate-400">{{ field.help }}</span>{% endif %}
     </label>
   {% endif %}
+{% endmacro %}
+
+{#
+  A relation (an entry, or several, pointed at by their id): chips of what is chosen and a search box that offers more (admin-relations.js).
+  Each chip carries its own hidden input, so a form sent with no script still keeps what it held; the disabled input only keeps the field's
+  name, which the repeater renames with the row, and the script copies it onto the chips it adds. Nothing is chosen = nothing is sent.
+#}
+{% macro relation(field, name, value, control) %}
+  {% import _self as m %}
+  {% set chosen = value is iterable ? value : (value ? [value] : []) %}
+  <div class="rel" data-relation data-types="{{ field.types|join(',') }}" data-multiple="{{ field.multiple ? 1 : 0 }}" data-max="{{ field.max ?? 0 }}" data-url="/admin/relations">
+    <input type="hidden" name="{{ name }}" value="" disabled data-rel-name>
+    <ul class="rel-chips" data-rel-chips aria-label="Chosen">
+      {% for id in chosen %}{{ m.relation_chip(field, name, id) }}{% endfor %}
+    </ul>
+    <div class="rel-box">
+      <input type="text" class="rel-search {{ control }}" data-rel-search placeholder="{{ field.multiple ? 'Add an entry: search by title…' : 'Choose an entry: search by title…' }}" role="combobox" aria-expanded="false" aria-autocomplete="list" autocomplete="off"{% if field.max and chosen|length >= field.max %} disabled{% endif %}>
+      <ul class="rel-results" data-rel-results role="listbox" hidden></ul>
+    </div>
+    {% if field.multiple and field.max %}<span class="rel-hint">Up to {{ field.max }}.</span>{% endif %}
+  </div>
+{% endmacro %}
+
+{% macro relation_chip(field, name, id) %}
+  {% set info = field.labels[id] ?? null %}
+  <li class="rel-chip{{ info is null ? ' is-missing' : (info.hidden ? ' is-hidden' : '') }}" data-rel-chip>
+    <input type="hidden" name="{{ name }}{{ field.multiple ? '[]' : '' }}" value="{{ id }}">
+    <span class="rel-title">{{ info ? info.title : 'Missing entry' }}</span>
+    {% if info is null %}<span class="rel-state">gone</span>{% elseif info.hidden %}<span class="rel-state">{{ info.status ?: 'hidden' }}</span>{% endif %}
+    {% if info %}<a class="rel-btn" href="{{ info.edit_url }}" target="_blank" rel="noopener" aria-label="Open {{ info.title }} in a new tab">↗</a>{% endif %}
+    {% if field.multiple %}<button type="button" class="rel-btn" data-rel-left aria-label="Move earlier">‹</button><button type="button" class="rel-btn" data-rel-right aria-label="Move later">›</button>{% endif %}
+    <button type="button" class="rel-btn" data-rel-remove aria-label="Remove {{ info ? info.title : 'the missing entry' }}">✕</button>
+  </li>
 {% endmacro %}
 
 {#

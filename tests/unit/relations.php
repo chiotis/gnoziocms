@@ -156,11 +156,34 @@ check('...and cannot write one', [$relations->normalize('works', ['author' => 'a
 $out = $relations->withAddresses('works', $w1->meta);
 check('an export writes the address of each entry', [$out['custom_fields']['author'], $out['custom_fields']['team']], ['authors/ada-lovelace', ['authors/cy', 'authors/ada-lovelace']]);
 
-// ---- choices for the editor
-$choices = $relations->withChoices($types->editableFields('works', 'en', 'el'));
-check('an editor is offered the entries of the allowed type by title, and an entry without an id by address', array_column($choices['author']['choices'], 'label'), ['Ada EN', 'Bob', 'Cy · draft', 'Dee']);
-check('the choice of an entry without an id is its address until it gets one', array_column($choices['author']['choices'], 'value')[3], '@authors/dee');
-check('a list offers them in its rows too', isset($choices['editions']['fields']['earlier']['choices']), true);
+// ---- the search box
+$put('authors/doxiadis.md', "title: Δοξιάδης\nstatus: published\ntranslation_id: dddddddd00000004");
+$content->forget();
+$index->upsert($content->parseFile('authors', $root . '/content/authors/doxiadis.md'));
+$all = ['authors', 'works'];
+check('with no text the entries of the type come by title, drafts marked hidden', array_map(fn($c) => [$c['title'], $c['hidden']], $relations->search('', ['authors'], $all)), [['Ada EN', false], ['Bob', false], ['Cy', true], ['Dee', false], ['Δοξιάδης', false]]);
+check('a title is found by a part of it, any case', array_column($relations->search('BO', ['authors'], $all), 'title'), ['Bob']);
+check('and a Greek one too, in lower case', array_column($relations->search('δοξ', ['authors'], $all), 'title'), ['Δοξιάδης']);
+check('the ones that start with the text come first', array_column($relations->search('d', ['authors'], $all), 'title'), ['Dee', 'Ada EN', 'Δοξιάδης']);
+check('an entry without an id is offered by its address until it gets one', array_column($relations->search('dee', ['authors'], $all), 'value'), ['@authors/dee']);
+check('a type the person may not open, or the field does not allow, is never offered', [$relations->search('', ['works'], ['authors']), $relations->search('', ['authors'], ['works'])], [[], []]);
+check('a limit is kept', count($relations->search('', ['authors'], $all, 2)), 2);
+
+// ---- what the form holds
+$fieldsOfWorks = $relations->withLabels($types->editableFields('works', 'en', 'el'), $types->values('works', $w2->meta), 'el');
+check('the form knows the title and state of what it holds, in a list too', [(function () use ($fieldsOfWorks) { $k = array_map('strval', array_keys($fieldsOfWorks['author']['labels'])); sort($k); return $k; })(), $fieldsOfWorks['editions']['fields']['earlier']['labels']['1111111100000001']['title']], [['1111111100000001', 'aaaaaaaa00000001'], 'First']);
+$labelsOfDraft = $relations->withLabels($types->editableFields('works', 'en', 'el'), $types->values('works', $w1->meta), 'el')['team']['labels'];
+check('a draft is in the labels, marked', [$labelsOfDraft['cccccccc00000003']['hidden'], $labelsOfDraft['cccccccc00000003']['status']], [true, 'draft']);
+check('an id that leads nowhere is not in them', isset($relations->withLabels($types->editableFields('works', 'en', 'el'), ['author' => 'ffffffff00000009'], 'el')['author']['labels']['ffffffff00000009']), false);
+
+// ---- who points at an entry, and what is broken
+$byAda = $relations->referrers('authors', 'ada-lovelace');
+check('an entry knows who points at it, one line for each entry with the fields it uses', array_map(fn($r) => [$r['slug'] . '.' . $r['lang'], $r['fields']], $byAda), [['w3.el', ['author']], ['w1.el', ['author', 'team']], ['w2.el', ['author']], ['w2.en', ['author']]]);
+check('an entry nobody points at has no referrers', $relations->referrers('authors', 'dee'), []);
+$put('works/w4.md', "title: Orphan\nstatus: published\ncustom_fields:\n  author: ffffffff00000009");
+$content->forget();
+$index->upsert($content->parseFile('works', $root . '/content/works/w4.md'));
+check('a reference to an entry that is gone is listed', array_map(fn($r) => [$r['slug'], $r['field']], $relations->broken()), [['w4', 'author']]);
 
 // ---- the index follows the definitions
 file_put_contents($root . '/custom/content-types/works.yaml', "label: Works\nfields:\n  author: { type: text }\n");

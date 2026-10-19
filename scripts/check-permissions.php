@@ -18,7 +18,7 @@ $u = fn(string $role, int $id = 5) => ['id' => $id, 'role' => $role, 'status' =>
 // Every admin action the router knows, and who may use it: [superadmin, admin, editor, user]
 $actions = [
     'dashboard' => [1,1,1,0], 'index' => [1,1,1,0],
-    'content' => [1,1,1,0], 'content-bulk' => [1,1,1,0], 'search' => [1,1,1,0], 'edit' => [1,1,1,0], 'revisions' => [1,1,1,0], 'links' => [1,1,1,0], 'save' => [1,1,1,0], 'delete' => [1,1,1,0], 'new' => [1,1,1,0], 'block-presets' => [1,1,1,0], 'markdown-visual' => [1,1,1,0], 'media-picker' => [1,1,1,0],
+    'content' => [1,1,1,0], 'content-bulk' => [1,1,1,0], 'search' => [1,1,1,0], 'edit' => [1,1,1,0], 'revisions' => [1,1,1,0], 'links' => [1,1,1,0], 'save' => [1,1,1,0], 'delete' => [1,1,1,0], 'new' => [1,1,1,0], 'block-presets' => [1,1,1,0], 'markdown-visual' => [1,1,1,0], 'media-picker' => [1,1,1,0], 'relations' => [1,1,1,0], 'broken-references' => [1,1,1,0],
     'media' => [1,1,1,0], 'files' => [1,1,1,0], 'taxonomies' => [1,1,1,0],
     'menus' => [1,1,0,0], 'menus-new' => [1,1,0,0], 'menus-edit' => [1,1,0,0],
     'forms' => [1,1,0,0], 'forms-new' => [1,1,0,0], 'form-submissions' => [1,1,0,0], 'forms-export' => [1,1,0,0], 'export' => [1,1,0,0], 'import' => [1,1,0,0],

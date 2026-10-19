@@ -99,6 +99,11 @@ final class DashboardAttention
             $add('info', $plural($missing, 'address was', 'addresses were') . ' asked for and not found', 'A redirect to the right page keeps those visitors.', '/admin/redirects?tab=missing', 'See them');
         }
 
+        $broken = (int)($facts['broken_references'] ?? 0);
+        if ($broken > 0) {
+            $add('warn', $plural($broken, 'reference points', 'references point') . ' at an entry that is gone', 'Pages that used to show it now show nothing there.', '/admin/broken-references', 'See them');
+        }
+
         $stale = (int)($facts['drafts_stale'] ?? 0);
         if ($stale > 0) {
             $add('info', $plural($stale, 'draft', 'drafts') . ' not touched for over ' . self::STALE_DRAFT_DAYS . ' days', 'Finish them, or delete what will not be used.', '/admin/content?status=draft', 'Open drafts');

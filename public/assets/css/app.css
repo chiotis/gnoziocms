@@ -2060,3 +2060,39 @@ html.dark .bk-bound { border-color: #1e40af; background: #172554; color: #dbeafe
 html.dark .bk-bound code { color: #bfdbfe; }
 html.dark .bk-bound.is-warn { border-color: #92400e; background: #451a03; color: #fde68a; }
 html.dark .bk-tag.is-warn { background: #451a03; color: #fde68a; }
+
+/* The picker of a relation field (admin-relations.js): chips of the entries chosen, a search box, a list of answers. */
+.rel { position: relative; }
+.rel-chips { display: flex; flex-wrap: wrap; gap: .25rem; margin: 0 0 .375rem; padding: 0; list-style: none; }
+.rel-chips:empty { display: none; }
+.rel-chip { display: inline-flex; align-items: center; gap: .125rem; max-width: 100%; padding: .0625rem .125rem .0625rem .5rem; border: 1px solid #cbd5e1; border-radius: 999px; background: #fff; color: #0f172a; font-size: .8125rem; line-height: 1.25rem; }
+.rel-chip .rel-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rel-chip .rel-state { padding: 0 .375rem; border-radius: 99px; background: #fef3c7; color: #92400e; font-size: .625rem; font-weight: 600; line-height: 1rem; text-transform: uppercase; letter-spacing: .02em; }
+.rel-chip.is-missing { border-style: dashed; border-color: #f59e0b; color: #92400e; }
+.rel-chip.is-hidden .rel-title { color: #475569; }
+.rel-btn { display: inline-flex; align-items: center; justify-content: center; min-width: 1.5rem; height: 1.5rem; padding: 0; border: 0; border-radius: 99px; background: transparent; color: #64748b; font-size: .75rem; line-height: 1; text-decoration: none; cursor: pointer; }
+.rel-btn:hover { background: #e2e8f0; color: #0f172a; }
+.rel-btn:focus-visible { outline: 2px solid #1d4ed8; outline-offset: 1px; }
+.rel-box { position: relative; }
+.rel-results { position: absolute; z-index: 30; left: 0; right: 0; top: 100%; max-height: 16rem; margin: .125rem 0 0; padding: .25rem; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: .5rem; background: #fff; box-shadow: 0 8px 24px rgba(15, 23, 42, .12); list-style: none; }
+.rel-results[hidden] { display: none; }
+.rel-result { display: flex; align-items: baseline; justify-content: space-between; gap: .75rem; padding: .3rem .5rem; border-radius: .375rem; font-size: .8125rem; cursor: pointer; }
+.rel-result[aria-selected="true"], .rel-result:hover { background: #eff6ff; }
+.rel-type { color: #64748b; font-size: .6875rem; white-space: nowrap; }
+.rel-none { padding: .4rem .5rem; color: #64748b; font-size: .8125rem; }
+.rel-hint { display: block; margin-top: .25rem; color: #64748b; font-size: .6875rem; }
+.rel-refs { margin: .75rem 0 0; padding: 0; list-style: none; font-size: .875rem; }
+.rel-refs li { padding: .3rem 0; border-top: 1px solid #f1f5f9; }
+.rel-refs li:first-child { border-top: 0; }
+.rel-refs a { font-weight: 500; color: #0f172a; }
+.rel-refs a:hover { color: #2563eb; }
+html.dark .rel-chip, html.dark .rel-results { border-color: #334155; background: #0f172a; color: #e2e8f0; }
+html.dark .rel-chip .rel-state { background: #422006; color: #fcd34d; }
+html.dark .rel-chip.is-missing { border-color: #b45309; color: #fcd34d; }
+html.dark .rel-chip.is-hidden .rel-title { color: #94a3b8; }
+html.dark .rel-btn { color: #94a3b8; }
+html.dark .rel-btn:hover { background: #1e293b; color: #f1f5f9; }
+html.dark .rel-result[aria-selected="true"], html.dark .rel-result:hover { background: #1e293b; }
+html.dark .rel-type, html.dark .rel-none, html.dark .rel-hint { color: #94a3b8; }
+html.dark .rel-refs li { border-color: #1e293b; }
+html.dark .rel-refs a { color: #e2e8f0; }

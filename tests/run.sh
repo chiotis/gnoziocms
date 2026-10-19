@@ -169,6 +169,7 @@ run_js() {
   run_check "nested-repeaters" "$ROOT" node tests/js/repeaters.test.js
   run_check "template-bindings" "$ROOT" node tests/js/template-bindings.test.js
   run_check "list-bindings" "$ROOT" node tests/js/list-bindings.test.js
+  run_check "relations-picker" "$ROOT" node tests/js/relations.test.js
 }
 
 cleanup_http() {

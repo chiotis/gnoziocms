@@ -14,9 +14,6 @@ namespace GnozioCMS;
  */
 final class Relations
 {
-    /** Up to this many entries are offered in a list; a type with more is typed by address until the picker with search exists. */
-    public const MAX_CHOICES = 400;
-
     /** @var string[]|null */
     private ?array $enabled = null;
 
@@ -77,7 +74,7 @@ final class Relations
         }
         $items = [];
         foreach ($ids as $id) {
-            $row = $this->pick($byId[$id] ?? [], $lang);
+            $row = $this->pick($byId[$id] ?? [], $lang, $includeHidden);
             $card = $row !== null ? $this->card($row) : null;
             if ($card !== null && ($includeHidden || !$card['hidden'])) {
                 $items[] = $card;
@@ -147,14 +144,14 @@ final class Relations
     }
 
     /**
-     * The row to show for an entry: the language asked for, else the site's own.
+     * The row to show for an entry: the language asked for, else the site's own (else, for an editor, any language it has).
      *
      * @param array<string, array<string, mixed>> $versions language => index row
      * @return array<string, mixed>|null
      */
-    private function pick(array $versions, string $lang): ?array
+    private function pick(array $versions, string $lang, bool $any = false): ?array
     {
-        return $versions[$lang] ?? $versions[$this->defaultLang()] ?? null;
+        return $versions[$lang] ?? $versions[$this->defaultLang()] ?? ($any && $versions !== [] ? reset($versions) : null);
     }
 
     /** @param array<string, mixed> $row @return array<string, mixed>|null */
@@ -177,6 +174,7 @@ final class Relations
             'main_image' => (string)($summary['main_image'] ?? ''),
             'date' => (string)($summary['date'] ?? ''),
             'url' => '/' . ContentPaths::build($type, $slug, $lang, $home, $this->defaultLang()),
+            'status' => strtolower((string)$row['status']),
             'hidden' => !$public,
         ];
     }
@@ -304,34 +302,96 @@ final class Relations
     }
 
     /**
-     * The same definitions with a list of choices on every relation field (also inside rows): the entries of the types the field
-     * allows, by title. A type with more than MAX_CHOICES entries has none (`choices_all` is false), and the form asks for addresses.
+     * The same definitions with the entries the form already holds, so the editor can draw a chip for each: every relation field (also
+     * inside rows) gets `labels`, a map of id => {title, type, status, hidden, edit_url}. An id that leads nowhere is not in it.
      *
      * @param array<string, array<string, mixed>> $fields
+     * @param array<string, mixed> $values the checked values of the type's fields (key => value)
      * @return array<string, array<string, mixed>>
      */
-    public function withChoices(array $fields): array
+    public function withLabels(array $fields, array $values, string $lang): array
     {
+        if (RelationFields::paths($fields) === []) {
+            return $fields;
+        }
         $this->fresh();
+        $ids = array_column(RelationFields::extract($fields, $values), 'id');
+        $labels = [];
+        foreach ($this->resolve($ids, [], $lang, true) as $card) {
+            $labels[$card['id']] = ['title' => $card['title'], 'type' => $card['type'], 'status' => $card['status'], 'hidden' => $card['hidden'], 'edit_url' => '/admin/edit?' . http_build_query(['type' => $card['type'], 'slug' => $card['slug'], 'lang' => $card['lang']])];
+        }
+        return $this->attach($fields, $labels);
+    }
+
+    /** @param array<string, array<string, mixed>> $fields @param array<string, mixed> $labels @return array<string, array<string, mixed>> */
+    private function attach(array $fields, array $labels): array
+    {
         foreach ($fields as $key => $field) {
             if (($field['type'] ?? '') === 'repeater') {
-                $fields[$key]['fields'] = $this->withChoices($field['fields'] ?? []);
+                $fields[$key]['fields'] = $this->attach($field['fields'] ?? [], $labels);
             } elseif (($field['type'] ?? '') === 'relation') {
-                $allowed = $field['types'] !== [] ? array_values(array_intersect($field['types'], $this->enabledTypes())) : $this->enabledTypes();
-                $rows = $this->index->choices($allowed, $this->defaultLang(), self::MAX_CHOICES + 1);
-                $all = count($rows) <= self::MAX_CHOICES;
-                $choices = [];
-                foreach ($all ? $rows : [] as $row) {
-                    $id = (string)$row['translation_id'];
-                    $choices[] = [
-                        'value' => $id !== '' ? $id : '@' . $row['type'] . '/' . $row['slug'],
-                        'label' => (string)$row['title'] . (count($allowed) > 1 ? ' (' . $row['type'] . ')' : '') . (strtolower((string)$row['status']) !== 'published' ? ' · ' . $row['status'] : ''),
-                    ];
-                }
-                $fields[$key]['choices'] = $choices;
-                $fields[$key]['choices_all'] = $all;
+                $fields[$key]['labels'] = $labels;
             }
         }
         return $fields;
+    }
+
+    /**
+     * Entries to choose from for a search box: the entries of the types given (limited to the ones the field allows) whose title or
+     * address contains the text, the ones starting with it first; with no text, the first by title.
+     *
+     * @param string[] $types content types asked for, which must be among `$allowed` (none: all of them)
+     * @param string[] $allowed the content types the person may open
+     * @return list<array<string, mixed>> value (the id, or `@type/slug` while the entry has none), title, type, status, hidden
+     */
+    public function search(string $query, array $types, array $allowed, int $limit = 20): array
+    {
+        $this->fresh();
+        $types = array_values(array_intersect($types !== [] ? $types : $allowed, $allowed, $this->enabledTypes()));
+        $found = [];
+        foreach ($this->index->choices($types, $this->defaultLang(), max(1, min(50, $limit)), $query) as $row) {
+            $id = (string)$row['translation_id'];
+            $found[] = [
+                'value' => $id !== '' ? $id : '@' . $row['type'] . '/' . $row['slug'],
+                'title' => (string)$row['title'],
+                'type' => (string)$row['type'],
+                'status' => (string)$row['status'],
+                'hidden' => !(strtolower((string)$row['status']) === 'published' && (int)$row['visible'] === 1),
+                'edit_url' => '/admin/edit?' . http_build_query(['type' => $row['type'], 'slug' => $row['slug'], 'lang' => $row['lang']]),
+            ];
+        }
+        return $found;
+    }
+
+    /**
+     * Who points at an entry, from any type, for the screens that warn before something is taken away: one line for each entry
+     * (its language version that holds the reference), with the fields it uses.
+     *
+     * @return list<array{type: string, slug: string, lang: string, title: string, status: string, fields: list<string>, edit_url: string}>
+     */
+    public function referrers(string $type, string $slug): array
+    {
+        $this->fresh();
+        $id = '';
+        foreach ($this->index->entriesByAddress([[$type, $slug]], array_values(array_unique(array_merge([$this->defaultLang()], array_map('strval', (array)($this->settings['languages']['available'] ?? [])))))) as $row) {
+            $id = $id !== '' ? $id : (string)$row['translation_id'];
+        }
+        $lines = [];
+        foreach ($this->index->referrers($id) as $row) {
+            $key = $row['type'] . '|' . $row['slug'] . '|' . $row['lang'];
+            $lines[$key] ??= ['type' => (string)$row['type'], 'slug' => (string)$row['slug'], 'lang' => (string)$row['lang'], 'title' => (string)($row['title'] ?? $row['slug']), 'status' => (string)($row['status'] ?? ''), 'fields' => [], 'edit_url' => '/admin/edit?' . http_build_query(['type' => $row['type'], 'slug' => $row['slug'], 'lang' => $row['lang']])];
+            $lines[$key]['fields'][] = (string)$row['field'];
+        }
+        return array_values($lines);
+    }
+
+    /** References to entries that no longer exist: [{type, slug, lang, title, field, edit_url}]. @return list<array<string, string>> */
+    public function broken(int $limit = 500): array
+    {
+        $this->fresh();
+        return array_map(static fn(array $row): array => [
+            'type' => (string)$row['type'], 'slug' => (string)$row['slug'], 'lang' => (string)$row['lang'], 'title' => (string)($row['title'] ?? $row['slug']), 'field' => (string)$row['field'],
+            'edit_url' => '/admin/edit?' . http_build_query(['type' => $row['type'], 'slug' => $row['slug'], 'lang' => $row['lang']]),
+        ], $this->index->brokenReferences($limit));
     }
 }

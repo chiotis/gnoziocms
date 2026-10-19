@@ -112,7 +112,7 @@ final class DashboardData
             'failed_emails' => $failedWeek,
             'drafts_stale' => $this->mayEdit($can) ? $staleDrafts : 0,
             'untranslated' => $this->mayEdit($can) ? $untranslated : 0,
-        ] + array_intersect_key($extra, array_flip(['update', 'seo', 'links', 'not_found', 'analytics', 'no_site_address'])), static fn($value): bool => $value !== null && $value !== 0 && $value !== []));
+        ] + array_intersect_key($extra, array_flip(['update', 'seo', 'links', 'not_found', 'analytics', 'no_site_address', 'broken_references'])), static fn($value): bool => $value !== null && $value !== 0 && $value !== []));
 
         return [
             'content_total' => $contentTotal,

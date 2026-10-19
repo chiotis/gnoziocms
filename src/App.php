@@ -355,7 +355,8 @@ final class App
             fn(): Taxonomies => $this->taxonomies(),
             fn(): PublicPaths => $this->publicPaths(),
             fn(): LinkScanner => $this->linkScanner(),
-            fn(string $action, string $level, ?string $type, ?string $id, string $message, array $context) => $this->logActivity($action, $level, $type, $id, $message, $context)
+            fn(string $action, string $level, ?string $type, ?string $id, string $message, array $context) => $this->logActivity($action, $level, $type, $id, $message, $context),
+            $this->relations()
         );
     }
 
@@ -1079,6 +1080,8 @@ final class App
         'content' => 'handleAdminList',
         'content-bulk' => 'handleContentBulk',
         'search' => 'handleAdminSearch',
+        'relations' => 'handleAdminRelations',
+        'broken-references' => 'handleBrokenReferences',
         'system' => 'handleSystem',
         'activity-logs' => 'handleActivityLogs',
         'email-logs' => 'handleEmailLogs',
@@ -2874,6 +2877,29 @@ final class App
         ]);
     }
 
+    /** The entries a relation field's search box offers (JSON): `q` is the text typed, `types` the content types the field allows. */
+    private function handleAdminRelations(): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: no-store');
+        $types = array_values(array_filter(array_map(static fn(string $t): string => Slug::plain($t), explode(',', (string)($_GET['types'] ?? '')))));
+        $allowed = array_values(array_filter($this->content->getTypes(), fn(string $type): bool => $this->canAccessContentType($type) && $type !== 'forms'));
+        echo json_encode($this->relations()->search((string)($_GET['q'] ?? ''), $types, $allowed), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+    }
+
+    /** The references that lead to an entry that is gone, so they can be fixed or cleared. */
+    private function handleBrokenReferences(): void
+    {
+        $this->render('@admin/broken-references.twig', [
+            'title' => 'Broken references',
+            'broken' => array_values(array_filter($this->relations()->broken(), fn(array $row): bool => $this->canAccessContentType($row['type']))),
+            'types' => $this->content->getTypes(),
+            'user' => $this->auth->user(),
+            'admin_section' => 'content',
+            'current_type' => 'pages',
+        ]);
+    }
+
     private function handleSystem(): void
     {
         if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (string)($_POST['system_action'] ?? '') === 'rebuild_index') {
@@ -3925,6 +3951,9 @@ final class App
                 $found = $sources !== [] ? $this->linkScanner()->countBySource($sources) : [];
                 $facts['links'] = array_sum($found ?? []);
             }
+        }
+        if ($can('content.manage')) {
+            $facts['broken_references'] = count($this->relations()->broken(200));
         }
         if ($can('analytics.manage')) {
             $a = AnalyticsSettings::from($this->settings);

@@ -75,6 +75,9 @@
       {% if type_fields is not empty %}
         <button type="button" class="{{ tab_class }}" role="tab" data-tab="details">{{ type_definition.singular }} details</button>
       {% endif %}
+      {% if referenced_by %}
+        <button type="button" class="{{ tab_class }}" role="tab" data-tab="references">Referenced by <span class="tab-count">{{ referenced_by|length }}</span></button>
+      {% endif %}
       {% if block_editor_json %}
         <button type="button" class="{{ tab_class }}" role="tab" data-tab="blocks">Blocks <span data-block-count class="tab-count"></span></button>
       {% endif %}
@@ -312,6 +315,20 @@
       </div>
     {% endif %}
 
+    {% if referenced_by %}
+      <div class="tab-panel hidden" data-panel="references">
+        <section class="{{ card }}" aria-labelledby="en-h-references">
+          <h2 id="en-h-references" class="en-card-title">Referenced by</h2>
+          <p class="en-help m-0">{% if meta_form.status != 'published' %}This entry is not published, so these entries do not show it to visitors. {% endif %}Deleting it leaves their references pointing nowhere.</p>
+          <ul class="rel-refs">
+            {% for ref in referenced_by %}
+              <li><a href="{{ url(ref.edit_url) }}">{{ ref.title }}</a> <span class="rel-type">{{ ref.type }}{{ ref.lang != lang ? ' · ' ~ ref.lang|upper : '' }} · {{ ref.fields|join(', ') }}</span></li>
+            {% endfor %}
+          </ul>
+        </section>
+      </div>
+    {% endif %}
+
     {% if type != 'pages' %}
       <div class="tab-panel hidden space-y-3" data-panel="taxonomies">
         {% for taxonomy in taxonomies %}
@@ -494,6 +511,7 @@
   <script src="{{ asset('js/admin-entry.js') }}" defer></script>
   <script src="{{ asset('js/admin-editor.js') }}" defer></script>
   <script src="{{ asset('js/admin-seo-count.js') }}" defer></script>
+  {% if type_fields is not empty %}<script src="{{ asset('js/admin-relations.js') }}" defer></script>{% endif %}
   {% if block_editor_json %}
     {% include '@admin/partials/icon-library.twig' %}
     <script src="{{ asset('js/admin-sortable.js') }}"></script>

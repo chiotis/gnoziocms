@@ -103,6 +103,7 @@ final class SystemDatabase
         $this->applyMigration($pdo, '202610030001_analytics', fn(PDO $db) => $this->createAnalyticsTables($db));
         $this->applyMigration($pdo, '202610130001_not_found_ignored', fn(PDO $db) => $this->addNotFoundIgnoredColumn($db));
         $this->applyMigration($pdo, '202610190001_content_relations', fn(PDO $db) => $this->createContentRelations($db));
+        $this->applyMigration($pdo, '202610190002_content_title_key', fn(PDO $db) => $this->addContentTitleKey($db));
     }
 
     /**
@@ -135,6 +136,18 @@ final class SystemDatabase
         );
         $pdo->exec('CREATE INDEX IF NOT EXISTS idx_content_refs_to ON content_refs (to_id, from_type, field_path)');
         $pdo->exec('CREATE INDEX IF NOT EXISTS idx_content_refs_from ON content_refs (from_type, from_slug, from_lang)');
+    }
+
+    /** The title in lower case (any alphabet) so a search for a title is not case sensitive in Greek either; SQLite lowers ASCII only. */
+    private function addContentTitleKey(PDO $pdo): void
+    {
+        $columns = [];
+        foreach ($pdo->query('PRAGMA table_info(content_index)') as $row) {
+            $columns[] = (string)$row['name'];
+        }
+        if (!in_array('title_key', $columns, true)) {
+            $pdo->exec("ALTER TABLE content_index ADD COLUMN title_key TEXT NOT NULL DEFAULT ''");
+        }
     }
 
     /** Addresses the owner chose to ignore stay in the log (their visits are still counted) but are no longer listed. */

@@ -45,10 +45,10 @@ final class EntryForm
     ) {
     }
 
-    /** The fields that point at other entries get the entries to choose from. @param array<string, array<string, mixed>> $fields @return array<string, array<string, mixed>> */
-    private function withChoices(array $fields): array
+    /** The fields that point at other entries get the entries the form already holds, for the chips. @param array<string, array<string, mixed>> $fields @param array<string, mixed> $values @return array<string, array<string, mixed>> */
+    private function withLabels(array $fields, array $values, string $lang): array
     {
-        return $this->relations !== null ? $this->relations->withChoices($fields) : $fields;
+        return $this->relations !== null ? $this->relations->withLabels($fields, $values, $lang) : $fields;
     }
 
     /**
@@ -265,6 +265,8 @@ final class EntryForm
             }
         }
 
+        $typeValues = is_array($meta) && $type !== 'forms' ? $this->types->values($type, $meta, 'en', $defaultLang) : [];
+
         return [
             'type' => $type,
             'slug' => $slug,
@@ -276,8 +278,9 @@ final class EntryForm
             'main_image' => $mainImage,
             'meta_form' => $metaForm,
             'type_definition' => $this->types->definition($type, 'en', $defaultLang),
-            'type_fields' => $type === 'forms' ? [] : $this->withChoices($this->types->editableFields($type, 'en', $defaultLang)),
-            'type_values' => is_array($meta) ? $this->types->values($type, $meta, 'en', $defaultLang) : [],
+            'type_fields' => $type === 'forms' ? [] : $this->withLabels($this->types->editableFields($type, 'en', $defaultLang), $typeValues, $lang),
+            'type_values' => $typeValues,
+            'referenced_by' => $itemExists && $this->relations !== null && $type !== 'forms' ? $this->relations->referrers($type, $slug) : [],
             'taxonomies' => $this->taxonomyChoices(),
             'translations' => $translations,
             'front_url' => $frontUrl,
