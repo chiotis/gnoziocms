@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.163 — 2026-10-19 — Rendering out of App
+- **The Twig environment and the site's template functions move out of `src/App.php`** into `SiteTwig`, and finding which template draws a page moves into `TemplateResolver`, each with unit tests. Behaviour is identical: the full suite passes and the rendered pages are unchanged. `App.php` is about 280 lines shorter, and the coming template builder works on code of its own. See `docs/architecture.md`.
+
 ## 0.1.162 — 2026-10-19 — Roadmap: the order of implementation
 - **`ROADMAP.md`** sets the order by what builds on what: the off-canvas block settings panel and a small split of `src/App.php` first (in parallel), then the template builder for single templates, content relationships with the data and index cache, the template builder for archive templates, and a shop later. Repeaters are marked done.
 
