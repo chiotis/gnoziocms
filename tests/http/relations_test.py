@@ -78,6 +78,10 @@ st, _, html = pub.get('/volumes/notes')
 check('the volume still points at her: the link follows the new address', '<a href="/authors/ada-king">Ada Lovelace</a>' in html and '/authors/ada-lovelace"' not in html, st)
 check('and the file of the volume was not touched', open('app/content/volumes/notes.md', encoding='utf-8').read() == stored)
 
+# ---- search finds the volume by the title of its author
+st, _, html = pub.get('/search?q=lovelace')
+check('search finds a volume by the title of its author (its Author field)', st == 200 and 'href="/volumes/notes"' in html and 'href="/authors/ada-king"' in html, st)
+
 # ---- unpublished
 text = open('app/content/authors/ada-king.md', encoding='utf-8').read()
 open('app/content/authors/ada-king.md', 'w', encoding='utf-8').write(text.replace('status: published', 'status: draft'))
@@ -89,6 +93,7 @@ os.utime('app/content/authors/ada-king.md', (time.time() + 10, time.time() + 10)
 look_again()
 st, _, html = pub.get('/volumes/notes')
 check('an author who is a draft is not shown to visitors', st == 200 and 'Ada Lovelace' not in html and 'Charles Babbage' in html, st)
+check('search no longer finds the volume by a draft author\'s title for visitors, but still does for someone signed in', 'href="/volumes/notes"' not in pub.get('/search?q=lovelace')[2] and 'href="/volumes/notes"' in root.get('/search?q=lovelace')[2])
 st, _, html = root.get('/admin/edit?type=volumes&slug=notes&lang=el')
 check('but the editor still holds the reference, its chip marked as a draft', re.search(r'<li class="rel-chip is-hidden" data-rel-chip>\s*<input type="hidden" name="details\[author\]" value="%s">.*?rel-state">draft' % ada_id, html, re.S) is not None, re.findall(r'<li class="rel-chip.*?</li>', html, re.S)[:1])
 st, _, html = root.get('/admin/edit?type=authors&slug=ada-king&lang=el')

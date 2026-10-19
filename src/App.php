@@ -979,7 +979,7 @@ final class App
             $this->defaultLanguage()
         );
         $documents->cacheIn($this->basePath . '/storage/cache/search', trim((string)file_get_contents($this->basePath . '/VERSION')));
-        $search = (new ContentSearch($this->content, $documents))->search(
+        $search = (new ContentSearch($this->content, $documents, $this->relations()))->search(
             $_GET['q'] ?? '', $lang, $includeHidden, $_GET['type'] ?? '', $_GET['page'] ?? 1
         );
         $base = $this->buildAbsoluteUrl($route['lang_prefix'] . 'search');
