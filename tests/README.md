@@ -10,7 +10,22 @@ tests/run.sh http     # the browser-level tests
 tests/run.sh redirects   # one HTTP test: editor, roles, import, redirects, save, history, taxonomies, links, delete
 ```
 
-It needs PHP 8.5+, Python 3 (standard library only) and, for the JavaScript checks, Node 20 or later; the first run installs the one tool they use (jsdom) into `tests/js/node_modules` from `tests/js/package-lock.json`. Nothing touches your site: the HTTP tests run against a temporary copy of the code on a free local port, seeded from `tests/fixtures/content`, and remove it afterwards. The exit code is non-zero when anything fails, including a test process that prints a success message but exits with an error.
+It needs the PHP version in `composer.json` (8.5 or newer), Python 3 (standard library only) and, for the JavaScript checks, Node 20 or later; the first run installs the one tool they use (jsdom) into `tests/js/node_modules` from `tests/js/package-lock.json`. Nothing touches your site: the HTTP tests run against a temporary copy of the code on a free local port, seeded from `tests/fixtures/content`, and remove it afterwards. The exit code is non-zero when anything fails, including a test process that prints a success message but exits with an error.
+
+## When the environment is wrong, or a test hangs
+
+`tests/run.sh` checks the environment before it runs anything and stops with **exit code 3** and one line per problem, so a wrong machine fails clearly instead of producing dozens of cascading failures:
+
+```text
+Environment check failed, nothing was run (GNOZIO_TESTS_SKIP_PREFLIGHT=1 skips this check):
+  PHP 8.5 or newer is needed; this is 8.3.6 (/usr/bin/php, see php -v)
+```
+
+It reads the lowest PHP from `composer.json` (`require.php`, never hardcoded), the required PHP extensions from composer's `ext-*` entries and the installer's required list, and it needs `python3` and `curl` for the HTTP tests and Node 20 or newer (with npm) for the `js` group. Only the groups you run are checked. For a deliberate experiment (a different PHP on purpose), set `GNOZIO_TESTS_SKIP_PREFLIGHT=1`.
+
+Nothing waits for ever. Every HTTP test has a time limit (180 seconds; `GNOZIO_TEST_TIMEOUT=300 tests/run.sh http` changes it, and `test_timeout()` in `run.sh` can give one test more). A test that runs out is reported as `FAIL  <name>  TIMEOUT <name> (180 s)` and the suite carries on with the next. Inside the tests, `tests/http/client.py` gives every request a timeout (`GNOZIO_TEST_REQUEST_TIMEOUT`, 60 seconds) and has `wait_until(fn, timeout, interval, what)` for polling; it prints a `FAIL timed out after N s waiting for <what>` line instead of looping. Use it for every wait, never `while True`.
+
+In tests that walk a sequence (the installer, update install, fresh install), `client.Flow` records the first failed step once (`critical=True`) and prints the checks that depend on it as `skip <label>  (skipped: <step> failed)`. The runner counts them apart from failures (`pass  name  N checks, M skipped`, `FAIL  name  1 failed, 12 skipped`, and a line with the total at the end); `flow.clear()` starts an independent part of the test.
 
 ## CI results without delaying releases
 

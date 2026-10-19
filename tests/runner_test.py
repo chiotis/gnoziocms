@@ -43,10 +43,19 @@ echo 'ALL PASSED'
         npm.write_text("#!/usr/bin/env bash\necho 'npm unavailable' >&2\nexit 23\n")
         npm.chmod(0o755)
 
-    def run_suite(self, mode="unit", case=""):
+    def real_tools(self, **tools):
+        """A folder (outside the copied tree) with links to real programs, to put before the stubs on PATH."""
+        folder = tempfile.TemporaryDirectory(prefix="faros-tools-")
+        self.addCleanup(folder.cleanup)
+        for name, path in tools.items():
+            (Path(folder.name) / name).symlink_to(path)
+        return Path(folder.name)
+
+    def run_suite(self, mode="unit", case="", extra=None):
         env = os.environ.copy()
         env.update(PATH=str(self.root / "bin") + os.pathsep + env["PATH"],
-                   FAROS_TEST_LOG_DIR=str(self.root / "logs"), RUNNER_CASE=case)
+                   FAROS_TEST_LOG_DIR=str(self.root / "logs"), RUNNER_CASE=case, GNOZIO_TESTS_SKIP_PREFLIGHT="1")
+        env.update(extra or {})
         return subprocess.run(["bash", str(self.root / "tests/run.sh"), mode],
                               env=env, capture_output=True, text=True, timeout=30)
 
@@ -87,6 +96,52 @@ echo 'ALL PASSED'
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
         self.assertIn("FAILED: HTTP port", result.stdout)
         self.assertNotIn("HTTP tests (temporary copy", result.stdout)
+
+
+    def test_preflight_refuses_a_wrong_environment_before_running_anything(self):
+        php = shutil.which("php")
+        if php is None:
+            self.skipTest("php is not installed")
+        (self.root / "tests/preflight.php").write_text((Path(__file__).with_name("preflight.php")).read_text())
+        (self.root / "composer.json").write_text('{"require": {"php": ">=99.1", "ext-nonexistent": "*"}}')
+        (self.root / "installer.php").write_text("<?php const EXTENSIONS = ['zip' => true];")
+        real = self.real_tools(php=php)   # the real PHP instead of the stub, so the version check is real
+        for mode in ("unit", "all"):
+            with self.subTest(mode=mode):
+                result = self.run_suite(mode, extra={"GNOZIO_TESTS_SKIP_PREFLIGHT": "", "PATH": f"{real}{os.pathsep}{os.environ['PATH']}"})
+                self.assertEqual(result.returncode, 3, result.stdout + result.stderr)
+                self.assertRegex(result.stdout, r"PHP 99\.1 or newer is needed; this is \d")
+                self.assertIn("the PHP extension nonexistent is missing", result.stdout)
+                self.assertNotIn("Unit checks", result.stdout)
+                self.assertNotIn("ALL GOOD", result.stdout)
+
+    def test_preflight_can_be_skipped_for_experiments(self):
+        (self.root / "composer.json").write_text('{"require": {"php": ">=99.1"}}')
+        result = self.run_suite()   # the helper sets GNOZIO_TESTS_SKIP_PREFLIGHT=1
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_a_hanging_http_test_times_out_alone_and_skips_are_counted(self):
+        php, python = shutil.which("php"), shutil.which("python3")
+        if not (php and python and shutil.which("curl")):
+            self.skipTest("php, python3 and curl are needed")
+        shutil.copy(Path(__file__).with_name("with_timeout.py"), self.root / "tests/with_timeout.py")
+        (self.root / "public").mkdir()
+        (self.root / "public/index.php").write_text("<?php echo 'ok';")
+        (self.root / "tests/fixtures/content").mkdir(parents=True)
+        (self.root / "tests/http").mkdir()
+        (self.root / "tests/http/search_test.py").write_text("import time\nprint('ok   one')\nprint('skip two  (skipped: one failed)', flush=True)\ntime.sleep(60)\n")
+        (self.root / "tests/http/editor_test.py").write_text("print('ok   one')\nprint('skip two  (skipped: x failed)')\nprint('ALL PASSED')\n")
+        real = self.real_tools(php=php, python3=python)
+        extra = {"PATH": f"{real}{os.pathsep}{os.environ['PATH']}", "GNOZIO_TEST_TIMEOUT": "2"}
+        result = self.run_suite("search", extra=extra)
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("TIMEOUT search (2 s)", result.stdout)
+        self.assertIn("FAILED: search (TIMEOUT)", result.stdout)
+        result = self.run_suite("editor", extra=extra)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("1 checks, 1 skipped", result.stdout)
+        self.assertIn("1 checks skipped", result.stdout)
+        self.assertIn("ALL GOOD", result.stdout)
 
 
 if __name__ == "__main__":

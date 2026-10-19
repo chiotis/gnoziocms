@@ -76,11 +76,7 @@ with socket.socket() as sock:
 curl_server = subprocess.Popen(['php', '-S', '127.0.0.1:%d' % curl_port, '-t', 'public', 'public/index.php'], cwd='app', env=dict(os.environ, PHP_CLI_SERVER_WORKERS='4'), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 atexit.register(curl_server.kill)
 client.BASE = 'http://127.0.0.1:%d' % curl_port
-for _ in range(50):
-    try:
-        urllib.request.urlopen(client.BASE + '/', timeout=1); break
-    except Exception:
-        time.sleep(0.1)
+client.wait_until(lambda: client.port_open(curl_port), 10, what='the PHP server with curl to accept connections')
 root = Client(); root.login()
 
 # ---- the site's own backups go to the bucket and (by default) leave nothing on the server
