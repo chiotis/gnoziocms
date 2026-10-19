@@ -1024,7 +1024,8 @@ final class App
         ];
         $this->render('templates/search.twig', [
             'query' => $search['query'], 'results' => $search['results'], 'search' => $search,
-            'seo_kind' => 'search', 'noindex_page' => true,
+            // Robots follow the SEO setting for search pages (noindex by default).
+            'seo_kind' => 'search',
         ] + $viewDefaults);
     }
 
