@@ -104,6 +104,7 @@ final class SystemDatabase
         $this->applyMigration($pdo, '202610130001_not_found_ignored', fn(PDO $db) => $this->addNotFoundIgnoredColumn($db));
         $this->applyMigration($pdo, '202610190001_content_relations', fn(PDO $db) => $this->createContentRelations($db));
         $this->applyMigration($pdo, '202610190002_content_title_key', fn(PDO $db) => $this->addContentTitleKey($db));
+        $this->applyMigration($pdo, '202610200001_archive_query', fn(PDO $db) => $this->createArchiveQuery($db));
     }
 
     /**
@@ -136,6 +137,46 @@ final class SystemDatabase
         );
         $pdo->exec('CREATE INDEX IF NOT EXISTS idx_content_refs_to ON content_refs (to_id, from_type, field_path)');
         $pdo->exec('CREATE INDEX IF NOT EXISTS idx_content_refs_from ON content_refs (from_type, from_slug, from_lang)');
+    }
+
+    /**
+     * What a list of entries asks the index (ArchiveQuery): the date entries are ordered by, the terms each entry is filed under, and the
+     * plain values of its fields (to filter and sort by). All of it is read from the files and can be rebuilt at any time.
+     */
+    private function createArchiveQuery(PDO $pdo): void
+    {
+        $columns = [];
+        foreach ($pdo->query('PRAGMA table_info(content_index)') as $row) {
+            $columns[] = (string)$row['name'];
+        }
+        if (!in_array('sort_date', $columns, true)) {
+            $pdo->exec('ALTER TABLE content_index ADD COLUMN sort_date INTEGER NOT NULL DEFAULT 0');
+        }
+        $pdo->exec('CREATE INDEX IF NOT EXISTS idx_content_index_listing ON content_index (type, lang, sort_date)');
+        $pdo->exec(
+            'CREATE TABLE IF NOT EXISTS content_terms (
+                type TEXT NOT NULL,
+                slug TEXT NOT NULL,
+                lang TEXT NOT NULL,
+                taxonomy TEXT NOT NULL,
+                term_id TEXT NOT NULL,
+                PRIMARY KEY (type, slug, lang, taxonomy, term_id)
+            ) WITHOUT ROWID'
+        );
+        $pdo->exec('CREATE INDEX IF NOT EXISTS idx_content_terms_term ON content_terms (taxonomy, term_id, type, lang)');
+        $pdo->exec(
+            'CREATE TABLE IF NOT EXISTS content_values (
+                type TEXT NOT NULL,
+                slug TEXT NOT NULL,
+                lang TEXT NOT NULL,
+                field TEXT NOT NULL,
+                raw TEXT NOT NULL,
+                sort_text TEXT NOT NULL,
+                sort_num REAL,
+                PRIMARY KEY (type, slug, lang, field)
+            ) WITHOUT ROWID'
+        );
+        $pdo->exec('CREATE INDEX IF NOT EXISTS idx_content_values_raw ON content_values (type, lang, field, raw)');
     }
 
     /** The title in lower case (any alphabet) so a search for a title is not case sensitive in Greek either; SQLite lowers ASCII only. */

@@ -150,6 +150,7 @@ final class App
         );
         $this->contentIndex = new ContentIndex($this->systemDatabase, $this->contentDir, $this->systemMeta);
         $this->contentIndex->keepReferences(fn(string $type): array => $this->contentTypes()->definition($type, 'en', $this->defaultLanguage())['fields']);
+        $this->contentIndex->keepTerms(fn(): array => $this->taxonomies()->names());
         $this->media = new MediaLibrary($this->contentDir, $this->basePath . '/public/uploads');
         $this->media->restrictTo(is_array($this->settings['limits']['upload_types'] ?? null) ? $this->settings['limits']['upload_types'] : []);
         $this->mediaUsage = new MediaUsage($this->contentDir, fn(): array => $this->mediaUsageSettingsSources(), (string)($this->settings['languages']['default'] ?? 'en'), $this->systemMeta);
@@ -781,9 +782,8 @@ final class App
             $type = $route['type'];
             $slug = $route['slug'];
             if ($route['kind'] === 'archive') {
-                $items = $this->content->getItems($type, $lang, $includeHidden, false);
                 $alternates = $this->languageAlternates()->forArchive($type);
-                $archive = $this->archiveContext($type, $lang, $items);
+                $archive = $this->archiveContext($type, $lang, $includeHidden);
                 if ($archive['page'] > 1 && !$archive['filtered']) {
                     // Each page of a listing is its own page for search engines.
                     $viewDefaults['canonical_url'] = $currentUrl . '?page=' . $archive['page'];
@@ -955,10 +955,12 @@ final class App
      * @param ContentItem[] $items
      * @return array<string, mixed>
      */
-    private function archiveContext(string $type, string $lang, array $items): array
+    private function archiveContext(string $type, string $lang, bool $includeHidden): array
     {
         $definition = $this->contentTypes()->definition($type, $lang, $this->defaultLanguage());
-        return $this->archiveBuilder()->build($definition['archive'], $definition['fields'], $definition, $lang, $items, $_GET);
+        // The content index answers when it can (only the entries on the page are read); otherwise every entry of the type is looked at.
+        $indexed = $this->archiveBuilder()->buildIndexed(['types' => [$type], 'term' => null], $includeHidden, $definition['archive'], $definition['fields'], $definition, $lang, $_GET);
+        return $indexed ?? $this->archiveBuilder()->build($definition['archive'], $definition['fields'], $definition, $lang, $this->content->getItems($type, $lang, $includeHidden, false), $_GET);
     }
 
     /** A picture of a playlist's video, kept on this site (see YouTubeThumbs). */
@@ -3971,7 +3973,8 @@ final class App
     {
         return $this->archiveBuilderService ??= new ArchiveBuilder(
             fn(): array => $this->taxonomies()->names(),
-            fn(string $taxonomy, string $termId, string $lang): string => $this->taxonomyTermLabel($taxonomy, $termId, $lang)
+            fn(string $taxonomy, string $termId, string $lang): string => $this->taxonomyTermLabel($taxonomy, $termId, $lang),
+            new ArchiveQuery($this->contentIndex, $this->content)
         );
     }
 
