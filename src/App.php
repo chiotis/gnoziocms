@@ -979,7 +979,7 @@ final class App
             $this->defaultLanguage()
         );
         $documents->cacheIn($this->basePath . '/storage/cache/search', trim((string)file_get_contents($this->basePath . '/VERSION')));
-        $search = (new ContentSearch($this->content, $documents))->search(
+        $search = (new ContentSearch($this->content, $documents, $this->relations()))->search(
             $_GET['q'] ?? '', $lang, $includeHidden, $_GET['type'] ?? '', $_GET['page'] ?? 1
         );
         $base = $this->buildAbsoluteUrl($route['lang_prefix'] . 'search');
@@ -1163,6 +1163,7 @@ final class App
         // the handler, which may end the request with a redirect). Screens that only read, preview or export do not count.
         if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && !in_array($action, self::ADMIN_POSTS_THAT_CHANGE_NOTHING, true) && !isset($_GET['preview'])) {
             $this->frontCache()->purgeAll();
+            $this->contentIndex->bump(); // what is derived from the whole site (the maps' data) is made again
         }
 
         if (isset(self::ADMIN_ROUTES[$action])) {

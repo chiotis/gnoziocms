@@ -8,9 +8,9 @@ namespace GnozioCMS;
 final class ContentSearch
 {
     public const PER_PAGE = 10;
-    private const WEIGHTS = ['title' => 12, 'terms' => 5, 'fields' => 4, 'excerpt' => 3, 'body' => 1];
+    private const WEIGHTS = ['title' => 12, 'terms' => 5, 'fields' => 4, 'related' => 4, 'excerpt' => 3, 'body' => 1];
 
-    public function __construct(private ContentRepository $content, private SearchDocument $documents)
+    public function __construct(private ContentRepository $content, private SearchDocument $documents, private ?Relations $relations = null)
     {
     }
 
@@ -31,8 +31,11 @@ final class ContentSearch
         $counts = [];
         foreach ($terms === [] ? [] : $types as $contentType) {
             // A result in another language could point at a page that does not exist in the current one.
-            foreach ($this->content->getItems($contentType, $lang, $includeHidden, false) as $item) {
-                $document = $this->documents->extract($item);
+            $items = $this->content->getItems($contentType, $lang, $includeHidden, false);
+            $documents = array_map($this->documents->extract(...), $items);
+            $related = $this->relatedTitles($documents, $lang, $includeHidden);
+            foreach ($items as $n => $item) {
+                $document = $this->withRelated($documents[$n], $related);
                 $score = $this->score($document, $terms, $phrase);
                 if ($score === 0) {
                     continue;
@@ -68,6 +71,39 @@ final class ContentSearch
             'total' => $total, 'counts' => $counts, 'type' => $type,
             'page' => $page, 'pages' => $pages, 'per_page' => self::PER_PAGE,
         ];
+    }
+
+    /**
+     * The titles of the entries the documents point at, as the searcher would see them: the page's language else the site's own,
+     * and a draft or hidden target only for someone signed in (Relations applies that rule). One lookup for a whole type, read from
+     * the content index at the time of the search, so a renamed or unpublished target is reflected at once without touching the
+     * extracted-text cache of the entries that point at it.
+     *
+     * @param list<array<string, mixed>> $documents
+     * @return array<string, array{title: string, normal: string}> id => title
+     */
+    private function relatedTitles(array $documents, string $lang, bool $includeHidden): array
+    {
+        $ids = array_values(array_unique(array_merge([], ...array_column($documents, 'relations'))));
+        if ($this->relations === null || $ids === []) {
+            return [];
+        }
+        $titles = [];
+        foreach ($this->relations->resolve($ids, [], $lang, $includeHidden) as $card) {
+            if (trim((string)$card['title']) !== '') {
+                $titles[$card['id']] = ['title' => (string)$card['title'], 'normal' => SearchText::normalize((string)$card['title'])];
+            }
+        }
+        return $titles;
+    }
+
+    /** @param array<string, mixed> $document @param array<string, array{title: string, normal: string}> $titles @return array<string, mixed> */
+    private function withRelated(array $document, array $titles): array
+    {
+        $found = array_values(array_filter(array_map(static fn(string $id): ?array => $titles[$id] ?? null, $document['relations'])));
+        $document['related'] = implode(' ', array_column($found, 'title'));
+        $document['normal']['related'] = implode(' ', array_column($found, 'normal'));
+        return $document;
     }
 
     /** @param array<string, mixed> $document @param string[] $terms @param string $phrase normalized query word sequence */
@@ -110,7 +146,7 @@ final class ContentSearch
     {
         $best = '';
         $score = -1;
-        foreach (['excerpt', 'body', 'fields', 'terms'] as $key) {
+        foreach (['excerpt', 'body', 'fields', 'related', 'terms'] as $key) {
             $text = $document[$key] ?? '';
             if ($text === '') {
                 continue;

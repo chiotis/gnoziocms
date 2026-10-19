@@ -156,6 +156,74 @@ $cachedSearch()->search('αθηνα', 'el', true);
 $stored = unserialize(file_get_contents($bucketFile), ['allowed_classes' => false]);
 check('a signed-in scan prunes entries that no longer exist', isset($stored['entries']['draft']), false);
 
+// ---- Related titles: an entry is found by the titles of the entries it points at (a book by its author).
+$rroot = sys_get_temp_dir() . '/faros-search-rel-' . bin2hex(random_bytes(5));
+mkdir("$rroot/custom/content-types", 0775, true);
+mkdir("$rroot/storage", 0775, true);
+foreach (['authors', 'works'] as $type) { mkdir("$rroot/content/$type", 0775, true); }
+symlink(dirname(__DIR__, 2) . '/themes', "$rroot/themes");
+file_put_contents("$rroot/custom/content-types/works.yaml", "label: Works\nfields:\n  author: { type: relation, types: [authors] }\n  quiet: { type: relation, types: [authors], searchable: false }\n  editions:\n    type: repeater\n    fields:\n      editor: { type: relation, types: [authors] }\n");
+file_put_contents("$rroot/custom/content-types/authors.yaml", "label: Authors\nfields:\n  country: { type: text }\n");
+$put = static function (string $path, string $front, string $body = 'Text.') use ($rroot): void {
+    file_put_contents("$rroot/content/$path", "---\n$front\n---\n\n$body\n");
+};
+$put('authors/ada.md', "title: Ada Lovelace\nstatus: published\ntranslation_id: aaaaaaaa00000001");
+$put('authors/ada.en.md', "title: Countess Augusta\nstatus: published\ntranslation_id: aaaaaaaa00000001");
+$put('authors/cy.md', "title: Cyrano Secretname\nstatus: draft\ntranslation_id: cccccccc00000003");
+$put('authors/dee.md', "title: Dee Editorial\nstatus: published\ntranslation_id: dddddddd00000004");
+$put('works/engine.md', "title: Engine notes\nstatus: published\ntranslation_id: 1111111100000001\ncustom_fields:\n  author: aaaaaaaa00000001");
+$put('works/engine.en.md', "title: Engine notes EN\nstatus: published\ntranslation_id: 1111111100000001\ncustom_fields:\n  author: aaaaaaaa00000001");
+$put('works/ghost.md', "title: Ghost work\nstatus: published\ntranslation_id: 2222222200000002\ncustom_fields:\n  author: cccccccc00000003");
+$put('works/quiet.md', "title: Quiet work\nstatus: published\ntranslation_id: 3333333300000003\ncustom_fields:\n  quiet: aaaaaaaa00000001");
+$put('works/row.md', "title: Row work\nstatus: published\ntranslation_id: 4444444400000004\ncustom_fields:\n  editions:\n    - { editor: dddddddd00000004 }");
+$put('works/row.en.md', "title: Row work EN\nstatus: published\ntranslation_id: 4444444400000004\ncustom_fields:\n  editions:\n    - { editor: dddddddd00000004 }");
+$rsettings = ['languages' => ['default' => 'el', 'available' => ['el', 'en']]];
+$rtheme = new Theme($rroot);
+$rtypes = new ContentTypes($rtheme);
+$rrepo = new ContentRepository("$rroot/content", $markdown, $rsettings);
+$rdb = new GnozioCMS\SystemDatabase("$rroot/storage");
+$rdb->initialize();
+$rindex = new GnozioCMS\ContentIndex($rdb, "$rroot/content", new GnozioCMS\SystemMetaRepository($rdb));
+$rindex->keepReferences(fn(string $type): array => $rtypes->definition($type, 'en', 'el')['fields']);
+$rindex->rebuild($rrepo, ['authors', 'works']);
+$rrelations = new GnozioCMS\Relations($rindex, $rrepo, $rtypes, $rsettings, "$rroot/content");
+$rmake = function (?string $cache = null) use ($rrepo, $rtheme, $rtypes, $rrelations, $markdown): ContentSearch {
+    $docs = new SearchDocument(new BlockRegistry($rtheme), $rtypes, fn($text) => (string)$markdown->convert($text), 'el');
+    if ($cache !== null) { $docs->cacheIn($cache, 'rel-test'); }
+    return new ContentSearch($rrepo, $docs, $rrelations);
+};
+$rslugs = fn(array $r): array => array_map(fn($i) => $i->type . '/' . $i->slug, $r['results']);
+$rs = $rmake();
+check('a work is found by the title of its author', $rslugs($rs->search('lovelace', 'el')), ['authors/ada', 'works/engine']);
+check('and in the page\'s language, by the author\'s title there', $rslugs($rs->search('countess', 'en')), ['authors/ada', 'works/engine']);
+check('a target with no page in that language shows its title in the site\'s own', $rslugs($rs->search('editorial', 'en')), ['works/row']);
+check('and a title of another language is not matched where the target has its own', $rslugs($rs->search('lovelace', 'en')), []);
+check('title words and author words are matched together', $rslugs($rs->search('engine lovelace', 'el')), ['works/engine']);
+check('a draft target\'s title does not reach visitors', $rslugs($rs->search('secretname', 'el')), []);
+check('but a signed-in searcher finds the work by it', $rslugs($rs->search('secretname', 'el', true)), ['authors/cy', 'works/ghost']);
+check('searchable: false on the relation field keeps its targets out', $rslugs($rs->search('lovelace', 'el')), ['authors/ada', 'works/engine']);
+check('a relation inside a repeater row counts', $rslugs($rs->search('editorial', 'el')), ['authors/dee', 'works/row']);
+$hit = $rs->search('lovelace', 'el')['hits'][1];
+check('the snippet shows the related title, highlighted', [$hit['item']->slug, implode('', array_column($hit['snippet_parts'], 'text')), array_column(array_filter($hit['snippet_parts'], fn($p) => $p['match']), 'text')], ['engine', 'Ada Lovelace', ['Lovelace']]);
+check('the own title still outranks a related one', $rslugs($rs->search('ada', 'el')), ['authors/ada', 'works/engine']);
+check('without the relations service nothing changes', $rslugs((new ContentSearch($rrepo, new SearchDocument(new BlockRegistry($rtheme), $rtypes, fn($t) => (string)$markdown->convert($t), 'el')))->search('lovelace', 'el')), ['authors/ada']);
+
+// The extracted-text cache never holds a related title, so changes to a target show on the next search with no invalidation.
+$rcache = "$rroot/cache";
+check('cached: found by the author', $rslugs($rmake($rcache)->search('lovelace', 'el')), ['authors/ada', 'works/engine']);
+$put('authors/ada.md', "title: Ada Byron\nstatus: published\ntranslation_id: aaaaaaaa00000001");
+$rrepo->forget();
+$rindex->upsert($rrepo->parseFile('authors', "$rroot/content/authors/ada.md"));
+check('cached: a renamed author changes the results at once', [$rslugs($rmake($rcache)->search('lovelace', 'el')), $rslugs($rmake($rcache)->search('byron', 'el'))], [[], ['authors/ada', 'works/engine']]);
+$put('authors/ada.md', "title: Ada Byron\nstatus: draft\ntranslation_id: aaaaaaaa00000001");
+$rrepo->forget();
+$rindex->upsert($rrepo->parseFile('authors', "$rroot/content/authors/ada.md"));
+check('cached: unpublishing the author hides its title from visitors', [$rslugs($rmake($rcache)->search('byron', 'el')), $rslugs($rmake($rcache)->search('byron', 'el', true))], [[], ['authors/ada', 'works/engine']]);
+$cachedFiles = glob("$rcache/*.ser");
+$stored = unserialize(file_get_contents($rcache . '/' . hash('sha256', 'works|el') . '.ser'), ['allowed_classes' => false]);
+check('the cache holds ids but no title of the target', [$stored['entries']['engine'][1]['relations'], str_contains(serialize($stored), 'Byron')], [['aaaaaaaa00000001'], false]);
+exec('rm -rf ' . escapeshellarg($rroot));
+
 $remove = function (string $path) use (&$remove): void {
     if (is_dir($path)) { foreach (scandir($path) as $name) { if ($name !== '.' && $name !== '..') { $remove($path . '/' . $name); } } rmdir($path); }
     else { unlink($path); }

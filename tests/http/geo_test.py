@@ -201,5 +201,57 @@ root.request('/admin/theme', data=[tuple(x) for x in fields] + [('archive_types[
 html = anon.get('/en/routes')[2]
 check('and with another layout the routes are a list of cards again, with no map', 'data-geo ' not in html and 'The loop' in html)
 
+# ---- the data of the maps is kept, and made again whenever what it is made from changes
+import glob, sqlite3, time
+def ids(path, c=anon): return sorted(i['id'] for i in geo(c.get(path)[2])[0]['items'])
+def aside(path, c=anon):
+    html = c.get(path)[2]
+    return html.split('place-aside')[1] if 'place-aside' in html else ''
+def look_again():
+    # A file edited outside the admin is seen within half a minute; the clock is moved instead of waiting.
+    db = sqlite3.connect('app/storage/db/app.sqlite'); db.execute("update system_meta set value='0' where key='content_index_checked_at'"); db.commit(); db.close()
+ids('/en/points'); aside('/en/businesses/hotel'); anon.get('/en/routes/loop')
+kept = glob.glob('app/storage/cache/geo-data/*/*.ser')
+check('what the maps work out is kept (the data of a map, and what is near what)', any('/data-' in f for f in kept) and any('/near-' in f for f in kept) and any('/single-' in f for f in kept), kept[:3])
+before = anon.get('/en/businesses/hotel')[2]
+check('and a second visit gives the same page', anon.get('/en/businesses/hotel')[2] == before)
+def new_point(slug, title, location, status='published'):
+    return root.submit('/admin/edit?type=points&slug=&lang=en', has_field('body'), {'title': title, 'slug': slug, 'status': status, 'visible': '1', 'body': 'Text.', 'details[location]': location})
+new_point('fresh-pin', 'Fresh pin', '35.032, 26.001')
+check('an entry saved in the admin is on the map of its type at once', 'points/fresh-pin' in ids('/en/points'), ids('/en/points'))
+check('and in what is near it, on the page of a point that was cached', 'Fresh pin' in aside('/en/businesses/hotel') and 'Fresh pin' in aside('/en/routes/loop'))
+check('and the Map block that shows everything', 'points/fresh-pin' in ids(('/en/everything')), ids('/en/everything'))
+def retitle(f): return any(x[0] == 'title' for x in f['fields']) and any(x[0] == 'details[location]' for x in f['fields'])
+root.submit('/admin/edit?type=points&slug=fresh-pin&lang=en', retitle, {'title': 'Renamed pin'})
+check('a change of the title shows in the same places', 'Renamed pin' in aside('/en/businesses/hotel') and 'Fresh pin' not in aside('/en/businesses/hotel') and 'Renamed pin' in anon.get('/en/points')[2])
+root.submit('/admin/edit?type=points&slug=fresh-pin&lang=en', retitle, {'details[location]': '36.2, 27.2'})
+check('and a new position moves it: no longer near, and on the map where it is now', 'Renamed pin' not in aside('/en/businesses/hotel') and [i['lat'] for i in geo(anon.get('/en/points')[2])[0]['items'] if i['id'] == 'points/fresh-pin'] == [36.2])
+time.sleep(1.1)  # a file of the same size saved in the same second is not told apart from the one before (the parsed copy goes by time and size)
+root.submit('/admin/edit?type=points&slug=fresh-pin&lang=en', retitle, {'details[location]': '35.032, 26.001', 'status': 'draft'})
+check('a draft is not on the maps of visitors', 'points/fresh-pin' not in ids('/en/points') and 'Renamed pin' not in aside('/en/businesses/hotel'))
+check('but is for someone signed in, whose maps are kept apart', 'points/fresh-pin' in ids('/en/points', root) and 'Renamed pin' in aside('/en/businesses/hotel', root))
+check('and the visitor is still not shown it afterwards', 'points/fresh-pin' not in ids('/en/points') and 'Renamed pin' not in aside('/en/businesses/hotel'))
+# edited outside the admin (a copied folder, git): seen within half a minute
+text = open('app/content/points/fresh-pin.en.md', encoding='utf-8').read()
+open('app/content/points/fresh-pin.en.md', 'w', encoding='utf-8').write(text.replace('status: draft', 'status: published'))
+os.utime('app/content/points/fresh-pin.en.md', (time.time() + 5, time.time() + 5))
+look_again()
+check('a file edited outside the admin is on the maps once the index looks at the files', 'points/fresh-pin' in ids('/en/points') and 'Renamed pin' in aside('/en/businesses/hotel'))
+os.remove('app/content/points/fresh-pin.en.md')
+look_again()
+check('and one deleted outside the admin is gone from them', 'points/fresh-pin' not in ids('/en/points') and 'Renamed pin' not in aside('/en/businesses/hotel'))
+# a route file replaced
+loop_page = anon.get('/en/routes/loop')[2]
+length = re.search(r'<dt>Length</dt><dd>([^<]+)</dd>', loop_page).group(1)
+page('routes-map', {'type': 'map', 'source': 'routes'})
+file = 'app' + '/public' + TRACK
+bigger = [(35.00 + 0.06 * math.sin(a), 26.00 + 0.08 * math.cos(a), 100 + int(60 * math.sin(2 * a)) + 60) for a in [i * 2 * math.pi / 120 for i in range(121)]]
+open(file, 'wb').write(gpx(bigger))
+os.utime(file, (time.time() + 60, time.time() + 60))
+loop_page = anon.get('/en/routes/loop')[2]
+check('a route file replaced is read again: the page of the route shows the new length', re.search(r'<dt>Length</dt><dd>([^<]+)</dd>', loop_page).group(1) != length, length)
+after = [x['facts'][0] for x in geo(page('routes-map', {'type': 'map', 'source': 'routes'})[2])[0]['items'] if x['id'] == 'routes/loop']
+check('and so does a map of routes', after != [] and after[0] == re.search(r'<dt>Length</dt><dd>([^<]+)</dd>', loop_page).group(1), (after, length))
+
 print('\nALL PASSED' if not fails else '\n%d FAILED: %s' % (len(fails), fails))
 sys.exit(1 if fails else 0)

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.172 — 2026-10-19 — Search by related titles, faster maps
+- **Search finds an entry by the titles of the entries it points at**, for example a book by its author's name. The match ranks like a custom field. Titles follow the page's language, and a draft's title is shown only to someone signed in. The search cache keeps only the ids, so a renamed or unpublished entry counts at the next search. See `docs/search.md`.
+- **Maps keep their data in a disposable cache** (`storage/cache/geo-data`): the markers and lines of a map, the map of one entry and *what is near*. Each route file also gets a small summary, so lists no longer read every track. On a test site with 700 places and routes, the Map archive and a place page went from about 3 seconds to under 0.1 s, and the pages are unchanged.
+- The cache follows every save, delete, import and admin change, and a route file replaced in Media. See `docs/places-and-routes.md`.
+- With this, step 4 of the roadmap is complete.
+
 ## 0.1.171 — 2026-10-19 — Archive lists: relation filters, sorting, a card per type, a map
 - **The Filter bar can filter by a relation**, for example the books of one author. It uses the content index, with ordinary links, and filtered pages stay out of search engines.
 - **Visitors can choose the order** among the ones the list allows. Page links keep the choice.

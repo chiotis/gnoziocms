@@ -88,8 +88,12 @@ file_put_contents($root . '/custom/content-types/search-fixtures.yaml', Yaml::du
         'decimal' => ['type' => 'decimal'],
         'date' => ['type' => 'date'],
         'missing' => ['type' => 'text', 'default' => 'UnusedFieldDefault'],
+        'writer' => ['type' => 'relation', 'types' => ['authors']],
+        'private_writer' => ['type' => 'relation', 'types' => ['authors'], 'searchable' => false],
+        'hidden_writer' => ['type' => 'relation', 'types' => ['authors'], 'hidden' => true],
         'editions' => ['type' => 'repeater', 'fields' => [
             'publisher' => ['type' => 'text'],
+            'reviewer' => ['type' => 'relation', 'types' => ['authors'], 'multiple' => true],
             'format' => ['type' => 'select', 'options' => ['paper' => ['el' => 'Χαρτί', 'en' => 'Paper']]],
             'shops' => ['type' => 'repeater', 'fields' => [
                 'name' => ['type' => 'text', 'translatable' => true],
@@ -120,7 +124,7 @@ check('title is human text', $document['title'], 'Κήπος & θάλασσα');
 check('terms include scalar categories and tags', $document['terms'], 'Οικολογία Ελλάδα Φύση');
 check('excerpt is separate', $document['excerpt'], 'Μικρό απόσπασμα');
 check('body has paragraph boundaries and link labels, no markup or executable text', $document['body'], 'Πρώτη παράγραφος. Δεύτερη παράγραφος. Ορατή ετικέτα');
-check('no raw Markdown or other metadata leaks into document', str_contains(implode(' ', array_diff_key($document, ['normal' => true])), 'Secret') || str_contains($document['body'], 'Unused raw Markdown'), false);
+check('no raw Markdown or other metadata leaks into document', str_contains(implode(' ', array_diff_key($document, ['normal' => true, 'relations' => true])), 'Secret') || str_contains($document['body'], 'Unused raw Markdown'), false);
 check('undefined type has no custom fields', $document['fields'], '');
 check('missing title falls back to slug', $search->extract($item())['title'], 'fallback-slug');
 
@@ -200,6 +204,13 @@ check('a content type\'s list with a list in its rows is searched at both levels
     ['publisher' => 'PublisherWords', 'format' => 'paper', 'shops' => [['name' => ['default' => 'Πολιτεία', 'en' => 'Politeia'], 'url' => 'https://shop-secret.test', 'internal' => 'InternalShopSecret']]],
     ['shops' => [['name' => 'SecondShopWords']]], // a choice with no empty option has a value, shown on the page, so it is searched
 ]]], '', 'search-fixtures'))['fields'], 'PublisherWords Χαρτί Πολιτεία Χαρτί SecondShopWords');
+$related = $search->extract($item(['custom_fields' => [
+    'writer' => 'aaaaaaaa00000001', 'private_writer' => 'bbbbbbbb00000002', 'hidden_writer' => 'cccccccc00000003',
+    'editions' => [['publisher' => 'PublisherWords', 'reviewer' => ['dddddddd00000004', 'aaaaaaaa00000001']], ['reviewer' => ['eeeeeeee00000005']]],
+]], '', 'search-fixtures'));
+check('a document lists the ids of its relation fields, also in rows, once each', $related['relations'], ['aaaaaaaa00000001', 'dddddddd00000004', 'eeeeeeee00000005']);
+check('relation ids are not words of the entry: they never appear in its text', str_contains($related['fields'], '0000'), false);
+check('an entry with no relations lists none', $search->extract($item(['custom_fields' => ['author' => 'x']], '', 'search-fixtures'))['relations'], []);
 check('declared public number, decimal and date facts are searchable', $search->extract($item(['custom_fields' => ['number' => 2026, 'decimal' => 3.5, 'date' => '2026-10-16']], '', 'search-fixtures'))['fields'], '2026 3.5 2026-10-16');
 check('searchable override is preserved in content schema', $types->definition('search-fixtures')['fields']['opted_out']['searchable'], false);
 $field = FieldSchema::normalize(['ordinary' => ['type' => 'text']])['ordinary'];
@@ -298,8 +309,8 @@ $cache->extract($secondEntry);
 $cache->flush();
 $bucketFile = $root . '/cache/search/' . hash('sha256', 'pages|el') . '.ser';
 $stored = unserialize(file_get_contents($bucketFile), ['allowed_classes' => false]);
-check('cache stores only identities, fingerprints and extracted text', [count($stored['entries']), array_keys($stored['entries']['second-entry'][1])], [2, ['title', 'terms', 'fields', 'excerpt', 'body', 'normal']]);
-check('cached entries carry the normalized fields', array_map(SearchText::normalize(...), array_diff_key($stored['entries']['second-entry'][1], ['normal' => true])), $stored['entries']['second-entry'][1]['normal']);
+check('cache stores only identities, fingerprints and extracted text', [count($stored['entries']), array_keys($stored['entries']['second-entry'][1])], [2, ['title', 'terms', 'fields', 'excerpt', 'body', 'normal', 'relations']]);
+check('cached entries carry the normalized fields', array_map(SearchText::normalize(...), array_diff_key($stored['entries']['second-entry'][1], ['normal' => true, 'relations' => true])), $stored['entries']['second-entry'][1]['normal']);
 $cache = $cached();
 $cache->extract($secondEntry);
 $cache->flush();
@@ -312,7 +323,7 @@ $stored = unserialize(file_get_contents($bucketFile), ['allowed_classes' => fals
 check('a complete flush prunes entries not visited in the scan', array_keys($stored['entries']), ['fallback-slug']);
 
 $oldFormat = unserialize(file_get_contents($bucketFile), ['allowed_classes' => false]);
-$oldFormat['entries']['fallback-slug'][1] = array_diff_key($oldFormat['entries']['fallback-slug'][1], ['normal' => true]);
+$oldFormat['entries']['fallback-slug'][1] = array_diff_key($oldFormat['entries']['fallback-slug'][1], ['normal' => true, 'relations' => true]);
 file_put_contents($bucketFile, serialize($oldFormat));
 $markdownCalls = 0;
 $cache = $cached();

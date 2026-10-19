@@ -14,7 +14,7 @@ final class SearchDocument
     private const CACHE_ENTRIES = 5000;
     private const TEXT_KEYS = ['title', 'terms', 'fields', 'excerpt', 'body'];
     /** Part of the schema hash: bump when the stored document shape changes so older cache files are rebuilt. */
-    private const FORMAT = 2;
+    private const FORMAT = 3;
     private ?string $cacheDir = null;
     private string $cacheSalt = '';
     private ?string $blockFingerprint = null;
@@ -81,7 +81,9 @@ final class SearchDocument
 
     /**
      * Display text per field, plus the same fields run through SearchText::normalize() once so a search does not repeat it.
-     * @return array{title: string, terms: string, fields: string, excerpt: string, body: string, normal: array{title: string, terms: string, fields: string, excerpt: string, body: string}}
+     * `relations` lists the ids the entry points at through its searchable relation fields (also in repeaters); the titles behind
+     * them are not part of the document, because a target's title changes without this entry changing (ContentSearch adds them).
+     * @return array{title: string, terms: string, fields: string, excerpt: string, body: string, normal: array{title: string, terms: string, fields: string, excerpt: string, body: string}, relations: list<string>}
      */
     public function extract(ContentItem $item): array
     {
@@ -142,8 +144,9 @@ final class SearchDocument
             && count($data['entries']) <= self::CACHE_ENTRIES) {
             foreach ($data['entries'] as $slug => $entry) {
                 if (!is_array($entry) || !is_string($entry[0] ?? null) || !is_array($entry[1] ?? null)
-                    || array_keys($entry[1]) !== [...self::TEXT_KEYS, 'normal'] || !is_array($entry[1]['normal'])
-                    || !self::texts(array_diff_key($entry[1], ['normal' => true])) || !self::texts($entry[1]['normal'])) {
+                    || array_keys($entry[1]) !== [...self::TEXT_KEYS, 'normal', 'relations'] || !is_array($entry[1]['normal'])
+                    || !is_array($entry[1]['relations']) || count(array_filter($entry[1]['relations'], 'is_string')) !== count($entry[1]['relations'])
+                    || !self::texts(array_diff_key($entry[1], ['normal' => true, 'relations' => true])) || !self::texts($entry[1]['normal'])) {
                     continue;
                 }
                 $bucket['entries'][$slug] = $entry;
@@ -160,7 +163,7 @@ final class SearchDocument
         return array_keys($texts) === self::TEXT_KEYS && count(array_filter($texts, 'is_string')) === count(self::TEXT_KEYS);
     }
 
-    /** @return array{title: string, terms: string, fields: string, excerpt: string, body: string, normal: array<string, string>} */
+    /** @return array{title: string, terms: string, fields: string, excerpt: string, body: string, normal: array<string, string>, relations: list<string>} */
     private function build(ContentItem $item): array
     {
         $terms = [];
@@ -175,17 +178,18 @@ final class SearchDocument
         $definitions = $this->types->definition($item->type, $item->lang, $this->defaultLang)['fields'];
         $values = $this->types->values($item->type, $item->meta, $item->lang, $this->defaultLang);
         $rawBlocks = $item->get('blocks', []);
+        $ids = [];
         $texts = [
             'title' => self::plain(self::scalar($item->get('title', $item->slug))),
             'terms' => self::join($terms),
-            'fields' => $this->fields($definitions, $values, $values, $item->lang, true),
+            'fields' => $this->fields($definitions, $values, $values, $item->lang, true, $ids),
             'excerpt' => self::plain(self::scalar($item->get('excerpt', ''))),
             'body' => self::join([
                 self::plain($item->html),
                 $this->blockText(is_array($rawBlocks) ? $rawBlocks : [], $item->lang),
             ]),
         ];
-        return $texts + ['normal' => array_map(SearchText::normalize(...), $texts)];
+        return $texts + ['normal' => array_map(SearchText::normalize(...), $texts), 'relations' => array_values(array_unique($ids))];
     }
 
     /** @param array<int, mixed> $blocks */
@@ -230,7 +234,7 @@ final class SearchDocument
      * @param array<string, mixed> $values stored values only, so unused defaults do not become search results
      * @param array<string, mixed> $context resolved values for conditional fields
      */
-    private function fields(array $definitions, array $values, array $context, string $lang, bool $custom = false): string
+    private function fields(array $definitions, array $values, array $context, string $lang, bool $custom = false, ?array &$ids = null): string
     {
         $texts = [];
         foreach ($definitions as $key => $field) {
@@ -252,9 +256,14 @@ final class SearchDocument
                 }
                 foreach ($rows as $row) {
                     if (is_array($row)) {
-                        $texts[] = $this->fields($field['fields'], $row, FieldSchema::resolve($field['fields'], $row) + $context, $lang, $custom);
+                        $texts[] = $this->fields($field['fields'], $row, FieldSchema::resolve($field['fields'], $row) + $context, $lang, $custom, $ids);
                     }
                 }
+                continue;
+            }
+            if ($field['type'] === 'relation') {
+                // Only the ids are kept here; the titles are looked up per search, so they stay current.
+                $ids = array_merge($ids ?? [], RelationFields::idList(FieldSchema::clean($field, $values[$key])));
                 continue;
             }
             // Block selects describe layout/source/style; content-type selects describe public facts.

@@ -29,6 +29,14 @@ fields:
     searchable: true # A public credit rendered by the site's custom template.
 ```
 
+### Related entries
+
+An entry is also found by the **titles of the entries it points at**: a book by the name of its author, a route by the points on it, when those are `relation` fields (also inside a repeater's rows, and for any content type, including one that exists only as a YAML file). The titles are matched like a custom field's text, in their own weighted field (the same weight as custom fields, below taxonomy terms and above the excerpt), so a book whose title contains the author's name still ranks above one that only has the author. The snippet may show the related title, highlighted.
+
+- The title is the target's title in the page's language, else the site's own language, exactly as the relation is shown on the page. A target that is a draft or hidden gives its title to someone signed in only; a visitor never finds an entry by a title they cannot see.
+- The same rules as other fields apply to the relation field itself: `hidden: true` and `searchable: false` keep its targets out, a field with `show: false` needs `card: true` or `searchable: true`, and a conditional field counts only while its condition holds.
+- A field that points at nothing, or at an entry that no longer exists, adds no words.
+
 Visitors see published, visible entries of enabled content types in the requested language. A missing translation is not substituted with another language. As before, someone signed in can also find drafts/hidden entries; their responses are private and not cached by the public page cache. Form definitions are excluded for everyone. The admin search is a separate service and has not changed.
 
 ## Results page and custom themes
@@ -51,9 +59,11 @@ Existing overrides in `custom/templates/search.twig` still receive `query` and t
 
 ## Cache and extension points
 
-`ContentRepository` remains the source of visibility, enabled types and parsed content. `SearchDocument` turns each entry into fields of searchable text; `ContentSearch` handles matching, relevance and pagination; `SearchText` handles normalization and display parts. The result template has no search logic. Repeaters (also a repeater inside a repeater's rows) are read by `SearchDocument`; relationships can extend extraction the same way without replacing the matching or presentation code.
+`ContentRepository` remains the source of visibility, enabled types and parsed content. `SearchDocument` turns each entry into fields of searchable text; `ContentSearch` handles matching, relevance and pagination; `SearchText` handles normalization and display parts. The result template has no search logic. Repeaters (also a repeater inside a repeater's rows) are read by `SearchDocument`; relationships extend extraction the same way without replacing the matching or presentation code: `SearchDocument` records the ids a relation field holds, and `ContentSearch` turns them into titles with `Relations`.
 
 The extracted-text cache under `storage/cache/search` avoids converting block Markdown on every search. It is disposable and may be deleted. Entry data, relevant field definitions, language and application version determine whether an extracted document can be reused. A missing, corrupt or unwritable cache falls back to extraction. It also holds each field's normalized text, so a search does not normalize every entry again. Only a signed-in search, which sees every entry, removes cached entries that no longer exist; public searches leave drafts cached by it alone. Visibility and result sets are never stored in this cache.
+
+**Related titles are not in the cache.** The cache holds, for each entry, only the *ids* its relation fields point at (they come from the entry's own data, so the existing fingerprint covers them). The titles are looked up for each search from the content index, one query for a whole content type, and only for the targets the searcher may see. A target that is renamed, published, unpublished or deleted therefore changes the results of the next search with no invalidation at all, and no title of a draft can be left behind in a file that a visitor's search reads. Without the index, the lookup finds nothing and the search works as before.
 
 This is still a scan over the site's entries, not a full-text database index. It adds no external search service or database migration. An index can be introduced later if measured site sizes justify it, while keeping the same result contract.
 
@@ -65,4 +75,4 @@ php tests/unit/search.php
 tests/run.sh search
 ```
 
-These cover extraction, Greek normalization, ranking, excerpts/highlights, visibility and language boundaries, current content after changes, custom-template compatibility, type filters, pagination, malformed query parameters and safe HTML output.
+These cover extraction (relation ids included), Greek normalization, ranking, excerpts/highlights, visibility and language boundaries, related titles (language, drafts, `searchable: false`, rows of a repeater, a renamed or unpublished target), current content after changes, custom-template compatibility, type filters, pagination, malformed query parameters and safe HTML output.

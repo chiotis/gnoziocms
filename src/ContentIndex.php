@@ -16,6 +16,7 @@ final class ContentIndex
 
     private const META_SIGNATURE = 'content_refs_signature';
     private const META_CHECKED = 'content_index_checked_at';
+    private const META_REVISION = 'content_revision';
 
     /** Changes when the way references are read or stored changes, so an index made by older code is built again. */
     private const REFS_VERSION = '3';
@@ -68,6 +69,24 @@ final class ContentIndex
     {
         return $this->fieldsOf !== null && $this->taxonomyNames !== null && $this->meta !== null && $this->meta->isAvailable()
             && (string)$this->meta->get(self::META_SIGNATURE) === $this->signature($types);
+    }
+
+    /**
+     * A token that changes whenever the index learns of a change (a save, a delete, an import, a file changed outside the admin that
+     * a refresh found) or the site calls bump(). What is derived from the whole of the content (the maps' data) keeps it with
+     * the data and is stale when it differs. Empty when there is no index to say.
+     */
+    public function revision(): string
+    {
+        return $this->meta !== null && $this->isAvailable() && $this->meta->isAvailable() ? (string)$this->meta->get(self::META_REVISION) : '';
+    }
+
+    /** Says that something the content depends on has changed (the admin calls it for every change it makes). */
+    public function bump(): void
+    {
+        if ($this->meta !== null && $this->meta->isAvailable()) {
+            $this->meta->set(self::META_REVISION, bin2hex(random_bytes(6)));
+        }
     }
 
     /** Makes the next read look at the files again (what changed them did not go through the index). */
@@ -123,7 +142,7 @@ final class ContentIndex
             $removed = 0;
             foreach ($pdo->query('SELECT id, type, slug, lang FROM content_index')->fetchAll() as $row) {
                 if (!isset($keep[$row['type'] . '|' . $row['slug'] . '|' . $row['lang']])) {
-                    $this->remove((string)$row['type'], (string)$row['slug'], (string)$row['lang']);
+                    $this->drop((string)$row['type'], (string)$row['slug'], (string)$row['lang']);
                     $removed++;
                 }
             }
@@ -139,6 +158,7 @@ final class ContentIndex
             if ($this->meta !== null && $this->meta->isAvailable()) {
                 $this->meta->set(self::META_SIGNATURE, $this->signature($types));
             }
+            $this->bump();
         } catch (\Throwable $e) {
             $pdo->rollBack();
             throw $e;
@@ -184,13 +204,16 @@ final class ContentIndex
             }
             $removed = 0;
             foreach (array_diff_key($known, $seen) as $row) {
-                $this->remove((string)$row['type'], (string)$row['slug'], (string)$row['lang']);
+                $this->drop((string)$row['type'], (string)$row['slug'], (string)$row['lang']);
                 $removed++;
             }
             $pdo->commit();
         } catch (\Throwable $e) {
             $pdo->rollBack();
             throw $e;
+        }
+        if ($indexed + $removed > 0) {
+            $this->bump();
         }
         return ['ok' => true, 'indexed' => $indexed, 'removed' => $removed];
     }
@@ -222,14 +245,21 @@ final class ContentIndex
     {
         if ($this->isAvailable()) {
             $this->write($item);
+            $this->bump();
         }
     }
 
     public function remove(string $type, string $slug, string $lang): void
     {
-        if (!$this->isAvailable()) {
-            return;
+        if ($this->isAvailable()) {
+            $this->drop($type, $slug, $lang);
+            $this->bump();
         }
+    }
+
+    /** Forgets one entry; the callers that do many at once (rebuild, refresh) say once at the end that the content changed. */
+    private function drop(string $type, string $slug, string $lang): void
+    {
         $this->pdo()->prepare('DELETE FROM content_index WHERE type = :type AND slug = :slug AND lang = :lang')
             ->execute(['type' => $type, 'slug' => $slug, 'lang' => $lang]);
         $this->forgetReferences($type, $slug, $lang);
