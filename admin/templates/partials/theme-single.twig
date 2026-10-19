@@ -32,7 +32,7 @@
       {% if card.standard and v.template != 'landing' %}{% set summary = summary|merge([title_options[v.title] ?? '']) %}{% endif %}
       {% if card.layouts and v.template != 'landing' and v.sidebar != 'none' %}{% set summary = summary|merge(['Sidebar ' ~ (single_fields.sidebar.options[v.sidebar]|lower)]) %}{% endif %}
       {% if card.standard and v.header != 'site' %}{% set summary = summary|merge([header_options[v.header] ?? '']) %}{% endif %}
-      <article class="lc-card rounded-xl border border-slate-200 bg-white" data-layout-card data-template="{{ v.template }}" data-sidebar="{{ v.sidebar }}" aria-labelledby="single-{{ card.type }}">
+      <article class="lc-card rounded-xl border border-slate-200 bg-white" data-layout-card data-template="{{ v.template }}" data-sidebar="{{ v.sidebar }}" data-built="{{ card.built and card.built.use ? 'built' : 'theme' }}" aria-labelledby="single-{{ card.type }}">
         <header class="flex items-start gap-3 p-3">
           {% if card.standard %}
             <div class="lc-preview" data-lc-preview data-template="{{ v.template }}" data-title="{{ v.title }}" data-header="{{ v.header }}" data-sidebar="{{ v.sidebar }}" aria-hidden="true">
@@ -49,8 +49,25 @@
           {% if card.edit_url %}<a href="{{ url(card.edit_url) }}" class="shrink-0 rounded-md px-2 py-1 text-xs font-medium text-slate-600 no-underline hover:bg-slate-100 hover:text-slate-900">Fields</a>{% endif %}
         </header>
 
+        {% if card.built %}
+          {# The page of an entry of this type: the theme's template, or one built with blocks that show the entry's fields (any type, also one the site adds later). #}
+          <div class="lc-built border-t border-slate-100 p-3">
+            <dl class="m-0"><div class="lc-row">
+              <dt>Page</dt>
+              <dd class="m-0 flex flex-wrap items-center gap-2">
+                {{ c.seg('single_template[' ~ card.type ~ ']', {theme: "The theme's", built: 'Built with blocks'}, card.built.use ? 'built' : 'theme', 'How the page of ' ~ card.label ~ ' is made', 'built') }}
+                <a href="{{ url(card.built.url) }}" class="lc-built-edit rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-700 no-underline hover:bg-slate-50">Edit template</a>
+                <button type="button" class="rounded-md px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900" data-built-reset title="Draw the page with the theme's template again. The built template stays stored, so you can switch it on again.">Reset</button>
+              </dd>
+            </div></dl>
+            <p class="mt-1.5 text-[11px] leading-4 text-slate-500" data-built-note>
+              {% if card.built.blocks %}{{ card.built.blocks }} {{ card.built.blocks == 1 ? 'block' : 'blocks' }} in the template.{% else %}No template yet: choose Edit template to build one.{% endif %}
+              The choices below are for the theme's template only.
+            </p>
+          </div>
+        {% endif %}
         {% if card.standard or card.header or card.sidebar or card.options %}
-          <dl class="m-0 space-y-2.5 border-t border-slate-100 p-3">
+          <dl class="m-0 space-y-2.5 border-t border-slate-100 p-3" data-theme-only>
             {% if card.standard and card.layouts %}
               <div class="lc-row">
                 <dt>Page layout</dt>

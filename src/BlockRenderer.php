@@ -40,12 +40,16 @@ final class BlockRenderer
      */
     public function render(array $rawBlocks, array $context): array
     {
-        $blocks = $this->prepare($rawBlocks, (string)($context['body_html'] ?? ''));
+        $blocks = $this->prepare($rawBlocks, (string)($context['body_html'] ?? ''), $context);
+        // A template built with blocks may place the entry's text itself (Entry text); the Entry blocks it draws then do not repeat it.
+        if ($context['template_mode'] ?? false) {
+            $context['template_has_content'] = self::placesContent($blocks);
+        }
         $html = '';
         // Each shown block as [width, tone, spacing, html]; blocks narrower than the page are gathered into rows afterwards.
         $sections = [];
         // What the blocks (also those inside containers) add to the page: their types, the FAQ questions and the first picture.
-        $found = ['types' => [], 'faq' => [], 'image' => '', 'container' => false];
+        $found = ['types' => [], 'faq' => [], 'image' => '', 'container' => false, 'row' => false, 'data' => []];
         $leadsWithHero = false;
         $opensWithSlider = false;
         $sliderDark = true;
@@ -97,7 +101,7 @@ final class BlockRenderer
             $assetTypes = array_values(array_unique(array_merge(['hero'], array_diff($assetTypes, ['hero']))));
         }
         // Only a page with a block narrower than the page carries the styles of a row. A container's columns are rows too: the blocks in them follow the same narrow rules.
-        if ($narrow || $found['container']) {
+        if ($narrow || $found['container'] || $found['row']) {
             $assetTypes[] = Theme::ROW_STYLES;
         }
         if ($found['container']) {
@@ -110,6 +114,8 @@ final class BlockRenderer
         if ($faq !== []) {
             $structuredData[] = ['@type' => 'FAQPage', 'mainEntity' => $faq];
         }
+        // The entry's own blocks drawn inside a template (Entry blocks) bring their structured data.
+        $structuredData = array_merge($structuredData, $found['data']);
 
         return [
             'html' => $html,
@@ -133,12 +139,15 @@ final class BlockRenderer
      * @param array<string, mixed> $definition
      * @param array<string, mixed> $values the block's checked values
      * @param array<string, mixed> $context
-     * @param array{types: array<string, bool>, faq: array<int, array<string, mixed>>, image: string, container: bool} $found
+     * @param array{types: array<string, bool>, faq: array<int, array<string, mixed>>, image: string, container: bool, row: bool, data: array<int, array<string, mixed>>} $found
      * @return array{0: int, 1: string, 2: string, 3: string}|null width, tone, spacing, markup; null for a block with nothing to show
      */
     private function section(string $type, array $definition, array $values, array $context, int $index, bool $isFirst, string $uid, array &$found): ?array
     {
         $values = $this->withData($type, $definition, $values, $context);
+        if ($type === 'entry-blocks') {
+            $values = $this->entryBlocks($values, $context, $found);
+        }
         if (($values['_empty'] ?? false) === true) {
             // A dynamic block with nothing to show (no matching content, no valid video) leaves no empty section behind.
             return null;
@@ -207,7 +216,7 @@ final class BlockRenderer
         foreach ($resolved['columns'] as $c => $column) {
             $width = (string)$column['settings']['width'];
             $html = '';
-            foreach ($this->prepareList($column['blocks'], $resolved['_source'] . '.' . $c . '.', false) as $k => [$type, $definition, $values]) {
+            foreach ($this->prepareList($column['blocks'], $resolved['_source'] . '.' . $c . '.', false, $context['bindings'] ?? null) as $k => [$type, $definition, $values]) {
                 $values['width'] = (string)BlockContainer::blockWidth($width, $count);
                 $uid = $values['anchor'] !== '' ? $values['anchor'] : 'block-' . ($index + 1) . '-' . ($c + 1) . '-' . ($k + 1);
                 $section = $this->section($type, $definition, $values, $context, $index, false, $uid, $found);
@@ -348,28 +357,19 @@ final class BlockRenderer
      * Valid, visible blocks with resolved values. When the page body has text and no `content`
      * block places it, it is shown right after an opening hero or slider (or first).
      *
+     * In a template built with blocks (`template_mode` in the context) the template decides where the text goes: nothing is added.
+     *
      * @param array<int, mixed> $rawBlocks
+     * @param array<string, mixed> $context
      * @return array<int, array{0: string, 1: array<string, mixed>, 2: array<string, mixed>}>
      */
-    private function prepare(array $rawBlocks, string $bodyHtml): array
+    private function prepare(array $rawBlocks, string $bodyHtml, array $context = []): array
     {
-        $prepared = $this->prepareList($rawBlocks, '', true);
-        // A content block (visible, also inside a container) places the page's text.
-        $hasContent = false;
-        foreach ($prepared as [$type, , $values]) {
-            if ($type === 'content') {
-                $hasContent = true;
-            } elseif ($type === BlockContainer::TYPE) {
-                foreach ($values['columns'] as $column) {
-                    foreach ($column['blocks'] as $block) {
-                        $hasContent = $hasContent || (($block['type'] ?? null) === 'content' && !FieldSchema::isTruthy($block['hidden'] ?? false));
-                    }
-                }
-            }
-        }
+        $prepared = $this->prepareList($rawBlocks, '', true, $context['bindings'] ?? null);
+        $hasContent = self::placesContent($prepared);
 
         $content = $this->registry->get('content');
-        if (!$hasContent && $content !== null && trim(strip_tags($bodyHtml, '<img><iframe><video>')) !== '') {
+        if (!$hasContent && $content !== null && !($context['template_mode'] ?? false) && trim(strip_tags($bodyHtml, '<img><iframe><video>')) !== '') {
             $values = FieldSchema::resolve($content['common'], []) + FieldSchema::resolve($content['fields'], []) + ['_source' => -1];
             $position = ($prepared[0][0] ?? '') === 'hero' || self::isOpeningSlider((string)($prepared[0][0] ?? ''), $prepared[0][2] ?? []) ? 1 : 0;
             array_splice($prepared, $position, 0, [['content', $content, $values]]);
@@ -378,13 +378,40 @@ final class BlockRenderer
     }
 
     /**
+     * Whether a content block (visible, also inside a container) places the page's text.
+     *
+     * @param array<int, array{0: string, 1: array<string, mixed>|null, 2: array<string, mixed>}> $prepared
+     */
+    private static function placesContent(array $prepared): bool
+    {
+        foreach ($prepared as [$type, , $values]) {
+            if ($type === 'content') {
+                return true;
+            }
+            if ($type === BlockContainer::TYPE) {
+                foreach ($values['columns'] as $column) {
+                    foreach ($column['blocks'] as $block) {
+                        if (($block['type'] ?? null) === 'content' && !FieldSchema::isTruthy($block['hidden'] ?? false)) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
      * The valid, visible blocks of a list with resolved values. At the top of the page a container is kept too, with its columns.
      *
      * @param array<int, mixed> $rawBlocks
      * @param string $source what comes before a block's place in the editor's list (the preview marks blocks with it)
+     * @param EntryBindings|null $bindings the entry a template built with blocks is drawn for: a field bound to a field of the entry gets
+     *        its value here, before the block's fields are checked (so it is cleaned like a typed one), and a block whose bound
+     *        fields are all empty is left out when it asks for that
      * @return array<int, array{0: string, 1: array<string, mixed>|null, 2: array<string, mixed>}>
      */
-    private function prepareList(array $rawBlocks, string $source, bool $containers): array
+    private function prepareList(array $rawBlocks, string $source, bool $containers, ?EntryBindings $bindings = null): array
     {
         $prepared = [];
         foreach ($rawBlocks as $position => $raw) {
@@ -404,6 +431,13 @@ final class BlockRenderer
             $definition = $this->registry->get($type);
             if ($definition === null) {
                 continue;
+            }
+            if ($bindings !== null) {
+                $bound = $bindings->apply($definition['fields'], $raw);
+                if ($bound['hidden']) {
+                    continue;
+                }
+                $raw = $bound['raw'];
             }
             $values = FieldSchema::resolve($definition['common'], array_intersect_key($raw, $definition['common']));
             if ($values['hidden'] === true) {
@@ -440,6 +474,45 @@ final class BlockRenderer
     }
 
     /**
+     * The Entry blocks block of a template: the blocks the entry has of its own, drawn where the template puts them. They are drawn
+     * with the same renderer and what they need (style sheets, scripts, structured data, the row styles) is added to the page.
+     *
+     * @param array<string, mixed> $values
+     * @param array<string, mixed> $context
+     * @param array{types: array<string, bool>, faq: array<int, array<string, mixed>>, image: string, container: bool, row: bool, data: array<int, array<string, mixed>>} $found
+     * @return array<string, mixed>
+     */
+    private function entryBlocks(array $values, array $context, array &$found): array
+    {
+        $item = $context['item'] ?? null;
+        $own = $item instanceof ContentItem && is_array($item->meta['blocks'] ?? null) ? array_values($item->meta['blocks']) : [];
+        $values['html'] = '';
+        $values['_empty'] = true;
+        if ($own === []) {
+            return $values;
+        }
+        // The entry's text sits where the template put it (Entry text); without that block the entry's own blocks may place it.
+        $inside = array_diff_key($context, ['bindings' => true, 'template_mode' => true, 'template_has_content' => true]);
+        // The entry's own blocks are not the template's: a click on them in the preview must not open a block of the template.
+        $inside['block_preview'] = false;
+        $inside['body_html'] = ($context['template_has_content'] ?? false) ? '' : (string)($context['body_html'] ?? '');
+        $drawn = $this->render($own, $inside);
+        if (trim($drawn['html']) === '') {
+            return $values;
+        }
+        foreach ($drawn['types'] as $name) {
+            $found['types'][$name] = true;
+        }
+        $found['container'] = $found['container'] || in_array(Theme::CONTAINER_STYLES, $drawn['asset_types'], true);
+        $found['row'] = $found['row'] || in_array(Theme::ROW_STYLES, $drawn['asset_types'], true);
+        $found['data'] = array_merge($found['data'], $drawn['structured_data']);
+        $found['image'] = $found['image'] !== '' ? $found['image'] : $drawn['image'];
+        $values['html'] = $drawn['html'];
+        $values['_empty'] = false;
+        return $values;
+    }
+
+    /**
      * Markdown renderings and dynamic data for a block.
      *
      * @param array<string, mixed> $definition
@@ -460,6 +533,14 @@ final class BlockRenderer
 
         if ($type === 'content') {
             $values['body_html'] = (string)($context['body_html'] ?? '');
+        }
+        if ($type === 'fact-sheet') {
+            // The declared fields of the entry, as the fields the template chose (or the ones its page shows when it chose none).
+            $bindings = $context['bindings'] ?? null;
+            $values['entries'] = $bindings instanceof EntryBindings
+                ? $bindings->factSheet(array_map(static fn(array $row): string => (string)($row['field'] ?? ''), $values['fields']))
+                : [];
+            $values['_empty'] = $values['entries'] === [];
         }
         if ($type === 'cards' && ($values['source'] ?? 'manual') !== 'manual' && isset($this->providers['items'])) {
             $values['entries'] = ($this->providers['items'])((string)$values['source'], (string)($context['lang'] ?? ''), (int)($values['limit'] ?? 3));

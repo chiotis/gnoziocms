@@ -1,0 +1,8 @@
+label: Entry blocks
+description: 'The blocks the entry has of its own (its Blocks tab), drawn here. Use it to leave room in the template for what each entry builds itself. Only in a template built with blocks.'
+category: Entry
+scope: template
+spacing: none
+variants:
+  default: Default
+fields: {}

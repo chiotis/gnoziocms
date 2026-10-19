@@ -1,0 +1,97 @@
+{#
+  Theme > Single Layouts > Edit template: the blocks that draw the page of every entry of one content type, edited with the block editor
+  (public/assets/js/admin-blocks.js, context "template") beside a live preview of a real entry. The blocks are stored in the theme
+  settings (`single_templates.<type>`, src/SingleTemplates.php), with a set for each language when the site has several.
+
+  type, type_label   the content type
+  template_use       whether the type's pages are drawn from the template
+  template_json      what the editor starts from (block types, the blocks now there, the fields a block can be bound to)
+  preview_choices    the entries the preview can show: [{value: "slug|lang", label}]
+#}
+{% extends '@admin/base.twig' %}
+{% set page_heading = type_label ~ ' template' %}
+
+{% block content %}
+  {% set primary_button_class = 'inline-flex shrink-0 items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700' %}
+  {% set secondary_button_class = 'inline-flex shrink-0 items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50' %}
+
+  {% if saved %}
+    <template data-flash data-type="success">Saved.</template>
+  {% endif %}
+  {% if failed %}
+    <template data-flash data-type="error">The template could not be saved because the SQLite system database is unavailable.</template>
+  {% endif %}
+
+  <div class="ep-split" data-entry-split>
+  <div class="ep-main">
+  <form method="post" action="{{ url('admin/theme?template=' ~ type) }}" class="editor space-y-3" id="template-form">
+    {{ csrf_field() }}
+
+    <header class="en-head">
+      <p class="en-crumb">
+        <a href="{{ url('admin/theme?tab=single_layouts') }}">Single Layouts</a>
+        <span aria-hidden="true">/</span>
+        <strong>{{ type_label }} template</strong>
+      </p>
+      <button type="button" class="ep-toggle" data-entry-preview-toggle aria-expanded="false" aria-controls="entry-preview" title="Show the template with a real entry">
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path stroke-linecap="round" d="M14 4v16"/></svg>
+        <span>Preview</span>
+      </button>
+    </header>
+
+    <section class="lc-card en-card" aria-labelledby="tpl-title">
+      <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <div class="min-w-0">
+          <h2 id="tpl-title" class="text-sm font-semibold text-slate-900">Page of a {{ type_singular|lower }}</h2>
+          <p class="mt-0.5 text-xs text-slate-500">The blocks below draw every {{ type_singular|lower }}. A block shows a field of the entry when you bind it (the chain button beside a field); the entry's title, text, fact sheet and own blocks have blocks of their own.{% if admin_languages|length > 1 %} Each language can have its own set; one without shows the site's own.{% endif %}</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <label class="lc-chip"><input type="checkbox" name="use" value="1"{% if template_use %} checked{% endif %}><span>Use this template for {{ type_label|lower }}</span></label>
+          <label class="flex items-center gap-1.5 text-xs text-slate-600" for="tpl-entry">Preview with
+            <select id="tpl-entry" name="preview_entry" class="lc-input lc-select max-w-[16rem]">
+              {% for choice in preview_choices %}<option value="{{ choice.value }}"{% if choice.value == preview_chosen %} selected{% endif %}>{{ choice.label }}</option>{% else %}<option value="">No entries yet</option>{% endfor %}
+            </select>
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <section class="rounded-lg border border-slate-200 bg-white p-4" aria-label="Blocks of the template">
+      <div class="mb-3 flex items-center justify-between gap-2 border-b border-slate-100 pb-3">
+        <h2 class="text-sm font-semibold text-slate-900">Blocks <span data-block-count class="tab-count"></span></h2>
+      </div>
+      <input type="hidden" name="blocks_json" value="" data-block-editor-output>
+      <input type="hidden" name="blocks_editor" value="" data-block-editor-flag>
+      <div data-block-editor class="space-y-3">
+        <p class="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">The block editor needs JavaScript. The template is kept unchanged when you save.</p>
+      </div>
+      <script type="application/json" id="block-editor-data">{{ template_json|raw }}</script>
+    </section>
+
+    {% embed '@admin/partials/action-bar.twig' %}
+      {% block leading %}
+        <a href="{{ url('admin/theme?tab=single_layouts') }}" class="{{ secondary_button_class }}">Back to Single Layouts</a>
+      {% endblock %}
+      {% block actions %}
+        <button type="submit" class="{{ primary_button_class }}">
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+          Save template
+        </button>
+      {% endblock %}
+    {% endembed %}
+  </form>
+  </div>
+  <div class="ep-panel" id="entry-preview" data-entry-preview data-preview data-mode="entry" data-form="#template-form" data-endpoint="{{ url('admin/theme?template=' ~ type ~ '&preview=1') }}" hidden>
+    <button type="button" class="ep-grip" data-entry-preview-grip role="separator" aria-orientation="vertical" aria-label="Width of the preview. Use the left and right arrow keys." aria-valuemin="320" aria-valuemax="900" tabindex="0"></button>
+    <button type="button" class="ep-close" data-entry-preview-close aria-label="Hide the preview">Close</button>
+    {% include '@admin/partials/theme-preview.twig' with {preview_url: '', preview_title: 'Preview of the template with an entry', preview_note: 'A real entry drawn with the template as it is now. Nothing is saved. Click a block to open its settings.'} %}
+  </div>
+  </div>
+
+  {% include '@admin/partials/icon-library.twig' %}
+  <script src="{{ asset('js/admin-sortable.js') }}"></script>
+  <script src="{{ asset('js/admin-panel.js') }}"></script>
+  <script src="{{ asset('js/admin-blocks.js') }}"></script>
+  <script src="{{ asset('js/admin-preview.js') }}" defer></script>
+  <script src="{{ asset('js/admin-entry-preview.js') }}" defer></script>
+{% endblock %}

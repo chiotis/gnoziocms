@@ -137,6 +137,20 @@ final class BlockRuntime
         );
     }
 
+    /** The bindings of a template built with blocks for one entry: its fields as the template's blocks can show them in a language. */
+    public function bindingsFor(ContentItem $item, string $lang): EntryBindings
+    {
+        $dateFormat = (string)(($this->settings)()['date_format'] ?? 'd/m/Y');
+        return new EntryBindings(
+            $item,
+            ($this->contentTypes)(),
+            $lang,
+            ($this->defaultLanguage)(),
+            static fn(string $value): string => Format::dateValue($value, $dateFormat),
+            fn(string $taxonomy, string $id): string => ($this->termLabel)($taxonomy, $id, $lang)
+        );
+    }
+
     /** Whether entries of a content type can have a place (a field of the kind `location`). */
     public function hasPlaceField(string $type): bool
     {

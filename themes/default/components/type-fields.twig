@@ -1,6 +1,6 @@
 {#
   Fields a content type declares (Content types in docs/theming.md), as a fact sheet.
-  Variable: item. Prints nothing when the item has no values to show.
+  Variable: item. Prints nothing when the item has no values to show. A template built with blocks (Fact sheet) gives the entries to print itself as `entries` (see ContentTypes::displayFields).
   A list of rows (a repeater) is a list, each row its fields with their labels; a list inside a row is a list inside that one.
 #}
 {% macro value(entry, prefix) %}
@@ -37,7 +37,7 @@
 {% endmacro %}
 
 {% import _self as f %}
-{% set entries = content_fields(item) %}
+{% set entries = entries is defined ? entries : content_fields(item) %}
 {% if entries %}
   {% set prefix = lang_prefix|default('') %}
   <dl class="type-fields">

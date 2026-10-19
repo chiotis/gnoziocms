@@ -1,0 +1,12 @@
+{#
+  The page of an entry whose content type is built with blocks (Theme > Single Layouts > Edit template): the blocks of the type's
+  template, drawn for this entry by BlockRenderer (page_blocks). Entry title, Entry text, Fact sheet and Entry blocks are the blocks
+  that draw parts of the entry; any other block can show its fields. The header sits over the page when the template opens with
+  an Entry title and the entry asks for it, as it does on the standard page.
+#}
+{% extends 'layouts/base.twig' %}
+{% set title_header = page_blocks.lead.type|default('') == 'entry-title' %}
+
+{% block content %}
+  {{ page_blocks.html|raw }}
+{% endblock %}

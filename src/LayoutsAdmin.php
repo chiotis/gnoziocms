@@ -46,6 +46,17 @@ final class LayoutsAdmin
             $standard = str_contains($source, 'components/page-header.twig');
             $values = $this->single->forType($type, $themeSettings);
             $declared = $definition['single'];
+            // A page built with blocks (Edit template): any type but a form can have one, whatever fields it declares.
+            $built = null;
+            if ($type !== 'forms' && $this->theme->hasTemplate(TemplateResolver::BUILT)) {
+                $stored = SingleTemplates::entry($themeSettings, $type);
+                $sets = FooterBlocks::sets($stored['blocks'], array_merge(['default'], is_array($stored['blocks']) && !array_is_list($stored['blocks']) ? array_map('strval', array_keys($stored['blocks'])) : []));
+                $built = [
+                    'use' => $stored['use'],
+                    'blocks' => array_sum(array_map('count', $sets)),
+                    'url' => 'admin/theme?template=' . $type,
+                ];
+            }
             $cards[] = [
                 'type' => $type,
                 'label' => $definition['label'],
@@ -62,6 +73,7 @@ final class LayoutsAdmin
                 // What the content type declares for its page (a book: where the cover goes, what it shows).
                 'options' => $declared['options'],
                 'template_file' => basename($template),
+                'built' => $built,
                 'edit_url' => $type === 'forms' ? '' : 'admin/content-types?type=' . $type,
             ];
         }
