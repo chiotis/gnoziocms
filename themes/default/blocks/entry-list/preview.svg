@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 48" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+<rect x="6" y="8" width="13" height="10" rx="2" fill="currentColor" fill-opacity=".14"/>
+<path d="M8 15l3.6 -3.8 2.9 2.2 2.6 -3.0 2.9 4.6" stroke-opacity=".8"/>
+<path d="M24 10.5h30M24 15.5h20"/>
+<rect x="6" y="21" width="13" height="10" rx="2" fill="currentColor" fill-opacity=".14"/>
+<path d="M8 28l3.6 -3.8 2.9 2.2 2.6 -3.0 2.9 4.6" stroke-opacity=".8"/>
+<path d="M24 23.5h30M24 28.5h20"/>
+<rect x="6" y="34" width="13" height="10" rx="2" fill="currentColor" fill-opacity=".14"/>
+<path d="M8 41l3.6 -3.8 2.9 2.2 2.6 -3.0 2.9 4.6" stroke-opacity=".8"/>
+<path d="M24 36.5h30M24 41.5h20"/>
+</svg>

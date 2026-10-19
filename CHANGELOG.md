@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.170 — 2026-10-19 — Archive templates built with blocks
+- **The list of a content type, and the page of a category, tag or taxonomy, can be built with blocks.** In Theme → Archive Layouts, each card switches between *The theme's* list and *Built with blocks*. **Edit template** opens the block editor with a live preview of the real list, and **Reset** goes back to the theme's list.
+- **New blocks for lists:**
+  - *Entry list*: its card is built with blocks bound to each entry's fields and relations. It sets the layout, the page size, numbered pages and the order.
+  - *Filter bar*: taxonomies and filterable fields, as ordinary links that need no JavaScript.
+  - *Result count*.
+  - *Archive title*: the list's title area and a term's description.
+- **Templates start from a sensible list.** Any type gets one generated from its definition, also a type added later in `custom/content-types/`. A theme can ship hand-made ones in `archive-templates/<type>.yaml`; the default theme has them for Books and Projects.
+- Lists are answered by the content index (0.1.169). Filtered pages stay out of search engines as before, and sites that do not use built templates see no change.
+
 ## 0.1.169 — 2026-10-19 — Archives from the content index
 - **The lists of a content type and the pages of a category or tag are answered by the content index** (the system database), not by reading every entry, so they stay fast on a large site. Filters, sorting, pagination, languages and visibility work as before, and the pages look the same. When the index is missing or out of date, the old way is used. This is the first part of step 5 (archive templates built with blocks).
 - A test of the installer no longer fails now and then on CI: it waits for the old server's port to close before starting the next one.

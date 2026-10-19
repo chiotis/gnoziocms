@@ -1,0 +1,20 @@
+{#
+  Filters of a list (the archive's `filters`, ArchiveBuilder): selects in a GET form, so a filtered page is a plain address. Context: archive.
+#}
+<div class="site-wrap archive-body">
+  <form class="archive-filters" method="get" aria-label="{{ t('filter.label', 'Filter') }}">
+    {% for filter in block.filters %}
+      <label class="archive-filter">
+        <span>{{ filter.kind == 'taxonomy' ? t('filter.' ~ filter.name, filter.label) : filter.label }}</span>
+        <select name="filter[{{ filter.name }}]">
+          <option value="">{{ t('filter.all', 'All') }}</option>
+          {% for option in filter.options %}
+            <option value="{{ option.value }}"{% if option.value == filter.selected %} selected{% endif %}>{{ option.label }}{% if block.show_count %} ({{ option.count }}){% endif %}</option>
+          {% endfor %}
+        </select>
+      </label>
+    {% endfor %}
+    <button class="btn btn-primary" type="submit">{{ t('filter.apply', 'Apply') }}</button>
+    {% if archive.filtered %}<a class="text-link" href="?">{{ t('filter.reset', 'Clear filters') }}</a>{% endif %}
+  </form>
+</div>

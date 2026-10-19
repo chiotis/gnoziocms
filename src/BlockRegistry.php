@@ -92,15 +92,22 @@ final class BlockRegistry
      * (`scope: template`) are left out unless the editor is one; a text field that names a field of the entry (`source: entry_field`)
      * is a choice among `$entryFields` there (the paths and labels EntryBindings::sources() gives for the template's content type).
      *
+     * The blocks of `scope: archive` (they draw a part of a list of entries) are offered only by the editor of an archive template
+     * (`$scope` 'archive'); `$scope` true or 'template' is a template for the page of an entry. The editor of a card offers neither.
+     * A select field that names `source: sort_order` is a choice among `$sortOrders` there (the orders the list knows).
+     *
+     * @param bool|string $scope false: the blocks of any page; true or 'template': also those of an entry's template; 'archive': also those of a list's template
      * @param list<array{path: string, label: string}> $entryFields
+     * @param array<string, string> $sortOrders
      * @return array<int, array<string, mixed>>
      */
-    public function editorDefinitions(bool $template = false, array $entryFields = []): array
+    public function editorDefinitions(bool|string $scope = false, array $entryFields = [], array $sortOrders = []): array
     {
-        $prepare = static fn(array $fields): array => self::fieldsForEditor(self::withEntryChoices($fields, $entryFields));
+        $scope = $scope === true ? 'template' : ($scope === false ? '' : $scope);
+        $prepare = static fn(array $fields): array => self::fieldsForEditor(self::withEntryChoices($fields, $entryFields, $sortOrders));
         $definitions = [];
         foreach ($this->all() as $definition) {
-            if ($definition['scope'] === 'template' && !$template) {
+            if ($definition['scope'] !== '' && $definition['scope'] !== $scope) {
                 continue;
             }
             $definitions[] = [
@@ -127,10 +134,14 @@ final class BlockRegistry
      * @param list<array{path: string, label: string}> $entryFields
      * @return array<string, array<string, mixed>>
      */
-    private static function withEntryChoices(array $fields, array $entryFields): array
+    private static function withEntryChoices(array $fields, array $entryFields, array $sortOrders = []): array
     {
         foreach ($fields as $key => $field) {
-            if (($field['source'] ?? '') === 'entry_field') {
+            if (($field['source'] ?? '') === 'sort_order') {
+                // The orders the list knows; a template without a list's orders offers the common ones.
+                $fields[$key]['type'] = 'select';
+                $fields[$key]['options'] = $sortOrders !== [] ? $sortOrders : ContentTypes::ORDERS;
+            } elseif (($field['source'] ?? '') === 'entry_field') {
                 $options = ['' => '—'];
                 foreach ($entryFields as $source) {
                     $options[$source['path']] = $source['label'];
@@ -138,7 +149,7 @@ final class BlockRegistry
                 $fields[$key]['type'] = 'select';
                 $fields[$key]['options'] = $options;
             } elseif ($field['type'] === 'repeater') {
-                $fields[$key]['fields'] = self::withEntryChoices($field['fields'], $entryFields);
+                $fields[$key]['fields'] = self::withEntryChoices($field['fields'], $entryFields, $sortOrders);
             }
         }
         return $fields;
@@ -448,7 +459,7 @@ final class BlockRegistry
             'description' => (string)($raw['description'] ?? ''),
             'category' => trim((string)($raw['category'] ?? '')),
             // `scope: template` marks a block that only a template built with blocks offers (it draws a part of the entry the template is for).
-            'scope' => ($raw['scope'] ?? '') === 'template' ? 'template' : '',
+            'scope' => in_array($raw['scope'] ?? '', ['template', 'archive'], true) ? (string)$raw['scope'] : '',
             'preview' => self::previewMarkup((string)@file_get_contents(dirname($file) . '/preview.svg')),
             'variants' => $variants,
             'variant_when' => $variantWhen,

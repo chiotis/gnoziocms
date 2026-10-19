@@ -1,0 +1,13 @@
+# Starting template for the list of books when it is "Built with blocks" (Admin > Theme > Archive Layouts). Data, not code: blocks in the
+# shape they are stored in. A site overrides it with custom/archive-templates/books.yaml. See docs/theming.md, "Starting templates".
+# Close to the theme's list of books: four covers across, A to Z, filtered by category. The card is the cover, the author and the title.
+blocks:
+  - { type: archive-title }
+  - { type: filter-bar }
+  - { type: result-count }
+  - { type: entry-list, variant: grid, columns: '4', per_page: 12, order: title_asc }
+card:
+  - { type: image, image: { bind: main_image }, ratio: portrait }
+  - type: text
+    eyebrow: { bind: custom_fields.author }
+    heading: { bind: title }

@@ -140,6 +140,21 @@ final class EntryBindings
     }
 
     /**
+     * What every entry offers to bind whatever its type (title, excerpt, main image, date, author, terms): the sources of a card that
+     * lists entries of several content types, as on the page of a category.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function commonSources(): array
+    {
+        $out = [];
+        foreach (self::SOURCES as $path => [$label, $kind]) {
+            $out[] = ['path' => $path, 'key' => $path, 'label' => $label, 'kind' => $kind, 'group' => 'Entry'];
+        }
+        return $out;
+    }
+
+    /**
      * What a content type offers to bind, for the picker of the template editor: the common fields, then the declared ones (a retired
      * field is not offered), each with the kind that decides which block fields it fits.
      *

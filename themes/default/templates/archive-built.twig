@@ -1,0 +1,15 @@
+{#
+  The page of a list of entries (the archive of a content type, the page of a category or tag) built with blocks (Theme > Archive Layouts >
+  Edit template): the blocks of the template, drawn by BlockRenderer (page_blocks) with the archive as their context. Archive title, Filters,
+  Result count and Entry list are the blocks that draw the list; any other block can be placed around them. The header sits over the page
+  when the template opens with an Archive title that has a picture behind it, as it does on the theme's archive page.
+#}
+{% extends 'layouts/base.twig' %}
+{% set document_title = archive_title ?? (archive.settings.title|default('') ?: t(type|default('') ~ '.archive_title', '') ?: (t('type.' ~ type|default(''), type|default('')|title) ~ ' ' ~ t('archive.suffix'))) %}
+{% set header_floats_over = page_blocks.lead.type|default('') == 'archive-title' %}
+{% set opens_under_header = page_blocks.lead.opens_under|default(false) %}
+{% set opens_on_dark = opens_under_header %}
+
+{% block content %}
+  {{ page_blocks.html|raw }}
+{% endblock %}

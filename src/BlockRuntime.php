@@ -84,7 +84,7 @@ final class BlockRuntime
     }
 
     /** The renderer for the blocks of one page, drawing with the given Twig (which can be replaced during a request). */
-    public function renderer(string $lang, string $path, Environment $twig): BlockRenderer
+    public function renderer(string $lang, string $path, Environment $twig, array $more = []): BlockRenderer
     {
         $includeHidden = ($this->signedIn)();
         return new BlockRenderer(
@@ -133,7 +133,7 @@ final class BlockRuntime
                 'geo_load' => fn(): string => (($this->settings)()['apis']['maps']['load'] ?? 'click') === 'auto' ? 'auto' : 'click',
                 'term' => fn(string $id, string $itemLang): string => ($this->termLabel)('categories', $id, $itemLang),
                 'admin' => fn(): bool => ($this->signedIn)(),
-            ],
+            ] + $more,
             rtrim((string)(($this->settings)()['base_url'] ?? ''), '/')
         );
     }
@@ -148,6 +148,34 @@ final class BlockRuntime
     public function renderTemplate(array $blocks, ContentItem $item, string $lang, string $path, Environment $twig, array $context): array
     {
         return $this->renderer($lang, $path, $twig)->render($blocks, $context + ['item' => $item, 'body_html' => $item->html, 'template_mode' => true, 'bindings' => $this->bindingsFor($item, $lang)]);
+    }
+
+    /**
+     * The blocks of an archive template drawn for a list: the page's blocks with the archive (its entries, filters and pages) as their
+     * context, and each entry of the list drawn with the card's blocks, bound to that entry's fields.
+     *
+     * @param array<int, mixed> $blocks the page
+     * @param array<int, mixed> $card the blocks of one card (none: the theme's card is used)
+     * @param array<string, mixed> $context what every block gets: the page's view data with `archive` (no `block_preview`: `$preview` says it)
+     * @param string $preview which part the live preview marks for the editor: 'page', 'card' or '' (none)
+     * @return array<string, mixed> what BlockRenderer::render() gives
+     */
+    public function renderArchive(array $blocks, array $card, string $lang, string $path, Environment $twig, array $context, string $preview = ''): array
+    {
+        $more = [];
+        if ($card !== []) {
+            $more['archive_card'] = function (ContentItem $item, array $page) use ($card, $lang, $path, $twig, $preview): array {
+                // The card is drawn with the entry's fields; the blocks in it are ordinary blocks, one level below the title of the page.
+                $drawn = $this->renderer($lang, $path, $twig)->render($card, [
+                    'item' => $item, 'body_html' => '', 'template_mode' => true, 'bindings' => $this->bindingsFor($item, $lang),
+                    'block_heading_tag' => 'h2', 'block_preview' => $preview === 'card',
+                    // Every card on the page has ids of its own.
+                    'block_uid_prefix' => 'card-' . preg_replace('/[^a-z0-9]+/i', '-', $item->type . '-' . $item->slug) . '-',
+                ] + array_diff_key($page, ['archive' => 1, 'block_preview' => 1, 'page_blocks' => 1]));
+                return ['html' => $drawn['html'], 'types' => $drawn['asset_types']];
+            };
+        }
+        return $this->renderer($lang, $path, $twig, $more)->render($blocks, ['block_preview' => $preview === 'page'] + $context);
     }
 
     /** The bindings of a template built with blocks for one entry: its fields as the template's blocks can show them in a language. */

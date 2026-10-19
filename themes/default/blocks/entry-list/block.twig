@@ -1,0 +1,35 @@
+{#
+  Entry list: the entries of the page of the list (archive.items), each with the card the template built (block.cards, one markup for each
+  entry) or, without one, the theme's own card (components/entry-list.twig). Page links under it. Context: archive, lang_prefix.
+#}
+{% set prefix = lang_prefix|default('') %}
+{% set empty_text = block.empty_text ?: (archive.filtered ? t('filter.none', 'Nothing matches these filters.') : (t(type|default('') ~ '.archive_empty', '') ?: t('archive.empty'))) %}
+<div class="container">
+  {% if block.entries is empty %}
+    <p>{{ empty_text }}</p>
+  {% elseif block.cards is not null %}
+    <ul class="entry-grid entry-grid--{{ block.variant }} cols-{{ block.columns }}" role="list">
+      {% for card in block.cards %}
+        <li class="entry-card type-{{ card.item.type|replace({'_': '-'}) }}">
+          {{ card.html|raw }}
+          <a class="entry-card-link" href="{{ url(item_path(card.item, prefix)) }}"><span class="visually-hidden">{{ card.item.meta.title }}</span></a>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <div class="block-latest block--cards">
+      {% include 'components/entry-list.twig' with {entries: block.entries, variant: block.variant == 'grid' ? 'cards' : block.variant, columns: block.columns, show_image: block.show_image, show_excerpt: block.show_excerpt, show_meta: block.show_meta, show_date: block.show_meta, prefix: prefix, lang: lang|default(''), heading_tag: 'h2', label: archive_title|default('')} only %}
+    </div>
+  {% endif %}
+  {% if block.pagination and archive.pages > 1 %}
+    <nav class="pagination" aria-label="{{ t('pagination.label', 'Pagination') }}">
+      {% if archive.prev %}<a class="pagination-step" rel="prev" href="{{ archive.prev }}">{{ t('pagination.previous', 'Previous') }}</a>{% endif %}
+      <ul class="pagination-pages" role="list">
+        {% for link in archive.page_links %}
+          <li><a href="{{ link.href }}"{% if link.current %} aria-current="page"{% endif %}><span class="visually-hidden">{{ t('pagination.page', 'Page') }} </span>{{ link.number }}</a></li>
+        {% endfor %}
+      </ul>
+      {% if archive.next %}<a class="pagination-step" rel="next" href="{{ archive.next }}">{{ t('pagination.next', 'Next') }}</a>{% endif %}
+    </nav>
+  {% endif %}
+</div>

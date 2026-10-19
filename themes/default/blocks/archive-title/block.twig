@@ -1,0 +1,12 @@
+{#
+  Archive title: the title area of a list of entries (components/title-area.twig), drawn as archive.twig draws it. The layout and the picture
+  are the block's own or, "As set for the list", those chosen in Archive Layouts (BlockRenderer gives block._layout, block._picture and
+  block._behind). Context: archive, type, archive_title and archive_subtitle (a taxonomy's), term_trail, lang_prefix.
+#}
+{% set config = archive.settings|default({}) %}
+{% set type_key = type|default('') %}
+{% set prefix = lang_prefix|default('') %}
+{% set title_text = archive_title ?? (config.title|default('') ?: t(type_key ~ '.archive_title', '') ?: (t('type.' ~ type_key, type_key|title) ~ ' ' ~ t('archive.suffix'))) %}
+{% set subtitle_text = archive_subtitle is defined ? archive_subtitle : (config.subtitle|default('') ?: t(type_key ~ '.archive_subtitle', '') ?: t('archive.subtitle')) %}
+{% set crumbs = block.breadcrumbs ? [{label: t('nav.main.home', 'Home'), url: '/' ~ prefix}]|merge(term_trail|default([]))|merge([{label: (archive_title is defined ? title_text : t('type.' ~ type_key, type_key|title)), url: ''}]) : [] %}
+{% include 'components/title-area.twig' with {layout: block._layout, title: title_text, hero_text: subtitle_text, meta_html: '', meta_inline: '', hero_image: block._picture, hero_bg: '', hero_parallax: block._behind and config.title_parallax|default(false), crumbs: crumbs} only %}
