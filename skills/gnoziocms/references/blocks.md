@@ -1,4 +1,4 @@
-# Blocks of this installation (GnozioCMS 0.1.148)
+# Blocks of this installation (GnozioCMS 0.1.164)
 
 ## Fields every block has
 
@@ -243,6 +243,37 @@ Documents to download, each with its kind of file and size. Pick the files from 
 | &nbsp;&nbsp;`items[].file` | file |  |
 | &nbsp;&nbsp;`items[].size` | text | Leave empty to read it from the file. |
 
+### `entry-blocks` — Entry blocks
+The blocks the entry has of its own (its Blocks tab), drawn here. Use it to leave room in the template for what each entry builds itself. Only in a template built with blocks.
+
+**Layouts** (`variant`): `default` (Default). First is the default.
+
+| field | kind and choices | notes |
+|---|---|---|
+
+### `entry-title` — Entry title
+The title area of the entry, as its page draws it today: the title, the excerpt, the main image and a line with its terms. Only in a template built with blocks.
+
+**Layouts** (`variant`): `auto` (As set for the content type), `default` (Default), `centered` (Centered), `split` (Split), `cover` (Cover), `minimal` (Minimal). First is the default.
+
+| field | kind and choices | notes |
+|---|---|---|
+| `image` | true / false; default `true` |  |
+| `excerpt` | true / false; default `true` |  |
+| `byline` | true / false; default `true` |  |
+| `breadcrumbs` | true / false; default `false` |  |
+
+### `fact-sheet` — Fact sheet
+The fields of the entry as a list of labels and values (for a book: author, publisher, year). Choose which fields and in what order; with none chosen it shows the fields the page of the type shows. Only in a template built with blocks.
+
+**Layouts** (`variant`): `default` (Default). First is the default.
+
+| field | kind and choices | notes |
+|---|---|---|
+| `heading` | text |  |
+| `fields` | list of rows | Leave the list empty to show every field the type's page shows. A field the type gets later can be added here. |
+| &nbsp;&nbsp;`fields[].field` | text |  |
+
 ### `faq` — FAQ
 Questions and answers that open one at a time. Adds FAQ structured data for search engines.
 
@@ -408,7 +439,7 @@ The newest posts, projects, or any content type, shown from a quiet text list to
 | `eyebrow` | text |  |
 | `heading` | text |  |
 | `intro` | text (several lines) |  |
-| `source` | choice; a content type of the site; default `posts` |  |
+| `source` | choice; a content type of the site |  |
 | `term` | text | Optional. The slug of a category or tag, as in Taxonomies. |
 | `limit` | whole number; 1 to 12; default `3` |  |
 | `columns` | choice; one of `2`, `3`, `4`; default `3` |  |

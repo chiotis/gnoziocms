@@ -366,6 +366,69 @@ archive_options:       # options of its list
 
 Values are checked against the declaration: a page's are stored with the theme settings (`single_layouts.<type>.options`) and read in the template with `single_layout(item.type).options`; a list's are stored in the site's file of the type (`archive.options`, only what differs from the theme's) and read as `archive.settings.options`. The default archive template also adds a class for each (`opt-cover-shape-portrait` for a choice, `opt-some-toggle` for a toggle that is on) to the list, for the style sheet. A template that declares `sidebar: true` draws the sidebar itself (as `templates/sidebar.twig` does), and one that declares `header: true` sets `{% set opens_under_header = true %}` so the layout lets the header go transparent over its first section. The Books type (`single-book.twig`) is the example: where the cover goes, what shows (author, summary, details, buy button), a sidebar, a header over the book, and the shape of the covers in the list.
 
+## Templates built with blocks
+
+The page of an entry can be **built with blocks** instead of drawn by a Twig file. **Admin > Theme > Single Layouts** gives each content type's card a *Page* choice: **The theme's** (the template files above, as always) or **Built with blocks**, with *Edit template* and *Reset*. A site that does not use it changes in nothing. Nothing in the code knows a content type: the card, the editor, the list of fields a block can show and the page all follow the type's definition when they are drawn, so a type the site adds later (a Blog, an Education type, with fields of its own) gets the same with no code.
+
+**Edit template** opens the block editor (the same as an entry's Blocks tab, with the settings panel) beside a live preview of a real entry of the type: the latest by default, any other from the *Preview with* list. Nothing is stored until *Save template*. The blocks are stored in the theme settings as `single_templates.<type>`: `use` (whether the type draws its pages from the template) and `blocks`, in the shape of the Footer Blocks (a plain list, or a map of `default` and a set for each language; a language with no set of its own uses the site's own). The template is not entry content: entries are untouched, and search does not index it. **Reset** (or choosing *The theme's*) draws the pages with the theme's template again and keeps the blocks, so *Built with blocks* brings them back. The card's own choices (page layout, title area, sidebar, what shows) are for the theme's template only.
+
+### Which template draws the page
+
+`TemplateResolver::forItem()` decides, in this order: **1.** the entry's own `template:` (and `template: standard`, which asks for the type's plain layout); **2.** when its type is *Built with blocks* and the template has blocks in the entry's language (or the site's own), `templates/single-built.twig`, which draws the template's blocks with the entry as context (their style sheets, scripts and structured data are merged into the page as for an entry's blocks); **3.** the page layout chosen for the type; **4.** the type's own template. A form never takes a template. A theme without `templates/single-built.twig` offers no *Built with blocks*; one that overrides the file keeps the contract: draw `page_blocks.html`, and set `title_header` when `page_blocks.lead.type` is `entry-title`, so the header can sit over the title area.
+
+### Blocks that draw the entry
+
+These blocks (`scope: template` in `block.yaml`) are offered only in a template, under the *Entry* kind. Any other block can be used too (hero, text, image, text and image, buttons, call to action, containers for columns…).
+
+| Block | Draws |
+|---|---|
+| **Entry title** | The title area of the entry (`components/title-area.twig`): layout (*As set for the content type*, Default, Centered, Split, Cover, Minimal), the main image, the excerpt, the line with terms, author and date, the trail. |
+| **Fact sheet** | The declared fields of the entry as a list of labels and values. Choose which fields and in what order; with none chosen it shows the fields the page of the type shows. The list of choices is the type's fields: a field added later appears, one that is gone is shown as missing. |
+| **Page content** (`content`) | The entry's own text, where the template puts it. A template does not add the text by itself: without this block the text is not shown. |
+| **Entry blocks** | The blocks the entry has of its own (its Blocks tab), drawn where the template puts them, so each entry can still build part of its page. When the template has no *Page content*, they may place the text as on any page. |
+
+### Field bindings
+
+In the settings panel every field that can show a field of the entry has a small chain button beside its label (*Show a field of the entry here*). It lists the fields that fit, by label (in the language of the admin) with their key; choosing one stores `{bind: "custom_fields.author"}` where the value would be. What fits is **one table**, `EntryBindings::ACCEPTS`, keyed by the type of the block's field:
+
+| The block field is | It can show |
+|---|---|
+| text | the title, the date, the author, the categories and tags (names, in a line), and fields of type text, select (the label of the option), number, decimal and date (written as the site writes dates) |
+| text of several lines, Markdown | the excerpt, and fields of type textarea and markdown |
+| image | the main image, and image fields |
+| link, address | link and url fields |
+
+A choice, a switch and a list cannot be bound (lists are for delivery 1B). A new kind of field becomes bindable by one more entry in the table (and a line in its row of `EntryBindings::value()` when its value is not a plain string). The paths are `title`, `excerpt`, `main_image`, `date`, `author`, `categories`, `tags` and `custom_fields.<key>`; the dotted form leaves room for relationships (`author.title`).
+
+At render time `BlockRenderer` replaces each binding with the entry's value **before** the normal checks of the block's field, so a bound value is cleaned exactly as a typed one: text is escaped, an address with a script scheme is refused, Markdown goes through the site's Markdown. A text with a version for each language (`translatable: true`) gives the one of the page's language, else the site's own. A field the entry has no value for is empty. A binding to a field that has been removed, renamed or changed to a kind that no longer fits is empty too, never an error, and the editor shows a warning on the block ("Bound to a missing field: custom_fields.x"), so nothing is lost while it is fixed.
+
+Each block with a binding has **Hide this block when its bound field is empty** (on by default): the block is left out when every field bound in it is empty. Switching it off is the only state that is stored (`bind_hide: false`). A block with nothing bound is always shown.
+
+### A new type with a built template, with no code
+
+Define the type in a file of the site, `custom/content-types/education.yaml` (kept across updates):
+
+```yaml
+label: { en: Courses, el: Μαθήματα }
+singular: { en: Course, el: Μάθημα }
+fields:
+  teacher: { type: text, label: Teacher }
+  level:   { type: select, label: Level, options: { beginner: Beginner, advanced: Advanced } }
+  hours:   { type: number, label: Hours }
+  starts:  { type: date, label: Starts }
+  syllabus: { type: markdown, label: Syllabus }
+  cover:   { type: image, label: Cover }
+  apply:   { type: link, label: Apply }
+```
+
+Add an entry (`content/education/intro.md`, or in Admin) and the type has its card in Theme > Single Layouts. Then:
+
+1. Choose **Built with blocks** and open **Edit template**.
+2. Add an **Entry title**, a **Text** block whose *Heading* is bound to *Teacher* and whose *Text* to *Syllabus*, an **Image** block whose *Image* is bound to *Cover* and its *Link* to *Apply*, a **Fact sheet** listing *Starts* and *Level*, **Page content**, and **Entry blocks**.
+3. Save. Every course is drawn from the template; a course with no cover simply has no picture block, because *Hide when empty* is on. A course that sets `template: landing` in its own front matter keeps that template.
+
+The fields of the type appear in the chain button and in the Fact sheet by their labels; add a `room` field to the YAML later and it is offered at once. `tests/http/single_templates_test.py` does exactly this with a type that exists only as a file created during the test.
+
 ## Page templates
 
 Pages and posts choose a template in Admin > Edit > Publish (stored as `template:`), and a content type can have one as its layout (Theme > Single Layouts). The manifest's `page_templates` lists them; a template appears only if its file exists.

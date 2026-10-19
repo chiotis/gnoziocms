@@ -1,0 +1,29 @@
+label: Entry title
+description: 'The title area of the entry, as its page draws it today: the title, the excerpt, the main image and a line with its terms. Only in a template built with blocks.'
+category: Entry
+scope: template
+spacing: none
+variants:
+  auto: As set for the content type
+  default: Default
+  centered: Centered
+  split: Split
+  cover: Cover
+  minimal: Minimal
+fields:
+  image:
+    type: toggle
+    label: Show the main image
+    default: true
+  excerpt:
+    type: toggle
+    label: Show the excerpt under the title
+    default: true
+  byline:
+    type: toggle
+    label: Show the line with terms, author and date
+    default: true
+  breadcrumbs:
+    type: toggle
+    label: Show the trail above the title
+    default: false

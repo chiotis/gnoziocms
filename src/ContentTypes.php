@@ -357,6 +357,27 @@ final class ContentTypes
     }
 
     /**
+     * The fields of an item named by key, in that order, ready to print like display() (whatever their `show` setting says; a key
+     * the type does not declare, or has retired, is skipped). A fact sheet in a template built with blocks chooses its fields this way.
+     *
+     * @param array<string, mixed> $meta
+     * @param string[] $keys
+     * @param \Closure(string): string $formatDate
+     * @return array<int, array<string, mixed>>
+     */
+    public function displayFields(string $type, array $meta, array $keys, \Closure $formatDate, string $lang = 'en', string $defaultLang = 'en'): array
+    {
+        $editable = $this->editableFields($type, $lang, $defaultLang);
+        $chosen = [];
+        foreach ($keys as $key) {
+            if (isset($editable[$key])) {
+                $chosen[$key] = $editable[$key];
+            }
+        }
+        return self::displayEntries($chosen, $this->values($type, $meta, $lang, $defaultLang), $formatDate, $lang, $defaultLang);
+    }
+
+    /**
      * Entries ready to print for checked values. A repeater's entry has `rows`, each a list of entries of its own (an inner
      * repeater the same way, one level down), and a `display` that names its rows in one line, for a card.
      *

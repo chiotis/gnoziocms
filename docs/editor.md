@@ -64,6 +64,8 @@ panel.close(true); panel.isOpen(); panel.current(); panel.mode();   // 'docked',
 
 The caller keeps its data and draws the fields; the panel draws the frame, the tabs, the places, the focus and the width. The block builder exposes `GnozioBlocks.open(path)` (`'2'`, or `'2.0.1'` for a block of a column) and `GnozioBlocks.close()`. The tests are `tests/js/block-panel.test.js`.
 
+**In a template built with blocks** (Theme > Single Layouts > Edit template, `data.context: 'template'`) the same editor and panel are used, with a set for each language like the Footer Blocks, and the fields that can show a field of the entry get a chain button (see *Templates built with blocks* in [theming.md](theming.md)). The page hands the editor `data.bindings`: `sources` (the entry's fields and the ones the content type declares, each with `path`, `key`, `label`, `kind`, `group`) and `accepts` (the table of what a block field of each type takes), so the picker lists only what fits and nothing in the script knows a content type. A bound field holds `{bind: path}`; its control gives way to what it is bound to, and a binding whose field is gone or no longer fits shows a warning on the block and in the panel. The tests are `tests/js/template-bindings.test.js`.
+
 ## Reordering blocks and rows
 
 Blocks, the rows of a list inside a block (items, slides, columns, FAQ entries) and the short texts of an inline list are reordered by dragging, with no up and down buttons. `public/assets/js/admin-sortable.js` is the one module for it (no library; pointer events, so a mouse, a finger and a pen all work, in Safari too); `admin-blocks.js` uses it three times.

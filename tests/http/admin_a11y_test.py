@@ -105,7 +105,7 @@ def heading_problems(p):
 
 root = Client(); root.login()
 PAGES = ['/admin', '/admin/content?type=pages', '/admin/content?type=posts', '/admin/edit?type=pages&slug=index&lang=en', '/admin/edit?type=posts&slug=&lang=en',
-         '/admin/edit?type=forms&slug=contact&lang=el', '/admin/forms-new', '/admin/media', '/admin/media?view=thumbs', '/admin/theme', '/admin/settings', '/admin/settings?tab=limits',
+         '/admin/edit?type=forms&slug=contact&lang=el', '/admin/forms-new', '/admin/media', '/admin/media?view=thumbs', '/admin/theme', '/admin/theme?template=posts', '/admin/settings', '/admin/settings?tab=limits',
          '/admin/menus', '/admin/menus-edit?key=main', '/admin/forms', '/admin/taxonomies', '/admin/users', '/admin/users-edit?id=1', '/admin/roles', '/admin/redirects',
          '/admin/translations', '/admin/activity-logs', '/admin/email-logs', '/admin/backups', '/admin/updates', '/admin/omni', '/admin/system', '/admin/content-types',
          '/admin/content-types?type=posts', '/admin/import', '/admin/revisions',
@@ -129,7 +129,7 @@ check('every admin screen has one h1 and no heading level is skipped', not probl
 check('every form control has a name a screen reader can read', not problems['controls'], problems['controls'])
 check('every button, link and table header has a name', not problems['names'], problems['names'])
 check('every tab of a tab bar has a panel to control', not problems['tabs'], problems['tabs'])
-check('the screens were all reachable', len(PAGES) == 39 and all(p not in problems['headings'] or 'status' not in str(problems['headings'][p]) for p in PAGES))
+check('the screens were all reachable', len(PAGES) == 40 and all(p not in problems['headings'] or 'status' not in str(problems['headings'][p]) for p in PAGES))
 
 # ---- the parser itself sees what it should (so a pass means something)
 bad = audit('<h1>A</h1><h3>B</h3><input name="x"><label>L <input name="y"></label><button></button><th></th><a href="/x"><img alt="Named"></a>')

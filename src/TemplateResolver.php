@@ -11,9 +11,35 @@ namespace GnozioCMS;
  */
 final class TemplateResolver
 {
-    /** @param \Closure(): array<string, mixed> $themeSettings */
-    public function __construct(private Theme $theme, private SingleLayouts $layouts, private \Closure $themeSettings)
+    /** The template that draws the page of an entry from the blocks of its type's template (Theme > Single Layouts > Edit template). */
+    public const BUILT = 'templates/single-built.twig';
+
+    /**
+     * @param \Closure(): array<string, mixed> $themeSettings
+     * @param \Closure(): string $defaultLanguage the site's own language (a language without a template of its own uses that one's)
+     */
+    public function __construct(private Theme $theme, private SingleLayouts $layouts, private \Closure $themeSettings, private ?\Closure $defaultLanguage = null)
     {
+    }
+
+    /**
+     * The blocks of the template built for an entry's type, or null when its page is not drawn from one: the type is not built with
+     * blocks, the template has none in the entry's language, the entry asks for a template of its own, or the type is a form.
+     *
+     * @return array<int, mixed>|null
+     */
+    public function builtBlocks(ContentItem $item): ?array
+    {
+        if ($item->type === 'forms' || !$this->theme->hasTemplate(self::BUILT)) {
+            return null;
+        }
+        $custom = self::normalize((string)($item->meta['template'] ?? ''));
+        if ($custom !== '' && ($this->theme->hasTemplate($custom) || $custom === 'templates/' . SingleLayouts::PLAIN . '.twig')) {
+            return null;
+        }
+        $settings = ($this->themeSettings)();
+        $default = $this->defaultLanguage !== null ? ($this->defaultLanguage)() : $item->lang;
+        return SingleTemplates::applies($settings, $item->type, $item->lang, $default) ? SingleTemplates::blocks($settings, $item->type, $item->lang, $default) : null;
     }
 
     public function forItem(ContentItem $item): string
@@ -21,6 +47,11 @@ final class TemplateResolver
         $custom = self::normalize((string)($item->meta['template'] ?? ''));
         if ($custom !== '' && $this->theme->hasTemplate($custom)) {
             return $custom;
+        }
+
+        // An entry's own template wins; then the template built with blocks for its type; then the theme's.
+        if ($this->builtBlocks($item) !== null) {
+            return self::BUILT;
         }
 
         $default = $this->theme->defaultSingleTemplate($item->type, self::singular($item->type));

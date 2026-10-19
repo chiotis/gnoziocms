@@ -95,6 +95,11 @@ final class FieldSchema
                     $field['translatable'] = true;
                 }
             }
+            // A text that names a field of the entry a template is drawn for (the Fact sheet block's list): the template editor offers the
+            // fields of the content type as its choices, and the block checks the name when the page is drawn.
+            if ($type === 'text' && ($definition['source'] ?? '') === 'entry_field') {
+                $field['source'] = 'entry_field';
+            }
             // A field that matters only while another has a value: `when: {background: video}` (or a list of values).
             $when = [];
             foreach (is_array($definition['when'] ?? null) ? $definition['when'] : [] as $other => $wanted) {

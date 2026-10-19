@@ -1,0 +1,8 @@
+{#
+  Fact sheet: block.entries are the entry's declared fields, chosen by the template (ContentTypes::displayFields).
+  The same list the page of a type draws (components/type-fields.twig).
+#}
+<div class="site-wrap single-facts">
+  {% if block.heading %}<{{ heading_tag }} class="section-title" id="{{ block_uid }}-title">{{ block.heading }}</{{ heading_tag }}>{% endif %}
+  {% include 'components/type-fields.twig' with {item: item, entries: block.entries, lang_prefix: lang_prefix|default('')} only %}
+</div>

@@ -1,0 +1,33 @@
+{#
+  Entry title: the title area of the entry a template built with blocks is drawn for (components/title-area.twig). The layout is the
+  block's own choice or, as "As set for the content type", the entry's, its terms' and its content type's (hero-layout.twig).
+  Context: item (the entry), lang_prefix.
+#}
+{% import 'components/hero-layout.twig' as opening %}
+{% set prefix = lang_prefix|default('') %}
+{% set layout = block.variant == 'auto' ? opening.layout(item, theme_settings)|trim : block.variant %}
+{% set picture = block.image ? item.meta.hero_image|default(item.meta.main_image|default('')) : '' %}
+{% if layout == 'cover' and not picture %}{% set layout = 'default' %}{% endif %}
+{% set parallax = picture and layout in ['default', 'cover'] and opening.parallax(item, theme_settings)|trim != '' %}
+{% set crumbs = [] %}
+{% if block.breadcrumbs %}
+  {% set crumbs = [{label: t('nav.main.home', 'Home'), url: '/' ~ prefix}] %}
+  {% if item.type != 'pages' %}{% set crumbs = crumbs|merge([{label: t('type.' ~ item.type, item.type|title), url: '/' ~ prefix ~ item.type}]) %}{% endif %}
+  {% set crumbs = crumbs|merge([{label: item.meta.title, url: ''}]) %}
+{% endif %}
+{% set tags = item.meta.tags is iterable ? item.meta.tags : (item.meta.tags is defined and item.meta.tags ? [item.meta.tags] : []) %}
+{% set categories = item.meta.categories is iterable ? item.meta.categories : (item.meta.categories is defined and item.meta.categories ? [item.meta.categories] : []) %}
+{% set meta_html %}
+  {% if block.byline %}
+    {% if tags is not empty %}<span>{{ t('post.tags') }}: {% for tag in tags %}<a href="{{ taxonomy_url('tags', tag, prefix) }}">{{ taxonomy_label('tags', tag) }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</span>{% endif %}
+    {% if categories is not empty %}<span>{{ t('post.categories') }}: {% for category in categories %}<a href="{{ taxonomy_url('categories', category, prefix) }}">{{ taxonomy_label('categories', category) }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</span>{% endif %}
+  {% endif %}
+{% endset %}
+{% set meta_inline %}
+  {% if block.byline %}
+    {% if item.meta.author is defined and item.meta.author %}<span>{{ t('post.by', 'By') }} {{ item.meta.author }}</span>{% endif %}
+    {% if categories is not empty %}<span>{{ t('post.in', 'in') }} {% for category in categories %}<a href="{{ taxonomy_url('categories', category, prefix) }}">{{ taxonomy_label('categories', category) }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</span>{% endif %}
+    {% if item.meta.date is defined and item.meta.date %}<span>{{ t('post.on', 'on') }} {{ format_date(item.meta.date) }}</span>{% endif %}
+  {% endif %}
+{% endset %}
+{% include 'components/title-area.twig' with {layout: layout, title: item.meta.title, hero_text: block.excerpt ? item.meta.excerpt|default('') : '', meta_html: meta_html, meta_inline: meta_inline, hero_image: picture, hero_bg: item.meta.hero_background ?? item.meta.hero_color ?? '', hero_parallax: parallax, crumbs: crumbs} only %}

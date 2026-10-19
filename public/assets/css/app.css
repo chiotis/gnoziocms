@@ -2012,3 +2012,38 @@ html.dark button.bk-col-title:hover { background: #1e3a8a; }
 @media (max-width: 639px) { .bk-container > .bk-head .bk-tag, .bk-head .bk-summary { display: none; } }
 .sp-body .bk-field { grid-template-columns: minmax(0, 1fr); }
 .sp-body .bk-seg button, .sp-body .bk-swatches button, .sp-body .bk-choices button { min-height: 1.5rem; }
+
+/* Theme > Single Layouts: a card whose page is built with blocks. The card's own choices are for the theme's template only. */
+[data-layout-card][data-built="built"] [data-theme-only]::before { content: "Not used while the page is built with blocks."; display: block; margin-bottom: .5rem; font-size: .6875rem; color: #4d5d73; }
+
+/* Bindings of a template built with blocks: the chain button beside a field's label, the list of fields of the entry it offers, and what a bound field shows. */
+.bk-labelrow { display: flex; align-items: center; justify-content: space-between; gap: .25rem; min-width: 0; }
+.bk-bind { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 1.375rem; height: 1.375rem; padding: 0; border: 1px solid transparent; border-radius: .3rem; background: transparent; color: #4d5d73; cursor: pointer; }
+.bk-bind:hover { background: #f1f5f9; color: #0f172a; }
+.bk-bind.is-on, .bk-bind[aria-expanded="true"] { border-color: #bfdbfe; background: #eff6ff; color: #1d4ed8; }
+.bk-bind svg { width: .875rem; height: .875rem; }
+.bk-sources { display: grid; gap: .125rem; padding: .25rem; border: 1px solid #e2e8f0; border-radius: .4rem; background: #f8fafc; }
+.bk-sources[hidden] { display: none; }
+.bk-sources-group { margin: .25rem .25rem 0; color: #4d5d73; font-size: .625rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+.bk-source { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; width: 100%; padding: .2rem .4rem; border: 0; border-radius: .3rem; background: transparent; color: #0f172a; font-size: .75rem; text-align: left; cursor: pointer; }
+.bk-source:hover { background: #e2e8f0; }
+.bk-source[aria-pressed="true"] { background: #dbeafe; color: #1e3a8a; font-weight: 600; }
+.bk-source code { color: #4d5d73; font-size: .6875rem; }
+.bk-source.is-clear { color: #1d4ed8; }
+.bk-bound { display: flex; align-items: center; gap: .4rem; margin: 0; padding: .3rem .5rem; border: 1px solid #bfdbfe; border-radius: .4rem; background: #eff6ff; color: #1e3a8a; font-size: .75rem; }
+.bk-bound svg { width: .875rem; height: .875rem; flex: none; }
+.bk-bound code { margin-left: auto; color: #1e40af; font-size: .6875rem; }
+.bk-bound.is-warn { border-color: #fcd34d; background: #fffbeb; color: #92400e; }
+html.dark .bk-bind { color: #94a3b8; }
+html.dark .bk-bind:hover { background: #1e293b; color: #f1f5f9; }
+html.dark .bk-bind.is-on, html.dark .bk-bind[aria-expanded="true"] { border-color: #1e40af; background: #172554; color: #bfdbfe; }
+html.dark .bk-sources { border-color: #334155; background: #0f172a; }
+html.dark .bk-sources-group, html.dark .bk-source code { color: #94a3b8; }
+html.dark .bk-source { color: #e2e8f0; }
+html.dark .bk-source:hover { background: #1e293b; }
+html.dark .bk-source[aria-pressed="true"] { background: #1e3a8a; color: #dbeafe; }
+html.dark .bk-source.is-clear { color: #93c5fd; }
+html.dark .bk-bound { border-color: #1e40af; background: #172554; color: #dbeafe; }
+html.dark .bk-bound code { color: #bfdbfe; }
+html.dark .bk-bound.is-warn { border-color: #92400e; background: #451a03; color: #fde68a; }
+html.dark .bk-tag.is-warn { background: #451a03; color: #fde68a; }

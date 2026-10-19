@@ -88,15 +88,21 @@ final class BlockRegistry
 
     /**
      * Definitions for the admin block editor: fields with defaults, and select options as ordered
-     * [value, label] pairs so JSON keeps their order and string values.
+     * [value, label] pairs so JSON keeps their order and string values. The blocks that only a template built with blocks offers
+     * (`scope: template`) are left out unless the editor is one; a text field that names a field of the entry (`source: entry_field`)
+     * is a choice among `$entryFields` there (the paths and labels EntryBindings::sources() gives for the template's content type).
      *
+     * @param list<array{path: string, label: string}> $entryFields
      * @return array<int, array<string, mixed>>
      */
-    public function editorDefinitions(): array
+    public function editorDefinitions(bool $template = false, array $entryFields = []): array
     {
-        $prepare = static fn(array $fields): array => self::fieldsForEditor($fields);
+        $prepare = static fn(array $fields): array => self::fieldsForEditor(self::withEntryChoices($fields, $entryFields));
         $definitions = [];
         foreach ($this->all() as $definition) {
+            if ($definition['scope'] === 'template' && !$template) {
+                continue;
+            }
             $definitions[] = [
                 'type' => $definition['type'],
                 'label' => $definition['label'],
@@ -112,6 +118,30 @@ final class BlockRegistry
             ];
         }
         return $definitions;
+    }
+
+    /**
+     * Fields that name a field of the entry as choices (see editorDefinitions), also inside the rows of a repeater.
+     *
+     * @param array<string, array<string, mixed>> $fields
+     * @param list<array{path: string, label: string}> $entryFields
+     * @return array<string, array<string, mixed>>
+     */
+    private static function withEntryChoices(array $fields, array $entryFields): array
+    {
+        foreach ($fields as $key => $field) {
+            if (($field['source'] ?? '') === 'entry_field') {
+                $options = ['' => '—'];
+                foreach ($entryFields as $source) {
+                    $options[$source['path']] = $source['label'];
+                }
+                $fields[$key]['type'] = 'select';
+                $fields[$key]['options'] = $options;
+            } elseif ($field['type'] === 'repeater') {
+                $fields[$key]['fields'] = self::withEntryChoices($field['fields'], $entryFields);
+            }
+        }
+        return $fields;
     }
 
     /**
@@ -296,9 +326,16 @@ final class BlockRegistry
             }
             $block = ['type' => $raw['type']];
             $raw = FieldSchema::settleUnits($definition['fields'], $raw);
+            $bound = false;
             foreach ([$definition['common'], $definition['fields']] as $fields) {
                 foreach ($fields as $key => $field) {
                     if (!array_key_exists($key, $raw)) {
+                        continue;
+                    }
+                    // A field bound to a field of the entry (a template built with blocks) keeps its binding, not a value.
+                    if (EntryBindings::isBinding($raw[$key]) && isset($definition['fields'][$key]) && EntryBindings::bindable($field['type'])) {
+                        $block[$key] = ['bind' => $raw[$key]['bind']];
+                        $bound = true;
                         continue;
                     }
                     $value = FieldSchema::clean($field, $raw[$key]);
@@ -311,6 +348,9 @@ final class BlockRegistry
                     // A width is written as the number it is (width: 50), like a person would type it.
                     $block[$key] = $key === 'width' && is_numeric($value) ? (int)$value : $value;
                 }
+            }
+            if ($bound && ($raw[EntryBindings::HIDE_KEY] ?? true) === false) {
+                $block[EntryBindings::HIDE_KEY] = false;
             }
             $blocks[] = $block;
         }
@@ -406,6 +446,8 @@ final class BlockRegistry
             'label' => (string)($raw['label'] ?? ucfirst(str_replace('-', ' ', $type))),
             'description' => (string)($raw['description'] ?? ''),
             'category' => trim((string)($raw['category'] ?? '')),
+            // `scope: template` marks a block that only a template built with blocks offers (it draws a part of the entry the template is for).
+            'scope' => ($raw['scope'] ?? '') === 'template' ? 'template' : '',
             'preview' => self::previewMarkup((string)@file_get_contents(dirname($file) . '/preview.svg')),
             'variants' => $variants,
             'variant_when' => $variantWhen,

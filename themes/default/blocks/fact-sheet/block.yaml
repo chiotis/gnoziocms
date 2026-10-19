@@ -1,0 +1,17 @@
+label: Fact sheet
+description: 'The fields of the entry as a list of labels and values (for a book: author, publisher, year). Choose which fields and in what order; with none chosen it shows the fields the page of the type shows. Only in a template built with blocks.'
+category: Entry
+scope: template
+variants:
+  default: Default
+fields:
+  heading:
+    type: text
+    label: Heading
+  fields:
+    type: repeater
+    label: Fields
+    item_label: Field
+    help: Leave the list empty to show every field the type's page shows. A field the type gets later can be added here.
+    fields:
+      field: { type: text, label: Field, source: entry_field }

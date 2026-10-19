@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.165 — 2026-10-19 — Single templates built with blocks
+- **A content type's page can be built with blocks.** In Theme → Single Layouts, each type can switch from *The theme's* page to *Built with blocks*. **Edit template** opens the block editor with its settings panel and a live preview of a real entry of the type. **Reset** goes back to the theme's page and keeps the built template for later.
+- **Blocks can show the entry's own fields.** A ⛓ button beside a block's field binds it to the entry's title, excerpt, main image or one of the type's fields. Only fields that fit are offered, and a bound value is checked like a typed one. A block can hide itself when its bound field is empty.
+- **New blocks for templates:** *Entry title* (today's title area), *Fact sheet* (choose the fields), and *Entry blocks* (the entry's own blocks, where the template places them). *Page content* places the entry's text.
+- Templates are kept in the theme settings, with a set for each language like Footer Blocks. An entry's own `template:` still wins, and sites that do not use it see no change. Everything is driven by the content type's definition, so a type added later in `custom/content-types/` gets a built template with no code. A binding to a field that was removed shows a warning in the editor and renders as empty. See *Templates built with blocks* in `docs/theming.md`.
+
 ## 0.1.164 — 2026-10-19 — Block settings in one panel
 - **A block's settings open in a fixed panel at the side of the block editor**, with Content and Design apart, instead of opening inside the list of blocks. The list stays compact, with one row per block. On a phone the panel is a full-screen sheet. Esc closes it and focus returns to the block. Containers, columns, nested repeaters, the live preview and drag and drop work as before, and saved content does not change.
 - The panel has a small API (`admin-panel.js`) that the coming template builder reuses.

@@ -34,7 +34,11 @@
     definitions.container = { type: 'container', label: containerDef.label, description: containerDef.description, category: 'Layout', origin: 'theme', preview: CONTAINER_PREVIEW, variant_when: {}, variant_previews: {}, design_fields: [], common: [], fields: [] };
   }
   // The editor of Theme > Footer Blocks (data.context 'footer') is for the blocks above the footer, not for a page: no whole-page layouts.
-  var footerMode = data.context === 'footer';
+  // The editor of a template built with blocks (Theme > Single Layouts > Edit template, data.context 'template') is the same editor with a set
+  // for each language, and with the fields of the content type a block field can be bound to (data.bindings).
+  var templateMode = data.context === 'template';
+  var footerMode = data.context === 'footer' || templateMode;
+  var bindings = templateMode && data.bindings && Array.isArray(data.bindings.sources) ? data.bindings : null;
   var presets = (data.presets || []).filter(function (p) { return !footerMode || p.kind !== 'page'; });
   var selected = {};
   var nextId = 1;
@@ -81,7 +85,8 @@
     close: '<path d="M6 6l12 12M18 6L6 18"/>',
     wrap: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M9 5v14M15 5v14"/>',
     out: '<path d="M4 12h10M10 8l4 4-4 4M19 5v14"/>',
-    minus: '<path d="M5 12h14"/>'
+    minus: '<path d="M5 12h14"/>',
+    chain: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>'
   };
 
   /* The wireframe a block shows in the picker: the markup of its preview.svg (see BlockRegistry::previewMarkup), or a plain
@@ -221,6 +226,10 @@
     var keys = ['heading', 'eyebrow', 'text', 'intro', 'body'];
     for (var i = 0; i < keys.length; i++) {
       var value = block[keys[i]];
+      if (bindings && isBinding(value)) {
+        var bound = sourceFor(value.bind);
+        return '\u26d3 ' + (bound ? bound.label : value.bind);
+      }
       if (typeof value === 'string' && value.trim() !== '') {
         var text = value.replace(/\s+/g, ' ').trim();
         return text.length > 70 ? text.slice(0, 70) + '…' : text;
@@ -242,6 +251,8 @@
   /** A choice of a few short words is a row of buttons; a longer list is a menu. */
   function isShortChoice(field) {
     var options = field.options || [];
+    // The fields of the entry a template block names are always a menu: the list grows with the content type.
+    if (field.source) return false;
     return options.length > 1 && options.length <= 4 && options.every(function (pair) { return String(pair[1]).length <= 14; });
   }
 
@@ -316,6 +327,10 @@
       (field.options || []).forEach(function (pair) {
         control.appendChild(el('option', { value: pair[0], text: pair[1], selected: String(value) === pair[0] }));
       });
+      // A field of the entry that the content type no longer has stays visible, as what it is.
+      if (field.source === 'entry_field' && value && !(field.options || []).some(function (pair) { return pair[0] === String(value); })) {
+        control.appendChild(el('option', { value: String(value), text: 'Missing field: ' + value, selected: true }));
+      }
       control.addEventListener('change', function () { onChange(control.value); });
       wrapper.appendChild(control);
     } else if (type === 'textarea' || type === 'markdown') {
@@ -855,6 +870,160 @@
     return panel;
   }
 
+  /* Bindings (a template built with blocks) ---------------------------------------------------------------------------------
+     A field of a block can show a field of the entry instead of a typed value. The block then holds {bind: 'custom_fields.author'}
+     where the value would be. What may be bound to what is data.bindings.accepts (field type => the kinds of source it takes), the
+     sources are the entry's common fields and the fields the content type declares: nothing here knows a content type. */
+
+  function isBinding(value) { return !!value && typeof value === 'object' && !Array.isArray(value) && typeof value.bind === 'string'; }
+
+  function sourceFor(path) {
+    return bindings.sources.filter(function (source) { return source.path === path; })[0] || null;
+  }
+
+  function bindable(field) {
+    return !!bindings && field.type !== 'repeater' && !!(bindings.accepts && bindings.accepts[field.type]);
+  }
+
+  /** The sources a field of this type takes. */
+  function compatibleSources(field) {
+    var kinds = (bindings.accepts && bindings.accepts[field.type]) || [];
+    return bindings.sources.filter(function (source) { return kinds.indexOf(source.kind) !== -1; });
+  }
+
+  /** Why a binding no longer works ('' when it does): the field is gone from the content type, or it is another kind of field now. */
+  function bindingProblem(field, value) {
+    var source = sourceFor(value.bind);
+    if (!source) return 'missing';
+    var kinds = (bindings.accepts && bindings.accepts[field.type]) || [];
+    return kinds.indexOf(source.kind) === -1 ? 'changed' : '';
+  }
+
+  function problemText(problem, path) {
+    return problem === 'missing' ? 'Bound to a missing field: ' + path : 'Bound to a field that no longer fits: ' + path;
+  }
+
+  /** Every binding of a block that does not work: [{key, path, text}]. Also a Fact sheet's list of fields. */
+  function blockProblems(block) {
+    var found = [];
+    var def = definitions[block.type];
+    if (!bindings || !def) return found;
+    def.fields.forEach(function (field) {
+      var value = block[field.key];
+      if (isBinding(value)) {
+        var problem = bindingProblem(field, value);
+        if (problem) found.push({ key: field.key, path: value.bind, text: problemText(problem, value.bind) });
+      } else if (field.type === 'repeater' && Array.isArray(value)) {
+        field.fields.forEach(function (sub) {
+          if (sub.source !== 'entry_field') return;
+          value.forEach(function (row) {
+            var path = row && typeof row[sub.key] === 'string' ? row[sub.key] : '';
+            if (path !== '' && !sourceFor(path)) found.push({ key: field.key, path: path, text: 'Uses a missing field: ' + path });
+          });
+        });
+      }
+    });
+    return found;
+  }
+
+  function hasBindings(block) {
+    var def = definitions[block.type];
+    return !!def && def.fields.some(function (field) { return isBinding(block[field.key]); });
+  }
+
+  /**
+   * The field, with a chain button beside its label that picks a field of the entry to show instead. A bound field shows what it is
+   * bound to (and a warning when that field is gone); its own control is not shown while it is bound.
+   */
+  function withBinding(block, field, node, idBase) {
+    var value = block[field.key];
+    var label = node.querySelector('.bk-label');
+    if (!label) return node;
+    var id = idBase + '-' + field.key;
+    var bound = isBinding(value);
+    var open = false;
+    var head = el('div', { class: 'bk-labelrow' });
+    label.parentNode.insertBefore(head, label);
+    head.appendChild(label);
+    var chain = el('button', {
+      type: 'button',
+      class: 'bk-bind' + (bound ? ' is-on' : ''),
+      'aria-expanded': 'false',
+      'aria-controls': id + '-sources',
+      'aria-label': (bound ? 'Change the field of the entry shown in ' : 'Show a field of the entry in ') + field.label,
+      title: bound ? 'Change the field of the entry shown here' : 'Show a field of the entry here',
+      html: svg('chain')
+    });
+    head.appendChild(chain);
+    var menu = el('div', { class: 'bk-sources', id: id + '-sources', role: 'group', 'aria-label': 'Fields of the entry for ' + field.label, hidden: true });
+    var pick = function (path) {
+      if (path === null) delete block[field.key]; else block[field.key] = { bind: path };
+      serialize();
+      render(block._id, 'keep');
+    };
+    var sources = compatibleSources(field);
+    if (!sources.length) {
+      menu.appendChild(el('p', { class: 'bk-help', text: 'This type has no field that fits here.' }));
+    }
+    var group = '';
+    sources.forEach(function (source) {
+      if (source.group !== group) {
+        group = source.group;
+        menu.appendChild(el('p', { class: 'bk-sources-group', text: group }));
+      }
+      var on = bound && value.bind === source.path;
+      var button = el('button', { type: 'button', class: 'bk-source', 'aria-pressed': on ? 'true' : 'false' }, [
+        el('span', { text: source.label }),
+        el('code', { text: source.key })
+      ]);
+      button.addEventListener('click', function () { pick(source.path); });
+      menu.appendChild(button);
+    });
+    if (bound) {
+      var clear = el('button', { type: 'button', class: 'bk-source is-clear' }, [el('span', { text: 'Type it here instead' })]);
+      clear.addEventListener('click', function () { pick(null); });
+      menu.appendChild(clear);
+    }
+    chain.addEventListener('click', function () {
+      open = !open;
+      menu.hidden = !open;
+      chain.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    menu.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape') { open = false; menu.hidden = true; chain.setAttribute('aria-expanded', 'false'); chain.focus(); event.stopPropagation(); }
+    });
+    node.insertBefore(menu, head.nextSibling);
+
+    if (bound) {
+      var source = sourceFor(value.bind);
+      var problem = bindingProblem(field, value);
+      // The typed control gives way to what it is bound to.
+      Array.prototype.forEach.call(node.children, function (child) {
+        if (child !== head && child !== menu && !child.classList.contains('bk-help')) child.hidden = true;
+      });
+      var shown = el('p', { class: 'bk-bound' + (problem ? ' is-warn' : ''), 'data-bound': value.bind }, [
+        el('span', { html: svg('chain') }),
+        el('span', { class: 'bk-bound-name', text: problem ? problemText(problem, value.bind) : source.label }),
+        problem ? null : el('code', { text: source.key })
+      ]);
+      node.insertBefore(shown, menu.nextSibling);
+    }
+    return node;
+  }
+
+  /** At the top of a bound block's settings: whether it is left out while everything bound in it is empty (on unless switched off). */
+  function hideWhenEmpty(block) {
+    var checkbox = el('input', { type: 'checkbox', checked: block.bind_hide !== false });
+    checkbox.addEventListener('change', function () {
+      if (checkbox.checked) delete block.bind_hide; else block.bind_hide = false;
+      serialize();
+    });
+    return el('div', { class: 'bk-field bk-field-toggle is-wide' }, [
+      el('label', { class: 'lc-chip', title: 'The block is not drawn on the page when every field bound in it has no value for the entry.' }, [checkbox, el('span', { text: 'Hide this block when its bound field is empty' })])
+    ]);
+  }
+
+
   function contentPanel(block, def, idBase) {
     var panel = el('div', { class: 'bk-content' });
     if (def.description) panel.appendChild(el('p', { class: 'bk-desc', text: def.description }));
@@ -885,6 +1054,7 @@
         }) });
         if (!shown.options.some(function (pair) { return pair[0] === String(current); })) current = field['default'];
       }
+      if (isBinding(current)) current = field['default'];
       var node = fieldControl(shown, current, function (value) {
         block[field.key] = value;
         serialize();
@@ -899,10 +1069,12 @@
           render(block._id, 'keep');
         }
       }, idBase);
+      if (bindable(field)) node = withBinding(block, field, node, idBase);
       if (field.when) conditional.push({ node: node, when: field.when });
       fields.appendChild(node);
     });
     applyWhen();
+    if (bindings && hasBindings(block)) panel.appendChild(hideWhenEmpty(block));
     panel.appendChild(fields);
     return panel;
   }
@@ -941,6 +1113,10 @@
     if (def && share < 100) toggle.appendChild(el('span', { class: 'bk-tag bk-width-tag', title: 'Width: ' + share + '% of the row', text: share + '%' }));
     if (block.hidden) {
       toggle.appendChild(el('span', { class: 'bk-tag is-warn', html: svg('eyeOff', 'h-3 w-3') + 'Hidden' }));
+    }
+    var broken = bindings ? blockProblems(block) : [];
+    if (broken.length) {
+      toggle.appendChild(el('span', { class: 'bk-tag is-warn', 'data-bound-problem': '', title: broken.map(function (p) { return p.text; }).join('. '), html: svg('chain', 'h-3 w-3') }, [broken[0].text]));
     }
     toggle.appendChild(el('span', { class: 'bk-summary', 'data-block-summary': '', text: summary }));
     toggle.addEventListener('click', function () { openSettings(block._id, { focus: true }); });
@@ -1515,8 +1691,8 @@
     });
   }
   var empty = el('div', { class: 'bk-empty' }, [
-    el('p', { class: 'bk-empty-title', text: footerMode ? 'No blocks above the footer yet.' : 'This page has no blocks yet.' }),
-    el('p', { class: 'bk-help', text: footerMode ? 'Add blocks such as a row of logos or a call to action; they show above the footer on every page.' : 'Without blocks the page shows its Markdown text as before. Add blocks to build the page from sections.' }),
+    el('p', { class: 'bk-empty-title', text: templateMode ? 'This template has no blocks yet.' : (footerMode ? 'No blocks above the footer yet.' : 'This page has no blocks yet.') }),
+    el('p', { class: 'bk-help', text: templateMode ? 'Start with an Entry title, add the Fact sheet and the Entry text, and leave room for the Entry blocks. Until the template has a block, the theme\'s template draws the page.' : (footerMode ? 'Add blocks such as a row of logos or a call to action; they show above the footer on every page.' : 'Without blocks the page shows its Markdown text as before. Add blocks to build the page from sections.') }),
     presets.some(function (p) { return p.kind === 'page'; })
       ? el('button', { type: 'button', class: CLS.btn, text: 'Start from a page layout', onclick: function (event) { pickerTab = 'pages'; openPicker(blocks.length, event.currentTarget); } })
       : null
@@ -2122,7 +2298,7 @@
   }
   root = main;
   root.appendChild(el('div', { class: 'bk-bar' }, [
-    el('p', { class: 'bk-help', text: footerMode ? 'Top to bottom, above the footer. Tick blocks to save them as a reusable section.' : 'Sections of this page, top to bottom. An opening Hero becomes the page title. Tick blocks to save them as a reusable section.' }),
+    el('p', { class: 'bk-help', text: templateMode ? 'Top to bottom on the page of every entry of this type. Tick blocks to save them as a reusable section.' : (footerMode ? 'Top to bottom, above the footer. Tick blocks to save them as a reusable section.' : 'Sections of this page, top to bottom. An opening Hero becomes the page title. Tick blocks to save them as a reusable section.') }),
     el('div', { class: 'bk-bar-actions' }, [languageBar, addButton])
   ]));
   if (copyNote) root.appendChild(copyNote);

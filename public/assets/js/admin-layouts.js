@@ -35,6 +35,9 @@
       if (el && preview) { preview.setAttribute('data-' + key, el.value); }
       if (el && (key === 'template' || key === 'sidebar')) { card.setAttribute('data-' + key, el.value); }
     });
+    // The page is the theme's template or one built with blocks: the card's own choices (below) are for the theme's.
+    var built = chosen(card, 'built');
+    if (built) { card.setAttribute('data-built', built.value); }
 
     var out = card.querySelector('[data-lc-summary]');
     if (!out) { return; }
@@ -68,6 +71,14 @@
   });
 
   document.querySelectorAll('[data-layout-card]').forEach(function (card) {
+    var reset = card.querySelector('[data-built-reset]');
+    if (reset) {
+      // Reset is the choice "The theme's" in one click; the built template stays stored (Save keeps it for later).
+      reset.addEventListener('click', function () {
+        var theme = card.querySelector('input[data-lc="built"][value="theme"]');
+        if (theme) { theme.checked = true; update(card); theme.focus(); }
+      });
+    }
     update(card);
     card.addEventListener('change', function () { update(card); });
     card.addEventListener('input', function () { update(card); });
