@@ -453,6 +453,25 @@ At render time `EntryBindings::apply()` turns it into rows **before** the block'
 
 Limits: the list is bound as a whole, to a top-level list of the entry. A list **inside** a row (a nested list, such as the buttons of each slide in the Hero slider) is not mapped: it stays empty while the outer list is bound. The Fact sheet's own list names fields of the entry and is not bound. The categories and tags of an entry are not offered as lists yet (they are offered as text, in a line). A new bindable column kind is one entry in the `ACCEPTS` table, as for single values.
 
+### Relationships in templates
+
+A relation field ([Relationships](#relationships)) is one more source of bindings, for every type, with no code (the picker reads the type's definition). The paths follow the relation with dots:
+
+| Path | Is | Fits |
+|---|---|---|
+| `custom_fields.author.title` | the title of the entry the field points at | text |
+| `custom_fields.author.excerpt`, `.main_image`, `.date`, `.url` | its excerpt, picture, date and the address of its page | text of several lines, image, text, link |
+| `custom_fields.author.custom_fields.country` | a field the type of that entry declares (when the field names a single type; one hop only) | what the field's kind fits |
+| `custom_fields.team.title` | all the titles of a field that takes several, in one line | text |
+| `custom_fields.team` | a field that takes several, as a **list** of entries | a block's list |
+| `referenced_by.books.author` | the entries of type `books` that point at this one through their `author` field (`referenced_by.books.editions.earlier` for a field inside a list), newest first | a block's list |
+
+A list of entries is bound like [a list of rows](#list-bindings), with a column for each thing a card has: `title`, `excerpt`, `main_image`, `date`, `url`, and `field_<key>` for each field the type of those entries declares (when it is one type). Same-name columns are mapped when the list is chosen, and a card's excerpt and main image take the block's `text` and `image`. A Cards block bound to `referenced_by.books.author` on an author's template is that author's books, each card linking to its book; a Hero's buttons or a Buttons block can show the entries too.
+
+The same rules hold as everywhere: only what a visitor may see is listed (published, visible, in the page's language or the site's own), a binding is cleaned like typed text, an empty source hides the block (unless it is told to stay), and a path that leads nowhere (a field or relation that was removed or changed kind, a type that is gone) is empty and flagged in the editor, never an error. A field of the entry's own file is read only when a column or path asks for one; the title, excerpt, picture, date and address come from the index and cost no file.
+
+**The fact sheet.** A relation shows its entries as links, in the fact sheet of the page, in `content_fields(item)` and in a Fact sheet block (a relation to several is offered there too). A relation that says `reverse_label: Books` in its field adds a line of that name to the fact sheet of the entries it points at, listing the entries that point there, with links: the page of an author names its books with no template work (a Fact sheet block with no fields chosen shows it as the default page does; one that names its fields shows only those).
+
 ### Starting templates
 
 A type switched to *Built with blocks* (or opened in *Edit template*) with no blocks yet **starts from a starting template**, so the page works at once instead of an empty list. Nothing in the code knows a type; there are two sources, in this order:

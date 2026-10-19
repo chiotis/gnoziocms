@@ -42,6 +42,10 @@ const DEFS = [{
   }],
   common: COMMON, design_fields: []
 }, {
+  type: 'cards', label: 'Cards', description: 'Cards', preview: '', category: 'Content',
+  fields: [{ key: 'items', label: 'Cards', type: 'repeater', item_label: 'Card', fields: [{ key: 'title', label: 'Title', type: 'text' }, { key: 'text', label: 'Text', type: 'textarea' }, { key: 'image', label: 'Image', type: 'image' }, { key: 'url', label: 'Link', type: 'link' }] }],
+  common: COMMON, design_fields: []
+}, {
   type: 'fact-sheet', label: 'Fact sheet', description: 'Fields', preview: '', category: 'Entry', scope: 'template',
   fields: [{ key: 'fields', label: 'Fields', type: 'repeater', item_label: 'Field', fields: [{ key: 'field', label: 'Field', type: 'select', source: 'entry_field', default: '', options: [['', '-']] }] }],
   common: COMMON, design_fields: []
@@ -58,6 +62,9 @@ const SOURCES = [
   src('title', 'Title', 'text', 'Entry'), src('custom_fields.headline', 'Headline', 'text'),
   list('custom_fields.resources', 'Resources', [
     { key: 'label', label: 'Name', kind: 'text' }, { key: 'url', label: 'Target', kind: 'url' }, { key: 'note', label: 'Note', kind: 'textarea' }, { key: 'size', label: 'Size', kind: 'number' }
+  ]),
+  list('referenced_by.books.author', 'Books · Author', [
+    { key: 'title', label: 'Title', kind: 'text' }, { key: 'excerpt', label: 'Excerpt', kind: 'textarea' }, { key: 'main_image', label: 'Main image', kind: 'image' }, { key: 'url', label: 'Address of its page', kind: 'link' }
   ]),
   list('custom_fields.faq', 'Questions', [{ key: 'question', label: 'Question', kind: 'text' }, { key: 'answer', label: 'Answer', kind: 'markdown' }])
 ];
@@ -117,7 +124,7 @@ check('the editor of an entry has none', entry.panel().querySelector('.bk-bind')
 
 // ---- 2. the picker
 b.chain('actions').click();
-check('it offers the lists of the type, not its single fields', same(b.offered('actions'), ['resources', 'faq']), JSON.stringify(b.offered('actions')));
+check('it offers the lists of the type, not its single fields', same(b.offered('actions'), ['resources', 'referenced_by.books.author', 'faq']), JSON.stringify(b.offered('actions')));
 b.choose('actions', 'resources');
 check('choosing a list stores a binding, with the columns of the same name that fit already mapped (the link takes the address, the choice nothing)', same(b.read()[0].actions, { bind: 'custom_fields.resources', map: { label: 'label', url: 'url' } }), JSON.stringify(b.read()));
 const shown = b.panel().querySelector('.bk-bound');
@@ -172,6 +179,13 @@ b.open(0);
 b.chain('actions').click();
 Array.prototype.find.call(b.panel().querySelectorAll('.bk-source'), (n) => n.classList.contains('is-clear')).click();
 check('"Type the list here instead" takes the binding away and brings the button to add rows back', b.read()[0].actions === undefined && b.panel().querySelector('.bk-bound') === null && b.table() === null && b.panel().querySelector('.bk-rep-head .bk-btn').hidden === false, JSON.stringify(b.read()));
+
+// ---- entries as a list: a card has an excerpt and a main image, which a block calls text and image
+const cardsBuilder = builder([{ type: 'cards' }]);
+cardsBuilder.open(0);
+cardsBuilder.chain('items').click();
+cardsBuilder.choose('items', 'referenced_by.books.author');
+check('a list of entries maps its card to the block: title and link by name, the excerpt to the text, the main image to the image', same(cardsBuilder.read()[0].items, { bind: 'referenced_by.books.author', map: { title: 'title', text: 'excerpt', image: 'main_image', url: 'url' } }), JSON.stringify(cardsBuilder.read()));
 
 console.log(failed ? 'FAILED: ' + failed : 'ALL PASSED');
 process.exit(failed ? 1 : 0);

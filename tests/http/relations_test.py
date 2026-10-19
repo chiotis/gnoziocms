@@ -126,5 +126,45 @@ check('the type editor shows a relation as read-only, with what it points at', s
 st, _, csv = root.get('/admin/export?type=volumes')
 check('an export writes the address of each entry', st == 200 and 'authors/charles-babbage' in csv and ada_id not in csv, csv[:300])
 
+# ---- templates built with blocks: relations as binding sources (4C)
+import json
+def editor_data(html):
+    return json.loads(re.search(r'<script type="application/json" id="block-editor-data">(.*?)</script>', html, re.S).group(1))
+def save_template(type_, blocks):
+    form = next(f for f in root.forms('/admin/theme?template=' + type_) if any(x[0] == 'blocks_json' for x in f['fields']))
+    fields = [tuple(x) for x in form['fields'] if x[0] not in ('blocks_json', 'blocks_editor', 'use')]
+    fields += [('blocks_editor', '1'), ('blocks_json', json.dumps(blocks)), ('use', '1')]
+    return root.request('/admin/theme?template=' + type_, data=fields)
+sources = {s['path']: s for s in editor_data(root.get('/admin/theme?template=volumes')[2])['bindings']['sources']}
+check('the template editor of a type with a relation offers the fields of the entry it points at, by path', all(('custom_fields.author.' + k) in sources for k in ('title', 'excerpt', 'main_image', 'url', 'custom_fields.country')) and sources['custom_fields.author.title']['kind'] == 'text', list(sources))
+check('and a relation to several as a list with columns', sources['custom_fields.others']['kind'] == 'list' and 'field_country' in [c['key'] for c in sources['custom_fields.others']['columns']], sources.get('custom_fields.others'))
+back = {s['path']: s for s in editor_data(root.get('/admin/theme?template=authors')[2])['bindings']['sources']}
+check('the type that is pointed at offers what points at it', 'referenced_by.volumes.author' in back and back['referenced_by.volumes.author']['kind'] == 'list' and 'title' in [c['key'] for c in back['referenced_by.volumes.author']['columns']], list(back))
+save_template('volumes', [
+    {'type': 'entry-title'},
+    {'type': 'cta', 'heading': {'bind': 'custom_fields.author.title'}, 'text': {'bind': 'custom_fields.author.custom_fields.country'}, 'actions': [{'label': 'More'}]},
+    {'type': 'content'},
+])
+save_template('authors', [
+    {'type': 'entry-title'},
+    {'type': 'cards', 'source': 'manual', 'heading': 'Volumes', 'items': {'bind': 'referenced_by.volumes.author', 'map': {'title': 'title', 'url': 'url'}}},
+    {'type': 'fact-sheet'},
+    {'type': 'content'},
+])
+look_again()
+st, _, page = pub.get('/volumes/notes')
+check('a volume is drawn from its template: the name of its author and a field of the author', st == 200 and 'Ada Lovelace' in page, st)
+st, _, page = pub.get('/authors/ada-king')
+check('an author lists, in a cards block, the volumes that point at it, each linked', st == 200 and re.search(r'href="/volumes/notes"[^>]*>|<a[^>]*href="/volumes/notes"', page) is not None and 'Notes' in page, st)
+pv = root.request('/admin/theme?template=volumes&preview=1', data=[('blocks_editor', '1'), ('blocks_json', json.dumps([{'type': 'cta', 'heading': {'bind': 'custom_fields.author.title'}, 'actions': [{'label': 'x'}]}])), ('preview_entry', 'notes|el'), ('_csrf', re.search(r'name="_csrf" value="([^"]+)"', root.get('/admin/theme?template=volumes')[2]).group(1))])
+check('the live preview of the template works with relations too', pv[0] == 200 and 'Ada Lovelace' in json.loads(pv[2])['html'], pv[2][:200])
+
+# ---- the fact sheet of an author lists its volumes when the relation says reverse_label
+volumes_yaml = open('app/custom/content-types/volumes.yaml', encoding='utf-8').read()
+open('app/custom/content-types/volumes.yaml', 'w', encoding='utf-8').write(volumes_yaml.replace("author: {type: relation, types: [authors], label: Author}", "author: {type: relation, types: [authors], label: Author, reverse_label: Volumes by this author}"))
+look_again()
+st, _, page = pub.get('/authors/ada-king')
+check('a relation with a reverse_label adds a line to the fact sheet of the entry it points at, with links', st == 200 and 'Volumes by this author' in page and '<a href="/volumes/notes">Notes</a>' in page, st)
+
 print('\nALL PASSED' if not fails else '\n%d FAILED: %s' % (len(fails), fails))
 sys.exit(1 if fails else 0)

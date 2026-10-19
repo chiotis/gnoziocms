@@ -62,7 +62,7 @@ final class SingleTemplateAdmin
         $sources = EntryBindings::sources($this->types, $type, $default, $default);
         $fieldChoices = [];
         foreach ($sources as $source) {
-            if (str_starts_with($source['path'], 'custom_fields.') && $source['kind'] !== 'list') {
+            if (str_starts_with($source['path'], 'custom_fields.') && substr_count($source['path'], '.') === 1 && ($source['kind'] !== 'list' || !empty($source['relation']))) {
                 $fieldChoices[] = ['path' => $source['path'], 'label' => $source['label'] . ' (' . $source['key'] . ')'];
             }
         }

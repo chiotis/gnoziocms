@@ -1086,8 +1086,12 @@
         if (on) return;
         // A new list starts with the columns of the same name mapped, so the usual case needs no clicking.
         var map = {};
+        // Entries (a relation, or what points here) have a card: its picture and excerpt are what a block calls image and text.
+        var alias = { image: 'main_image', text: 'excerpt' };
         mappableColumns(field).forEach(function (sub) {
-          if (compatibleColumns(source, sub).some(function (column) { return column.key === sub.key; })) map[sub.key] = sub.key;
+          var fits = compatibleColumns(source, sub);
+          if (fits.some(function (column) { return column.key === sub.key; })) map[sub.key] = sub.key;
+          else if (alias[sub.key] && fits.some(function (column) { return column.key === alias[sub.key]; })) map[sub.key] = alias[sub.key];
         });
         save(Object.assign({ bind: source.path }, Object.keys(map).length ? { map: map } : {}));
       });

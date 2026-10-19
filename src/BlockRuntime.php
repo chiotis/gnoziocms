@@ -47,7 +47,8 @@ final class BlockRuntime
         private \Closure $termLabel,
         private \Closure $absoluteUrl,
         private \Closure $markdownToHtml,
-        private \Closure $formEmbed
+        private \Closure $formEmbed,
+        private ?\Closure $relations = null
     ) {
     }
 
@@ -159,7 +160,8 @@ final class BlockRuntime
             $lang,
             ($this->defaultLanguage)(),
             static fn(string $value): string => Format::dateValue($value, $dateFormat),
-            fn(string $taxonomy, string $id): string => ($this->termLabel)($taxonomy, $id, $lang)
+            fn(string $taxonomy, string $id): string => ($this->termLabel)($taxonomy, $id, $lang),
+            $this->relations !== null ? ($this->relations)() : null
         );
     }
 
