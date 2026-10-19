@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.160 — 2026-10-19 — Search pages follow the SEO setting again
+- **Search result pages follow SEO → Search appearance** for whether search engines may index them (kept out by default). Since 0.1.146 they were always `noindex`, whatever the setting said, and the suite's SEO test failed on every push since then.
+- **`AGENTS.md`** (and `CLAUDE.md`, which imports it) tells coding agents what the tests need (PHP 8.5 and its extensions) and how to report tests their environment cannot run instead of reporting them as code failures. It also covers reading the latest CI run before new work, and how versions and releases go out.
+
 ## 0.1.159 — 2026-10-18 — A one-file installer
 - **`installer.php` installs a new site from the browser.** Set its key, upload it to an empty site folder and open it: it checks the server, downloads the latest release, verifies its size and SHA-256, unpacks it with the updater's safety rules and can start from the demo site. Each step shows its progress, in Greek or English, light or dark.
 - It then asks you to point the document root at the site's `public/` folder (with a note for CloudPanel) and waits for your OK. It continues only once it is served from `public/`, removes itself and opens `/admin` to create the first administrator.
