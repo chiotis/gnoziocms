@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.168 — 2026-10-19 — Relations in templates built with blocks
+- **The ⛓ picker offers an entry's relations as sources**: a field of the entry it points at (`author.title`, `author.main_image`), a list of the related entries, or the entries that point at this one, bound to a list block such as cards with the column mapping of 0.1.166. It works for any content type, including types added later.
+- **The fact sheet shows relations as links**, and a relation field can declare `reverse_label` to name the list on the other side (for example *Books* on an author's page). See the relations section in `docs/theming.md`.
+
 ## 0.1.167 — 2026-10-19 — Content relationships
 - **A content type can declare a `relation` field** that points at other entries: one or several, of the types it allows, also inside a list (related books, each with a note). Any type works, including one added later in `custom/content-types/`.
 - **A reference survives a change of address.** It stores the `translation_id` of the entry pointed at and shows that entry in the language of the page. An older entry gets its id, as a single line, the first time something points at it.

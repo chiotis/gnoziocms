@@ -93,6 +93,15 @@ final class ContentTypes
         $this->relations = $resolve;
     }
 
+    /** @var (\Closure(string, string, string, string): array<int, array<string, mixed>>)|null id, type, field path, language => entries that point here */
+    private ?\Closure $references = null;
+
+    /** Lets a fact sheet list the entries that point at an entry through a relation that has a `reverse_label`. */
+    public function showReferencesWith(\Closure $find): void
+    {
+        $this->references = $find;
+    }
+
     public function __construct(private Theme $theme)
     {
     }
@@ -362,7 +371,38 @@ final class ContentTypes
             $this->editableFields($type, $lang, $defaultLang),
             static fn(array $field): bool => $context === 'card' ? $field['card'] : $field['show']
         );
-        return $this->displayEntries($fields, $values, $formatDate, $lang, $defaultLang);
+        $entries = $this->displayEntries($fields, $values, $formatDate, $lang, $defaultLang);
+        return $context === 'card' ? $entries : array_merge($entries, $this->referencedEntries($type, $meta, $lang, $defaultLang));
+    }
+
+    /**
+     * What points at an entry through a relation whose field says `reverse_label` (in the type that holds the field): one entry of the
+     * fact sheet for each such field, listing the entries that point here, so the page of an author names its books without a template.
+     *
+     * @param array<string, mixed> $meta
+     * @return array<int, array<string, mixed>>
+     */
+    private function referencedEntries(string $type, array $meta, string $lang, string $defaultLang): array
+    {
+        $id = trim((string)($meta['translation_id'] ?? ''));
+        if ($this->references === null || $id === '') {
+            return [];
+        }
+        $entries = [];
+        foreach ($this->defined() as $from) {
+            foreach (RelationFields::paths($this->definition($from, $lang, $defaultLang)['fields']) as $found) {
+                $label = (string)($found['field']['reverse_label'] ?? '');
+                $targets = $found['field']['types'] ?? [];
+                if ($label === '' || ($targets !== [] && !in_array($type, $targets, true))) {
+                    continue;
+                }
+                $items = ($this->references)($id, $from, $found['path'], $lang);
+                if ($items !== []) {
+                    $entries[] = ['key' => 'referenced_by.' . $from . '.' . $found['path'], 'label' => $label, 'type' => 'relation', 'value' => array_column($items, 'id'), 'items' => $items, 'display' => implode(', ', array_column($items, 'title'))];
+                }
+            }
+        }
+        return $entries;
     }
 
     /**

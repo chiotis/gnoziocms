@@ -42,6 +42,19 @@ final class EntryBindings
         'tags' => ['Tags', 'terms'],
     ];
 
+    /**
+     * What an entry that is pointed at gives to a binding (a relation, `custom_fields.author.title`, or a list of them): path or column key
+     * => [label, kind]. Kinds follow the table above. The fields the pointed-at type declares come as `custom_fields.<key>` (one entry)
+     * or `field_<key>` (a column of a list).
+     */
+    public const CARD = [
+        'title' => ['Title', 'text'],
+        'excerpt' => ['Excerpt', 'textarea'],
+        'main_image' => ['Main image', 'image'],
+        'date' => ['Date', 'date'],
+        'url' => ['Address of its page', 'link'],
+    ];
+
     /** The block field that holds the choice "hide this block while everything bound in it is empty" (only a `false` is stored). */
     public const HIDE_KEY = 'bind_hide';
 
@@ -55,7 +68,9 @@ final class EntryBindings
         private string $lang,
         private string $defaultLang,
         private \Closure $formatDate,
-        private \Closure $termLabel
+        private \Closure $termLabel,
+        private ?Relations $relations = null,
+        private int $depth = 0
     ) {
     }
 
@@ -149,8 +164,82 @@ final class EntryBindings
                 }
             }
             $out[] = $source;
+            if ($field['type'] === 'relation') {
+                array_pop($out);
+                array_push($out, ...self::relationSources($types, $source, $field, $lang, $defaultLang));
+            }
+        }
+        // The entries of other types that point at this one, each field a list to bind.
+        foreach ($types->defined() as $from) {
+            $definition = $types->definition($from, $lang, $defaultLang);
+            foreach (RelationFields::paths($definition['fields']) as $found) {
+                $targets = $found['field']['types'] ?? [];
+                if (($targets !== [] && !in_array($type, $targets, true)) || $found['field']['hidden']) {
+                    continue;
+                }
+                $out[] = ['path' => 'referenced_by.' . $from . '.' . $found['path'], 'key' => $from . '.' . $found['path'], 'label' => $definition['label'] . ' · ' . $found['field']['label'], 'kind' => 'list', 'group' => 'Pointing here', 'columns' => self::cardColumns($types, $from, $lang, $defaultLang)];
+            }
         }
         return $out;
+    }
+
+    /**
+     * What a relation field offers: for one entry the fields of the entry it points at (`custom_fields.author.title`, ...; the ones the
+     * type declares when the field names a single type), the titles of all of them for a field that takes several, and for such a field a
+     * list whose rows are the entries pointed at.
+     *
+     * @param array<string, mixed> $source the field as a source
+     * @param array<string, mixed> $field the relation field
+     * @return list<array<string, mixed>>
+     */
+    private static function relationSources(ContentTypes $types, array $source, array $field, string $lang, string $defaultLang): array
+    {
+        $group = $field['label'];
+        $target = count($field['types'] ?? []) === 1 ? $field['types'][0] : '';
+        $source['relation'] = true;
+        if ($field['multiple'] ?? false) {
+            $source['kind'] = 'list';
+            $source['columns'] = self::cardColumns($types, $target, $lang, $defaultLang);
+            return [
+                $source,
+                ['path' => $source['path'] . '.title', 'key' => $source['key'] . '.title', 'label' => $field['label'] . ' · all titles', 'kind' => 'text', 'group' => $group],
+            ];
+        }
+        $source['kind'] = 'relation';
+        $out = [$source];
+        foreach (self::CARD as $key => [$label, $kind]) {
+            $out[] = ['path' => $source['path'] . '.' . $key, 'key' => $source['key'] . '.' . $key, 'label' => $field['label'] . ' · ' . $label, 'kind' => $kind, 'group' => $group];
+        }
+        if ($target !== '') {
+            foreach ($types->editableFields($target, $lang, $defaultLang) as $key => $own) {
+                if (!in_array($own['type'], ['repeater', 'relation'], true)) {
+                    $out[] = ['path' => $source['path'] . '.custom_fields.' . $key, 'key' => $source['key'] . '.' . $key, 'label' => $field['label'] . ' · ' . $own['label'], 'kind' => $own['type'], 'group' => $group];
+                }
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * The columns of a list of entries (a relation that takes several, or what points at an entry): the card's, and the fields the
+     * type declares when there is one type (`field_<key>`).
+     *
+     * @return list<array{key: string, label: string, kind: string}>
+     */
+    private static function cardColumns(ContentTypes $types, string $target, string $lang, string $defaultLang): array
+    {
+        $columns = [];
+        foreach (self::CARD as $key => [$label, $kind]) {
+            $columns[] = ['key' => $key, 'label' => $label, 'kind' => $kind];
+        }
+        if ($target !== '') {
+            foreach ($types->editableFields($target, $lang, $defaultLang) as $key => $own) {
+                if (!in_array($own['type'], ['repeater', 'relation'], true)) {
+                    $columns[] = ['key' => 'field_' . $key, 'label' => $own['label'], 'kind' => $own['type']];
+                }
+            }
+        }
+        return $columns;
     }
 
     /** The sources of a content type that a block field of this type takes. @param list<array<string, string>> $sources @return list<array<string, string>> */
@@ -217,8 +306,11 @@ final class EntryBindings
         if (isset(self::SOURCES[$path])) {
             return in_array(self::SOURCES[$path][1], $kinds, true) ? $this->common($path) : null;
         }
-        if (!str_starts_with($path, 'custom_fields.') || substr_count($path, '.') !== 1) {
+        if (!str_starts_with($path, 'custom_fields.')) {
             return null;
+        }
+        if (substr_count($path, '.') > 1) {
+            return $this->relatedValue(explode('.', $path), $fieldType);
         }
         $key = substr($path, strlen('custom_fields.'));
         $field = $this->types->editableFields($this->item->type, $this->lang, $this->defaultLang)[$key] ?? null;
@@ -227,6 +319,64 @@ final class EntryBindings
         }
         $values = $this->types->values($this->item->type, $this->item->meta, $this->lang, $this->defaultLang);
         return array_key_exists($key, $values) ? $this->scalar($field, $values[$key]) : '';
+    }
+
+    /**
+     * A field of the entry a relation points at: `custom_fields.<relation>.<title|excerpt|main_image|date|url>`, or
+     * `custom_fields.<relation>.custom_fields.<key>` for a field of the type the relation names. For a relation that takes several only
+     * `.title` is offered (all titles in a line). Null when the path leads nowhere or the kind does not fit; '' when there is no entry.
+     *
+     * @param list<string> $parts the path split at the dots
+     */
+    private function relatedValue(array $parts, string $fieldType): ?string
+    {
+        $kinds = self::ACCEPTS[$fieldType] ?? [];
+        $field = $this->types->editableFields($this->item->type, $this->lang, $this->defaultLang)[$parts[1]] ?? null;
+        if ($field === null || $field['type'] !== 'relation') {
+            return null;
+        }
+        $rest = implode('.', array_slice($parts, 2));
+        $multiple = ($field['multiple'] ?? false) === true;
+        if ($multiple && $rest !== 'title') {
+            return null;
+        }
+        $target = count($field['types'] ?? []) === 1 ? $field['types'][0] : '';
+        if (isset(self::CARD[$rest])) {
+            $kind = self::CARD[$rest][1];
+        } elseif ($target !== '' && $this->depth < 1 && preg_match('/^custom_fields\.([a-z][a-z0-9_]*)$/', $rest, $m) === 1) {
+            $own = $this->types->editableFields($target, $this->lang, $this->defaultLang)[$m[1]] ?? null;
+            if ($own === null || in_array($own['type'], ['repeater', 'relation'], true)) {
+                return null;
+            }
+            $kind = $own['type'];
+        } else {
+            return null;
+        }
+        if (!in_array($kind, $kinds, true)) {
+            return null;
+        }
+        $cards = $this->relations?->related($this->item, $parts[1], $this->lang) ?? [];
+        if ($cards === []) {
+            return '';
+        }
+        if ($multiple) {
+            return implode(', ', array_column($cards, 'title'));
+        }
+        $card = $cards[0];
+        if (isset(self::CARD[$rest])) {
+            return $this->cardValue($card, $rest);
+        }
+        $entry = $this->relations?->entry($card);
+        return $entry === null ? '' : (new self($entry, $this->types, $this->lang, $this->defaultLang, $this->formatDate, $this->termLabel, $this->relations, $this->depth + 1))->value($rest, $fieldType);
+    }
+
+    /** One value of the card of an entry that is pointed at, as the text a block's field takes. @param array<string, mixed> $card */
+    private function cardValue(array $card, string $key): string
+    {
+        return match ($key) {
+            'date' => $this->date((string)($card['date'] ?? '')),
+            default => $this->text($card[$key] ?? ''),
+        };
     }
 
     /**
@@ -242,6 +392,12 @@ final class EntryBindings
     private function rows(array $binding, array $field, array &$missing): ?array
     {
         $path = (string)$binding['bind'];
+        if (str_starts_with($path, 'referenced_by.') || (str_starts_with($path, 'custom_fields.') && substr_count($path, '.') === 1)) {
+            $kind = $this->types->editableFields($this->item->type, $this->lang, $this->defaultLang)[substr($path, strlen('custom_fields.'))] ?? null;
+            if (str_starts_with($path, 'referenced_by.') || ($kind !== null && $kind['type'] === 'relation')) {
+                return $this->entryRows($binding, $field, $missing);
+            }
+        }
         if (!str_starts_with($path, 'custom_fields.') || substr_count($path, '.') !== 1) {
             return null;
         }
@@ -281,6 +437,87 @@ final class EntryBindings
                 continue;
             }
             // The first row of the list that is drawn gets the first value of a fixed column, the others the rest.
+            foreach ($binding['fixed'] ?? [] as $column => $one) {
+                if (isset($field['fields'][$column]) && !isset($columns[$column]) && $field['fields'][$column]['type'] !== 'repeater') {
+                    $out[$column] = is_array($one) ? ($rows === [] ? $one['first'] : $one['rest']) : $one;
+                }
+            }
+            $rows[] = $out;
+        }
+        return $rows;
+    }
+
+    /**
+     * The rows of a list bound to entries: the ones a relation field points at (`custom_fields.<key>`), or the ones that point at this
+     * entry (`referenced_by.<type>.<field>`). A column of the block shows a column of the card (CARD) or `field_<key>`, a field the type of
+     * those entries declares, read from the entry's file only when some column asks for one. Null when the source is not there any more.
+     *
+     * @param array<string, mixed> $binding
+     * @param array<string, mixed> $field the block's repeater
+     * @param list<string> $missing
+     * @return array<int, array<string, mixed>>|null
+     */
+    private function entryRows(array $binding, array $field, array &$missing): ?array
+    {
+        $path = (string)$binding['bind'];
+        if ($this->relations === null) {
+            return [];
+        }
+        if (str_starts_with($path, 'referenced_by.')) {
+            [$from, $fieldPath] = array_pad(explode('.', substr($path, strlen('referenced_by.')), 2), 2, '');
+            $definition = $this->types->definition($from, $this->lang, $this->defaultLang)['fields'];
+            $found = array_values(array_filter(RelationFields::paths($definition), static fn(array $f): bool => $f['path'] === $fieldPath))[0] ?? null;
+            if ($found === null || !isset($this->types->definition($from, $this->lang, $this->defaultLang)['fields'])) {
+                return null;
+            }
+            $targets = $found['field']['types'] ?? [];
+            if ($targets !== [] && !in_array($this->item->type, $targets, true)) {
+                return null;
+            }
+            $type = $from;
+            $cards = $this->relations->referencedBy($this->item, $from, $fieldPath, $this->lang);
+        } else {
+            $relation = $this->types->editableFields($this->item->type, $this->lang, $this->defaultLang)[substr($path, strlen('custom_fields.'))] ?? null;
+            if ($relation === null || $relation['type'] !== 'relation') {
+                return null;
+            }
+            $type = count($relation['types'] ?? []) === 1 ? $relation['types'][0] : '';
+            $cards = $this->relations->related($this->item, substr($path, strlen('custom_fields.')), $this->lang);
+        }
+        $own = $type !== '' ? $this->types->editableFields($type, $this->lang, $this->defaultLang) : [];
+        $binding = self::cleanList($binding);
+        $columns = [];
+        foreach ($binding['map'] ?? [] as $column => $from) {
+            $to = $field['fields'][$column] ?? null;
+            if ($to === null || $to['type'] === 'repeater' || !isset(self::ACCEPTS[$to['type']])) {
+                continue;
+            }
+            $kind = self::CARD[$from][1] ?? (str_starts_with($from, 'field_') && isset($own[substr($from, 6)]) && !in_array($own[substr($from, 6)]['type'], ['repeater', 'relation'], true) ? $own[substr($from, 6)]['type'] : null);
+            if ($kind === null || !in_array($kind, self::ACCEPTS[$to['type']], true)) {
+                $missing[] = $path . '.' . $from;
+                continue;
+            }
+            $columns[$column] = $from;
+        }
+        $rows = [];
+        foreach ($cards as $card) {
+            $item = null;
+            $out = [];
+            $any = false;
+            foreach ($columns as $column => $from) {
+                if (isset(self::CARD[$from])) {
+                    $out[$column] = $this->cardValue($card, $from);
+                } else {
+                    $key = substr($from, 6);
+                    $item ??= $this->relations->entry($card);
+                    $values = $item !== null ? $this->types->values($type, $item->meta, $this->lang, $this->defaultLang) : [];
+                    $out[$column] = array_key_exists($key, $values) ? $this->scalar($own[$key], $values[$key]) : '';
+                }
+                $any = $any || $out[$column] !== '';
+            }
+            if (!$any) {
+                continue;
+            }
             foreach ($binding['fixed'] ?? [] as $column => $one) {
                 if (isset($field['fields'][$column]) && !isset($columns[$column]) && $field['fields'][$column]['type'] !== 'repeater') {
                     $out[$column] = is_array($one) ? ($rows === [] ? $one['first'] : $one['rest']) : $one;

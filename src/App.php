@@ -1067,7 +1067,8 @@ final class App
             fn(string $taxonomy, string $termId, string $lang): string => $this->taxonomyTermLabel($taxonomy, $termId, $lang),
             fn(string $path): string => $this->buildAbsoluteUrl($path),
             fn(string $markdown, string $lang, string $path): string => $this->applyShortcodes((string)$this->markdown->convert($markdown), $lang, $path),
-            fn(string $slug, string $lang, string $path): string => $this->renderFormEmbedBySlug($slug, $lang, $path)
+            fn(string $slug, string $lang, string $path): string => $this->renderFormEmbedBySlug($slug, $lang, $path),
+            fn(): Relations => $this->relations()
         );
     }
 
@@ -1991,6 +1992,7 @@ final class App
         if ($this->contentTypes === null) {
             $this->contentTypes = new ContentTypes($this->theme);
             $this->contentTypes->showRelationsWith(fn(array $ids, array $types, string $lang): array => $this->relations()->resolve($ids, $types, $lang));
+            $this->contentTypes->showReferencesWith(fn(string $id, string $type, string $path, string $lang): array => $this->relations()->referencedById($id, $type, $path, $lang));
         }
         return $this->contentTypes;
     }

@@ -108,8 +108,13 @@ final class Relations
      */
     public function referencedBy(ContentItem $target, string $fromType, string $field, string $lang, bool $includeHidden = false): array
     {
+        return $this->referencedById(trim((string)($target->meta['translation_id'] ?? '')), $fromType, $field, $lang, $includeHidden);
+    }
+
+    /** The same by the id of the entry pointed at (what a fact sheet has: the front matter). @return list<array<string, mixed>> */
+    public function referencedById(string $id, string $fromType, string $field, string $lang, bool $includeHidden = false): array
+    {
         $this->fresh();
-        $id = trim((string)($target->meta['translation_id'] ?? ''));
         if ($id === '' || !in_array($fromType, $this->enabledTypes(), true)) {
             return [];
         }
@@ -141,6 +146,12 @@ final class Relations
             return (strtotime((string)$b['date']) ?: 0) <=> (strtotime((string)$a['date']) ?: 0) ?: strcasecmp((string)$a['title'], (string)$b['title']);
         });
         return $items;
+    }
+
+    /** The entry a card stands for, read from its file (for a template that shows a field of it); null when it is gone. @param array<string, mixed> $card */
+    public function entry(array $card): ?ContentItem
+    {
+        return $this->content->find((string)$card['type'], (string)$card['slug'], (string)$card['lang'], false, false);
     }
 
     /**
