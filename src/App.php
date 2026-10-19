@@ -102,6 +102,8 @@ final class App
     /** True while the live preview of the editor draws a page: its blocks then carry their place in the list (data-bk-block). */
     private bool $entryPreview = false;
     private ?LayoutsAdmin $layoutsAdminService = null;
+    private ?BlockSets $blockSetsService = null;
+    private ?SingleTemplateAdmin $singleTemplateAdminService = null;
     private ?ArchiveBuilder $archiveBuilderService = null;
     private ?BackupAdmin $backupAdminService = null;
     private ?PublicPaths $publicPathsService = null;
@@ -903,13 +905,7 @@ final class App
         // The page of a type built with blocks: the blocks of its template, drawn for this entry (its fields, its text, its own blocks).
         $built = $isHome ? null : $this->templates()->builtBlocks($item);
         if ($built !== null) {
-            $pageBlocks = $this->blockRuntime()->renderer($lang, $path, $this->twig)->render($built, $viewDefaults + [
-                'item' => $item,
-                'body_html' => $item->html,
-                'block_preview' => $this->entryPreview,
-                'template_mode' => true,
-                'bindings' => $this->blockRuntime()->bindingsFor($item, $lang),
-            ]);
+            $pageBlocks = $this->blockRuntime()->renderTemplate($built, $item, $lang, $path, $this->twig, $viewDefaults + ['block_preview' => $this->entryPreview]);
         } elseif (is_array($raw) && $raw !== []) {
             // The sidebar template places the text itself, so blocks must not repeat it.
             $bodyInTemplate = !$isHome && $this->templates()->forItem($item) === 'templates/sidebar.twig';
@@ -2569,19 +2565,7 @@ final class App
             $query = [];
         }
 
-        $this->themeSettings = $data;
-        $this->twig = $this->initTwig();
-        $kept = [$_POST, $_GET, $_SERVER['REQUEST_METHOD'] ?? 'GET'];
-        $_POST = [];
-        $_GET = $query;
-        $_SERVER['REQUEST_METHOD'] = 'GET';
-        ob_start();
-        try {
-            $this->handleFront($clean);
-        } finally {
-            $html = (string)ob_get_clean();
-            [$_POST, $_GET, $_SERVER['REQUEST_METHOD']] = $kept;
-        }
+        $html = $this->drawFront($data, $clean, $query, false);
         http_response_code(200);
         header('Content-Type: application/json; charset=utf-8');
         header('Cache-Control: no-store');
@@ -2615,6 +2599,31 @@ final class App
             fn(): array => $this->content->getTypes(),
             fn(string $type): int => count($this->content->getItems($type, null, true)),
             fn(string $type): string => TemplateResolver::singular($type)
+        );
+    }
+
+    private function blockSets(): BlockSets
+    {
+        return $this->blockSetsService ??= new BlockSets(
+            fn(): BlockRegistry => $this->blockRuntime()->registry(),
+            fn(): HtmlGuard => $this->htmlGuard(),
+            fn(): bool => $this->permissions->can($this->auth->user(), 'content.raw_html'),
+            fn(string $lang): array => $this->presetLibrary()->forEditor($lang, $lang),
+            fn(): array => $this->settings
+        );
+    }
+
+    private function singleTemplateAdmin(): SingleTemplateAdmin
+    {
+        return $this->singleTemplateAdminService ??= new SingleTemplateAdmin(
+            $this->theme,
+            $this->contentTypes(),
+            $this->blockRuntime()->registry(),
+            $this->blockSets(),
+            fn(): array => $this->content->getTypes(),
+            fn(string $type): array => $this->content->getItems($type, null, true),
+            fn(string $type, string $slug, string $lang): ?ContentItem => $this->content->find($type, $slug, $lang, true, false),
+            fn(): string => $this->defaultLanguage()
         );
     }
 
@@ -3690,7 +3699,7 @@ final class App
         }
         if (is_array($footerBlocks)) {
             // A set of blocks for each language (or one list), each checked like the blocks of an entry.
-            $kept = FooterBlocks::toStore($this->cleanBlockSets($footerBlocks, $current['footer_blocks'] ?? null));
+            $kept = FooterBlocks::toStore($this->blockSets()->clean($footerBlocks, $current['footer_blocks'] ?? null));
             if ($kept === []) {
                 unset($data['footer_blocks']);
             } else {
@@ -3699,48 +3708,10 @@ final class App
         }
         if ($builtInput !== null) {
             // Which content types draw their pages from the template built with blocks (Single Layouts); the blocks stay stored when it is off.
-            $known = $this->content->getTypes();
-            foreach ($builtInput as $type => $choice) {
-                if (in_array((string)$type, $known, true) && (string)$type !== 'forms' && is_string($choice)) {
-                    $templates = SingleTemplates::with($data, (string)$type, $choice === 'built', null);
-                    $data['single_templates'] = $templates;
-                }
-            }
-            if (($data['single_templates'] ?? []) === []) {
-                unset($data['single_templates']);
-            }
+            $data = SingleTemplates::withChoices($data, $builtInput, $this->content->getTypes());
         }
         $this->setSystemMeta('theme_settings', Yaml::dump($data, 6, 2));
         return ['ok' => true];
-    }
-
-    /**
-     * Sets of blocks sent by a block editor that keeps its blocks in the theme settings (Footer Blocks, a single template), each
-     * checked like the blocks of an entry. Raw HTML can carry script: someone who may not add it sees what they type as text, and
-     * the HTML that is already stored stays.
-     *
-     * @param array<int|string, mixed> $posted a list, or a map of set key to blocks
-     * @param mixed $stored what is stored now (the shape of FooterBlocks)
-     * @return array<string, array<int, mixed>>
-     */
-    private function cleanBlockSets(array $posted, mixed $stored): array
-    {
-        $mayWriteHtml = $this->permissions->can($this->auth->user(), 'content.raw_html');
-        $allowed = [];
-        if (!$mayWriteHtml) {
-            foreach (FooterBlocks::sets($stored, array_merge(['default'], is_array($stored) && !array_is_list($stored) ? array_map('strval', array_keys($stored)) : [])) as $set) {
-                $allowed = array_merge($allowed, $this->htmlGuard()->blocksFragments($set));
-            }
-        }
-        $sets = [];
-        foreach (FooterBlocks::fromPost($posted, $stored) as $key => $set) {
-            $set = $this->blockRuntime()->registry()->sanitizeForStorage($set);
-            if (!$mayWriteHtml) {
-                $set = $this->htmlGuard()->eachMarkdownField($set, fn(string $value): string => $this->htmlGuard()->neutralize($value, $allowed));
-            }
-            $sets[$key] = $set;
-        }
-        return $sets;
     }
 
     /** The languages of the site, its own first. @return string[] */
@@ -3753,140 +3724,45 @@ final class App
     /** What the block editor of Theme > Footer Blocks starts from: the block types, the blocks now above the footer, the ready-made sections. */
     private function footerBlocksEditorJson(string $lang): string
     {
-        return $this->blocksEditorJson($lang, $this->themeSettings['footer_blocks'] ?? [], 'footer', $this->blockRuntime()->registry()->editorDefinitions());
+        return $this->blockSets()->editorJson($lang, $this->themeSettings['footer_blocks'] ?? [], 'footer', $this->blockRuntime()->registry()->editorDefinitions());
     }
 
-    /**
-     * What a block editor that keeps its blocks in the theme settings starts from. With several languages the editor has a set for each
-     * (the site's own first); with one it is a plain list.
-     *
-     * @param mixed $stored the blocks as stored (the shape of FooterBlocks)
-     * @param array<int, array<string, mixed>> $definitions the block types the editor offers
-     * @param array<string, mixed> $extra more for the editor (the bindings of a template)
-     */
-    private function blocksEditorJson(string $lang, mixed $stored, string $context, array $definitions, array $extra = []): string
-    {
-        $languages = [];
-        foreach ($this->siteLanguageCodes() as $i => $code) {
-            $languages[] = ['key' => $i === 0 ? 'default' : (string)$code, 'code' => (string)$code];
-        }
-        $multiple = count($languages) > 1;
-        return (string)json_encode([
-            'definitions' => $definitions,
-            'container' => BlockContainer::editorData(),
-            'blocks' => $multiple ? FooterBlocks::sets($stored, array_column($languages, 'key')) : FooterBlocks::forLanguage($stored, 'default', 'default'),
-            'languages' => $multiple ? $languages : [],
-            'presets' => $this->presetLibrary()->forEditor($lang, $lang),
-            'presets_url' => rtrim((string)($this->settings['base_url'] ?? ''), '/') . '/admin/block-presets',
-            'lang' => $lang,
-            'context' => $context,
-        ] + $extra, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_INVALID_UTF8_SUBSTITUTE);
-    }
-
-    /**
-     * Single Layouts > Edit template: the blocks that draw the page of every entry of a content type, edited with the block editor next to
-     * a live preview of a real entry. Nothing here knows a type: its fields come from its definition when the screen is drawn.
-     */
+    /** Single Layouts > Edit template (`SingleTemplateAdmin`): the screen, saving, and the live preview of a real entry. */
     private function handleSingleTemplate(string $type): void
     {
         $type = $this->sanitizeType($type);
-        if (!in_array($type, $this->content->getTypes(), true) || $type === 'forms' || !$this->theme->hasTemplate(TemplateResolver::BUILT)) {
+        $admin = $this->singleTemplateAdmin();
+        if (!$admin->available($type)) {
             $this->redirect('/admin/theme?tab=single_layouts');
             return;
         }
-        $default = $this->defaultLanguage();
         $current = $this->loadThemeSettings();
-        $stored = SingleTemplates::entry($current, $type);
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            if (($_GET['preview'] ?? '') === '1') {
-                $this->previewTemplate($type, $current);
-                return;
-            }
-            if (!$this->systemDatabase->isAvailable()) {
-                $this->redirect('/admin/theme?template=' . urlencode($type) . '&fail=1');
-                return;
-            }
-            $sets = ($_POST['blocks_editor'] ?? '') === '1' && is_array($posted = json_decode((string)($_POST['blocks_json'] ?? ''), true))
-                ? $this->cleanBlockSets($posted, $stored['blocks']) : null;
-            $data = $current;
-            $templates = SingleTemplates::with($current, $type, isset($_POST['use']), $sets);
-            if ($templates === []) {
-                unset($data['single_templates']);
-            } else {
-                $data['single_templates'] = $templates;
-            }
-            $this->setSystemMeta('theme_settings', Yaml::dump($data, 6, 2));
-            $this->themeSettings = $this->loadThemeSettings();
-            $this->logActivity('theme.update', 'info', 'settings', $this->theme->name(), 'Template of ' . $type . ' updated.', ['tab' => 'single_layouts', 'type' => $type]);
-            $this->redirect('/admin/theme?template=' . urlencode($type) . '&saved=1' . (isset($_POST['preview_entry']) ? '&entry=' . urlencode((string)$_POST['preview_entry']) : ''));
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->render('@admin/theme-template.twig', $admin->view($type, $current, $_GET) + ['user' => $this->auth->user(), 'types' => $this->content->getTypes(), 'admin_section' => 'theme']);
             return;
         }
-
-        $definition = $this->contentTypes()->definition($type, $default, $default);
-        $sources = EntryBindings::sources($this->contentTypes(), $type, $default, $default);
-        $fieldChoices = [];
-        foreach ($sources as $source) {
-            if (str_starts_with($source['path'], 'custom_fields.')) {
-                $fieldChoices[] = ['path' => $source['path'], 'label' => $source['label'] . ' (' . $source['key'] . ')'];
-            }
+        if (($_GET['preview'] ?? '') === '1') {
+            $this->previewTemplate($admin->preview($type, $current, $_POST));
+            return;
         }
-        // The entries to look at: the latest first, the language each is in.
-        $items = $this->content->getItems($type, null, true);
-        usort($items, static fn(ContentItem $a, ContentItem $b): int => strcmp((string)($b->meta['date'] ?? ''), (string)($a->meta['date'] ?? '')) ?: $b->mtime <=> $a->mtime);
-        $choices = [];
-        foreach (array_slice($items, 0, 40) as $item) {
-            $choices[] = ['value' => $item->slug . '|' . $item->lang, 'label' => (string)($item->meta['title'] ?? $item->slug) . ' (' . $item->lang . ')'];
+        if (!$this->systemDatabase->isAvailable()) {
+            $this->redirect('/admin/theme?template=' . urlencode($type) . '&fail=1');
+            return;
         }
-        $chosen = (string)($_GET['entry'] ?? '');
-        if (!in_array($chosen, array_column($choices, 'value'), true)) {
-            $chosen = (string)($choices[0]['value'] ?? '');
-        }
-        $this->render('@admin/theme-template.twig', [
-            'user' => $this->auth->user(),
-            'types' => $this->content->getTypes(),
-            'admin_section' => 'theme',
-            'saved' => isset($_GET['saved']),
-            'failed' => isset($_GET['fail']),
-            'type' => $type,
-            'type_label' => $definition['label'],
-            'type_singular' => $definition['singular'],
-            'template_use' => $stored['use'] || SingleTemplates::blocks($current, $type, $default, $default) === [],
-            'preview_choices' => $choices,
-            'preview_chosen' => $chosen,
-            'template_json' => $this->blocksEditorJson($default, $stored['blocks'], 'template', $this->blockRuntime()->registry()->editorDefinitions(true, $fieldChoices), [
-                'bindings' => ['type' => $type, 'sources' => $sources, 'accepts' => EntryBindings::ACCEPTS],
-            ]),
-        ]);
+        $this->setSystemMeta('theme_settings', Yaml::dump($admin->saved($type, $current, $_POST), 6, 2));
+        $this->themeSettings = $this->loadThemeSettings();
+        $this->logActivity('theme.update', 'info', 'settings', $this->theme->name(), 'Template of ' . $type . ' updated.', ['tab' => 'single_layouts', 'type' => $type]);
+        $this->redirect('/admin/theme?template=' . urlencode($type) . '&saved=1' . (isset($_POST['preview_entry']) ? '&entry=' . urlencode((string)$_POST['preview_entry']) : ''));
     }
 
-    /**
-     * JSON for the live preview of a template: the page of a real entry drawn with the unsaved blocks of the template (nothing is
-     * stored). The blocks are read as Save reads them, including who may add raw HTML.
-     *
-     * @param array<string, mixed> $current the theme settings now
-     */
-    private function previewTemplate(string $type, array $current): void
+    /** The public page at `path` as a visitor's GET with these theme settings, as markup, nothing stored (`$marked`: blocks carry their place, for the template preview). @param array<string, mixed> $themeSettings @param array<string, mixed> $query */
+    private function drawFront(array $themeSettings, string $path, array $query, bool $marked): string
     {
-        header('Content-Type: application/json; charset=utf-8');
-        header('Cache-Control: no-store');
-        [$slug, $lang] = array_pad(explode('|', (string)($_POST['preview_entry'] ?? ''), 2), 2, '');
-        $item = $slug !== '' && preg_match('/^[a-z]{2,3}(-[a-z0-9]{2,8})?$/i', $lang) === 1 ? $this->content->find($type, Slug::plain($slug), $lang, true, false) : null;
-        if ($item === null) {
-            echo json_encode(['html' => '<!doctype html><meta charset="utf-8"><body style="font:15px system-ui;padding:2rem;color:#4d5d73">There is no entry of this type to show yet. Add one, then come back.</body>'], JSON_UNESCAPED_UNICODE);
-            return;
-        }
-        $stored = SingleTemplates::entry($current, $type);
-        $posted = json_decode((string)($_POST['blocks_json'] ?? ''), true);
-        $sets = ($_POST['blocks_editor'] ?? '') === '1' && is_array($posted) ? $this->cleanBlockSets($posted, $stored['blocks']) : null;
-        $this->themeSettings = $this->theme->resolveSettings(['single_templates' => SingleTemplates::with($current, $type, true, $sets)] + $current);
+        $this->themeSettings = $themeSettings;
         $this->twig = $this->initTwig();
-        $homeSlug = (string)(($this->settings['home_page'] ?? '') !== '' ? $this->settings['home_page'] : 'index');
-        $path = ContentPaths::build($type, $item->slug, $item->lang, $homeSlug, $this->defaultLanguage());
         $kept = [$_POST, $_GET, $_SERVER['REQUEST_METHOD'] ?? 'GET'];
-        $_POST = [];
-        $_GET = [];
-        $_SERVER['REQUEST_METHOD'] = 'GET';
-        $this->entryPreview = true;
+        [$_POST, $_GET, $_SERVER['REQUEST_METHOD']] = [[], $query, 'GET'];
+        $this->entryPreview = $marked;
         ob_start();
         try {
             $this->handleFront($path);
@@ -3895,8 +3771,21 @@ final class App
             $this->entryPreview = false;
             [$_POST, $_GET, $_SERVER['REQUEST_METHOD']] = $kept;
         }
-        http_response_code(200);
+        return $html;
+    }
+
+    /** JSON for the live preview of a template: the page of the entry drawn with the unsaved settings (nothing is stored). @param array{item: ContentItem, settings: array<string, mixed>}|null $preview */
+    private function previewTemplate(?array $preview): void
+    {
         header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: no-store');
+        if ($preview === null) {
+            echo json_encode(['html' => SingleTemplateAdmin::NO_ENTRY], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+        $item = $preview['item'];
+        $path = ContentPaths::build($item->type, $item->slug, $item->lang, (string)(($this->settings['home_page'] ?? '') !== '' ? $this->settings['home_page'] : 'index'), $this->defaultLanguage());
+        $html = $this->drawFront($preview['settings'], $path, [], true);
         echo json_encode(['html' => $html, 'path' => '/' . $path], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
     }
 

@@ -58,4 +58,26 @@ final class SingleTemplates
         $all[$type] = ['use' => $use, 'blocks' => $blocks];
         return $all;
     }
+
+    /**
+     * The theme settings after the Single Layouts cards were sent: for each type of the form that exists (a form has no template) its
+     * choice, `built` or anything else for the theme's. Types the form did not send are left as they are.
+     *
+     * @param array<string, mixed> $data the theme settings being stored
+     * @param array<string, mixed> $choices `single_template[<type>]` as sent
+     * @param string[] $known the content types the site has
+     * @return array<string, mixed>
+     */
+    public static function withChoices(array $data, array $choices, array $known): array
+    {
+        foreach ($choices as $type => $choice) {
+            if (in_array((string)$type, $known, true) && (string)$type !== 'forms' && is_string($choice)) {
+                $data['single_templates'] = self::with($data, (string)$type, $choice === 'built', null);
+            }
+        }
+        if (($data['single_templates'] ?? []) === []) {
+            unset($data['single_templates']);
+        }
+        return $data;
+    }
 }

@@ -137,6 +137,18 @@ final class BlockRuntime
         );
     }
 
+    /**
+     * The blocks of a template built with blocks drawn for one entry: its fields (bindings), its text (Page content) and its own blocks.
+     *
+     * @param array<int, mixed> $blocks
+     * @param array<string, mixed> $context what every block gets (the page's view data)
+     * @return array<string, mixed> what BlockRenderer::render() gives
+     */
+    public function renderTemplate(array $blocks, ContentItem $item, string $lang, string $path, Environment $twig, array $context): array
+    {
+        return $this->renderer($lang, $path, $twig)->render($blocks, $context + ['item' => $item, 'body_html' => $item->html, 'template_mode' => true, 'bindings' => $this->bindingsFor($item, $lang)]);
+    }
+
     /** The bindings of a template built with blocks for one entry: its fields as the template's blocks can show them in a language. */
     public function bindingsFor(ContentItem $item, string $lang): EntryBindings
     {
