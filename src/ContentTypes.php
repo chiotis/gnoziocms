@@ -68,7 +68,7 @@ final class ContentTypes
     /** Field types an archive can be ordered by. */
     public const SORTABLE_TYPES = ['date', 'number', 'decimal', 'text'];
 
-    public const FIELD_TYPES = ['text', 'textarea', 'markdown', 'email', 'url', 'link', 'image', 'file', 'location', 'color', 'number', 'decimal', 'date', 'select', 'toggle', 'repeater'];
+    public const FIELD_TYPES = ['text', 'textarea', 'markdown', 'email', 'url', 'link', 'image', 'file', 'location', 'color', 'number', 'decimal', 'date', 'select', 'toggle', 'repeater', 'relation'];
 
     /** The kinds of field Admin > Content types can create: a repeater needs fields of its own, so it is written in the type's YAML file. */
     public const FORM_FIELD_TYPES = ['text', 'textarea', 'markdown', 'email', 'url', 'link', 'image', 'file', 'location', 'color', 'number', 'decimal', 'date', 'select', 'toggle'];
@@ -83,6 +83,15 @@ final class ContentTypes
     private array $cache = [];
     /** @var array<string, array<string, mixed>>|null */
     private static ?array $archiveSchema = null;
+
+    /** @var (\Closure(array<int, string>, array<int, string>, string): array<int, array<string, mixed>>)|null ids, content types allowed, language => entries to link */
+    private ?\Closure $relations = null;
+
+    /** Lets the fields that point at other entries (relation) show them: the closure turns ids into the entries a visitor may see. */
+    public function showRelationsWith(\Closure $resolve): void
+    {
+        $this->relations = $resolve;
+    }
 
     public function __construct(private Theme $theme)
     {
@@ -353,7 +362,7 @@ final class ContentTypes
             $this->editableFields($type, $lang, $defaultLang),
             static fn(array $field): bool => $context === 'card' ? $field['card'] : $field['show']
         );
-        return self::displayEntries($fields, $values, $formatDate, $lang, $defaultLang);
+        return $this->displayEntries($fields, $values, $formatDate, $lang, $defaultLang);
     }
 
     /**
@@ -374,7 +383,7 @@ final class ContentTypes
                 $chosen[$key] = $editable[$key];
             }
         }
-        return self::displayEntries($chosen, $this->values($type, $meta, $lang, $defaultLang), $formatDate, $lang, $defaultLang);
+        return $this->displayEntries($chosen, $this->values($type, $meta, $lang, $defaultLang), $formatDate, $lang, $defaultLang);
     }
 
     /**
@@ -386,7 +395,7 @@ final class ContentTypes
      * @param \Closure(string): string $formatDate
      * @return array<int, array<string, mixed>>
      */
-    private static function displayEntries(array $fields, array $values, \Closure $formatDate, string $lang, string $defaultLang): array
+    private function displayEntries(array $fields, array $values, \Closure $formatDate, string $lang, string $defaultLang): array
     {
         $entries = [];
         foreach ($fields as $key => $field) {
@@ -405,7 +414,7 @@ final class ContentTypes
             if ($field['type'] === 'repeater') {
                 $rows = [];
                 foreach (is_array($value) ? $value : [] as $row) {
-                    $inner = self::displayEntries($field['fields'], is_array($row) ? $row : [], $formatDate, $lang, $defaultLang);
+                    $inner = $this->displayEntries($field['fields'], is_array($row) ? $row : [], $formatDate, $lang, $defaultLang);
                     if ($inner !== []) {
                         $rows[] = $inner;
                     }
@@ -418,6 +427,18 @@ final class ContentTypes
                     static fn(array $row): string => (string)(array_values(array_filter($row, static fn(array $e): bool => $e['type'] !== 'repeater' && $e['type'] !== 'image' && $e['display'] !== ''))[0]['display'] ?? ''),
                     $rows
                 ), static fn(string $text): bool => $text !== ''));
+                $entries[] = $entry;
+                continue;
+            }
+            if ($field['type'] === 'relation') {
+                // The entries a visitor may see (published, in this language or the site's own); a field whose entries are all
+                // hidden or gone shows nothing.
+                $items = $this->relations !== null ? ($this->relations)(RelationFields::idList($value), $field['types'] ?? [], $lang) : [];
+                if ($items === []) {
+                    continue;
+                }
+                $entry['items'] = $items;
+                $entry['display'] = implode(', ', array_column($items, 'title'));
                 $entries[] = $entry;
                 continue;
             }
@@ -468,7 +489,7 @@ final class ContentTypes
             }
             $raw = $input[$key] ?? '';
             // A list (a repeater's rows) or a text per language comes as a map; anything else is one value.
-            $structured = is_array($raw) && ($field['type'] === 'repeater' || ($field['translatable'] ?? false) === true);
+            $structured = is_array($raw) && ($field['type'] === 'repeater' || $field['type'] === 'relation' || ($field['translatable'] ?? false) === true);
             if (!$structured && (!is_scalar($raw) || trim((string)$raw) === '')) {
                 continue;
             }

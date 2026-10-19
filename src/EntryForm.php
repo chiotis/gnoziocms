@@ -40,8 +40,15 @@ final class EntryForm
         private \Closure $linkScanner,
         private \Closure $blocks,
         private \Closure $presets,
-        private \Closure $absoluteUrl
+        private \Closure $absoluteUrl,
+        private ?Relations $relations = null
     ) {
+    }
+
+    /** The fields that point at other entries get the entries to choose from. @param array<string, array<string, mixed>> $fields @return array<string, array<string, mixed>> */
+    private function withChoices(array $fields): array
+    {
+        return $this->relations !== null ? $this->relations->withChoices($fields) : $fields;
     }
 
     /**
@@ -269,7 +276,7 @@ final class EntryForm
             'main_image' => $mainImage,
             'meta_form' => $metaForm,
             'type_definition' => $this->types->definition($type, 'en', $defaultLang),
-            'type_fields' => $type === 'forms' ? [] : $this->types->editableFields($type, 'en', $defaultLang),
+            'type_fields' => $type === 'forms' ? [] : $this->withChoices($this->types->editableFields($type, 'en', $defaultLang)),
             'type_values' => is_array($meta) ? $this->types->values($type, $meta, 'en', $defaultLang) : [],
             'taxonomies' => $this->taxonomyChoices(),
             'translations' => $translations,

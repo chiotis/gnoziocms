@@ -19,6 +19,8 @@
         </li>
       {%- endfor -%}
     </ul>
+  {%- elseif entry.type == 'relation' -%}
+    {%- for target in entry.items -%}{% if not loop.first %}, {% endif %}<a href="{{ target.url }}">{{ target.title }}</a>{%- endfor -%}
   {%- elseif entry.type == 'url' -%}
     <a href="{{ entry.value }}" rel="noopener">{{ entry.display }}</a>
   {%- elseif entry.type == 'email' -%}

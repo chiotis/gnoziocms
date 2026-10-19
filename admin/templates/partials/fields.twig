@@ -47,7 +47,21 @@
   {% else %}
     <label class="block{{ span }}">
       <span class="mb-1 block text-sm font-medium text-slate-700">{{ field.label }}</span>
-      {% if field.type == 'select' or field.type == 'icon' %}
+      {% if field.type == 'relation' %}
+        {# Entries pointed at, by their stable id. Ones already chosen come first in their saved order; a choice not made yet is `@type/slug` until the entry has an id. #}
+        {% set chosen = value is iterable ? value : (value ? [value] : []) %}
+        {% if field.choices_all|default(true) %}
+          <select name="{{ name }}{{ field.multiple ? '[]' : '' }}" class="{{ control }}"{% if field.multiple %} multiple size="{{ min(8, max(4, field.choices|length)) }}"{% endif %} data-relation-field>
+            {% if not field.multiple %}<option value="">—</option>{% endif %}
+            {% for id in chosen %}{% set found = field.choices|filter(c => c.value is same as(id ~ ''))|first %}<option value="{{ id }}" selected>{{ found ? found.label : 'Missing entry (' ~ id ~ ')' }}</option>{% endfor %}
+            {% for choice in field.choices|filter(c => c.value not in chosen) %}<option value="{{ choice.value }}">{{ choice.label }}</option>{% endfor %}
+          </select>
+          {% if field.multiple %}<span class="mt-1 block text-xs text-slate-400">Hold Ctrl or Cmd to choose several{% if field.max %}; up to {{ field.max }}{% endif %}. Chosen entries stay in this order.</span>{% endif %}
+        {% else %}
+          <input type="text" name="{{ name }}" value="{{ chosen|join(', ') }}" placeholder="{{ field.types|first|default('type') }}/slug{{ field.multiple ? ', …' : '' }}" class="{{ control }}" autocomplete="off">
+          <span class="mt-1 block text-xs text-slate-400">Too many entries to list: type their address (type/slug){{ field.multiple ? ', separated by commas' : '' }}.</span>
+        {% endif %}
+      {% elseif field.type == 'select' or field.type == 'icon' %}
         <select name="{{ name }}" class="{{ control }}"{% if field.type == 'icon' %} data-icon-picker{% endif %}>
           {% for option_value, option_label in field.options %}
             <option value="{{ option_value }}" {% if value ~ '' == option_value ~ '' %}selected{% endif %}>{{ option_label }}</option>
@@ -121,7 +135,7 @@
     </div>
     <div class="grid gap-3 sm:grid-cols-2">
       {% for sub_key, sub in field.fields %}
-        {{ m.field(sub, name ~ '[' ~ index ~ '][' ~ sub_key ~ ']', row[sub_key]|default(sub.type == 'toggle' ? false : (sub.type == 'repeater' ? [] : '')), depth + 1) }}
+        {{ m.field(sub, name ~ '[' ~ index ~ '][' ~ sub_key ~ ']', row[sub_key]|default(sub.type == 'toggle' ? false : (sub.type == 'repeater' or (sub.type == 'relation' and sub.multiple) ? [] : '')), depth + 1) }}
       {% endfor %}
     </div>
   </li>

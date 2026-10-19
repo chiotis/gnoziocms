@@ -50,6 +50,7 @@ final class App
     private ?BlockRuntime $blockRuntime = null;
     private ?PresetLibrary $presetLibrary = null;
     private ?ContentTypes $contentTypes = null;
+    private ?Relations $relationsService = null;
     private string $currentLang;
     private array $translations = [];
     private array $formStates = [];
@@ -147,7 +148,8 @@ final class App
             fn(int $bytes): bool => $this->siteLimits()->allows($bytes),
             fn(int $bytes) => $this->siteLimits()->formFilesChanged($bytes)
         );
-        $this->contentIndex = new ContentIndex($this->systemDatabase, $this->contentDir);
+        $this->contentIndex = new ContentIndex($this->systemDatabase, $this->contentDir, $this->systemMeta);
+        $this->contentIndex->keepReferences(fn(string $type): array => $this->contentTypes()->definition($type, 'en', $this->defaultLanguage())['fields']);
         $this->media = new MediaLibrary($this->contentDir, $this->basePath . '/public/uploads');
         $this->media->restrictTo(is_array($this->settings['limits']['upload_types'] ?? null) ? $this->settings['limits']['upload_types'] : []);
         $this->mediaUsage = new MediaUsage($this->contentDir, fn(): array => $this->mediaUsageSettingsSources(), (string)($this->settings['languages']['default'] ?? 'en'), $this->systemMeta);
@@ -315,8 +317,15 @@ final class App
             $this->htmlGuard(),
             fn(): BlockRegistry => $this->blockRuntime()->registry(),
             fn(): array => $this->taxonomies()->names(),
-            $this->revisions
+            $this->revisions,
+            $this->relations()
         );
+    }
+
+    /** References between entries (the relation field) and the questions asked about them. */
+    private function relations(): Relations
+    {
+        return $this->relationsService ??= new Relations($this->contentIndex, $this->content, $this->contentTypes(), $this->settings, $this->contentDir, $this->revisions);
     }
 
     private function revisionAdmin(): RevisionAdmin
@@ -369,7 +378,8 @@ final class App
             fn(): LinkScanner => $this->linkScanner(),
             fn(): BlockRegistry => $this->blockRuntime()->registry(),
             fn(): PresetLibrary => $this->presetLibrary(),
-            fn(string $path): string => $this->buildAbsoluteUrl($path)
+            fn(string $path): string => $this->buildAbsoluteUrl($path),
+            $this->relations()
         );
     }
 
@@ -1975,7 +1985,11 @@ final class App
 
     private function contentTypes(): ContentTypes
     {
-        return $this->contentTypes ??= new ContentTypes($this->theme);
+        if ($this->contentTypes === null) {
+            $this->contentTypes = new ContentTypes($this->theme);
+            $this->contentTypes->showRelationsWith(fn(array $ids, array $types, string $lang): array => $this->relations()->resolve($ids, $types, $lang));
+        }
+        return $this->contentTypes;
     }
 
     /**
@@ -3389,7 +3403,8 @@ final class App
             fn(string $taxonomy, string $termId, string $prefix): string => $this->buildTaxonomyPath($taxonomy, $termId, $prefix),
             fn(): BlockRuntime => $this->blockRuntime(),
             fn(): bool => $this->feed()->hasSiteFeed(),
-            fn(): array => $this->siteLanguageCodes()
+            fn(): array => $this->siteLanguageCodes(),
+            fn(): Relations => $this->relations()
         );
     }
 
@@ -3939,7 +3954,8 @@ final class App
             fn(): HtmlGuard => $this->htmlGuard(),
             fn(string $date): string => $this->normalizeDateForStorage($date),
             fn(): string => $this->currentUsername(),
-            fn(): bool => $this->permissions->can($this->auth->user(), 'content.raw_html')
+            fn(): bool => $this->permissions->can($this->auth->user(), 'content.raw_html'),
+            $this->relations()
         );
     }
 

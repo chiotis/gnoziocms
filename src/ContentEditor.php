@@ -30,7 +30,8 @@ final class ContentEditor
         private HtmlGuard $guard,
         private \Closure $blocks,
         private \Closure $taxonomyNames,
-        private ?RevisionRepository $revisions = null
+        private ?RevisionRepository $revisions = null,
+        private ?Relations $relations = null
     ) {
     }
 
@@ -357,6 +358,8 @@ final class ContentEditor
             $existingCustom = is_array($data['custom_fields'] ?? null) ? $data['custom_fields'] : [];
             if (($post['details_present'] ?? '') === '1') {
                 $details = is_array($post['details'] ?? null) ? $post['details'] : [];
+                // Entries chosen by address become ids; a preview writes nothing, so it cannot give an entry an id.
+                $details = $this->relations?->normalize($type, $details, !$dryRun) ?? $details;
                 $declared = $this->types->fromInput($type, $details, $existingCustom, 'en', $this->paths()->defaultLang());
             } else {
                 $declared = array_intersect_key($existingCustom, array_flip($declaredKeys));

@@ -86,9 +86,9 @@
                   <code>{{ row.key }}</code>
                   {% if row.from_theme %}<span class="ct-chip">Theme</span>{% endif %}
                 </div>
-                {% if row.from_theme or row.type == 'repeater' %}
+                {% if row.from_theme or row.type in ['repeater', 'relation'] %}
                   {% if not row.from_theme %}<input type="hidden" name="fields[{{ i }}][label]" value="{{ row.label }}"><input type="hidden" name="fields[{{ i }}][help]" value="{{ row.help }}">{% endif %}
-                  <div class="ct-label-static"><strong>{{ row.label }}</strong><span>{{ row.type == 'repeater' ? 'list of rows' : row.type }}</span></div>
+                  <div class="ct-label-static"><strong>{{ row.label }}</strong><span>{{ row.type == 'repeater' ? 'list of rows' : (row.type == 'relation' ? 'relation' : row.type) }}</span></div>
                 {% else %}
                   <input type="text" name="fields[{{ i }}][label]" value="{{ row.label }}" class="lc-input" placeholder="Label" aria-label="Label of {{ row.key }}">
                   <select name="fields[{{ i }}][type]" class="lc-input lc-select" aria-label="Kind of {{ row.key }}" data-kind-select>
@@ -105,6 +105,8 @@
               </div>
               {% if row.type == 'repeater' %}
                 <div class="ct-extra"><p class="seo-help m-0">Each row has: {{ row.sub_fields ?: 'no fields yet' }}. A list's fields are written in the type's YAML file.</p></div>
+              {% elseif row.type == 'relation' %}
+                <div class="ct-extra"><p class="seo-help m-0">Points at: {{ row.sub_fields }}. What it may point at is written in the type's YAML file.</p></div>
               {% elseif not row.from_theme %}
                 <div class="ct-extra">
                   <input type="text" name="fields[{{ i }}][help]" value="{{ row.help }}" class="lc-input" placeholder="Help text shown under the field (optional)" aria-label="Help text of {{ row.key }}">
