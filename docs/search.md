@@ -36,7 +36,7 @@ Visitors see published, visible entries of enabled content types in the requeste
 The bundled `templates/search.twig` keeps the title, subtitle, image and layout set in **Theme → Archive Layouts → Search**. Below them it shows the count, type filters, title and relevant excerpt for each match, and pagination. The excerpt comes from a matching field rather than always taking the beginning of the page. Highlighted words keep the author's spelling.
 
 - `type=posts` selects one enabled content type. Counts beside type filters cover matches across all types; changing a filter starts at page 1. An unknown type falls back to all types.
-- `page=2` selects a page of ten results. Out-of-range pages are clamped to the last page. Links preserve the query, selected type and language. Search pages remain `noindex`.
+- `page=2` selects a page of ten results. Out-of-range pages are clamped to the last page. Links preserve the query, selected type and language. Whether search pages are `noindex` follows **SEO → Search appearance** (kept out of search engines by default).
 - The backend emits `title_parts` and `snippet_parts` as lists of `{text, match}`. Templates escape every text part normally and wrap matching parts in `<mark>`; no trusted HTML is passed through search results.
 
 Existing overrides in `custom/templates/search.twig` still receive `query` and the **complete ranked, filtered** `results` list of `ContentItem` objects. They do not silently lose results after ten matches. To adopt the new presentation, use:
