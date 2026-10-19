@@ -75,12 +75,16 @@ def serve(docroot, port):
     log = open(os.path.join(work, 'server-%d.log' % port), 'a')
     p = subprocess.Popen(['php', '-S', '127.0.0.1:%d' % port, '-t', docroot], cwd=docroot, env=env, stdout=log, stderr=log, start_new_session=True)
     servers.append(p)
+    p.port = port
     client.wait_until(lambda: client.port_open(port), 10, what='the PHP server on port %d to accept connections' % port)
     return p
 def stop(p):
     try: os.killpg(p.pid, signal.SIGTERM)
     except ProcessLookupError: pass
     p.wait()
+    # The server's workers can keep the port open a moment after the main process exits; a server started on the same port
+    # before they are gone would look ready while a dying worker still answers (a reset connection on CI).
+    client.wait_until(lambda: not client.port_open(p.port), 10, what='port %d to close' % p.port)
 
 def new_site(name, key=KEY):
     folder = os.path.join(work, name); os.makedirs(folder)

@@ -18,10 +18,16 @@ final class ContentIndex
     private const META_CHECKED = 'content_index_checked_at';
 
     /** Changes when the way references are read or stored changes, so an index made by older code is built again. */
-    private const REFS_VERSION = '2';
+    private const REFS_VERSION = '3';
 
     /** @var (\Closure(string): array<string, array<string, mixed>>)|null the normalized fields of a content type */
     private ?\Closure $fieldsOf = null;
+
+    /** @var (\Closure(): string[])|null the taxonomies the site has (the terms of an entry are kept for them) */
+    private ?\Closure $taxonomyNames = null;
+
+    /** Longest value of a field the index keeps to filter by. */
+    private const VALUE_LIMIT = 255;
 
     public function __construct(
         private SystemDatabase $database,
@@ -41,6 +47,37 @@ final class ContentIndex
         $this->fieldsOf = $fieldsOf;
     }
 
+    /**
+     * Lets the index keep the terms entries are filed under, for the taxonomies this gives (a list lists them at once, ArchiveQuery).
+     *
+     * @param \Closure(): string[] $names
+     */
+    public function keepTerms(\Closure $names): void
+    {
+        $this->taxonomyNames = $names;
+    }
+
+    /** The connection, for the queries that read the index (ArchiveQuery); null when there is none. */
+    public function connection(): ?PDO
+    {
+        return $this->isAvailable() ? $this->pdo() : null;
+    }
+
+    /** Whether the index was made with today's definitions and taxonomies (a list may be answered from it). @param string[] $types */
+    public function isCurrent(array $types): bool
+    {
+        return $this->fieldsOf !== null && $this->taxonomyNames !== null && $this->meta !== null && $this->meta->isAvailable()
+            && (string)$this->meta->get(self::META_SIGNATURE) === $this->signature($types);
+    }
+
+    /** Makes the next read look at the files again (what changed them did not go through the index). */
+    public function markStale(): void
+    {
+        if ($this->meta !== null && $this->meta->isAvailable()) {
+            $this->meta->set(self::META_CHECKED, '0');
+        }
+    }
+
     /** @param string[] $types */
     private function signature(array $types): string
     {
@@ -51,7 +88,9 @@ final class ContentIndex
         foreach ($types as $type) {
             $fields[$type] = ($this->fieldsOf)($type);
         }
-        return self::REFS_VERSION . ':' . RelationFields::signature($fields);
+        $taxonomies = $this->taxonomyNames !== null ? ($this->taxonomyNames)() : [];
+        sort($taxonomies);
+        return self::REFS_VERSION . ':' . RelationFields::signature($fields) . ':' . implode(',', $taxonomies);
     }
 
     public function isAvailable(): bool
@@ -84,9 +123,12 @@ final class ContentIndex
             $removed = 0;
             foreach ($pdo->query('SELECT id, type, slug, lang FROM content_index')->fetchAll() as $row) {
                 if (!isset($keep[$row['type'] . '|' . $row['slug'] . '|' . $row['lang']])) {
-                    $pdo->prepare('DELETE FROM content_index WHERE id = :id')->execute(['id' => $row['id']]);
+                    $this->remove((string)$row['type'], (string)$row['slug'], (string)$row['lang']);
                     $removed++;
                 }
+            }
+            foreach (['content_terms', 'content_values'] as $table) {
+                $pdo->exec('DELETE FROM ' . $table . ' WHERE NOT EXISTS (SELECT 1 FROM content_index ci WHERE ci.type = ' . $table . '.type AND ci.slug = ' . $table . '.slug AND ci.lang = ' . $table . '.lang)');
             }
             foreach ($pdo->query('SELECT DISTINCT from_type, from_slug, from_lang FROM content_refs')->fetchAll() as $row) {
                 if (!isset($keep[$row['from_type'] . '|' . $row['from_slug'] . '|' . $row['from_lang']])) {
@@ -191,6 +233,9 @@ final class ContentIndex
         $this->pdo()->prepare('DELETE FROM content_index WHERE type = :type AND slug = :slug AND lang = :lang')
             ->execute(['type' => $type, 'slug' => $slug, 'lang' => $lang]);
         $this->forgetReferences($type, $slug, $lang);
+        $key = ['type' => $type, 'slug' => $slug, 'lang' => $lang];
+        $this->pdo()->prepare('DELETE FROM content_terms WHERE type = :type AND slug = :slug AND lang = :lang')->execute($key);
+        $this->pdo()->prepare('DELETE FROM content_values WHERE type = :type AND slug = :slug AND lang = :lang')->execute($key);
     }
 
     private function forgetReferences(string $type, string $slug, string $lang): void
@@ -279,12 +324,12 @@ final class ContentIndex
             trim(strip_tags($item->html)),
         ]));
         $stmt = $this->pdo()->prepare(
-            'INSERT INTO content_index (type, slug, lang, title, status, visible, path, checksum, mtime, search_text, indexed_at, translation_id, summary, title_key)
-             VALUES (:type, :slug, :lang, :title, :status, :visible, :path, :checksum, :mtime, :search_text, :indexed_at, :translation_id, :summary, :title_key)
+            'INSERT INTO content_index (type, slug, lang, title, status, visible, path, checksum, mtime, search_text, indexed_at, translation_id, summary, title_key, sort_date)
+             VALUES (:type, :slug, :lang, :title, :status, :visible, :path, :checksum, :mtime, :search_text, :indexed_at, :translation_id, :summary, :title_key, :sort_date)
              ON CONFLICT(type, slug, lang) DO UPDATE SET
                 title = excluded.title, status = excluded.status, visible = excluded.visible, path = excluded.path,
                 checksum = excluded.checksum, mtime = excluded.mtime, search_text = excluded.search_text, indexed_at = excluded.indexed_at,
-                translation_id = excluded.translation_id, summary = excluded.summary, title_key = excluded.title_key'
+                translation_id = excluded.translation_id, summary = excluded.summary, title_key = excluded.title_key, sort_date = excluded.sort_date'
         );
         $stmt->execute([
             'type' => $item->type,
@@ -300,6 +345,8 @@ final class ContentIndex
             'indexed_at' => gmdate('c'),
             'translation_id' => (string)($meta['translation_id'] ?? ''),
             'title_key' => mb_strtolower((string)($meta['title'] ?? $item->slug)),
+            // The order lists keep entries in (the repository's): the date, or when the file changed when there is none.
+            'sort_date' => strtotime((string)($meta['date'] ?? '')) ?: $item->mtime,
             'summary' => (string)json_encode([
                 'title' => (string)($meta['title'] ?? $item->slug),
                 'excerpt' => mb_substr(trim((string)($meta['excerpt'] ?? '')), 0, 300),
@@ -309,6 +356,44 @@ final class ContentIndex
             ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
         ]);
         $this->writeReferences($item);
+        $this->writeFacets($item);
+    }
+
+    /** The terms an entry is filed under and the plain values of its fields: what a list filters and sorts by. */
+    private function writeFacets(ContentItem $item): void
+    {
+        $pdo = $this->pdo();
+        $key = ['type' => $item->type, 'slug' => $item->slug, 'lang' => $item->lang];
+        $pdo->prepare('DELETE FROM content_terms WHERE type = :type AND slug = :slug AND lang = :lang')->execute($key);
+        $pdo->prepare('DELETE FROM content_values WHERE type = :type AND slug = :slug AND lang = :lang')->execute($key);
+        if ($this->taxonomyNames !== null) {
+            $insert = $pdo->prepare('INSERT OR IGNORE INTO content_terms (type, slug, lang, taxonomy, term_id) VALUES (:type, :slug, :lang, :taxonomy, :term)');
+            foreach (($this->taxonomyNames)() as $taxonomy) {
+                foreach (Format::list($item->meta[$taxonomy] ?? null) as $term) {
+                    $insert->execute($key + ['taxonomy' => $taxonomy, 'term' => (string)$term]);
+                }
+            }
+        }
+        $custom = is_array($item->meta['custom_fields'] ?? null) ? $item->meta['custom_fields'] : [];
+        if ($custom === []) {
+            return;
+        }
+        $fields = $this->fieldsOf !== null ? ($this->fieldsOf)($item->type) : [];
+        $insert = $pdo->prepare('INSERT OR REPLACE INTO content_values (type, slug, lang, field, raw, sort_text, sort_num) VALUES (:type, :slug, :lang, :field, :raw, :text, :num)');
+        foreach ($custom as $name => $value) {
+            if (!is_scalar($value) || !is_string($name) || (string)$value === '') {
+                continue;
+            }
+            // The same keys a list sorts by: dates the YAML reader made numbers as Y-m-d, other values in lower case, numbers as numbers.
+            $type = (string)($fields[$name]['type'] ?? 'text');
+            $text = $type === 'date' && is_int($value) ? gmdate('Y-m-d', $value) : mb_strtolower((string)$value);
+            $insert->execute($key + [
+                'field' => $name,
+                'raw' => mb_substr((string)$value, 0, self::VALUE_LIMIT),
+                'text' => mb_substr($text, 0, self::VALUE_LIMIT),
+                'num' => is_numeric($value) ? (float)$value : null,
+            ]);
+        }
     }
 
     private function writeReferences(ContentItem $item): void

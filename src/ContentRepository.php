@@ -292,6 +292,56 @@ final class ContentRepository
         $this->draft = $item;
     }
 
+    /** The folder the content types live in. */
+    public function directory(): string
+    {
+        return $this->contentDir;
+    }
+
+    /** Whether an unsaved entry is being shown in place of a stored one (the live preview), so what the files hold is not the page. */
+    public function hasDraft(): bool
+    {
+        return $this->draft !== null;
+    }
+
+    /**
+     * The entries at these places, in this order, read from their files (from the store when the file has not changed): `type`, `slug`,
+     * `lang` and `path` (`<type>/<file>`) as the content index keeps them. Null when a file is not where it says or holds another entry,
+     * which means the index is out of date.
+     *
+     * @param array<int, array{type: string, slug: string, lang: string, path: string, mtime: int|string}> $rows
+     * @return ContentItem[]|null
+     */
+    public function itemsAt(array $rows): ?array
+    {
+        $items = [];
+        foreach ($rows as $row) {
+            $path = $this->contentDir . '/' . $row['path'];
+            if (!is_file($path)) {
+                return null;
+            }
+            $mtime = (int)@filemtime($path);
+            $size = (int)@filesize($path);
+            if (isset($row['mtime']) && (int)$row['mtime'] !== $mtime) {
+                // Changed since the index saw it: what the index says about it (date, filters) may not be true.
+                return null;
+            }
+            $seen = $this->parsed[$path] ?? null;
+            if ($seen !== null && $seen[0] === $mtime && $seen[1] === $size) {
+                $item = $seen[2];
+            } else {
+                // Only the few files of a page are read, so the store of the whole type (a large file) is not.
+                $item = $this->parseFile($row['type'], $path);
+                $this->parsed[$path] = [$mtime, $size, $item];
+            }
+            if ($item->type !== $row['type'] || $item->slug !== $row['slug'] || $item->lang !== $row['lang']) {
+                return null;
+            }
+            $items[] = $item;
+        }
+        return $items;
+    }
+
     /** @param ContentItem[] $items */
     private function withDraft(string $type, ?string $lang, array $items): array
     {

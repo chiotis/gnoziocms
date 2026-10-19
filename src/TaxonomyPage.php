@@ -67,21 +67,23 @@ final class TaxonomyPage
         if ($archive['include_children']) {
             $termIds = array_merge($termIds, $taxonomies->descendantIds($key, $termId));
         }
-        $items = [];
-        foreach ($this->content->getTypes() as $type) {
-            if (in_array($type, ['pages', 'forms'], true) || ($includeTypes !== [] && !in_array($type, $includeTypes, true))) {
-                continue;
-            }
-            foreach ($this->content->getItems($type, $lang, false, false) as $item) {
-                if (array_intersect($termIds, Format::list($item->meta[$key] ?? null)) !== []) {
-                    $items[] = $item;
+        $types = array_values(array_filter($this->content->getTypes(), static fn(string $type): bool => !in_array($type, ['pages', 'forms'], true) && ($includeTypes === [] || in_array($type, $includeTypes, true))));
+        // The content index answers when it can (only the entries on the page are read); otherwise every entry is looked at.
+        $page = ($this->archive)()->buildIndexed(['types' => $types, 'term' => ['taxonomy' => $key, 'ids' => $termIds]], false, $archive, [], null, $lang, $query);
+        if ($page === null) {
+            $items = [];
+            foreach ($types as $type) {
+                foreach ($this->content->getItems($type, $lang, false, false) as $item) {
+                    if (array_intersect($termIds, Format::list($item->meta[$key] ?? null)) !== []) {
+                        $items[] = $item;
+                    }
                 }
             }
+            // Entries of several types come newest first, as within a single type.
+            $when = static fn(ContentItem $i): int => strtotime((string)($i->meta['date'] ?? '')) ?: $i->mtime;
+            usort($items, static fn(ContentItem $a, ContentItem $b): int => $when($b) <=> $when($a));
+            $page = ($this->archive)()->build($archive, [], null, $lang, $items, $query);
         }
-        // Entries of several types come newest first, as within a single type.
-        $when = static fn(ContentItem $i): int => strtotime((string)($i->meta['date'] ?? '')) ?: $i->mtime;
-        usort($items, static fn(ContentItem $a, ContentItem $b): int => $when($b) <=> $when($a));
-        $page = ($this->archive)()->build($archive, [], null, $lang, $items, $query);
         if ($page['page'] > 1 && !$page['filtered']) {
             $viewDefaults['canonical_url'] = ($viewDefaults['canonical_url'] ?? '') . '?page=' . $page['page'];
         }

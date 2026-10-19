@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.169 — 2026-10-19 — Archives from the content index
+- **The lists of a content type and the pages of a category or tag are answered by the content index** (the system database), not by reading every entry, so they stay fast on a large site. Filters, sorting, pagination, languages and visibility work as before, and the pages look the same. When the index is missing or out of date, the old way is used. This is the first part of step 5 (archive templates built with blocks).
+- A test of the installer no longer fails now and then on CI: it waits for the old server's port to close before starting the next one.
+
 ## 0.1.168 — 2026-10-19 — Relations in templates built with blocks
 - **The ⛓ picker offers an entry's relations as sources**: a field of the entry it points at (`author.title`, `author.main_image`), a list of the related entries, or the entries that point at this one, bound to a list block such as cards with the column mapping of 0.1.166. It works for any content type, including types added later.
 - **The fact sheet shows relations as links**, and a relation field can declare `reverse_label` to name the list on the other side (for example *Books* on an author's page). See the relations section in `docs/theming.md`.

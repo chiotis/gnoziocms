@@ -15,7 +15,7 @@ final class ArchiveBuilder
      * @param callable(): string[] $taxonomyNames the taxonomies that exist
      * @param callable(string, string, string): string $termLabel the name of a term: taxonomy, term id, language
      */
-    public function __construct(private $taxonomyNames, private $termLabel)
+    public function __construct(private $taxonomyNames, private $termLabel, private ?ArchiveQuery $query = null)
     {
     }
 
@@ -33,19 +33,7 @@ final class ArchiveBuilder
      */
     public function build(array $settings, array $fields, ?array $definition, string $lang, array $items, array $query): array
     {
-        // Facets: name => label, options (value => label), how to read an item's values.
-        $facets = [];
-        $taxonomyNames = ($this->taxonomyNames)();
-        foreach ($settings['taxonomies'] as $taxonomy) {
-            if (in_array($taxonomy, $taxonomyNames, true)) {
-                $facets[$taxonomy] = ['label' => Slug::title($taxonomy), 'kind' => 'taxonomy', 'labels' => []];
-            }
-        }
-        foreach ($fields as $key => $field) {
-            if ($field['filterable'] && !$field['hidden']) {
-                $facets[$key] = ['label' => $field['label'], 'kind' => 'field', 'labels' => $field['options']];
-            }
-        }
+        $facets = $this->facets($settings, $fields);
         $valuesOf = function (ContentItem $item, string $name, array $facet): array {
             if ($facet['kind'] === 'taxonomy') {
                 return Format::list($item->meta[$name] ?? null);
@@ -54,36 +42,16 @@ final class ArchiveBuilder
             return is_scalar($value) && (string)$value !== '' ? [(string)$value] : [];
         };
 
-        $requested = is_array($query['filter'] ?? null) ? $query['filter'] : [];
-        $filters = [];
-        $selected = [];
+        $counts = [];
         foreach ($facets as $name => $facet) {
-            $counts = [];
+            $counts[$name] = [];
             foreach ($items as $item) {
                 foreach ($valuesOf($item, $name, $facet) as $value) {
-                    $counts[$value] = ($counts[$value] ?? 0) + 1;
+                    $counts[$name][(string)$value] = ($counts[$name][(string)$value] ?? 0) + 1;
                 }
             }
-            $options = [];
-            foreach ($counts as $value => $count) {
-                $value = (string)$value;
-                $label = $facet['kind'] === 'taxonomy'
-                    ? ($this->termLabel)($name, $value, $lang)
-                    : (string)($facet['labels'][$value] ?? $value);
-                $options[] = ['value' => $value, 'label' => $label !== '' ? $label : $value, 'count' => $count];
-            }
-            usort($options, static fn(array $a, array $b): int => strcasecmp($a['label'], $b['label']));
-            $choice = is_scalar($requested[$name] ?? null) ? (string)$requested[$name] : '';
-            if ($choice !== '' && !isset($counts[$choice])) {
-                $choice = '';
-            }
-            if ($choice !== '') {
-                $selected[$name] = $choice;
-            }
-            if (count($options) >= 2 || $choice !== '') {
-                $filters[] = ['name' => $name, 'label' => $facet['label'], 'kind' => $facet['kind'], 'options' => $options, 'selected' => $choice];
-            }
         }
+        [$filters, $selected] = $this->filters($facets, $counts, $query, $lang);
 
         foreach ($selected as $name => $choice) {
             $items = array_values(array_filter($items, fn(ContentItem $item): bool => in_array($choice, $valuesOf($item, $name, $facets[$name]), true)));
@@ -140,6 +108,120 @@ final class ArchiveBuilder
             $items = array_slice($items, ($page - 1) * $perPage, $perPage);
         }
         $seed = $settings['order'] === 'random' ? ($seed ?? 0) : 0;
+        return $this->result($settings, $definition, $items, $total, $filters, $selected, $page, $pages, $seed);
+    }
+
+    /**
+     * The same archive answered by the content index (ArchiveQuery) instead of a scan of every entry: only the entries on the page are
+     * read. Null when the index cannot answer, and the caller builds it from the entries as before.
+     *
+     * @param array{types: string[], term: array{taxonomy: string, ids: string[]}|null} $scope the entries the list is about
+     * @param array<string, array<string, mixed>> $fields
+     * @param array<string, mixed>|null $definition
+     * @param array<string, mixed> $settings
+     * @param array<string, mixed> $query
+     * @return array<string, mixed>|null
+     */
+    public function buildIndexed(array $scope, bool $includeHidden, array $settings, array $fields, ?array $definition, string $lang, array $query): ?array
+    {
+        if ($this->query === null || !$this->query->ready()) {
+            return null;
+        }
+        $facets = $this->facets($settings, $fields);
+        $kinds = array_map(static fn(array $facet): string => $facet['kind'], $facets);
+        $counts = $this->query->counts($scope, $lang, $includeHidden, $kinds);
+        if ($counts === null) {
+            return null;
+        }
+        [$filters, $selected] = $this->filters($facets, $counts, $query, $lang);
+
+        $seed = 0;
+        if ($settings['order'] === 'random') {
+            $seed = (int)($query['seed'] ?? 0);
+            $seed = $seed > 0 && $seed <= 2147483647 ? $seed : random_int(1, 2147483647);
+        }
+        $map = ($settings['layout'] ?? '') === 'map';
+        $field = preg_match('/^field:([a-z][a-z0-9_]*):(asc|desc)$/', (string)$settings['order'], $m) === 1 ? (string)($fields[$m[1]]['type'] ?? 'text') : '';
+        // A map shows every entry that has a place; the list beside it scrolls instead of paging. A very large site is capped.
+        $page = $this->query->page($scope, $lang, $includeHidden, $selected, $kinds, (string)$settings['order'], $field, $seed, $map ? 0 : (int)$settings['per_page'], (int)($query['page'] ?? 1), $map ? ArchiveQuery::MAP_LIMIT : 0);
+        if ($page === null) {
+            return null;
+        }
+        return $this->result($settings, $definition, $page['items'], $page['total'], $filters, $selected, $page['page'], $page['pages'], $seed);
+    }
+
+    /**
+     * The facets a list can filter by: the taxonomies it chose and the filterable fields of its type.
+     *
+     * @param array<string, mixed> $settings
+     * @param array<string, array<string, mixed>> $fields
+     * @return array<string, array{label: string, kind: string, labels: array<string, string>}>
+     */
+    private function facets(array $settings, array $fields): array
+    {
+        $facets = [];
+        $taxonomyNames = ($this->taxonomyNames)();
+        foreach ($settings['taxonomies'] as $taxonomy) {
+            if (in_array($taxonomy, $taxonomyNames, true)) {
+                $facets[$taxonomy] = ['label' => Slug::title($taxonomy), 'kind' => 'taxonomy', 'labels' => []];
+            }
+        }
+        foreach ($fields as $key => $field) {
+            if ($field['filterable'] && !$field['hidden']) {
+                $facets[$key] = ['label' => $field['label'], 'kind' => 'field', 'labels' => $field['options']];
+            }
+        }
+        return $facets;
+    }
+
+    /**
+     * The filters to offer and the choices made, from how many entries each value has. A filter with one option is not offered unless
+     * it is chosen (so it can be undone); a value nobody has is ignored.
+     *
+     * @param array<string, array<string, mixed>> $facets
+     * @param array<string, array<string, int>> $counts facet => value => entries
+     * @param array<string, mixed> $query
+     * @return array{0: array<int, array<string, mixed>>, 1: array<string, string>}
+     */
+    private function filters(array $facets, array $counts, array $query, string $lang): array
+    {
+        $requested = is_array($query['filter'] ?? null) ? $query['filter'] : [];
+        $filters = [];
+        $selected = [];
+        foreach ($facets as $name => $facet) {
+            $options = [];
+            foreach ($counts[$name] ?? [] as $value => $count) {
+                $value = (string)$value;
+                $label = $facet['kind'] === 'taxonomy'
+                    ? ($this->termLabel)($name, $value, $lang)
+                    : (string)($facet['labels'][$value] ?? $value);
+                $options[] = ['value' => $value, 'label' => $label !== '' ? $label : $value, 'count' => $count];
+            }
+            usort($options, static fn(array $a, array $b): int => strcasecmp($a['label'], $b['label']));
+            $choice = is_scalar($requested[$name] ?? null) ? (string)$requested[$name] : '';
+            if ($choice !== '' && !isset($counts[$name][$choice])) {
+                $choice = '';
+            }
+            if ($choice !== '') {
+                $selected[$name] = $choice;
+            }
+            if (count($options) >= 2 || $choice !== '') {
+                $filters[] = ['name' => $name, 'label' => $facet['label'], 'kind' => $facet['kind'], 'options' => $options, 'selected' => $choice];
+            }
+        }
+        return [$filters, $selected];
+    }
+
+    /**
+     * @param array<string, mixed> $settings
+     * @param array<string, mixed>|null $definition
+     * @param ContentItem[] $items the entries of the page
+     * @param array<int, array<string, mixed>> $filters
+     * @param array<string, string> $selected
+     * @return array<string, mixed>
+     */
+    private function result(array $settings, ?array $definition, array $items, int $total, array $filters, array $selected, int $page, int $pages, int $seed): array
+    {
         $link = static function (int $number) use ($selected, $seed): string {
             $next = [];
             if ($selected !== []) {
