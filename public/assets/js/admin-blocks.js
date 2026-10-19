@@ -48,12 +48,12 @@
     sets = {};
     languages.forEach(function (language) {
       var own = data.blocks && !Array.isArray(data.blocks) ? data.blocks[language.key] : (language.key === 'default' ? data.blocks : []);
-      sets[language.key] = (Array.isArray(own) ? own : []).map(function (block) { return withId(block, false); });
+      sets[language.key] = (Array.isArray(own) ? own : []).map(function (block) { return withId(block); });
     });
     activeKey = languages[0].key;
     blocks = sets[activeKey];
   } else {
-    blocks = (data.blocks || []).map(function (block) { return withId(block, false); });
+    blocks = (data.blocks || []).map(function (block) { return withId(block); });
   }
   var lastRemoved = null;
 
@@ -114,15 +114,13 @@
     return node;
   }
 
-  function withId(block, open) {
-    return prepare(JSON.parse(JSON.stringify(block)), open);
+  function withId(block) {
+    return prepare(JSON.parse(JSON.stringify(block)));
   }
 
-  /** The editor-only state of a block (its id, whether it is open, its tab) lives in properties that are never saved. */
-  function tag(node, open, tab) {
+  /** The editor-only state of a block (its id; which block the panel shows is kept by the id) lives in a property that is never saved. */
+  function tag(node) {
     Object.defineProperty(node, '_id', { value: nextId++, enumerable: false, writable: true });
-    Object.defineProperty(node, '_open', { value: !!open, enumerable: false, writable: true });
-    Object.defineProperty(node, '_tab', { value: tab || 'content', enumerable: false, writable: true });
     return node;
   }
 
@@ -131,8 +129,8 @@
   }
 
   /** A block as the builder holds it; a container is given its settings and one to six columns, each with its blocks (one level: no container inside). */
-  function prepare(block, open) {
-    tag(block, open);
+  function prepare(block) {
+    tag(block);
     if (block.type === 'container') {
       block.settings = plain(block.settings);
       var columns = Array.isArray(block.columns) && block.columns.length ? block.columns.slice(0, MAX_COLUMNS) : [{}];
@@ -141,7 +139,7 @@
         var column = { settings: plain(given.settings), blocks: [] };
         column.blocks = (Array.isArray(given.blocks) ? given.blocks : []).filter(function (inner) {
           return inner && typeof inner === 'object' && inner.type !== 'container';
-        }).map(function (inner) { return prepare(inner, false); });
+        }).map(function (inner) { return prepare(inner); });
         Object.defineProperty(column, '_id', { value: nextId++, enumerable: false, writable: true });
         return column;
       });
@@ -159,7 +157,7 @@
       type: 'container',
       settings: {},
       columns: (widths && widths.length ? widths : ['', '']).map(function (width) { return { settings: width ? { width: width } : {}, blocks: [] }; })
-    }, true);
+    });
   }
 
   /** Every block of a list, the ones inside containers too. */
@@ -188,7 +186,7 @@
     var def = definitions[type];
     var block = { type: type };
     Object.assign(block, defaultsFor(def.common), defaultsFor(def.fields));
-    return withId(block, true);
+    return withId(block);
   }
 
   function serialize() {
@@ -750,7 +748,7 @@
   }
 
   function designPanel(block, def, idBase, inColumn) {
-    var panel = el('div', { class: 'bk-design', role: 'tabpanel' });
+    var panel = el('div', { class: 'bk-design' });
     var field = function (key) { return def.common.filter(function (f) { return f.key === key; })[0]; };
     var change = function (key) {
       return function (value) {
@@ -858,7 +856,7 @@
   }
 
   function contentPanel(block, def, idBase) {
-    var panel = el('div', { class: 'bk-content', role: 'tabpanel' });
+    var panel = el('div', { class: 'bk-content' });
     if (def.description) panel.appendChild(el('p', { class: 'bk-desc', text: def.description }));
     if (!def.fields.length) return panel;
     var fields = el('div', { class: 'bk-grid' });
@@ -890,6 +888,7 @@
       var node = fieldControl(shown, current, function (value) {
         block[field.key] = value;
         serialize();
+        refreshSummary(block);
         applyWhen();
         // A field that decides which layouts fit (what a map shows): a layout that no longer fits gives way to the first, and the card is drawn again.
         var decides = Object.keys(def.variant_when || {}).some(function (name) { return Object.keys(def.variant_when[name]).indexOf(field.key) !== -1; });
@@ -909,15 +908,16 @@
   }
 
   /**
-   * A block as a card. `where` says which list it is in: {list: the array, path: its place in the editor ('2' or '2.0.1'), column: the
-   * column object when it is inside a container}. Inside a column the block takes the room of the column, so its own Width is not offered.
+   * A block as one compact row of the list; its settings open in the panel. `where` says which list it is in: {list: the array,
+   * path: its place in the editor ('2' or '2.0.1'), column: the column object when it is inside a container}. Inside a column the
+   * block takes the room of the column, so its own Width is not offered.
    */
   function renderBlock(block, index, where) {
     var def = definitions[block.type];
-    var idBase = 'blk-' + block._id;
     var list = where.list;
     var inColumn = !!where.column;
-    var card = el('section', { class: 'bk-card' + (block.hidden ? ' is-hidden' : '') + (block._open ? ' is-open' : ''), 'data-block-card': block._id, 'data-block-path': where.path });
+    var chosen = isCurrent(block);
+    var card = el('section', { class: 'bk-card' + (block.hidden ? ' is-hidden' : '') + (chosen ? ' is-selected' : ''), 'data-block-card': block._id, 'data-block-path': where.path });
 
     var label = def ? def.label : 'Unknown block: ' + block.type;
     var summary = def ? summaryOf(block) : 'Kept as is. Its definition is not installed.';
@@ -925,11 +925,11 @@
       type: 'button',
       class: 'bk-toggle',
       'data-drag-surface': '',
-      'aria-expanded': block._open ? 'true' : 'false',
-      'aria-controls': idBase + '-body',
-      html: '<span class="bk-chev' + (block._open ? ' is-open' : '') + '">' + svg('chevron', 'h-3.5 w-3.5') + '</span>'
+      'aria-expanded': chosen ? 'true' : 'false',
+      'aria-controls': PANEL_ID,
+      title: 'Edit the settings of this block'
     });
-    if (def) toggle.appendChild(el('span', { class: 'bk-mini', html: '<svg viewBox="0 0 64 48" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">' + (def.preview || PREVIEW_FALLBACK) + '</svg>' }));
+    toggle.appendChild(el('span', { class: 'bk-mini', html: '<svg viewBox="0 0 64 48" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">' + ((def && def.preview) || PREVIEW_FALLBACK) + '</svg>' }));
     toggle.appendChild(el('span', { class: 'bk-name', text: (index + 1) + '. ' + label }));
     if (def && block.variant && def.common) {
       var variantField = def.common.filter(function (f) { return f.key === 'variant'; })[0];
@@ -942,11 +942,8 @@
     if (block.hidden) {
       toggle.appendChild(el('span', { class: 'bk-tag is-warn', html: svg('eyeOff', 'h-3 w-3') + 'Hidden' }));
     }
-    if (summary) toggle.appendChild(el('span', { class: 'bk-summary', text: summary }));
-    toggle.addEventListener('click', function () {
-      block._open = !block._open;
-      render(block._id, 'toggle');
-    });
+    toggle.appendChild(el('span', { class: 'bk-summary', 'data-block-summary': '', text: summary }));
+    toggle.addEventListener('click', function () { openSettings(block._id, { focus: true }); });
 
     var actions = el('div', { class: 'bk-actions' });
     var eye = el('button', { type: 'button', class: CLS.icon, 'aria-label': block.hidden ? 'Show block on the page' : 'Hide block from the page', title: block.hidden ? 'Show on the page' : 'Hide from the page', 'aria-pressed': block.hidden ? 'true' : 'false', html: svg(block.hidden ? 'eyeOff' : 'eye'), disabled: !def, 'data-action': 'hide' });
@@ -969,9 +966,9 @@
     });
     insert.addEventListener('click', function () { openPicker(index + 1, insert, list, where.column); });
     duplicate.addEventListener('click', function () {
-      var copy = withId(block, true);
+      var copy = withId(block);
       list.splice(index + 1, 0, copy);
-      render(copy._id, 'toggle');
+      render(copy._id, 'select');
     });
     remove.addEventListener('click', function () {
       lastRemoved = { block: block, index: index, list: list };
@@ -992,40 +989,6 @@
     // A list of one has no grip, except in a column: a block there can still be dragged to another column or out of the container.
     var gripNode = inColumn || list.length > 1 || (!inColumn && hasContainers()) ? grip('block ' + label) : null;
     card.appendChild(el('div', { class: 'bk-head' }, [gripNode, select, toggle, actions]));
-
-    if (block._open && def) {
-      var body = el('div', { id: idBase + '-body', class: 'bk-body' });
-      var panels = { content: contentPanel(block, def, idBase), design: designPanel(block, def, idBase, inColumn) };
-      var tabs = el('div', { class: 'bk-tabs', role: 'tablist' });
-      var show = function (name) {
-        block._tab = name;
-        Object.keys(panels).forEach(function (key) { panels[key].hidden = key !== name; });
-        Array.prototype.forEach.call(tabs.children, function (b) {
-          b.setAttribute('aria-selected', b.getAttribute('data-tab') === name ? 'true' : 'false');
-          b.tabIndex = b.getAttribute('data-tab') === name ? 0 : -1;
-        });
-      };
-      [['content', 'Content'], ['design', 'Design']].forEach(function (pair) {
-        var tab = el('button', { type: 'button', role: 'tab', 'data-tab': pair[0], text: pair[1], 'aria-controls': idBase + '-' + pair[0] });
-        tab.addEventListener('click', function () { show(pair[0]); });
-        tab.addEventListener('keydown', function (event) {
-          if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
-            event.preventDefault();
-            var other = pair[0] === 'content' ? 'design' : 'content';
-            show(other);
-            tabs.querySelector('[data-tab="' + other + '"]').focus();
-          }
-        });
-        tabs.appendChild(tab);
-      });
-      panels.content.id = idBase + '-content';
-      panels.design.id = idBase + '-design';
-      body.appendChild(tabs);
-      body.appendChild(panels.content);
-      body.appendChild(panels.design);
-      show(block._tab === 'design' ? 'design' : 'content');
-      card.appendChild(body);
-    }
     return card;
   }
 
@@ -1038,10 +1001,9 @@
 
   /** Puts a block in a container of its own (one column), where it was. */
   function wrap(block, index) {
-    var container = prepare({ type: 'container', settings: {}, columns: [{ settings: {}, blocks: [] }] }, true);
+    var container = prepare({ type: 'container', settings: {}, columns: [{ settings: {}, blocks: [] }] });
     container.columns[0].blocks.push(block);
     blocks.splice(index, 1, container);
-    block._open = false;
     render(container._id, 'toggle');
     var name = definitions[block.type] ? definitions[block.type].label : block.type;
     if (Sortable) Sortable.announce('Block ' + name + ' wrapped in a new container at position ' + (index + 1) + ' of ' + blocks.length + '.');
@@ -1248,13 +1210,16 @@
     return node;
   }
 
-  /** The Design tab of a container. `redrawAll` draws the columns again too; `changed(redraw)` saves and, when asked, draws this tab again. */
-  function containerDesign(container, idBase) {
+  /**
+   * A tab of a container's settings in the panel: `part` 'layout' (how many columns, a ready-made layout, the column chosen) or
+   * 'design' (direction, gaps, responsive, the section). `changed(redraw)` saves and draws the list again (the columns show there);
+   * when asked it draws the tab again too.
+   */
+  function containerDesign(container, idBase, part) {
     var state = uiOf(container);
-    var host = el('div', { class: 'bk-design bk-cdesign', role: 'tabpanel' });
+    var host = el('div', { class: 'bk-design bk-cdesign' });
     var changed = function (redraw) {
-      serialize();
-      if (redraw) draw();
+      render(null, redraw ? 'keep' : 'list');
     };
     function draw() {
       var focusId = document.activeElement && host.contains(document.activeElement) ? document.activeElement.id : '';
@@ -1265,6 +1230,7 @@
     }
     function build() {
       var count = container.columns.length;
+      if (part === 'design') { buildDesign(count); return; }
 
       // Columns: how many, and a ready-made layout.
       var countRow = el('div', { class: 'bk-field is-wide' }, [el('span', { class: 'bk-label', id: idBase + '-count-label', text: 'Columns' })]);
@@ -1324,7 +1290,8 @@
         chipsField(columnDef('radius'), settingValue(column, columnDef('radius')), function (value) { column.settings.radius = value; changed(false); }),
         advanced
       ]));
-
+    }
+    function buildDesign(count) {
       // Direction and alignment.
       var d = function (key) { return settingDef(key); };
       host.appendChild(group('Direction and alignment', [
@@ -1410,10 +1377,15 @@
       area.appendChild(empty);
       var remove = count > 1 ? el('button', { type: 'button', class: CLS.iconDanger, 'aria-label': 'Remove column ' + (c + 1), title: 'Remove column (its blocks move to the previous one)', html: svg('trash') }) : null;
       if (remove) {
-        remove.addEventListener('click', function () { removeColumn(container, c); render(container._id, 'keep'); });
+        remove.addEventListener('click', function () { removeColumn(container, c); render(null, 'keep'); });
       }
+      var title = el('button', { type: 'button', class: 'bk-col-title', 'aria-controls': PANEL_ID, title: 'Edit the settings of this column', text: 'Column ' + (c + 1) });
+      title.addEventListener('click', function () {
+        uiOf(container).column = c;
+        openSettings(container._id, { focus: true, tab: 'content' });
+      });
       var head = el('div', { class: 'bk-col-head' }, [
-        el('span', { class: 'bk-col-title', text: 'Column ' + (c + 1) }),
+        title,
         el('span', { class: 'bk-tag', title: 'Width', text: widthLabel(column) }),
         remove
       ]);
@@ -1426,7 +1398,6 @@
           items: '.bk-card',
           handle: '.bk-grip',
           surface: '.bk-head',
-          surfaceActive: function (node) { return !node.classList.contains('is-open'); },
           ghost: '.bk-head',
           group: 'blocks',
           meta: { get: function () { return column.blocks; } },
@@ -1444,33 +1415,31 @@
     });
     if (count < MAX_COLUMNS) {
       var more = el('button', { type: 'button', class: 'bk-col-new', 'aria-label': 'Add a column', title: 'Add a column', html: svg('plus') });
-      more.addEventListener('click', function () { addColumn(container); render(container._id, 'keep'); });
+      more.addEventListener('click', function () { addColumn(container); render(null, 'keep'); });
       host.appendChild(more);
     }
     return host;
   }
 
+  /** A container as a row of the list with its columns always drawn below its header; its settings open in the panel. */
   function renderContainer(container, index) {
-    var idBase = 'blk-' + container._id;
     var hidden = !!container.settings.hidden;
     var label = 'Container';
-    var card = el('section', { class: 'bk-card bk-container' + (hidden ? ' is-hidden' : '') + (container._open ? ' is-open' : ''), 'data-block-card': container._id, 'data-block-path': String(index) });
+    var chosen = isCurrent(container);
+    var card = el('section', { class: 'bk-card bk-container' + (hidden ? ' is-hidden' : '') + (chosen ? ' is-selected' : ''), 'data-block-card': container._id, 'data-block-path': String(index) });
     var toggle = el('button', {
       type: 'button',
       class: 'bk-toggle',
       'data-drag-surface': '',
-      'aria-expanded': container._open ? 'true' : 'false',
-      'aria-controls': idBase + '-body',
-      html: '<span class="bk-chev' + (container._open ? ' is-open' : '') + '">' + svg('chevron', 'h-3.5 w-3.5') + '</span>'
+      'aria-expanded': chosen ? 'true' : 'false',
+      'aria-controls': PANEL_ID,
+      title: 'Edit the settings of this container'
     });
     toggle.appendChild(el('span', { class: 'bk-mini', html: '<svg viewBox="0 0 64 48" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">' + CONTAINER_PREVIEW + '</svg>' }));
     toggle.appendChild(el('span', { class: 'bk-name', text: (index + 1) + '. ' + label }));
     toggle.appendChild(el('span', { class: 'bk-tag', text: containerLabel(container) }));
     if (hidden) toggle.appendChild(el('span', { class: 'bk-tag is-warn', html: svg('eyeOff', 'h-3 w-3') + 'Hidden' }));
-    toggle.addEventListener('click', function () {
-      container._open = !container._open;
-      render(container._id, 'toggle');
-    });
+    toggle.addEventListener('click', function () { openSettings(container._id, { focus: true }); });
 
     var eye = el('button', { type: 'button', class: CLS.icon, 'aria-label': hidden ? 'Show container on the page' : 'Hide container from the page', title: hidden ? 'Show on the page' : 'Hide from the page', 'aria-pressed': hidden ? 'true' : 'false', html: svg(hidden ? 'eyeOff' : 'eye'), 'data-action': 'hide' });
     eye.addEventListener('click', function () {
@@ -1486,9 +1455,9 @@
     insert.addEventListener('click', function () { openPicker(index + 1, insert, blocks); });
     var duplicate = el('button', { type: 'button', class: CLS.icon, 'aria-label': 'Duplicate container', title: 'Duplicate', html: svg('copy'), 'data-action': 'duplicate' });
     duplicate.addEventListener('click', function () {
-      var copy = withId(container, true);
+      var copy = withId(container);
       blocks.splice(index + 1, 0, copy);
-      render(copy._id, 'toggle');
+      render(copy._id, 'select');
     });
     var remove = el('button', { type: 'button', class: CLS.iconDanger, 'aria-label': 'Remove container', title: 'Remove', html: svg('trash'), 'data-action': 'remove' });
     remove.addEventListener('click', function () {
@@ -1506,41 +1475,7 @@
       blocks.length > 1 ? grip('container') : null, select, toggle,
       el('div', { class: 'bk-actions' }, [eye, insert, duplicate, more, remove])
     ]));
-
-    if (container._open) {
-      var body = el('div', { id: idBase + '-body', class: 'bk-body' });
-      var tabs = el('div', { class: 'bk-tabs', role: 'tablist' });
-      var holder = el('div');
-      var show = function (name) {
-        container._tab = name;
-        holder.innerHTML = '';
-        var panel = name === 'design' ? containerDesign(container, idBase + '-d') : containerColumns(container, index);
-        panel.id = idBase + '-' + name;
-        panel.setAttribute('role', 'tabpanel');
-        holder.appendChild(panel);
-        Array.prototype.forEach.call(tabs.children, function (b) {
-          b.setAttribute('aria-selected', b.getAttribute('data-tab') === name ? 'true' : 'false');
-          b.tabIndex = b.getAttribute('data-tab') === name ? 0 : -1;
-        });
-      };
-      [['content', 'Columns'], ['design', 'Design']].forEach(function (pair) {
-        var tab = el('button', { type: 'button', role: 'tab', 'data-tab': pair[0], text: pair[1], 'aria-controls': idBase + '-' + pair[0] });
-        tab.addEventListener('click', function () { show(pair[0]); });
-        tab.addEventListener('keydown', function (event) {
-          if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
-            event.preventDefault();
-            var other = pair[0] === 'content' ? 'design' : 'content';
-            show(other);
-            tabs.querySelector('[data-tab="' + other + '"]').focus();
-          }
-        });
-        tabs.appendChild(tab);
-      });
-      body.appendChild(tabs);
-      body.appendChild(holder);
-      show(container._tab === 'design' ? 'design' : 'content');
-      card.appendChild(body);
-    }
+    card.appendChild(containerColumns(container, index));
     return card;
   }
 
@@ -1565,7 +1500,6 @@
       items: '.bk-card',
       handle: '.bk-grip',
       surface: '.bk-head',
-      surfaceActive: function (node) { return !node.classList.contains('is-open'); },
       ghost: '.bk-head',
       group: 'blocks',
       meta: { get: function () { return blocks; } },
@@ -1626,7 +1560,7 @@
     closePicker(true);
     pickerTarget = blocks.length;
     languageButtons.forEach(function (button) { button.setAttribute('aria-pressed', button.getAttribute('data-set') === key ? 'true' : 'false'); });
-    expandAll.textContent = blocks.length && everyBlock(blocks).every(function (b) { return b._open; }) ? 'Collapse all' : 'Expand all';
+    closeSettings();
     render(null);
     syncSaveBar();
   }
@@ -1655,6 +1589,11 @@
     undoBar.classList.remove('hidden');
   }
 
+  /**
+   * Draws the list again. `focusWhat` says what happens to the block `focusId`: 'move' and 'more' focus its grip or its "…" button,
+   * 'toggle' focuses its row, 'open' opens its settings in the panel and takes
+   * the focus there; 'select' is 'toggle' that also shows the block in the panel when the panel is open (a copy just made). 'keep' draws the open tab of the panel again too (a change that alters what the tab offers); 'list' only the list.
+   */
   function render(focusId, focusWhat) {
     list.innerHTML = '';
     // Blocks narrower than the page that follow each other share a row on the page, so they are drawn side by side here too.
@@ -1666,8 +1605,7 @@
           row = el('div', { class: 'bk-sharing', role: 'group', 'aria-label': 'Blocks sharing a row' });
           list.appendChild(row);
         }
-        // An open block takes the whole row to have room for its fields.
-        card.style.gridColumn = 'span ' + (block._open ? 12 : ({ 25: 3, 33: 4, 50: 6, 66: 8, 75: 9 })[widthOf(block)]);
+        card.style.gridColumn = 'span ' + ({ 25: 3, 33: 4, 50: 6, 66: 8, 75: 9 })[widthOf(block)];
         row.appendChild(card);
       } else {
         row = null;
@@ -1677,22 +1615,158 @@
     empty.classList.toggle('hidden', blocks.length > 0);
     if (copyNote) copyNote.classList.toggle('hidden', blocks.length > 0 || activeKey === languages[0].key || !sets[languages[0].key].length);
     serialize();
-    if (focusId) {
-      var card = list.querySelector('[data-block-card="' + focusId + '"]');
-      if (!card) return;
-      var target = null;
-      if (focusWhat === 'move') {
-        target = card.querySelector('[data-grip]') || card.querySelector('[aria-expanded]');
-        card.scrollIntoView({ block: 'nearest' });
-      } else if (focusWhat === 'more') {
-        target = card.querySelector('[data-action="more"]');
-        card.scrollIntoView({ block: 'nearest' });
-      } else if (focusWhat === 'toggle') {
-        target = card.querySelector('[aria-expanded]');
-        card.scrollIntoView({ block: 'nearest' });
-      }
-      if (target) target.focus();
+    syncSettings(focusWhat === 'keep');
+    if (!focusId) return;
+    if (focusWhat === 'open') { openSettings(focusId, { focus: true, tab: 'content' }); return; }
+    var card = list.querySelector('[data-block-card="' + focusId + '"]');
+    if (!card) return;
+    var target = null;
+    if (focusWhat === 'move') {
+      target = card.querySelector('[data-grip]') || card.querySelector('.bk-toggle');
+    } else if (focusWhat === 'more') {
+      target = card.querySelector('[data-action="more"]');
+    } else if (focusWhat === 'toggle' || focusWhat === 'select') {
+      target = card.querySelector('.bk-toggle');
+      if (focusWhat === 'select' && settings && settings.isOpen() && currentId !== focusId) openSettings(focusId, { focus: false });
     }
+    if (target) {
+      try { card.scrollIntoView({ block: 'nearest' }); } catch (e) { /* no layout */ }
+      target.focus();
+    }
+  }
+
+  /* The settings panel (admin-panel.js): the Content and Design of the block chosen in the list ------------------------------ */
+
+  var PANEL_ID = 'bk-settings';
+  var settings = null;   // the panel, made when the editor is mounted
+  var currentId = null;  // the block or container whose settings it shows
+  var currentInColumn = null;
+
+  function isCurrent(block) {
+    return currentId !== null && block._id === currentId && !!settings && settings.isOpen();
+  }
+
+  /** Where a block is: {block, index, where: {list, path, column, container}}, or null. */
+  function locate(id) {
+    var found = null;
+    blocks.forEach(function (block, i) {
+      if (block._id === id) found = { block: block, index: i, where: { list: blocks, path: String(i) } };
+      if (isContainer(block)) {
+        block.columns.forEach(function (column, c) {
+          column.blocks.forEach(function (inner, k) {
+            if (inner._id === id) found = { block: inner, index: k, where: { list: column.blocks, path: i + '.' + c + '.' + k, column: column, container: block } };
+          });
+        });
+      }
+    });
+    return found;
+  }
+
+  /** The block at a place of the editor ('2' or '2.0.1', as data-block-path and the preview's data-bk-block say). */
+  function atPath(path) {
+    var steps = String(path).split('.').map(Number);
+    var block = blocks[steps[0]];
+    if (block && steps.length === 3 && isContainer(block)) {
+      var column = block.columns[steps[1]];
+      block = column ? column.blocks[steps[2]] : null;
+    }
+    return block || null;
+  }
+
+  function rowToggle(id) {
+    return list.querySelector('[data-block-card="' + id + '"] > .bk-head .bk-toggle');
+  }
+
+  /** What the panel shows for a block: its title, where it is, its tabs and how each is drawn. */
+  function settingsFor(at) {
+    var block = at.block;
+    var container = isContainer(block);
+    var def = definitions[block.type];
+    var label = def ? def.label : 'Unknown block: ' + block.type;
+    var order = everyBlock(blocks);
+    var position = order.indexOf(block);
+    var crumbs = [];
+    if (at.where.container) {
+      crumbs = ['Container ' + (blocks.indexOf(at.where.container) + 1), 'Column ' + (at.where.container.columns.indexOf(at.where.column) + 1)];
+    }
+    var idBase = 'blk-' + block._id;
+    var inColumn = !!at.where.column;
+    var step = function (to) {
+      return to ? function (way) { openSettings(to._id, { focus: false, fromNav: way }); } : null;
+    };
+    var before = order[position - 1];
+    var after = order[position + 1];
+    var nameOf = function (other) { return isContainer(other) ? 'Container' : ((definitions[other.type] || {}).label || other.type); };
+    return {
+      key: block._id,
+      title: (at.index + 1) + '. ' + label,
+      icon: '<svg viewBox="0 0 64 48" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">' + (container ? CONTAINER_PREVIEW : ((def && def.preview) || PREVIEW_FALLBACK)) + '</svg>',
+      crumbs: crumbs,
+      tabs: container ? [{ key: 'content', label: 'Layout' }, { key: 'design', label: 'Design' }] : (def ? [{ key: 'content', label: 'Content' }, { key: 'design', label: 'Design' }] : []),
+      announce: 'Settings of ' + (container ? 'the container' : 'block ' + label) + ', ' + (position + 1) + ' of ' + order.length + '.',
+      onPrev: step(before),
+      onNext: step(after),
+      prevLabel: before ? 'Previous: ' + nameOf(before) : 'Previous',
+      nextLabel: after ? 'Next: ' + nameOf(after) : 'Next',
+      returnFocus: function () { return rowToggle(block._id); },
+      onClose: function () { currentId = null; markCurrent(); },
+      render: function (tab) {
+        if (container) return containerDesign(block, idBase + '-d', tab === 'design' ? 'design' : 'layout');
+        if (!def) return el('p', { class: 'bk-desc', text: 'Kept as is. Its definition is not installed.' });
+        return tab === 'design' ? designPanel(block, def, idBase, inColumn) : contentPanel(block, def, idBase);
+      }
+    };
+  }
+
+  /** Opens a block's settings in the panel. `focus` takes the focus to the panel's title; `tab` picks a tab. */
+  function openSettings(id, options) {
+    options = options || {};
+    var at = settings ? locate(id) : null;
+    if (!at) return false;
+    var given = settingsFor(at);
+    given.focus = !!options.focus;
+    if (options.tab) given.tab = options.tab;
+    currentId = id;
+    currentInColumn = !!at.where.column;
+    settings.open(given);
+    markCurrent();
+    // Previous and Next keep the focus on themselves; at the end of the list (the button can no longer be pressed) the title takes it.
+    var used = options.fromNav ? settings.element.querySelector('[data-panel-' + options.fromNav + ']') : null;
+    if (used && used.disabled && (document.activeElement === used || document.activeElement === document.body)) settings.element.querySelector('.sp-title').focus();
+    return true;
+  }
+
+  function closeSettings() {
+    if (settings && settings.isOpen()) settings.close(false);
+    currentId = null;
+  }
+
+  /** The row of the block in the panel is marked (aria-expanded on its button); the others are not. */
+  function markCurrent() {
+    Array.prototype.forEach.call(list.querySelectorAll('[data-block-card]'), function (card) {
+      var on = settings && settings.isOpen() && String(currentId) === card.getAttribute('data-block-card');
+      card.classList.toggle('is-selected', !!on);
+      var button = card.querySelector(':scope > .bk-head .bk-toggle');
+      if (button) button.setAttribute('aria-expanded', on ? 'true' : 'false');
+    });
+  }
+
+  /** After the list was drawn again: the panel follows the block (its number, where it is) or closes when the block is gone. */
+  function syncSettings(redraw) {
+    if (!settings || currentId === null || !settings.isOpen()) return;
+    var at = locate(currentId);
+    if (!at) { closeSettings(); return; }
+    var given = settingsFor(at);
+    var moved = currentInColumn !== !!at.where.column;
+    currentInColumn = !!at.where.column;
+    settings.update({ title: given.title, icon: given.icon, crumbs: given.crumbs, onPrev: given.onPrev, onNext: given.onNext, prevLabel: given.prevLabel, nextLabel: given.nextLabel, render: given.render, returnFocus: given.returnFocus });
+    if (redraw || moved) settings.refresh();
+  }
+
+  /** The short text of a row follows what is typed in the panel. */
+  function refreshSummary(block) {
+    var node = list.querySelector('[data-block-card="' + block._id + '"] [data-block-summary]');
+    if (node) node.textContent = summaryOf(block);
   }
 
   /* Block picker ------------------------------------------------------------- */
@@ -1708,9 +1782,8 @@
   var pickerTab = 'blocks';
 
   function insertBlocks(list, position, into) {
-    var added = list.map(function (b) { return withId(b, false); });
+    var added = list.map(function (b) { return withId(b); });
     Array.prototype.splice.apply(into || blocks, [position, 0].concat(added));
-    if (added.length) added[0]._open = true;
     return added;
   }
 
@@ -1810,7 +1883,7 @@
           var block = newBlock(type);
           targetList().splice(pickerTarget, 0, block);
           closePicker(true);
-          render(block._id, 'toggle');
+          render(block._id, 'open');
         });
         options.push({ node: option, category: categoryOf(def), text: (def.label + ' ' + def.description + ' ' + type + ' ' + categoryOf(def)).toLowerCase() });
         grid.appendChild(option);
@@ -1828,7 +1901,7 @@
             var container = newContainer(preset.widths);
             blocks.splice(pickerTarget, 0, container);
             closePicker(true);
-            render(container._id, 'toggle');
+            render(container._id, 'open');
           });
           chipsRow.appendChild(chip);
         });
@@ -2038,18 +2111,19 @@
 
   var addButton = el('button', { type: 'button', class: CLS.btnPrimary, html: svg('plus') + '<span>Add block</span>' });
   addButton.addEventListener('click', function () { openPicker(blocks.length, addButton); });
-  var expandAll = el('button', { type: 'button', class: CLS.btn, text: 'Expand all' });
-  expandAll.addEventListener('click', function () {
-    var open = !everyBlock(blocks).every(function (b) { return b._open; });
-    everyBlock(blocks).forEach(function (b) { b._open = open; });
-    expandAll.textContent = open ? 'Collapse all' : 'Expand all';
-    render(null);
-  });
 
   root.innerHTML = '';
+  // The list and the settings panel side by side (or the panel over the list, see admin-panel.js).
+  var main = el('div', { class: 'bk-main' });
+  var layout = el('div', { class: 'bk-layout' }, [main]);
+  root.appendChild(layout);
+  if (window.GnozioPanel) {
+    settings = window.GnozioPanel.create({ mount: layout, id: PANEL_ID, name: 'blocks', label: 'Block settings', backLabel: 'Blocks', above: '[data-action-bar]', empty: 'Choose a block in the list to edit its content and design here.' });
+  }
+  root = main;
   root.appendChild(el('div', { class: 'bk-bar' }, [
     el('p', { class: 'bk-help', text: footerMode ? 'Top to bottom, above the footer. Tick blocks to save them as a reusable section.' : 'Sections of this page, top to bottom. An opening Hero becomes the page title. Tick blocks to save them as a reusable section.' }),
-    el('div', { class: 'bk-bar-actions' }, [languageBar, expandAll, addButton])
+    el('div', { class: 'bk-bar-actions' }, [languageBar, addButton])
   ]));
   if (copyNote) root.appendChild(copyNote);
   root.appendChild(undoBar);
@@ -2061,4 +2135,13 @@
 
   flag.value = '1';
   render(null);
+
+  // For other parts of the admin (the live preview): open the settings of the block at a place of the editor ('2' or '2.0.1').
+  window.GnozioBlocks = {
+    open: function (path, options) {
+      var block = atPath(path);
+      return block ? openSettings(block._id, { focus: !options || options.focus !== false }) : false;
+    },
+    close: closeSettings
+  };
 })();

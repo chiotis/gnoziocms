@@ -78,7 +78,10 @@ defs = {d['type']: d for d in data['definitions']}
 check('each block says what kind it is, for the picker', all(d.get('category') for d in data['definitions']) and defs['hero']['category'] == 'Openers' and defs['pricing']['category'] == 'Convert', {t: d.get('category') for t, d in defs.items()})
 check('and its layout, background and spacing are the settings every block has', [f['key'] for f in defs['hero']['common']] == ['variant', 'tone', 'spacing', 'width', 'anchor', 'hidden'])
 js = root.get('/assets/js/admin-blocks.js')[2]
-check('the editor script draws a block as a line that opens to Content and Design', 'bk-card' in js and "['content', 'Content'], ['design', 'Design']" in js)
-check('the script keeps what it needs for drawing out of the saved blocks', "'_tab'" in js and 'WeakMap' in js)
+check('the editor script draws a block as a compact row whose Content and Design open in the settings panel', 'bk-card' in js and "{ key: 'content', label: 'Content' }, { key: 'design', label: 'Design' }" in js and 'GnozioPanel' in js)
+panel_js = root.get('/assets/js/admin-panel.js')[2]
+check('the settings panel is served, with its small API and its three places (docked, over the list, a phone sheet)', 'window.GnozioPanel' in panel_js and all(w in panel_js for w in ("'docked'", "'overlay'", "'sheet'", 'aria-modal')))
+check('the entry editor loads the panel before the builder', 'js/admin-panel.js' in ed and ed.index('js/admin-panel.js') < ed.index('js/admin-blocks.js'))
+check('the script keeps what it needs for drawing out of the saved blocks', "'_id'" in js and 'enumerable: false' in js and 'WeakMap' in js)
 
 print('\nALL PASSED' if not fails else '\n%d FAILED: %s' % (len(fails), fails))

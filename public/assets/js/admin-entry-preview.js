@@ -148,7 +148,14 @@
     var tab = document.querySelector('[data-tab="blocks"]');
     if (tab && !tab.classList.contains('active')) { tab.click(); }
     if (narrow.matches) { show(false, false); }
-    // A block inside a container: the container opens first (the builder draws itself again each time), then the block.
+    // The builder opens the block's settings in its panel; the list keeps the row in view.
+    if (window.GnozioBlocks && window.GnozioBlocks.open(index)) {
+      var row = cardFor(index);
+      if (row) { try { row.scrollIntoView({ block: 'nearest' }); } catch (e) { /* no scrolling */ } }
+      outline(index, false);
+      return;
+    }
+    // An older builder: a block inside a container opens the container first, then the block.
     var steps = String(index).split('.');
     if (steps.length === 3) {
       var outer = cardFor(steps[0]);
