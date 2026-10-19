@@ -133,6 +133,12 @@ function boot(storage) {
   doc.getElementById('in').dispatchEvent(click);
   check('a click on a block in the picture opens the block of that place in the builder', opened === 1, opened);
   check('a link in the picture is not followed', click.defaultPrevented);
+  // the builder of today answers through its API (window.GnozioBlocks), which opens the block's settings in its panel
+  const asked = [];
+  t.w.GnozioBlocks = { open: (path) => { asked.push(path); return true; } };
+  doc.querySelector('[data-bk-block="0"]').dispatchEvent(new t.w.MouseEvent('click', { bubbles: true, cancelable: true }));
+  check('with the builder\'s API the place of the block is handed to it, not clicked', JSON.stringify(asked) === '["0"]' && opened === 1, JSON.stringify(asked));
+  delete t.w.GnozioBlocks;
   // ---- and the other way: a block opened in the builder is outlined in the picture
   t.d.querySelectorAll('.bk-toggle')[0].click();
   check('a block header clicked in the builder outlines the block in the picture', doc.querySelector('[data-bk-block="0"]').classList.contains('faros-bk-hit'));

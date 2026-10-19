@@ -49,9 +49,10 @@ function builder(blocks) {
   const doc = window.document;
   window.Element.prototype.scrollIntoView = function () {};
   window.eval(js('admin-sortable.js'));
+  window.eval(js('admin-panel.js'));
   window.eval(js('admin-blocks.js'));
   doc.querySelector('.bk-toggle').click();
-  Array.prototype.filter.call(doc.querySelectorAll('.bk-tabs button'), (b) => b.textContent === 'Design')[0].click();
+  Array.prototype.filter.call(doc.querySelectorAll('.sp-tabs button'), (b) => b.textContent === 'Design')[0].click();
   const read = () => JSON.parse(doc.querySelector('[data-block-editor-output]').value);
   const chip = (text) => Array.prototype.filter.call(doc.querySelectorAll('.bk-design .bk-size .bk-widths button'), (b) => b.textContent === text)[0];
   const unit = (text) => Array.prototype.filter.call(doc.querySelectorAll('.bk-design .bk-size .bk-seg button'), (b) => b.textContent === text)[0];

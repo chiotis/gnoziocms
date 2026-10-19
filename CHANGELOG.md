@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.164 — 2026-10-19 — Block settings in one panel
+- **A block's settings open in a fixed panel at the side of the block editor**, with Content and Design apart, instead of opening inside the list of blocks. The list stays compact, with one row per block. On a phone the panel is a full-screen sheet. Esc closes it and focus returns to the block. Containers, columns, nested repeaters, the live preview and drag and drop work as before, and saved content does not change.
+- The panel has a small API (`admin-panel.js`) that the coming template builder reuses.
+
 ## 0.1.163 — 2026-10-19 — Rendering out of App
 - **The Twig environment and the site's template functions move out of `src/App.php`** into `SiteTwig`, and finding which template draws a page moves into `TemplateResolver`, each with unit tests. Behaviour is identical: the full suite passes and the rendered pages are unchanged. `App.php` is about 280 lines shorter, and the coming template builder works on code of its own. See `docs/architecture.md`.
 

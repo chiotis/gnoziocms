@@ -33,7 +33,7 @@ def before_footer(html):
 st, _, html = root.get('/admin/theme?tab=footer_blocks')
 tabs = re.findall(r'role="tab"[^>]*data-tab="([a-z_]+)"', html)
 check('Theme has a Footer Blocks tab, right after Footer', st == 200 and 'footer_blocks' in tabs and tabs.index('footer_blocks') == tabs.index('footer') + 1, tabs)
-check('with the block editor and the blocks it starts from', 'data-block-editor' in html and 'id="block-editor-data"' in html and 'js/admin-blocks.js' in html and '"type":"logos"' in html)
+check('with the block editor and the blocks it starts from', 'data-block-editor' in html and 'id="block-editor-data"' in html and 'js/admin-blocks.js' in html and 'js/admin-panel.js' in html and '"type":"logos"' in html)
 check('nothing is above the footer until blocks are added', before_footer(page()) == '' and 'footer-blocks' not in page())
 
 logos = {'type': 'logos', 'heading': 'Our partners', 'items': [{'name': 'Acme'}, {'name': 'Globex'}]}

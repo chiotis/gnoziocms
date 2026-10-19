@@ -31,6 +31,7 @@ function check(label, ok, detail) {
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const js = (name) => fs.readFileSync(path.join(__dirname, '..', '..', 'public', 'assets', 'js', name), 'utf8');
 const sortableSource = js('admin-sortable.js');
+const panelSource = js('admin-panel.js');
 const blocksSource = js('admin-blocks.js');
 
 /** A page whose items have the boxes `box(node)` says (jsdom has none). */
@@ -59,7 +60,7 @@ function key(window, node, k) {
   node.dispatchEvent(event);
   return event;
 }
-const said = (window) => window.document.querySelector('[aria-live]').textContent.replace(/ /g, '').trim();
+const said = (window) => window.document.querySelector('body > [aria-live]').textContent.replace(/ /g, '').trim();
 
 /* ---------------------------------------------------------------------------------------------- */
 
@@ -327,6 +328,7 @@ function builder(blocks) {
     if (node.matches('.bk-inline-rows')) return { left: 0, top: 1000, width: 600, height: 120 };
     return null;
   });
+  window.eval(panelSource);
   window.eval(blocksSource);
   const out = () => JSON.parse(window.document.querySelector('[data-block-editor-output]').value).map((b) => b.heading || b.type);
   return { window, doc: window.document, out };

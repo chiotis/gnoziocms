@@ -485,7 +485,7 @@
   <div class="ep-panel" id="entry-preview" data-entry-preview data-preview data-mode="entry" data-form="#entry-form" data-endpoint="{{ url('admin/edit?preview=entry') }}" hidden>
     <button type="button" class="ep-grip" data-entry-preview-grip role="separator" aria-orientation="vertical" aria-label="Width of the preview. Use the left and right arrow keys." aria-valuemin="320" aria-valuemax="900" tabindex="0"></button>
     <button type="button" class="ep-close" data-entry-preview-close aria-label="Hide the preview">Close</button>
-    {% include '@admin/partials/theme-preview.twig' with {preview_url: '', preview_title: 'Preview of this page, as it is now', preview_note: 'The page as it would be if you saved now. Nothing is saved. Click a block to open it in the Blocks tab.'} %}
+    {% include '@admin/partials/theme-preview.twig' with {preview_url: '', preview_title: 'Preview of this page, as it is now', preview_note: 'The page as it would be if you saved now. Nothing is saved. Click a block to open its settings in the Blocks tab.'} %}
   </div>
   </div>
 
@@ -497,6 +497,7 @@
   {% if block_editor_json %}
     {% include '@admin/partials/icon-library.twig' %}
     <script src="{{ asset('js/admin-sortable.js') }}"></script>
+    <script src="{{ asset('js/admin-panel.js') }}"></script>
     <script src="{{ asset('js/admin-blocks.js') }}"></script>
   {% endif %}
 

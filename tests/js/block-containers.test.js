@@ -31,6 +31,7 @@ function check(label, ok, detail) {
 }
 const js = (name) => fs.readFileSync(path.join(__dirname, '..', '..', 'public', 'assets', 'js', name), 'utf8');
 const sortableSource = js('admin-sortable.js');
+const panelSource = js('admin-panel.js');
 const blocksSource = js('admin-blocks.js');
 
 const select = (key, label, def, options) => ({ key, label, type: 'select', default: def, options: options.map((o) => [o, o]) });
@@ -90,6 +91,7 @@ function builder(blocks) {
   };
   window.Element.prototype.scrollIntoView = function () {};
   window.eval(sortableSource);
+  window.eval(panelSource);
   window.eval(blocksSource);
   const read = () => JSON.parse(doc.querySelector('[data-block-editor-output]').value);
   const shape = (list) => list.map((b) => b.type === 'container' ? ['container', b.columns.map((c) => (c.blocks || []).map((x) => x.heading || x.type))] : (b.heading || b.type));
@@ -115,7 +117,7 @@ function drag(b, grip, x, y) {
 function key(b, node, k, extra) {
   node.dispatchEvent(new b.window.KeyboardEvent('keydown', Object.assign({ key: k, bubbles: true, cancelable: true }, extra || {})));
 }
-const said = (b) => b.doc.querySelector('[aria-live]').textContent.replace(/\u00a0/g, '').trim();
+const said = (b) => b.doc.querySelector('body > [aria-live]').textContent.replace(/\u00a0/g, '').trim();
 const colGrip = (b, c, k) => b.doc.querySelectorAll('.bk-col')[c].querySelectorAll('.bk-card')[k].querySelector('.bk-grip');
 const topGrips = () => null;
 
@@ -134,12 +136,13 @@ function written() {
   const nested = [T('Before'), container([[T('A'), { type: 'cta', heading: 'B' }], [T('C')]], { gap: 'l' }), T('After')];
   b = builder(nested);
   check('a container is read and written back with its settings, columns and blocks', JSON.stringify(b.read()) === JSON.stringify(nested), JSON.stringify(b.read()));
-  check('and drawn: a card with its columns side by side and the blocks in them', b.doc.querySelectorAll('.bk-container').length === 1 && b.doc.querySelectorAll('.bk-container .bk-col').length === 0, b.doc.querySelectorAll('.bk-col').length);
-
-  const open = b.doc.querySelector('.bk-container .bk-toggle');
-  open.click();
-  check('opened, each column is a list of its blocks', b.doc.querySelectorAll('.bk-col').length === 2 && b.doc.querySelectorAll('.bk-col')[0].querySelectorAll('.bk-card').length === 2 && b.doc.querySelectorAll('.bk-col')[1].querySelectorAll('.bk-card').length === 1);
+  check('and drawn: a card with its columns side by side and the blocks in them, always (not only when opened)', b.doc.querySelectorAll('.bk-container').length === 1 && b.doc.querySelectorAll('.bk-container .bk-col').length === 2, b.doc.querySelectorAll('.bk-col').length);
+  check('each column is a list of its blocks', b.doc.querySelectorAll('.bk-col').length === 2 && b.doc.querySelectorAll('.bk-col')[0].querySelectorAll('.bk-card').length === 2 && b.doc.querySelectorAll('.bk-col')[1].querySelectorAll('.bk-card').length === 1);
   check('a card says where it stands (the preview finds it by that)', b.doc.querySelector('.bk-container').getAttribute('data-block-path') === '1' && b.doc.querySelectorAll('.bk-col')[0].querySelectorAll('.bk-card')[1].getAttribute('data-block-path') === '1.0.1');
+  b.doc.querySelector('.bk-container .bk-toggle').click();
+  check('a click on its header opens the container\'s settings in the panel, Layout and Design', !b.doc.querySelector('#bk-settings').hidden && b.doc.querySelector('#bk-settings .sp-title').textContent === '2. Container' && Array.prototype.map.call(b.doc.querySelectorAll('#bk-settings [role=tab]'), (n) => n.textContent).join('|') === 'Layout|Design', b.doc.querySelector('#bk-settings').outerHTML.slice(0, 300));
+  b.doc.querySelectorAll('.bk-col-title')[1].click();
+  check('a click on a column\'s title opens the container with that column chosen', /Column 2 of 2/.test(b.doc.querySelector('#bk-settings .sp-body').textContent));
 
   b = builder([container([])]);
   check('a container with no columns is given one', JSON.stringify(b.read()) === JSON.stringify([{ type: 'container', settings: {}, columns: [{ settings: {}, blocks: [] }] }]), JSON.stringify(b.read()));
@@ -150,7 +153,6 @@ function written() {
 function pointerMoves() {
   // 2. moving blocks
   let b = builder([T('Top'), container([[T('A'), T('B')], [T('C')]]), T('After')]);
-  b.doc.querySelector('.bk-container .bk-toggle').click();
   let changes = 0;
   b.doc.addEventListener('bk:change', () => { changes++; });
   const target = b.boxOf(b.doc.querySelectorAll('.bk-col')[1]);
@@ -183,7 +185,6 @@ function pointerMoves() {
 function keyboardMoves() {
   // 3. the keyboard
   const b = builder([T('Top'), container([[T('A'), T('B')], [T('C')]]), T('After')]);
-  b.doc.querySelector('.bk-container .bk-toggle').click();
   let grip = colGrip(b, 0, 0);
   grip.focus();
   grip.dispatchEvent(new b.window.MouseEvent('click', { bubbles: true, detail: 0 }));
@@ -220,7 +221,7 @@ function convert() {
   menuItem(b, cards()[1], 'Wrap in container').click();
   check('Wrap in container puts the block in a container of one column, where it was', JSON.stringify(b.out()) === JSON.stringify(['One', ['container', [['Two']]], 'Three']), JSON.stringify(b.out()));
   check('and says so', /wrapped in a new container at position 2 of 3/.test(said(b)), said(b));
-  check('the new container is open', b.doc.querySelector('.bk-container').classList.contains('is-open'));
+  check('the new container\'s row has the focus', b.doc.activeElement === b.doc.querySelector('.bk-container > .bk-head .bk-toggle'));
   check('a block in a column offers no Wrap but Move out of the container', menuItem(b, b.doc.querySelector('.bk-col .bk-card'), 'Move out of the container') !== undefined && menuItem(b, b.doc.querySelector('.bk-col .bk-card'), 'Wrap in container') === undefined);
   menuItem(b, b.doc.querySelector('.bk-col .bk-card'), 'Move out of the container').click();
   check('Move out of the container puts the block after it', JSON.stringify(b.out()) === JSON.stringify(['One', ['container', [[]]], 'Two', 'Three']), JSON.stringify(b.out()));
@@ -236,34 +237,33 @@ function columns() {
   // 5. columns and settings
   const b = builder([container([[T('A')], [T('B')], [T('C')]])]);
   b.doc.querySelector('.bk-container .bk-toggle').click();
-  b.doc.querySelector('.bk-container [data-tab="design"]').click();
   const chips = Array.prototype.filter.call(b.doc.querySelectorAll('.bk-preset'), (n) => n.textContent.indexOf('50 / 50') !== -1);
   chips[0].click();
   const after = b.read()[0];
   check('a preset sets the number of columns and their widths, keeping the blocks of the columns that go', after.columns.length === 2 && after.columns[0].settings.width === '1/2' && after.columns[1].settings.width === '1/2' && JSON.stringify(after.columns[1].blocks.map((x) => x.heading)) === '["B","C"]', JSON.stringify(after));
-  const plus = () => b.doc.querySelector('.bk-container [aria-label="Add a column"]');
+  const plus = () => b.doc.querySelector('#bk-settings [aria-label="Add a column"]');
   for (let i = 0; i < 8; i++) { if (!plus().disabled) plus().click(); }
   check('at most six columns', b.read()[0].columns.length === 6 && plus().disabled, b.read()[0].columns.length);
-  b.doc.querySelector('.bk-container [aria-label="Remove the last column"]').click();
+  b.doc.querySelector('#bk-settings [aria-label="Remove the last column"]').click();
   check('and one less when asked', b.read()[0].columns.length === 5);
-  b.doc.querySelector('.bk-container [data-tab="content"]').click();
+  check('the list draws the columns again as they change', b.doc.querySelectorAll('.bk-container .bk-col').length === 5);
   b.doc.querySelector('[aria-label="Remove column 1"]').click();
   check('removing a column moves its blocks to the neighbour (the next one for the first), none is lost', JSON.stringify(b.out()) === JSON.stringify([['container', [['A', 'B', 'C'], [], [], []]]]), JSON.stringify(b.out()));
   
   // the Width of a block is not offered inside a column
   const w = builder([T('Alone'), container([[T('In')]])]);
-  w.doc.querySelectorAll('.bk-list > .bk-card')[1].querySelector('.bk-toggle').click();
   w.doc.querySelector('.bk-col .bk-card .bk-toggle').click();
-  w.doc.querySelector('.bk-col .bk-card [data-tab="design"]').click();
+  w.doc.querySelector('#bk-settings [data-tab="design"]').click();
+  const inColumn = w.doc.querySelector('#bk-settings .bk-widths') === null;
+  check('the panel says where a block of a column is', w.doc.querySelector('#bk-settings .sp-crumbs').textContent === 'Container 2 › Column 1', w.doc.querySelector('#bk-settings .sp-crumbs').textContent);
   w.doc.querySelectorAll('.bk-list > .bk-card')[0].querySelector('.bk-toggle').click();
-  w.doc.querySelector('.bk-list > .bk-card [data-tab="design"]').click();
-  check('a block in a column has no Width, a block at the top level has', w.doc.querySelector('.bk-col .bk-card .bk-widths') === null && w.doc.querySelector('.bk-list > .bk-card .bk-widths') !== null);
+  check('a block in a column has no Width, a block at the top level has (the Design tab stays chosen)', inColumn && w.doc.querySelector('#bk-settings [data-tab="design"]').getAttribute('aria-selected') === 'true' && w.doc.querySelector('#bk-settings .bk-widths') !== null);
 
   // settings are written, and a hidden container says so
   const s = builder([container([[T('A')]])]);
   s.doc.querySelector('.bk-container .bk-toggle').click();
-  s.doc.querySelector('.bk-container [data-tab="design"]').click();
-  const gap = Array.prototype.find.call(s.doc.querySelectorAll('.bk-container .bk-seg button'), (n) => n.getAttribute('aria-label') === 'Medium' || n.textContent === 'L');
+  s.doc.querySelector('#bk-settings [data-tab="design"]').click();
+  const gap = Array.prototype.find.call(s.doc.querySelectorAll('#bk-settings .bk-seg button'), (n) => n.getAttribute('aria-label') === 'Medium' || n.textContent === 'L');
   if (gap) gap.click();
   s.doc.querySelector('.bk-container [aria-label="Hide container from the page"]').click();
   check('a setting is written in the container\'s settings, a hidden container is marked', s.read()[0].settings.hidden === true, JSON.stringify(s.read()[0].settings));
@@ -272,7 +272,6 @@ function columns() {
 function roundTrip() {
   // 6. a save round trip
   const b = builder([T('Top'), container([[T('A')], [T('B'), { type: 'cta', heading: 'Go' }]], { gap: 'l', justify: 'center' }), T('Last', { width: '50' })]);
-  b.doc.querySelector('.bk-container .bk-toggle').click();
   const target = b.boxOf(b.doc.querySelectorAll('.bk-col')[0]);
   drag(b, colGrip(b, 1, 0), target.left + 100, target.top + 200);
   const saved = b.read();
