@@ -32,6 +32,7 @@ themes/default/
 ├── components/           header, footer, card, form, menu macros, block wrapper, ui macros
 ├── blocks/<type>/        block.yaml (fields), block.twig (markup), block.css (styles)
 ├── content-types/<type>.yaml  fields and archive settings of a content type
+├── single-templates/<type>.yaml  the blocks a type starts from when its page is built with blocks
 ├── icons/<name>.svg      icon set used by blocks (icon('name') in Twig)
 ├── assets/css, assets/js served at /_themes/default/<path>
 └── lang/<lang>.php       shipped strings
@@ -43,6 +44,7 @@ custom/                   site-specific, never touched by updates
 ├── lang/<lang>.yaml      string overrides (written by Admin > Translations)
 ├── blocks/<type>/        new block types, or block.css added after a theme block's styles
 ├── content-types/<type>.yaml  fields and archive settings of a type (written by Admin > Content types)
+├── single-templates/<type>.yaml  the starting template of a type, over the theme's
 ├── icons/<name>.svg      extra icons (or replacements for theme icons)
 └── templates/, components/, layouts/   overrides by relative path
 ```
@@ -140,6 +142,7 @@ First block family:
 | `faq` | stacked, split | Native `<details>`; adds `FAQPage` structured data. The page can open with all answers closed (default) or the first one open (`initial: first`, the same choice as the Accordion; the old `open_first: true` still works). |
 | `accordion` | (one layout) | Compact `<details>` items for narrow columns, with titles one small step above the body text; no structured data (use `faq` for a page of questions). Options in the Design tab: several open at once (default on; off adds a small script and a shared `name`), chevron or plus/minus icon, lines or separate cards. The page can open with the first item open. The height change is animated by a small script and skipped when a visitor asks for less motion. |
 | `cta` | band, card, split | Default tone: accent. |
+| `buttons` | left, centered | A row of buttons and nothing else, up to twelve (label, link, style). Typed, or bound to a list of the entry in a template built with blocks (the buy links of a book). |
 | `cards` | grid, list | Latest items of a content type, or hand-written cards. |
 | `form` | split, stacked | Any form from Admin > Forms. |
 | `gallery` | grid, masonry, strip | Opens images in an accessible viewer (`<dialog>`, arrow keys, Escape); without JavaScript the images are plain links. |
@@ -398,11 +401,57 @@ In the settings panel every field that can show a field of the entry has a small
 | image | the main image, and image fields |
 | link, address | link and url fields |
 
-A choice, a switch and a list cannot be bound (lists are for delivery 1B). A new kind of field becomes bindable by one more entry in the table (and a line in its row of `EntryBindings::value()` when its value is not a plain string). The paths are `title`, `excerpt`, `main_image`, `date`, `author`, `categories`, `tags` and `custom_fields.<key>`; the dotted form leaves room for relationships (`author.title`).
+A choice and a switch cannot be bound; a list can, to a list ([List bindings](#list-bindings)). A new kind of field becomes bindable by one more entry in the table (and a line in its row of `EntryBindings::value()` when its value is not a plain string). The paths are `title`, `excerpt`, `main_image`, `date`, `author`, `categories`, `tags` and `custom_fields.<key>`; the dotted form leaves room for relationships (`author.title`).
 
 At render time `BlockRenderer` replaces each binding with the entry's value **before** the normal checks of the block's field, so a bound value is cleaned exactly as a typed one: text is escaped, an address with a script scheme is refused, Markdown goes through the site's Markdown. A text with a version for each language (`translatable: true`) gives the one of the page's language, else the site's own. A field the entry has no value for is empty. A binding to a field that has been removed, renamed or changed to a kind that no longer fits is empty too, never an error, and the editor shows a warning on the block ("Bound to a missing field: custom_fields.x"), so nothing is lost while it is fixed.
 
 Each block with a binding has **Hide this block when its bound field is empty** (on by default): the block is left out when every field bound in it is empty. Switching it off is the only state that is stored (`bind_hide: false`). A block with nothing bound is always shown.
+
+### List bindings
+
+A block's list (a repeater: the buttons of a Hero, Call to action or Buttons block, the items of Cards, Checklist, FAQ, Accordion, Columns and so on, every block repeater) can be bound to a **list of the entry**: a repeater field the content type declares (the buy links of a book, the materials of a workshop). The chain button in the header of the list offers the lists of the type; choosing one opens a small table with **one line for each column of the block's rows**, and each line says what that column shows:
+
+- a **column of the entry's rows** that fits it (the same table as for single values, `EntryBindings::ACCEPTS`, applied to the column: a text takes text, select, number and date columns, a link takes link and address columns, and so on). Columns of the same name that fit are mapped when the list is chosen, so the usual case needs no clicking;
+- **The same value** for every row (a fixed value). A choice, such as a button's style, can have one value for the **first row** and another for **the others**, so the first shop is the main button and the rest are secondary. A text column can have one text for every row. A switch has no fixed value;
+- **Nothing** (empty).
+
+Stored in the block where the rows would be:
+
+```yaml
+- type: buttons
+  actions:
+    bind: custom_fields.buy_links
+    map: { label: label, url: url }                    # column of the block: column of the entry's rows
+    fixed: { style: { first: primary, rest: secondary } }   # or a plain value: { style: secondary }
+```
+
+At render time `EntryBindings::apply()` turns it into rows **before** the block's normal checks, so the rows are cleaned and limited exactly like typed ones: unknown keys dropped, an unsafe address refused, text escaped, a select value that is not one of the block's choices becomes the default, and the block's own `max` applies (Hero buttons: 2; Buttons: 12), whatever the entry has. A row of the entry that has nothing in the mapped columns is left out. A text with a version for each language gives the one of the page's language, else the site's own. A column mapped to a column of the entry's rows that was removed, renamed or changed to a kind that no longer fits is empty (the other columns still work); a list that is gone, or is no longer a list, leaves the block's list empty. Neither is an error, and the editor shows a warning chip on the block and on the line ("Uses a missing column: custom_fields.buy_links.url") while keeping the binding as stored. With *Hide this block when its bound field is empty* on (the default), a block whose bound list has no rows is left out; "empty" means the entry's list has no row with anything in a mapped column.
+
+Limits: the list is bound as a whole, to a top-level list of the entry. A list **inside** a row (a nested list, such as the buttons of each slide in the Hero slider) is not mapped: it stays empty while the outer list is bound. The Fact sheet's own list names fields of the entry and is not bound. The categories and tags of an entry are not offered as lists yet (they are offered as text, in a line). A new bindable column kind is one entry in the `ACCEPTS` table, as for single values.
+
+### Starting templates
+
+A type switched to *Built with blocks* (or opened in *Edit template*) with no blocks yet **starts from a starting template**, so the page works at once instead of an empty list. Nothing in the code knows a type; there are two sources, in this order:
+
+1. **A file of data**, `single-templates/<type>.yaml`, in the site's `custom/` (kept across updates, wins) or in the theme (`themes/default/single-templates/`). It holds the blocks in the shape they are stored in, bindings included (a comment at the top of each says how it differs from the theme's own page):
+
+   ```yaml
+   blocks:
+     - { type: entry-title, variant: split }
+     - type: fact-sheet
+       fields: [ { field: custom_fields.author }, { field: custom_fields.year } ]
+     - type: buttons
+       actions: { bind: custom_fields.buy_links, map: { label: label, url: url }, fixed: { style: { first: primary, rest: secondary } } }
+     - { type: content }
+     - { type: entry-blocks }
+   ```
+
+   Blocks the site does not have are dropped; a file that cannot be read, or has no blocks, gives way to the next source. The default theme ships one for **books, posts, projects, points, routes and businesses**.
+2. **Generated from the type's definition** (`StartingTemplates::generate()`), for any type with no file, a type the site adds later included: an **Entry title**; an **Image** bound to the first image field of the type; a **Fact sheet** of the fields the page shows (those with `show` not `false`, or `card: true`; retired fields are not in a definition); **Buttons** bound to the first list whose rows have a text and a link (label and address mapped, first row primary, the others secondary); **Page content**; **Entry blocks**. Blocks that would be empty for an entry are left out when the page is drawn (*Hide when empty*).
+
+The template is stored when the type's card is switched to *Built with blocks* while it has no blocks and was off (a template switched on and emptied is not filled again by saving the cards), and *Edit template* shows it, with a note, until it is saved. **Start again from the default** (a button in the bar of *Edit template*, with a confirmation) replaces the blocks of every language with the starting template and switches the template on; nothing else changes, and the entries are never touched.
+
+How the hand-made ones differ from the pages of the theme: **Books** have the cover beside the title and the summary (the *Split* title area) but not the book-like shadow, the author is in the details instead of under the title, and a shop with no button text gets no button (the page of the theme used "Buy the book"). **Points, routes and businesses** have no map, no *what is near* list, and no download of the track or booking button, because a map block cannot show the place of the entry yet. Posts and projects have the same title area, facts and text.
 
 ### A new type with a built template, with no code
 
@@ -423,8 +472,8 @@ fields:
 
 Add an entry (`content/education/intro.md`, or in Admin) and the type has its card in Theme > Single Layouts. Then:
 
-1. Choose **Built with blocks** and open **Edit template**.
-2. Add an **Entry title**, a **Text** block whose *Heading* is bound to *Teacher* and whose *Text* to *Syllabus*, an **Image** block whose *Image* is bound to *Cover* and its *Link* to *Apply*, a **Fact sheet** listing *Starts* and *Level*, **Page content**, and **Entry blocks**.
+1. Choose **Built with blocks**. The template starts from a **generated starting template** (see [Starting templates](#starting-templates)): the title area, an image bound to *Cover*, a fact sheet of the fields, the text and the entry's blocks. Open **Edit template** to change it.
+2. Or build it yourself: an **Entry title**, a **Text** block whose *Heading* is bound to *Teacher* and whose *Text* to *Syllabus*, an **Image** block whose *Image* is bound to *Cover* and its *Link* to *Apply*, a **Fact sheet** listing *Starts* and *Level*, **Page content**, and **Entry blocks**.
 3. Save. Every course is drawn from the template; a course with no cover simply has no picture block, because *Hide when empty* is on. A course that sets `template: landing` in its own front matter keeps that template.
 
 The fields of the type appear in the chain button and in the Fact sheet by their labels; add a `room` field to the YAML later and it is offered at once. `tests/http/single_templates_test.py` does exactly this with a type that exists only as a file created during the test.

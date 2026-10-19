@@ -1,0 +1,17 @@
+# Starting template for the page of books when it is "Built with blocks" (Admin > Theme > Single Layouts). Data, not code: blocks in the
+# shape they are stored in. A site overrides it with custom/single-templates/books.yaml. See docs/theming.md, "Starting templates".
+# Close to the book page: the cover beside the title and summary, the details, one button for each shop, the text, then the blocks of the book.
+# Differs: the author is in the details, not under the title; the cover has no book-like shadow; a shop with no button text gets no button.
+blocks:
+  - { type: entry-title, variant: split }
+  - type: fact-sheet
+    fields:
+      - { field: custom_fields.author }
+      - { field: custom_fields.publisher }
+      - { field: custom_fields.year }
+      - { field: custom_fields.isbn }
+      - { field: custom_fields.language }
+  - type: buttons
+    actions: { bind: custom_fields.buy_links, map: { label: label, url: url }, fixed: { style: { first: primary, rest: secondary } } }
+  - { type: content }
+  - { type: entry-blocks }

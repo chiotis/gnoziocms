@@ -882,7 +882,41 @@
   }
 
   function bindable(field) {
-    return !!bindings && field.type !== 'repeater' && !!(bindings.accepts && bindings.accepts[field.type]);
+    if (!bindings) return false;
+    // A list of rows is bound to a list of the entry. The Fact sheet's own list names fields of the entry (its rows have a `source`).
+    if (field.type === 'repeater') return !(field.fields || []).some(function (sub) { return !!sub.source; });
+    return !!(bindings.accepts && bindings.accepts[field.type]);
+  }
+
+  /** The lists of the entry (repeaters of the type), with the columns of their rows. */
+  function listSources() {
+    return bindings.sources.filter(function (source) { return source.kind === 'list'; });
+  }
+
+  /** The columns of a block's rows that can show a column of the entry's rows: a list inside a row is not mapped, a switch has no text to take. */
+  function mappableColumns(field) {
+    return (field.fields || []).filter(function (sub) { return sub.type !== 'repeater' && !!(bindings.accepts && bindings.accepts[sub.type]); });
+  }
+
+  /** The columns of the entry's rows that a column of the block takes (the same table as for a single field). */
+  function compatibleColumns(source, sub) {
+    var kinds = (bindings.accepts && bindings.accepts[sub.type]) || [];
+    return (source.columns || []).filter(function (column) { return kinds.indexOf(column.kind) !== -1; });
+  }
+
+  /** Columns of a list binding that no longer work: [{col, from, text}] (the column is gone from the entry's rows, or is another kind now). */
+  function mappingProblems(field, value, source) {
+    var found = [];
+    var map = value.map && typeof value.map === 'object' ? value.map : {};
+    Object.keys(map).forEach(function (col) {
+      var sub = (field.fields || []).filter(function (f) { return f.key === col; })[0];
+      if (!sub) return;
+      var from = (source.columns || []).filter(function (column) { return column.key === map[col]; })[0];
+      var kinds = (bindings.accepts && bindings.accepts[sub.type]) || [];
+      if (!from) found.push({ col: col, from: map[col], text: 'Uses a missing column: ' + value.bind + '.' + map[col] });
+      else if (kinds.indexOf(from.kind) === -1) found.push({ col: col, from: map[col], text: 'Uses a column that no longer fits: ' + value.bind + '.' + map[col] });
+    });
+    return found;
   }
 
   /** The sources a field of this type takes. */
@@ -895,6 +929,7 @@
   function bindingProblem(field, value) {
     var source = sourceFor(value.bind);
     if (!source) return 'missing';
+    if (field.type === 'repeater') return source.kind === 'list' ? '' : 'changed';
     var kinds = (bindings.accepts && bindings.accepts[field.type]) || [];
     return kinds.indexOf(source.kind) === -1 ? 'changed' : '';
   }
@@ -913,6 +948,9 @@
       if (isBinding(value)) {
         var problem = bindingProblem(field, value);
         if (problem) found.push({ key: field.key, path: value.bind, text: problemText(problem, value.bind) });
+        else if (field.type === 'repeater') {
+          mappingProblems(field, value, sourceFor(value.bind)).forEach(function (one) { found.push({ key: field.key, path: value.bind + '.' + one.from, text: one.text }); });
+        }
       } else if (field.type === 'repeater' && Array.isArray(value)) {
         field.fields.forEach(function (sub) {
           if (sub.source !== 'entry_field') return;
@@ -1011,6 +1049,167 @@
     return node;
   }
 
+  /**
+   * A block's list with a chain button in its header that binds it to a list of the entry. The rows are then the entry's rows, and a
+   * small table says, for each column of the block's rows, which column of the entry's it shows, a fixed value (the same for every
+   * row, or one for the first row and another for the rest), or nothing. Stored as {bind, map: {column: column}, fixed: {column: value}}.
+   */
+  function withListBinding(block, field, node, idBase) {
+    var value = block[field.key];
+    var bound = isBinding(value);
+    var head = node.querySelector('.bk-rep-head');
+    if (!head) return node;
+    var id = idBase + '-' + field.key;
+    var open = false;
+    var chain = el('button', {
+      type: 'button',
+      class: 'bk-bind' + (bound ? ' is-on' : ''),
+      'aria-expanded': 'false',
+      'aria-controls': id + '-sources',
+      'aria-label': (bound ? 'Change the list of the entry shown in ' : 'Show a list of the entry in ') + field.label,
+      title: bound ? 'Change the list of the entry shown here' : 'Show a list of the entry here',
+      html: svg('chain')
+    });
+    head.insertBefore(chain, head.querySelector('.bk-label').nextSibling);
+    var menu = el('div', { class: 'bk-sources', id: id + '-sources', role: 'group', 'aria-label': 'Lists of the entry for ' + field.label, hidden: true });
+    var save = function (next) {
+      if (next === null) delete block[field.key]; else block[field.key] = next;
+      serialize();
+      render(block._id, 'keep');
+    };
+    var lists = listSources();
+    if (!lists.length) menu.appendChild(el('p', { class: 'bk-help', text: 'This type has no list that fits here.' }));
+    lists.forEach(function (source) {
+      var on = bound && value.bind === source.path;
+      var button = el('button', { type: 'button', class: 'bk-source', 'aria-pressed': on ? 'true' : 'false' }, [el('span', { text: source.label }), el('code', { text: source.key })]);
+      button.addEventListener('click', function () {
+        if (on) return;
+        // A new list starts with the columns of the same name mapped, so the usual case needs no clicking.
+        var map = {};
+        mappableColumns(field).forEach(function (sub) {
+          if (compatibleColumns(source, sub).some(function (column) { return column.key === sub.key; })) map[sub.key] = sub.key;
+        });
+        save(Object.assign({ bind: source.path }, Object.keys(map).length ? { map: map } : {}));
+      });
+      menu.appendChild(button);
+    });
+    if (bound) {
+      var clear = el('button', { type: 'button', class: 'bk-source is-clear' }, [el('span', { text: 'Type the list here instead' })]);
+      clear.addEventListener('click', function () { save(null); });
+      menu.appendChild(clear);
+    }
+    chain.addEventListener('click', function () {
+      open = !open;
+      menu.hidden = !open;
+      chain.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    menu.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape') { open = false; menu.hidden = true; chain.setAttribute('aria-expanded', 'false'); chain.focus(); event.stopPropagation(); }
+    });
+    head.parentNode.insertBefore(menu, head.nextSibling);
+    if (!bound) return node;
+
+    // The typed rows give way to what the list is bound to.
+    Array.prototype.forEach.call(node.children, function (child) {
+      if (child !== head && child !== menu) child.hidden = true;
+    });
+    Array.prototype.forEach.call(head.children, function (child) {
+      if (child !== chain && !child.classList.contains('bk-label')) child.hidden = true;
+    });
+    var source = sourceFor(value.bind);
+    var problem = bindingProblem(field, value);
+    node.appendChild(el('p', { class: 'bk-bound' + (problem ? ' is-warn' : ''), 'data-bound': value.bind }, [
+      el('span', { html: svg('chain') }),
+      el('span', { class: 'bk-bound-name', text: problem ? problemText(problem, value.bind) : source.label }),
+      problem ? null : el('code', { text: source.key })
+    ]));
+    if (!problem) node.appendChild(mappingTable(block, field, value, source, save));
+    return node;
+  }
+
+  /** The table of a list binding: one line for each column of the block's rows. */
+  function mappingTable(block, field, value, source, save) {
+    var wrap = el('div', { class: 'bk-map', 'data-list-map': '' });
+    var map = Object.assign({}, value.map || {});
+    var fixed = Object.assign({}, value.fixed || {});
+    var broken = {};
+    mappingProblems(field, value, source).forEach(function (one) { broken[one.col] = one; });
+    var commit = function (col) {
+      var next = { bind: value.bind };
+      if (Object.keys(map).length) next.map = map;
+      if (Object.keys(fixed).length) next.fixed = fixed;
+      save(next);
+      // The table is drawn again: the person stays on the line they changed.
+      setTimeout(function () {
+        var again = document.querySelector('[data-map-col="' + col + '"] select');
+        if (again) again.focus();
+      }, 0);
+    };
+    wrap.appendChild(el('p', { class: 'bk-map-title', text: 'Each row of the list shows:' }));
+    (field.fields || []).forEach(function (sub) {
+      if (sub.type === 'repeater') return;
+      var row = el('div', { class: 'bk-map-row', 'data-map-col': sub.key });
+      var choices = compatibleColumns(source, sub);
+      var canFix = sub.type !== 'toggle';
+      var mapped = map[sub.key];
+      var mode = mapped !== undefined ? 'map:' + mapped : (fixed[sub.key] !== undefined ? '@fixed' : '');
+      var select = el('select', { class: 'lc-input lc-select', 'aria-label': 'What the ' + sub.label + ' of each row shows' });
+      select.appendChild(el('option', { value: '', text: 'Nothing', selected: mode === '' }));
+      choices.forEach(function (column) {
+        select.appendChild(el('option', { value: 'map:' + column.key, text: column.label + ' (' + column.key + ')', selected: mode === 'map:' + column.key }));
+      });
+      // A column that is gone from the entry's rows stays visible, as what it is.
+      if (broken[sub.key]) select.appendChild(el('option', { value: 'map:' + broken[sub.key].from, text: 'Missing: ' + broken[sub.key].from, selected: true }));
+      if (canFix) select.appendChild(el('option', { value: '@fixed', text: 'The same value', selected: mode === '@fixed' }));
+      select.addEventListener('change', function () {
+        delete map[sub.key];
+        delete fixed[sub.key];
+        if (select.value.indexOf('map:') === 0) map[sub.key] = select.value.slice(4);
+        else if (select.value === '@fixed') fixed[sub.key] = sub.type === 'select' && sub.options.length ? sub['default'] || sub.options[0][0] : '';
+        commit(sub.key);
+      });
+      row.appendChild(el('label', { class: 'bk-map-name', text: sub.label }));
+      row.appendChild(select);
+      if (mode === '@fixed') row.appendChild(fixedControl(sub, fixed, function () { commit(sub.key); }));
+      if (broken[sub.key]) row.appendChild(el('span', { class: 'bk-tag is-warn', 'data-map-problem': '', title: broken[sub.key].text, text: 'Missing column' }));
+      wrap.appendChild(row);
+    });
+    return wrap;
+  }
+
+  /** The value a column has in every row; a choice can have one for the first row and another for the others. */
+  function fixedControl(sub, fixed, changed) {
+    var current = fixed[sub.key];
+    var first = current !== null && typeof current === 'object' ? current.first : current;
+    var rest = current !== null && typeof current === 'object' ? current.rest : '';
+    var box = el('span', { class: 'bk-map-fixed' });
+    var write = function () {
+      if (sub.type === 'select' && rest && rest !== first) fixed[sub.key] = { first: first, rest: rest };
+      else fixed[sub.key] = first;
+    };
+    if (sub.type === 'select') {
+      var pick = function (selected, others) {
+        var one = el('select', { class: 'lc-input lc-select', 'aria-label': others ? 'The other rows' : 'The first row' });
+        if (others) one.appendChild(el('option', { value: '', text: 'Same as the first', selected: !rest }));
+        sub.options.forEach(function (pair) { one.appendChild(el('option', { value: pair[0], text: pair[1], selected: selected === pair[0] })); });
+        return one;
+      };
+      var firstSelect = pick(first, false);
+      var restSelect = pick(rest, true);
+      firstSelect.addEventListener('change', function () { first = firstSelect.value; write(); changed(); });
+      restSelect.addEventListener('change', function () { rest = restSelect.value; write(); changed(); });
+      box.appendChild(el('span', { class: 'bk-map-hint', text: 'First row' }));
+      box.appendChild(firstSelect);
+      box.appendChild(el('span', { class: 'bk-map-hint', text: 'Others' }));
+      box.appendChild(restSelect);
+    } else {
+      var input = el('input', { type: 'text', class: 'lc-input', value: first == null ? '' : String(first), 'aria-label': sub.label + ' of every row' });
+      input.addEventListener('change', function () { first = input.value; write(); changed(); });
+      box.appendChild(input);
+    }
+    return box;
+  }
+
   /** At the top of a bound block's settings: whether it is left out while everything bound in it is empty (on unless switched off). */
   function hideWhenEmpty(block) {
     var checkbox = el('input', { type: 'checkbox', checked: block.bind_hide !== false });
@@ -1069,7 +1268,7 @@
           render(block._id, 'keep');
         }
       }, idBase);
-      if (bindable(field)) node = withBinding(block, field, node, idBase);
+      if (bindable(field)) node = field.type === 'repeater' ? withListBinding(block, field, node, idBase) : withBinding(block, field, node, idBase);
       if (field.when) conditional.push({ node: node, when: field.when });
       fields.appendChild(node);
     });

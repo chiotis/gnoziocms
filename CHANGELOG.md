@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.166 — 2026-10-19 — Single templates: lists and starting points
+- **A block's list can come from the entry's list.** The ⛓ button on a repeater, such as a block's buttons or cards, binds it to one of the entry's repeaters, such as a book's `buy_links`. A compact table in the settings panel maps each column to a field of the entry's rows, to a fixed value for every row, or leaves it empty. Rows are checked and limited like typed ones. A missing column shows a warning instead of an error.
+- **A template built with blocks starts from a sensible page, not an empty one.** Any content type gets a starting template generated from its definition (entry title, fact sheet, text, its own blocks, and blocks for its picture and link lists), also a type added later in `custom/content-types/`. A theme can ship hand-made ones in `single-templates/<type>.yaml`, and the default theme has them for its six types, close to their current pages. **Start again** on the template screen goes back to it.
+- A new **Buttons** block holds a row of buttons, for example the buy links of a book. See *Templates built with blocks* in `docs/theming.md`.
+
 ## 0.1.165 — 2026-10-19 — Single templates built with blocks
 - **A content type's page can be built with blocks.** In Theme → Single Layouts, each type can switch from *The theme's* page to *Built with blocks*. **Edit template** opens the block editor with its settings panel and a live preview of a real entry of the type. **Reset** goes back to the theme's page and keeps the built template for later.
 - **Blocks can show the entry's own fields.** A ⛓ button beside a block's field binds it to the entry's title, excerpt, main image or one of the type's fields. Only fields that fit are offered, and a bound value is checked like a typed one. A block can hide itself when its bound field is empty.

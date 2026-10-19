@@ -2620,6 +2620,7 @@ final class App
             $this->contentTypes(),
             $this->blockRuntime()->registry(),
             $this->blockSets(),
+            new StartingTemplates($this->theme, $this->contentTypes(), $this->blockRuntime()->registry(), fn(): string => $this->defaultLanguage()),
             fn(): array => $this->content->getTypes(),
             fn(string $type): array => $this->content->getItems($type, null, true),
             fn(string $type, string $slug, string $lang): ?ContentItem => $this->content->find($type, $slug, $lang, true, false),
@@ -3708,7 +3709,7 @@ final class App
         }
         if ($builtInput !== null) {
             // Which content types draw their pages from the template built with blocks (Single Layouts); the blocks stay stored when it is off.
-            $data = SingleTemplates::withChoices($data, $builtInput, $this->content->getTypes());
+            $data = SingleTemplates::withChoices($data, $builtInput, $this->content->getTypes(), fn(string $type): array => $this->singleTemplateAdmin()->startingSets($type));
         }
         $this->setSystemMeta('theme_settings', Yaml::dump($data, 6, 2));
         return ['ok' => true];
@@ -3749,9 +3750,10 @@ final class App
             $this->redirect('/admin/theme?template=' . urlencode($type) . '&fail=1');
             return;
         }
-        $this->setSystemMeta('theme_settings', Yaml::dump($admin->saved($type, $current, $_POST), 6, 2));
+        $again = ($_POST['start_again'] ?? '') === '1';
+        $this->setSystemMeta('theme_settings', Yaml::dump($again ? $admin->startedAgain($type, $current) : $admin->saved($type, $current, $_POST), 6, 2));
         $this->themeSettings = $this->loadThemeSettings();
-        $this->logActivity('theme.update', 'info', 'settings', $this->theme->name(), 'Template of ' . $type . ' updated.', ['tab' => 'single_layouts', 'type' => $type]);
+        $this->logActivity('theme.update', 'info', 'settings', $this->theme->name(), 'Template of ' . $type . ($again ? ' started again from the default.' : ' updated.'), ['tab' => 'single_layouts', 'type' => $type]);
         $this->redirect('/admin/theme?template=' . urlencode($type) . '&saved=1' . (isset($_POST['preview_entry']) ? '&entry=' . urlencode((string)$_POST['preview_entry']) : ''));
     }
 

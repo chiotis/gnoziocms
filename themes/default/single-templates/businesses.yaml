@@ -1,0 +1,9 @@
+# Starting template for the page of businesses when it is "Built with blocks" (Admin > Theme > Single Layouts). Data, not code: blocks in the
+# shape they are stored in. A site overrides it with custom/single-templates/businesses.yaml. See docs/theming.md, "Starting templates".
+# The title area, the facts the page shows (address, phone, opening hours...), the text, then the blocks of the business.
+# Differs: no map, no booking button and no "what is near" list.
+blocks:
+  - { type: entry-title }
+  - { type: fact-sheet }
+  - { type: content }
+  - { type: entry-blocks }

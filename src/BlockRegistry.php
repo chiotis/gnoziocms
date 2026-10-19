@@ -334,7 +334,8 @@ final class BlockRegistry
                     }
                     // A field bound to a field of the entry (a template built with blocks) keeps its binding, not a value.
                     if (EntryBindings::isBinding($raw[$key]) && isset($definition['fields'][$key]) && EntryBindings::bindable($field['type'])) {
-                        $block[$key] = ['bind' => $raw[$key]['bind']];
+                        // A list keeps the mapping of its columns beside the binding (EntryBindings::cleanList()).
+                        $block[$key] = $field['type'] === 'repeater' ? EntryBindings::cleanList($raw[$key]) : ['bind' => $raw[$key]['bind']];
                         $bound = true;
                         continue;
                     }

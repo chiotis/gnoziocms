@@ -2034,6 +2034,19 @@ html.dark button.bk-col-title:hover { background: #1e3a8a; }
 .bk-bound svg { width: .875rem; height: .875rem; flex: none; }
 .bk-bound code { margin-left: auto; color: #1e40af; font-size: .6875rem; }
 .bk-bound.is-warn { border-color: #fcd34d; background: #fffbeb; color: #92400e; }
+.bk-rep-head .bk-bind { margin-right: auto; margin-left: .25rem; }
+.bk-map { display: grid; gap: .3rem; margin-top: .4rem; }
+.bk-map-title { margin: 0; color: #4d5d73; font-size: .6875rem; font-weight: 600; letter-spacing: .02em; }
+.bk-map-row { display: grid; grid-template-columns: minmax(4.5rem, 6.5rem) minmax(0, 1fr); align-items: center; gap: .25rem .5rem; padding: .25rem .4rem; border: 1px solid #e2e8f0; border-radius: .4rem; background: #fff; }
+.bk-map-name { color: #0f172a; font-size: .75rem; font-weight: 500; }
+.bk-map-row .lc-select, .bk-map-row .lc-input { min-width: 0; padding-block: .2rem; font-size: .75rem; }
+.bk-map-fixed { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: .25rem .5rem; grid-column: 2; }
+.bk-map-fixed > input.lc-input { grid-column: 1 / -1; }
+.bk-map-hint { color: #4d5d73; font-size: .6875rem; }
+.bk-map-row > .bk-tag { grid-column: 2; justify-self: start; }
+html.dark .bk-map-title, html.dark .bk-map-hint { color: #94a3b8; }
+html.dark .bk-map-row { border-color: #334155; background: #0f172a; }
+html.dark .bk-map-name { color: #e2e8f0; }
 html.dark .bk-bind { color: #94a3b8; }
 html.dark .bk-bind:hover { background: #1e293b; color: #f1f5f9; }
 html.dark .bk-bind.is-on, html.dark .bk-bind[aria-expanded="true"] { border-color: #1e40af; background: #172554; color: #bfdbfe; }

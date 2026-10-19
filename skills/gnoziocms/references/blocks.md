@@ -89,6 +89,18 @@ Two pictures of the same subject. Visitors drag a handle to move between them, o
 | `caption` | text |  |
 | `image_ratio` | choice; one of `landscape`, `wide`, `portrait`, `square`; default `landscape` |  |
 
+### `buttons` — Buttons
+A row of buttons and nothing else. Type them, or, in a template built with blocks, bind the list to a list of the entry (the buy links of a book).
+
+**Layouts** (`variant`): `left` (Left), `centered` (Centered). First is the default.
+
+| field | kind and choices | notes |
+|---|---|---|
+| `actions` | list of rows; at most 12 rows |  |
+| &nbsp;&nbsp;`actions[].label` | text |  |
+| &nbsp;&nbsp;`actions[].url` | link | A page ("contact"), a path ("/en/contact"), a full URL, #anchor, mailto: or tel: |
+| &nbsp;&nbsp;`actions[].style` | choice; one of `primary`, `secondary`, `text`; default `primary` |  |
+
 ### `cards` — Cards
 Latest posts, projects, or any content type, or hand-picked cards with an image, text, and link.
 

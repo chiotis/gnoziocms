@@ -1,0 +1,7 @@
+# Starting template for the page of posts when it is "Built with blocks" (Admin > Theme > Single Layouts). Data, not code: blocks in the
+# shape they are stored in. A site overrides it with custom/single-templates/posts.yaml. See docs/theming.md, "Starting templates".
+# The title area with its line of terms, author and date, the text, then the blocks of the post.
+blocks:
+  - { type: entry-title }
+  - { type: content }
+  - { type: entry-blocks }

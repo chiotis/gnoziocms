@@ -1,0 +1,7 @@
+.block-buttons .buttons-row {
+  margin-top: 0;
+}
+
+.block-buttons.block--centered .buttons-row {
+  justify-content: center;
+}

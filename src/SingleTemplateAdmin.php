@@ -28,6 +28,7 @@ final class SingleTemplateAdmin
         private ContentTypes $types,
         private BlockRegistry $registry,
         private BlockSets $sets,
+        private StartingTemplates $starting,
         private \Closure $typeList,
         private \Closure $items,
         private \Closure $find,
@@ -52,11 +53,16 @@ final class SingleTemplateAdmin
     {
         $default = ($this->defaultLanguage)();
         $stored = SingleTemplates::entry($current, $type);
+        // A template with no blocks yet opens on the type's starting template (nothing is stored until it is saved).
+        $starts = SingleTemplates::blocks($current, $type, $default, $default) === [];
+        if ($starts) {
+            $stored['blocks'] = FooterBlocks::toStore($this->starting->sets($type));
+        }
         $definition = $this->types->definition($type, $default, $default);
         $sources = EntryBindings::sources($this->types, $type, $default, $default);
         $fieldChoices = [];
         foreach ($sources as $source) {
-            if (str_starts_with($source['path'], 'custom_fields.')) {
+            if (str_starts_with($source['path'], 'custom_fields.') && $source['kind'] !== 'list') {
                 $fieldChoices[] = ['path' => $source['path'], 'label' => $source['label'] . ' (' . $source['key'] . ')'];
             }
         }
@@ -77,6 +83,7 @@ final class SingleTemplateAdmin
             'type' => $type,
             'type_label' => $definition['label'],
             'type_singular' => $definition['singular'],
+            'template_starts' => $starts && $stored['blocks'] !== [],
             'template_use' => $stored['use'] || SingleTemplates::blocks($current, $type, $default, $default) === [],
             'preview_choices' => $choices,
             'preview_chosen' => $chosen,
@@ -101,6 +108,28 @@ final class SingleTemplateAdmin
             unset($current['single_templates']);
         } else {
             $current['single_templates'] = $templates;
+        }
+        return $current;
+    }
+
+    /** The sets the starting template of a type is made of (`default` only), for the card that switches a type to its template. @return array<string, array<int, mixed>> */
+    public function startingSets(string $type): array
+    {
+        return $this->starting->sets($type);
+    }
+
+    /**
+     * The theme settings after *Start again from the default*: the template of the type is its starting template, switched on. The blocks
+     * it had are replaced for every language (a language's own set goes too); nothing else is touched.
+     *
+     * @param array<string, mixed> $current the theme settings now
+     * @return array<string, mixed>
+     */
+    public function startedAgain(string $type, array $current): array
+    {
+        $sets = $this->starting->sets($type);
+        if ($sets !== []) {
+            $current['single_templates'] = SingleTemplates::with($current, $type, true, $sets);
         }
         return $current;
     }
