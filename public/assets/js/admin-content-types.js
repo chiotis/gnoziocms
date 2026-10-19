@@ -18,7 +18,7 @@
     if (!select) { return; }
     row.setAttribute('data-kind', select.value);
     row.querySelectorAll('[data-only-kind]').forEach(function (part) {
-      part.hidden = part.getAttribute('data-only-kind') !== select.value;
+      part.hidden = part.getAttribute('data-only-kind').split(' ').indexOf(select.value) === -1;
     });
   }
 

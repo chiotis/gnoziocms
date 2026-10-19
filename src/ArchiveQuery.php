@@ -93,12 +93,10 @@ final class ArchiveQuery
             foreach ($facets as $name => $kind) {
                 $params = [];
                 $where = $this->scope($scope, $lang, $includeHidden, $params);
-                $table = $kind === 'taxonomy' ? 'content_terms' : 'content_values';
-                $column = $kind === 'taxonomy' ? 'x.term_id' : 'x.raw';
-                $name_ = $kind === 'taxonomy' ? 'x.taxonomy' : 'x.field';
+                [$table, $key, $nameColumn, $valueColumn, $extra] = self::facetTable($kind);
                 $stmt = $pdo->prepare(
-                    'SELECT ' . $column . ' AS value, COUNT(*) AS n FROM content_index ci JOIN ' . $table . ' x ON x.type = ci.type AND x.slug = ci.slug AND x.lang = ci.lang
-                     WHERE ' . $where . ' AND ' . $name_ . ' = :facet GROUP BY ' . $column
+                    'SELECT x.' . $valueColumn . ' AS value, COUNT(*) AS n FROM content_index ci JOIN ' . $table . ' x ON x.' . $key[0] . ' = ci.type AND x.' . $key[1] . ' = ci.slug AND x.' . $key[2] . ' = ci.lang
+                     WHERE ' . $where . ' AND x.' . $nameColumn . ' = :facet' . $extra . ' GROUP BY x.' . $valueColumn
                 );
                 $stmt->execute($params + ['facet' => (string)$name]);
                 foreach ($stmt->fetchAll() as $row) {
@@ -137,10 +135,9 @@ final class ArchiveQuery
                 if ($kind === null) {
                     return null;
                 }
-                $table = $kind === 'taxonomy' ? 'content_terms' : 'content_values';
-                $nameColumn = $kind === 'taxonomy' ? 'taxonomy' : 'field';
-                $valueColumn = $kind === 'taxonomy' ? 'term_id' : 'raw';
-                $where .= ' AND EXISTS (SELECT 1 FROM ' . $table . ' f' . $i . ' WHERE f' . $i . '.type = ci.type AND f' . $i . '.slug = ci.slug AND f' . $i . '.lang = ci.lang AND f' . $i . '.' . $nameColumn . ' = :fn' . $i . ' AND f' . $i . '.' . $valueColumn . ' = :fv' . $i . ')';
+                [$table, $key, $nameColumn, $valueColumn, $extra] = self::facetTable($kind);
+                $f = 'f' . $i;
+                $where .= ' AND EXISTS (SELECT 1 FROM ' . $table . ' ' . $f . ' WHERE ' . $f . '.' . $key[0] . ' = ci.type AND ' . $f . '.' . $key[1] . ' = ci.slug AND ' . $f . '.' . $key[2] . ' = ci.lang AND ' . $f . '.' . $nameColumn . ' = :fn' . $i . ' AND ' . $f . '.' . $valueColumn . ' = :fv' . $i . str_replace('x.', $f . '.', $extra) . ')';
                 $params['fn' . $i] = (string)$name;
                 $params['fv' . $i] = (string)$selected[$name];
             }
@@ -202,6 +199,21 @@ final class ArchiveQuery
             $this->index->markStale();
         }
         return $items === null ? null : ['items' => $items, 'total' => $total, 'page' => $page, 'pages' => $pages];
+    }
+
+    /**
+     * Where a kind of facet lives in the index: the table, the columns that say which entry, the column for the facet's name and for the
+     * value, and a condition that belongs to it (a relation of the entry itself, not of a row in a list).
+     *
+     * @return array{0: string, 1: array{0: string, 1: string, 2: string}, 2: string, 3: string, 4: string}
+     */
+    private static function facetTable(string $kind): array
+    {
+        return match ($kind) {
+            'taxonomy' => ['content_terms', ['type', 'slug', 'lang'], 'taxonomy', 'term_id', ''],
+            'relation' => ['content_refs', ['from_type', 'from_slug', 'from_lang'], 'field_path', 'to_id', " AND x.row_path = ''"],
+            default => ['content_values', ['type', 'slug', 'lang'], 'field', 'raw', ''],
+        };
     }
 
     /**

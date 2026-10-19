@@ -21,7 +21,7 @@ final class BlockRenderer
 {
     /**
      * @param \Closure(string): string $markdown
-     * @param array<string, \Closure> $providers dynamic data: 'items' (type, lang, limit), 'form' (slug), 'youtube' (playlist id, picture source), 'file' (a site file's size in bytes), 'term' (a category's name), 'geo' (entries as a map draws them), 'geo_load' (when maps load) and 'admin' (whether someone is signed in)
+     * @param array<string, \Closure> $providers dynamic data: 'items' (type, lang, limit), 'form' (slug), 'youtube' (playlist id, picture source), 'file' (a site file's size in bytes), 'term' (a category's name), 'geo' (entries as a map draws them), 'geo_items' (given entries as a map draws them), 'geo_load' (when maps load) and 'admin' (whether someone is signed in)
      */
     public function __construct(
         private BlockRegistry $registry,
@@ -555,13 +555,26 @@ final class BlockRenderer
         }
         if (in_array($type, ['archive-title', 'filter-bar', 'result-count'], true) && is_array($context['archive'] ?? null)) {
             $values = ArchiveBlocks::fill($type, $values, $context['archive']);
-        } elseif (in_array($type, ['archive-title', 'filter-bar', 'result-count', ArchiveTemplates::LIST_BLOCK], true) && !is_array($context['archive'] ?? null)) {
+        } elseif (in_array($type, ['archive-title', 'filter-bar', 'result-count', ArchiveTemplates::LIST_BLOCK, 'entry-map'], true) && !is_array($context['archive'] ?? null)) {
             // Outside a list there is nothing for these blocks to show.
             $values['_empty'] = true;
+        }
+        if ($type === 'entry-map' && is_array($context['archive'] ?? null)) {
+            // Every entry the list's filters leave that has a place, on one map (the entries of the page are a part of them).
+            $mapItems = ($context['archive']['map_items'] ?? null) instanceof \Closure ? ($context['archive']['map_items'])() : [];
+            $values['geo'] = isset($this->providers['geo_items']) ? ($this->providers['geo_items'])($mapItems, (string)($context['lang'] ?? '')) : ['items' => []];
+            $values['_empty'] = $values['geo']['items'] === [];
+            $values['_types'] = ['map'];
+            $values['load_mode'] = ($values['load'] ?? 'site') === 'site' && isset($this->providers['geo_load']) ? ($this->providers['geo_load'])() : (($values['load'] ?? 'click') === 'auto' ? 'auto' : 'click');
         }
         if ($type === ArchiveTemplates::LIST_BLOCK && is_array($context['archive'] ?? null)) {
             $values['entries'] = $context['archive']['items'];
             $values['cards'] = null;
+            // The orders a visitor may choose from, when the template lets them (ArchiveTemplates::withListChoices).
+            $values['sort_options'] = [];
+            foreach (is_array($context['archive']['settings']['sort_choices'] ?? null) ? $context['archive']['settings']['sort_choices'] : [] as $order => $label) {
+                $values['sort_options'][] = ['value' => (string)$order, 'label' => (string)$label];
+            }
             $values['_types'] = ['latest'];
             if (isset($this->providers['archive_card'])) {
                 // Each entry is drawn with the card of the template: blocks that show the entry's fields.

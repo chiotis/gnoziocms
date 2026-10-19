@@ -283,11 +283,27 @@ The entries of the list, in pages. Each entry is drawn with the card of the temp
 | `columns` | choice; one of `2`, `3`, `4`; default `3` |  |
 | `per_page` | whole number; 0 to 60; default `12` | 0 shows everything on one page. |
 | `order` | text; default `date_desc` |  |
+| `visitor_sort` | true / false; default `false` | Shows a "Sort by" choice above the list. A page in another order is not indexed by search engines. |
+| `sort_choices` | list of rows | Used when visitors can choose the order. Leave empty to offer every order of the list but the random one. |
+| &nbsp;&nbsp;`sort_choices[].order` | text |  |
 | `pagination` | true / false; default `true` |  |
 | `empty_text` | text | Optional. Leave empty for the theme's text. |
 | `show_image` | true / false; default `true` |  |
 | `show_excerpt` | true / false; default `true` |  |
 | `show_meta` | true / false; default `true` |  |
+
+### `entry-map` — Map of the list
+The entries of the list that have a place, on one map, with the same filters as the list (a route is drawn as a line). The bar of the map filters them further. Shows nothing when no entry of the list has a place. Only in an archive template built with blocks.
+
+**Layouts** (`variant`): `contained` (Inside the page width), `full` (Full width). First is the default.
+
+| field | kind and choices | notes |
+|---|---|---|
+| `height` | choice; one of `small`, `medium`, `large`, `tall`; default `large` |  |
+| `list` | choice; one of `right`, `left`, `below`, `none`; default `right` |  |
+| `filters` | true / false; default `true` |  |
+| `cluster` | true / false; default `true` |  |
+| `load` | choice; one of `site`, `click`, `auto`; default `site` |  |
 
 ### `entry-title` — Entry title
 The title area of the entry, as its page draws it today: the title, the excerpt, the main image and a line with its terms. Only in a template built with blocks.

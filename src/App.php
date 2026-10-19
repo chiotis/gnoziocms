@@ -3826,7 +3826,7 @@ final class App
         if (array_key_exists('preview', $out)) {
             header('Content-Type: application/json; charset=utf-8');
             header('Cache-Control: no-store');
-            echo $this->archiveTemplateAdmin()->previewJson($out['preview'], fn(array $settings, string $path, string $part): string => $this->archivePages()->previewing($part, fn(): string => $this->drawFront($settings, $path, [], true)));
+            echo $this->archiveTemplateAdmin()->previewJson($out['preview'], fn(array $settings, string $path, string $part, string $cardType): string => $this->archivePages()->previewing($part, $cardType, fn(): string => $this->drawFront($settings, $path, [], true)));
             return;
         }
         if (isset($out['save'])) {
@@ -4009,7 +4009,8 @@ final class App
         return $this->archiveBuilderService ??= new ArchiveBuilder(
             fn(): array => $this->taxonomies()->names(),
             fn(string $taxonomy, string $termId, string $lang): string => $this->taxonomyTermLabel($taxonomy, $termId, $lang),
-            new ArchiveQuery($this->contentIndex, $this->content)
+            new ArchiveQuery($this->contentIndex, $this->content),
+            fn(array $ids, string $lang): array => array_column($this->relations()->resolve($ids, [], $lang), 'title', 'id')
         );
     }
 

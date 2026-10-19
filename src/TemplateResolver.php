@@ -75,7 +75,7 @@ final class TemplateResolver
      * The blocks of the archive template built for a list (a content type, or `taxonomy:<name>`) and of its card, or null when the list is
      * not drawn from one: it is not built with blocks, the template has no blocks in this language, or the theme cannot draw it.
      *
-     * @return array{blocks: array<int, mixed>, card: array<int, mixed>}|null
+     * @return array{blocks: array<int, mixed>, card: array<int, mixed>, cards: array<string, array<int, mixed>>}|null the page, the card, and the card of each content type that has one of its own
      */
     public function builtArchive(string $key, string $lang): ?array
     {
@@ -87,7 +87,7 @@ final class TemplateResolver
         if (!ArchiveTemplates::applies($settings, $key, $lang, $default)) {
             return null;
         }
-        return ['blocks' => ArchiveTemplates::blocks($settings, $key, $lang, $default), 'card' => ArchiveTemplates::card($settings, $key, $lang, $default)];
+        return ['blocks' => ArchiveTemplates::blocks($settings, $key, $lang, $default), 'card' => ArchiveTemplates::card($settings, $key, $lang, $default), 'cards' => ArchiveTemplates::cards($settings, $key, $lang, $default)];
     }
 
     public function forArchive(string $type, string $lang = ''): string

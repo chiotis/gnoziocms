@@ -31,6 +31,7 @@
   <form method="post" action="{{ url(base_url) }}" class="editor space-y-3" id="template-form">
     {{ csrf_field() }}
     <input type="hidden" name="part" value="{{ part }}">
+    <input type="hidden" name="card_type" value="{{ card_type }}">
 
     <header class="en-head">
       <p class="en-crumb">
@@ -73,6 +74,16 @@
         <a href="{{ url(base_url ~ '&part=card') }}" class="rounded-md px-3 py-1 text-xs font-medium no-underline {{ part == 'card' ? 'bg-slate-900 text-white' : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50' }}"{% if part == 'card' %} aria-current="page"{% endif %}>Card <span class="opacity-70">({{ card_blocks }})</span></a>
         <span class="ml-2 self-center text-[11px] text-slate-500">Save before you switch: the other part opens as it was last saved.</span>
       </nav>
+      {% if part == 'card' and card_types %}
+        <nav class="mt-2 flex flex-wrap items-center gap-1.5" aria-label="Card for each content type">
+          <span class="text-[11px] text-slate-500">Card for</span>
+          <a href="{{ url(base_url ~ '&part=card') }}" class="lc-chip no-underline"{% if card_type == '' %} aria-current="true"{% endif %}><span>{{ card_type == '' ? '✓ ' : '' }}All other entries</span></a>
+          {% for t in card_types %}
+            <a href="{{ url(base_url ~ '&part=card&card_type=' ~ t.value) }}" class="lc-chip no-underline"{% if card_type == t.value %} aria-current="true"{% endif %}><span>{{ card_type == t.value ? '✓ ' : '' }}{{ t.label }}{{ t.own ? ' ●' : '' }}</span></a>
+          {% endfor %}
+          <span class="text-[11px] text-slate-500">● has a card of its own; the others use the first card.</span>
+        </nav>
+      {% endif %}
     </section>
 
     <section class="rounded-lg border border-slate-200 bg-white p-4" aria-label="{{ part == 'card' ? 'Blocks of the card' : 'Blocks of the page' }}">

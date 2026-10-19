@@ -52,8 +52,11 @@ $list = ArchiveTemplates::listBlock($blocks);
 check('the list block is found also inside a column of a container', $list['per_page'] ?? null, 5);
 check('a hidden list block is not the list', ArchiveTemplates::listBlock([['type' => 'entry-list', 'hidden' => true]]), null);
 $orders = ['date_desc' => 'N', 'title_asc' => 'A', 'field:minutes:asc' => 'M'];
-check('what it chose replaces the archive\'s own', ArchiveTemplates::withListChoices(['per_page' => 12, 'order' => 'date_desc', 'columns' => '3', 'layout' => 'cards'], $list, $orders), ['per_page' => 5, 'order' => 'title_asc', 'columns' => '4', 'layout' => 'cards']);
-check('an order the list does not know, a size out of range and a map layout are not taken', ArchiveTemplates::withListChoices(['per_page' => 12, 'order' => 'date_desc', 'layout' => 'map'], ['per_page' => 900, 'order' => 'field:nope:asc', 'columns' => '9'], $orders), ['per_page' => 60, 'order' => 'date_desc', 'layout' => 'cards']);
+check('what it chose replaces the archive\'s own', ArchiveTemplates::withListChoices(['per_page' => 12, 'order' => 'date_desc', 'columns' => '3', 'layout' => 'cards'], $list, $orders), ['per_page' => 5, 'order' => 'title_asc', 'columns' => '4', 'layout' => 'cards', 'sort_choices' => []]);
+check('an order the list does not know, a size out of range and a map layout are not taken', ArchiveTemplates::withListChoices(['per_page' => 12, 'order' => 'date_desc', 'layout' => 'map'], ['per_page' => 900, 'order' => 'field:nope:asc', 'columns' => '9'], $orders), ['per_page' => 60, 'order' => 'date_desc', 'layout' => 'cards', 'sort_choices' => []]);
+$letting = ['visitor_sort' => true, 'sort_choices' => [['order' => 'title_asc'], ['order' => 'nope'], ['order' => 'field:minutes:asc']]];
+check('a list block that lets visitors choose gives the orders it names, in its order, and not one the list does not know', ArchiveTemplates::withListChoices(['order' => 'date_desc'], $letting, $orders)['sort_choices'], ['title_asc' => 'A', 'field:minutes:asc' => 'M']);
+check('with none named every order but the random one is offered; without the choice none is', [array_keys(ArchiveTemplates::withListChoices([], ['visitor_sort' => true], $orders + ['random' => 'R'])['sort_choices']), ArchiveTemplates::withListChoices([], ['visitor_sort' => false, 'sort_choices' => [['order' => 'title_asc']]], $orders)['sort_choices']], [['date_desc', 'title_asc', 'field:minutes:asc'], []]);
 check('without a list block nothing changes', ArchiveTemplates::withListChoices(['per_page' => 12], null, $orders), ['per_page' => 12]);
 
 // ---- starting templates
@@ -133,9 +136,36 @@ $out = $admin->respond('Recipes', true, [], ['part' => 'card', 'use' => '1', 'bl
 check('saving stores the settings, says what for, and goes back to the part with a message', [isset($out['save'][ArchiveTemplates::KEY]['recipes']), $out['log'], $out['redirect']], [true, 'Archive template of recipes updated.', '/admin/theme?archive_template=recipes&part=card&saved=1&term=a+b']);
 check('without a database nothing is stored', $admin->respond('recipes', true, [], ['part' => 'page'], [], false), ['redirect' => '/admin/theme?archive_template=recipes&part=page&fail=1']);
 check('start again says so in the log', $admin->respond('recipes', true, [], ['part' => 'page', 'start_again' => '1'], [], true)['log'], 'Archive template of recipes started again from the default.');
-check('the preview JSON of nothing is the note, of a list its page and address', [json_decode($admin->previewJson(null, fn() => ''), true)['html'] === ArchiveTemplateAdmin::NOTHING, json_decode($admin->previewJson(['path' => 'recipes', 'part' => 'card', 'settings' => ['a' => 1]], fn(array $s, string $p, string $part) => $part . ':' . $p . ':' . $s['a']), true)], [true, ['html' => 'card:recipes:1', 'path' => '/recipes']]);
+check('the preview JSON of nothing is the note, of a list its page and address', [json_decode($admin->previewJson(null, fn() => ''), true)['html'] === ArchiveTemplateAdmin::NOTHING, json_decode($admin->previewJson(['path' => 'recipes', 'part' => 'card', 'card_type' => 'x', 'settings' => ['a' => 1]], fn(array $s, string $p, string $part, string $t) => $part . ':' . $p . ':' . $s['a'] . ':' . $t), true)], [true, ['html' => 'card:recipes:1:x', 'path' => '/recipes']]);
 check('a list with no template gets its view data back unchanged', $pages->drawn('recipes', 'en', 'recipes', new \Twig\Environment(new \Twig\Loader\ArrayLoader([])), ['x' => 1]), ['x' => 1]);
-check('the part being previewed is known while drawing, and forgotten after', [$pages->previewing('card', fn() => 'drawn'), $pages->previewing('page', fn() => 1)], ['drawn', 1]);
+check('the part being previewed is known while drawing, and forgotten after', [$pages->previewing('card', 'recipes', fn() => 'drawn'), $pages->previewing('page', '', fn() => 1)], ['drawn', 1]);
+
+// ---- a card for each content type, on a list of several
+$settingsCards = [ArchiveTemplates::KEY => ArchiveTemplates::with([], 'taxonomy:categories', true, $page, $card)];
+$settingsCards[ArchiveTemplates::KEY] = ArchiveTemplates::withTypeCard($settingsCards, 'taxonomy:categories', 'recipes', ['default' => [['type' => 'image']]]);
+check('a list keeps a card for a content type of its own, besides the card for the others', [array_keys(ArchiveTemplates::cards($settingsCards, 'taxonomy:categories', 'en', 'en')), count(ArchiveTemplates::card($settingsCards, 'taxonomy:categories', 'en', 'en'))], [['recipes'], 1]);
+$settingsCards[ArchiveTemplates::KEY] = ArchiveTemplates::with($settingsCards, 'taxonomy:categories', true, null, null);
+check('saving the page or the card again keeps the cards of the types', array_keys(ArchiveTemplates::entry($settingsCards, 'taxonomy:categories')['card_types']), ['recipes']);
+$gone = ArchiveTemplates::withTypeCard($settingsCards, 'taxonomy:categories', 'recipes', []);
+check('an empty card takes the card of a type away, and a name that is not a type is not kept', [isset($gone['taxonomy:categories']['card_types']), ArchiveTemplates::withTypeCard($settingsCards, 'taxonomy:categories', 'Bad Type', ['default' => [['type' => 'x']]]) === $settingsCards[ArchiveTemplates::KEY]], [false, true]);
+$onlyCards = [ArchiveTemplates::KEY => ArchiveTemplates::withTypeCard([], 'recipes', 'works', ['default' => [['type' => 'text']]])];
+check('a list that has only cards of types is not dropped when switched off', isset(ArchiveTemplates::with($onlyCards, 'recipes', false, null, null)['recipes']), true);
+$themeSettings = $settingsCards;
+check('the resolver gives the cards of the types', array_keys($resolver->builtArchive('taxonomy:categories', 'en')['cards']), ['recipes']);
+$cview = $admin->view('taxonomy:categories', [], ['part' => 'card', 'card_type' => 'recipes']);
+$cjson = json_decode($cview['template_json'], true);
+check('the card of a type is edited with the fields of that type, starting from the card of its own list; the page of a term offers a card for each type', [$cview['card_type'], $cjson['bindings']['type'], in_array('custom_fields.minutes', array_column($cjson['bindings']['sources'], 'path'), true), $cview['template_starts'], array_column($cview['card_types'], 'value')], ['recipes', 'recipes', true, true, ['recipes']]);
+check('a content type that is not listed, a list of one type, and the page part have no card type', [$admin->view('taxonomy:categories', [], ['part' => 'card', 'card_type' => 'nope'])['card_type'], $admin->view('recipes', [], ['part' => 'card', 'card_type' => 'recipes'])['card_type'], $admin->view('taxonomy:categories', [], ['card_type' => 'recipes'])['card_type']], ['', '', '']);
+$typed = $admin->saved('taxonomy:categories', [], ['part' => 'card', 'card_type' => 'recipes', 'use' => '1', 'blocks_editor' => '1', 'blocks_json' => json_encode([['type' => 'text', 'heading' => ['bind' => 'title']]])]);
+check('saving the card of a type stores it apart from the card of the others, and the page starts from the default', [array_keys(ArchiveTemplates::entry($typed, 'taxonomy:categories')['card_types']), ArchiveTemplates::card($typed, 'taxonomy:categories', 'en', 'en'), count(ArchiveTemplates::blocks($typed, 'taxonomy:categories', 'en', 'en')) > 0], [['recipes'], [], true]);
+check('start again for the card of a type puts back the starting card of that type only', [count(ArchiveTemplates::cards($admin->startedAgain('taxonomy:categories', 'card', $typed, 'recipes'), 'taxonomy:categories', 'en', 'en')['recipes'] ?? []), array_keys(ArchiveTemplates::cards($admin->startedAgain('taxonomy:categories', 'card', $typed, 'nope'), 'taxonomy:categories', 'en', 'en'))], [1, ['recipes']]);
+$ptype = $admin->preview('taxonomy:categories', $typed, ['part' => 'card', 'card_type' => 'recipes', 'preview_term' => 'news', 'blocks_editor' => '1', 'blocks_json' => json_encode([['type' => 'image']])]);
+check('the preview of the card of a type draws that card, unsaved, and says which type', [$ptype['card_type'], ArchiveTemplates::cards($ptype['settings'], 'taxonomy:categories', 'en', 'en')['recipes'][0]['type']], ['recipes', 'image']);
+$redir = $admin->respond('taxonomy:categories', true, [], ['part' => 'card', 'card_type' => 'recipes', 'blocks_editor' => '1', 'blocks_json' => '[]'], [], true)['redirect'];
+check('saving goes back to the same card', $redir, '/admin/theme?archive_template=taxonomy%3Acategories&part=card&card_type=recipes&saved=1');
+$mapSets = (new StartingArchives($theme, $registry, $types, $taxonomies, fn() => 'en'));
+check('a list that was a map starts with a map of the list, where it was', array_column(StartingArchives::generate(['layout' => 'map', 'map_list' => 'left', 'map_height' => 'tall']), 'type'), ['archive-title', 'filter-bar', 'result-count', 'entry-map', 'entry-list']);
+check('the map keeps the height and the place of its list', array_slice(StartingArchives::generate(['layout' => 'map', 'map_list' => 'left', 'map_height' => 'tall'])[3], 1), ['list' => 'left', 'height' => 'tall']);
 
 echo $fail === 0 ? "\nALL PASSED\n" : "\n$fail FAILED\n";
 exit($fail === 0 ? 0 : 1);

@@ -1,0 +1,7 @@
+{#
+  Map of the list: the entries of the list (every one the filters leave, up to a limit) that have a place, drawn as the Map block and the
+  map layout of an archive draw them (components/geo-map.twig). block.geo is the dataset (BlockRenderer). Context: archive, archive_title.
+#}
+<div class="{{ block.variant == 'full' ? 'map-geo-full' : 'container' }}">
+  {% include 'components/geo-map.twig' with {geo: block.geo, height: block.height, list: block.list, filters: block.filters, cluster: block.cluster, load: block.load_mode, label: archive_title|default(t('map.title', 'Map')), item_tag: 'h2'} only %}
+</div>

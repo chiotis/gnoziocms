@@ -1,0 +1,31 @@
+label: Map of the list
+description: 'The entries of the list that have a place, on one map, with the same filters as the list (a route is drawn as a line). The bar of the map filters them further. Shows nothing when no entry of the list has a place. Only in an archive template built with blocks.'
+category: Archive
+scope: archive
+variants:
+  contained: Inside the page width
+  full: Full width
+fields:
+  height:
+    type: select
+    label: Height
+    default: large
+    options: { small: Small, medium: Medium, large: Large, tall: Tall }
+  list:
+    type: select
+    label: List beside the map
+    default: right
+    options: { right: Right, left: Left, below: Below, none: None }
+  filters:
+    type: toggle
+    label: Filters in the map's own bar
+    default: true
+  cluster:
+    type: toggle
+    label: Group markers that are close
+    default: true
+  load:
+    type: select
+    label: Load the map
+    default: site
+    options: { site: As set for the site, click: When a visitor asks, auto: With the page }

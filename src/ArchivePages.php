@@ -20,6 +20,9 @@ final class ArchivePages
     /** Which part of an archive template the live preview marks for the editor (`page` or `card`), while one is being drawn. */
     private string $previewPart = '';
 
+    /** The content type whose card the editor is working on while the preview is drawn ('' for the card of the others). */
+    private string $previewCardType = '';
+
     /**
      * @param \Closure(): ArchiveBuilder $archive
      */
@@ -57,13 +60,13 @@ final class ArchivePages
      * @param \Closure(): T $draw
      * @return T
      */
-    public function previewing(string $part, \Closure $draw): mixed
+    public function previewing(string $part, string $cardType, \Closure $draw): mixed
     {
-        $this->previewPart = $part;
+        [$this->previewPart, $this->previewCardType] = [$part, $cardType];
         try {
             return $draw();
         } finally {
-            $this->previewPart = '';
+            [$this->previewPart, $this->previewCardType] = ['', ''];
         }
     }
 
@@ -81,7 +84,7 @@ final class ArchivePages
      * not drawn from a template.
      *
      * @param array<string, mixed> $settings
-     * @param array{blocks: array<int, mixed>, card: array<int, mixed>}|null $built the template (TemplateResolver::builtArchive), when it has been looked up
+     * @param array{blocks: array<int, mixed>, card: array<int, mixed>, cards: array<string, array<int, mixed>>}|null $built the template (TemplateResolver::builtArchive), when it has been looked up
      * @return array<string, mixed>
      */
     public function settings(string $key, string $lang, array $settings, ?array $built = null): array
@@ -103,7 +106,9 @@ final class ArchivePages
         if ($built === null) {
             return $data;
         }
-        $page = ($this->runtime)()->renderArchive($built['blocks'], $built['card'], $lang, $path, $twig, $data, $this->previewPart);
+        // A list of several types where only some have a card of their own draws the others with the generic card.
+        $card = $built['card'] === [] && $built['cards'] !== [] ? StartingArchives::generateCard($key) : $built['card'];
+        $page = ($this->runtime)()->renderArchive($built['blocks'], $card, $lang, $path, $twig, $data, $this->previewPart, $built['cards'], $this->previewCardType);
         return [
             'page_blocks' => $page,
             'block_styles' => $page['styles'],

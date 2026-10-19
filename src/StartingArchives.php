@@ -97,7 +97,13 @@ final class StartingArchives
             default => 'grid',
         };
         $list = ['type' => ArchiveTemplates::LIST_BLOCK, 'variant' => $variant, 'columns' => (string)($settings['columns'] ?? '3'), 'per_page' => (int)($settings['per_page'] ?? 12), 'order' => (string)($settings['order'] ?? 'date_desc')];
-        return [['type' => 'archive-title'], ['type' => 'filter-bar'], ['type' => 'result-count'], $list];
+        $blocks = [['type' => 'archive-title', 'breadcrumbs' => ($settings['breadcrumbs'] ?? false) === true], ['type' => 'filter-bar'], ['type' => 'result-count']];
+        // A list that was a map shows its entries on one: the same map, with the filters above it, then the entries.
+        if (($settings['layout'] ?? '') === 'map') {
+            $blocks[] = ['type' => 'entry-map', 'list' => in_array($settings['map_list'] ?? 'right', ['right', 'left', 'below', 'none'], true) ? (string)$settings['map_list'] : 'right', 'height' => (string)($settings['map_height'] ?? 'large')];
+        }
+        $blocks[] = $list;
+        return $blocks;
     }
 
     /** The card of any list: the main image, the title and the excerpt of the entry. @return array<int, array<string, mixed>> */

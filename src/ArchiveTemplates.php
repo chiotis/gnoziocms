@@ -8,8 +8,10 @@ namespace GnozioCMS;
  * The templates built with blocks for a list of entries (Admin > Theme > Archive Layouts > Edit template): the archive of a content type
  * and the page of a category, a tag or a taxonomy of the site's own. They are stored in the theme settings as `archive_templates.<key>`,
  * where the key is a content type (`books`) or `taxonomy:<name>` (`taxonomy:categories`). Each holds `use` (whether the list is drawn
- * from the template), `blocks` (the page: the blocks around and including the list) and `card` (the blocks that draw one entry of the
- * list), both in the shape of the Footer Blocks (a plain list, or a map of `default` and a set for each language, FooterBlocks).
+ * from the template), `blocks` (the page: the blocks around and including the list), `card` (the blocks that draw one entry of the
+ * list) and, for a list of entries of several types (a category), `card_types` (a card for a content type, by its name; the entries of
+ * the others are drawn with `card`), all in the shape of the Footer Blocks (a plain list, or a map of `default` and a set for each
+ * language, FooterBlocks).
  * Turning the template off (Reset) leaves the blocks where they are. Nothing here knows a content type.
  */
 final class ArchiveTemplates
@@ -30,12 +32,69 @@ final class ArchiveTemplates
         return 'taxonomy:' . $name;
     }
 
-    /** @param array<string, mixed> $themeSettings @return array{use: bool, blocks: mixed, card: mixed} */
+    /** @param array<string, mixed> $themeSettings @return array{use: bool, blocks: mixed, card: mixed, card_types: array<string, mixed>} */
     public static function entry(array $themeSettings, string $key): array
     {
         $stored = is_array($themeSettings[self::KEY] ?? null) ? ($themeSettings[self::KEY][$key] ?? null) : null;
         $stored = is_array($stored) ? $stored : [];
-        return ['use' => ($stored['use'] ?? false) === true, 'blocks' => $stored['blocks'] ?? [], 'card' => $stored['card'] ?? []];
+        $types = [];
+        foreach (is_array($stored['card_types'] ?? null) ? $stored['card_types'] : [] as $type => $blocks) {
+            if (is_string($type) && preg_match('/^[a-z][a-z0-9_-]*$/', $type) === 1 && is_array($blocks) && $blocks !== []) {
+                $types[$type] = $blocks;
+            }
+        }
+        return ['use' => ($stored['use'] ?? false) === true, 'blocks' => $stored['blocks'] ?? [], 'card' => $stored['card'] ?? [], 'card_types' => $types];
+    }
+
+    /**
+     * The card of each content type that has one of its own on this list, in a language: type => blocks.
+     *
+     * @param array<string, mixed> $themeSettings
+     * @return array<string, array<int, mixed>>
+     */
+    public static function cards(array $themeSettings, string $key, string $lang, string $defaultLang): array
+    {
+        $cards = [];
+        foreach (self::entry($themeSettings, $key)['card_types'] as $type => $stored) {
+            $blocks = FooterBlocks::forLanguage($stored, $lang, $defaultLang);
+            if ($blocks !== []) {
+                $cards[$type] = $blocks;
+            }
+        }
+        return $cards;
+    }
+
+    /**
+     * The `archive_templates` map after the card of one content type on a list was changed (null or an empty list takes it away).
+     *
+     * @param array<string, mixed> $themeSettings the settings now
+     * @param array<string, array<int, mixed>>|null $sets the sets to keep, by key (FooterBlocks::toStore)
+     * @return array<string, array<string, mixed>>
+     */
+    public static function withTypeCard(array $themeSettings, string $key, string $type, ?array $sets): array
+    {
+        $all = is_array($themeSettings[self::KEY] ?? null) ? $themeSettings[self::KEY] : [];
+        if (!self::validKey($key) || preg_match('/^[a-z][a-z0-9_-]*$/', $type) !== 1) {
+            return $all;
+        }
+        $entry = self::entry($themeSettings, $key);
+        $kept = $entry['card_types'];
+        $stored = $sets === null ? [] : FooterBlocks::toStore($sets);
+        if ($stored === []) {
+            unset($kept[$type]);
+        } else {
+            $kept[$type] = $stored;
+        }
+        $all[$key] = self::compose($entry['use'], $entry['blocks'], $entry['card'], $kept);
+        return $all;
+    }
+
+    /** The stored entry of a list. @param array<string, mixed> $cardTypes @return array<string, mixed> */
+    private static function compose(bool $use, mixed $blocks, mixed $card, array $cardTypes): array
+    {
+        $blocks = is_array($blocks) ? $blocks : [];
+        $card = is_array($card) ? $card : [];
+        return ['use' => $use, 'blocks' => $blocks] + ($card !== [] ? ['card' => $card] : []) + ($cardTypes !== [] ? ['card_types' => $cardTypes] : []);
     }
 
     /** The blocks of the page in a language (the site's own set when the language has none). @param array<string, mixed> $themeSettings @return array<int, mixed> */
@@ -77,11 +136,11 @@ final class ArchiveTemplates
         $cards = $card === null ? $entry['card'] : FooterBlocks::toStore($card);
         $blocks = is_array($blocks) ? $blocks : [];
         $cards = is_array($cards) ? $cards : [];
-        if ($blocks === [] && $cards === [] && !$use) {
+        if ($blocks === [] && $cards === [] && $entry['card_types'] === [] && !$use) {
             unset($all[$key]);
             return $all;
         }
-        $all[$key] = ['use' => $use, 'blocks' => $blocks] + ($cards !== [] ? ['card' => $cards] : []);
+        $all[$key] = self::compose($use, $blocks, $cards, $entry['card_types']);
         return $all;
     }
 
@@ -161,6 +220,16 @@ final class ArchiveTemplates
         }
         if (isset($block['columns']) && in_array((string)$block['columns'], ['2', '3', '4'], true)) {
             $settings['columns'] = (string)$block['columns'];
+        }
+        // The orders a visitor may choose from (none unless the block lets them), as order => label, in the order the block lists them.
+        $settings['sort_choices'] = [];
+        if (($block['visitor_sort'] ?? false) === true) {
+            $asked = array_column(is_array($block['sort_choices'] ?? null) ? array_filter($block['sort_choices'], 'is_array') : [], 'order');
+            $asked = array_values(array_filter(array_map('strval', $asked), static fn(string $order): bool => isset($orders[$order])));
+            $asked = $asked !== [] ? $asked : array_values(array_diff(array_keys($orders), ['random']));
+            foreach ($asked as $order) {
+                $settings['sort_choices'][$order] = $orders[$order];
+            }
         }
         // A list drawn by blocks is a grid, a list or a compact list; the map layout is the theme's.
         if (($settings['layout'] ?? '') === 'map') {

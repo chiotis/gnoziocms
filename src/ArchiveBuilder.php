@@ -14,8 +14,10 @@ final class ArchiveBuilder
     /**
      * @param callable(): string[] $taxonomyNames the taxonomies that exist
      * @param callable(string, string, string): string $termLabel the name of a term: taxonomy, term id, language
+     * @param (callable(string[], string): array<string, string>)|null $relationTitles the titles of the entries a relation filter offers, by id,
+     *        for the ones a visitor may see: ids, language (without it a relation is not offered as a filter)
      */
-    public function __construct(private $taxonomyNames, private $termLabel, private ?ArchiveQuery $query = null)
+    public function __construct(private $taxonomyNames, private $termLabel, private ?ArchiveQuery $query = null, private $relationTitles = null)
     {
     }
 
@@ -33,10 +35,14 @@ final class ArchiveBuilder
      */
     public function build(array $settings, array $fields, ?array $definition, string $lang, array $items, array $query): array
     {
+        [$settings, $sort] = self::withVisitorSort($settings, $query);
         $facets = $this->facets($settings, $fields);
         $valuesOf = function (ContentItem $item, string $name, array $facet): array {
             if ($facet['kind'] === 'taxonomy') {
                 return Format::list($item->meta[$name] ?? null);
+            }
+            if ($facet['kind'] === 'relation') {
+                return RelationFields::idList($item->meta['custom_fields'][$name] ?? null);
             }
             $value = $item->meta['custom_fields'][$name] ?? '';
             return is_scalar($value) && (string)$value !== '' ? [(string)$value] : [];
@@ -94,6 +100,8 @@ final class ArchiveBuilder
             usort($items, static fn(ContentItem $a, ContentItem $b): int => strcmp($mix($a), $mix($b)));
         }
 
+        // Every entry the filters leave, in order: what a map block shows (the page below is a part of it).
+        $everything = $items;
         $total = count($items);
         $perPage = (int)$settings['per_page'];
         if (($settings['layout'] ?? '') === 'map') {
@@ -108,7 +116,7 @@ final class ArchiveBuilder
             $items = array_slice($items, ($page - 1) * $perPage, $perPage);
         }
         $seed = $settings['order'] === 'random' ? ($seed ?? 0) : 0;
-        return $this->result($settings, $definition, $items, $total, $filters, $selected, $page, $pages, $seed);
+        return $this->result($settings, $definition, $items, $total, $filters, $selected, $page, $pages, $seed, $sort, static fn(): array => array_slice($everything, 0, ArchiveQuery::MAP_LIMIT));
     }
 
     /**
@@ -127,6 +135,7 @@ final class ArchiveBuilder
         if ($this->query === null || !$this->query->ready()) {
             return null;
         }
+        [$settings, $sort] = self::withVisitorSort($settings, $query);
         $facets = $this->facets($settings, $fields);
         $kinds = array_map(static fn(array $facet): string => $facet['kind'], $facets);
         $counts = $this->query->counts($scope, $lang, $includeHidden, $kinds);
@@ -147,7 +156,27 @@ final class ArchiveBuilder
         if ($page === null) {
             return null;
         }
-        return $this->result($settings, $definition, $page['items'], $page['total'], $filters, $selected, $page['page'], $page['pages'], $seed);
+        // The map block asks for every entry the filters leave (up to a limit), not for the page.
+        $everything = fn(): array => $this->query->page($scope, $lang, $includeHidden, $selected, $kinds, (string)$settings['order'], $field, $seed, 0, 1, ArchiveQuery::MAP_LIMIT)['items'] ?? [];
+        return $this->result($settings, $definition, $page['items'], $page['total'], $filters, $selected, $page['page'], $page['pages'], $seed, $sort, $everything);
+    }
+
+    /**
+     * The order a visitor chose with `?sort=`, when the list lets visitors choose and the order is one it offers; the settings then carry it
+     * as the order, so every way of answering the list sorts the same. Anything else in the address is ignored.
+     *
+     * @param array<string, mixed> $settings
+     * @param array<string, mixed> $query
+     * @return array{0: array<string, mixed>, 1: string} the settings, and the order chosen ('' for none or the list's own)
+     */
+    private static function withVisitorSort(array $settings, array $query): array
+    {
+        $asked = is_string($query['sort'] ?? null) ? $query['sort'] : '';
+        if ($asked === '' || !is_array($settings['sort_choices'] ?? null) || !isset($settings['sort_choices'][$asked]) || $asked === (string)$settings['order']) {
+            return [$settings, ''];
+        }
+        $settings['order'] = $asked;
+        return [$settings, $asked];
     }
 
     /**
@@ -168,6 +197,13 @@ final class ArchiveBuilder
         }
         foreach ($fields as $key => $field) {
             if ($field['filterable'] && !$field['hidden']) {
+                if ($field['type'] === 'relation') {
+                    // "Books of this author": offered when the site can name the entries it points at.
+                    if ($this->relationTitles !== null) {
+                        $facets[$key] = ['label' => $field['label'], 'kind' => 'relation', 'labels' => []];
+                    }
+                    continue;
+                }
                 $facets[$key] = ['label' => $field['label'], 'kind' => 'field', 'labels' => $field['options']];
             }
         }
@@ -190,16 +226,21 @@ final class ArchiveBuilder
         $selected = [];
         foreach ($facets as $name => $facet) {
             $options = [];
+            // A relation names the entries it points at; one a visitor may not see (a draft) is not offered.
+            $titles = $facet['kind'] === 'relation' ? ($this->relationTitles)(array_map('strval', array_keys($counts[$name] ?? [])), $lang) : [];
             foreach ($counts[$name] ?? [] as $value => $count) {
                 $value = (string)$value;
-                $label = $facet['kind'] === 'taxonomy'
+                if ($facet['kind'] === 'relation' && !isset($titles[$value])) {
+                    continue;
+                }
+                $label = $facet['kind'] === 'relation' ? (string)$titles[$value] : ($facet['kind'] === 'taxonomy'
                     ? ($this->termLabel)($name, $value, $lang)
-                    : (string)($facet['labels'][$value] ?? $value);
+                    : (string)($facet['labels'][$value] ?? $value));
                 $options[] = ['value' => $value, 'label' => $label !== '' ? $label : $value, 'count' => $count];
             }
             usort($options, static fn(array $a, array $b): int => strcasecmp($a['label'], $b['label']));
             $choice = is_scalar($requested[$name] ?? null) ? (string)$requested[$name] : '';
-            if ($choice !== '' && !isset($counts[$name][$choice])) {
+            if ($choice !== '' && (!isset($counts[$name][$choice]) || ($facet['kind'] === 'relation' && !isset($titles[$choice])))) {
                 $choice = '';
             }
             if ($choice !== '') {
@@ -218,14 +259,19 @@ final class ArchiveBuilder
      * @param ContentItem[] $items the entries of the page
      * @param array<int, array<string, mixed>> $filters
      * @param array<string, string> $selected
+     * @param string $sort the order a visitor chose from the ones the template allows ('' when none)
+     * @param \Closure(): ContentItem[] $mapItems every entry the filters leave, for a map
      * @return array<string, mixed>
      */
-    private function result(array $settings, ?array $definition, array $items, int $total, array $filters, array $selected, int $page, int $pages, int $seed): array
+    private function result(array $settings, ?array $definition, array $items, int $total, array $filters, array $selected, int $page, int $pages, int $seed, string $sort, \Closure $mapItems): array
     {
-        $link = static function (int $number) use ($selected, $seed): string {
+        $link = static function (int $number) use ($selected, $seed, $sort): string {
             $next = [];
             if ($selected !== []) {
                 $next['filter'] = $selected;
+            }
+            if ($sort !== '') {
+                $next['sort'] = $sort;
             }
             if ($seed > 0) {
                 $next['seed'] = $seed;
@@ -242,7 +288,11 @@ final class ArchiveBuilder
             'items' => $items,
             'total' => $total,
             'filters' => $filters,
-            'filtered' => $selected !== [],
+            // A page the visitor changed (a filter, an order) is not a page of its own for search engines.
+            'filtered' => $selected !== [] || $sort !== '',
+            'selected' => $selected,
+            'sort' => $sort,
+            'map_items' => $mapItems,
             'page' => $page,
             'pages' => $pages,
             'prev' => $page > 1 ? $link($page - 1) : '',

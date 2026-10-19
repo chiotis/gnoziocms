@@ -24,6 +24,18 @@ fields:
     label: Order
     default: date_desc
     source: sort_order
+  visitor_sort:
+    type: toggle
+    label: Let visitors choose the order
+    default: false
+    help: Shows a "Sort by" choice above the list. A page in another order is not indexed by search engines.
+  sort_choices:
+    type: repeater
+    label: Orders visitors can choose
+    item_label: Order
+    help: Used when visitors can choose the order. Leave empty to offer every order of the list but the random one.
+    fields:
+      order: { type: text, label: Order, source: sort_order }
   pagination:
     type: toggle
     label: Page links under the list

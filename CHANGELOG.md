@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.171 — 2026-10-19 — Archive lists: relation filters, sorting, a card per type, a map
+- **The Filter bar can filter by a relation**, for example the books of one author. It uses the content index, with ordinary links, and filtered pages stay out of search engines.
+- **Visitors can choose the order** among the ones the list allows. Page links keep the choice.
+- **A list of several types can give each type its own card**, with a generic card for the rest.
+- **A new Map block shows the entries of the list** that have a place, with the same filters, and reuses the existing maps. The Map archive layout is unchanged.
+- With this, step 5 of the roadmap is complete. See *Templates built with blocks* in `docs/theming.md`.
+
 ## 0.1.170 — 2026-10-19 — Archive templates built with blocks
 - **The list of a content type, and the page of a category, tag or taxonomy, can be built with blocks.** In Theme → Archive Layouts, each card switches between *The theme's* list and *Built with blocks*. **Edit template** opens the block editor with a live preview of the real list, and **Reset** goes back to the theme's list.
 - **New blocks for lists:**
