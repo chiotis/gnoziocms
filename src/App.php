@@ -100,6 +100,7 @@ final class App
     private ?UserAdmin $userAdminService = null;
     private ?ContentTypeAdmin $contentTypeAdminService = null;
     private ?SingleLayouts $singleLayoutsService = null;
+    private ?TemplateResolver $templateResolver = null;
     /** True while the live preview of the editor draws a page: its blocks then carry their place in the list (data-bk-block). */
     private bool $entryPreview = false;
     private ?LayoutsAdmin $layoutsAdminService = null;
@@ -776,7 +777,7 @@ final class App
                     // Each page of a listing is its own page for search engines.
                     $viewDefaults['canonical_url'] = $currentUrl . '?page=' . $archive['page'];
                 }
-                $this->render($this->resolveArchiveTemplate($type), [
+                $this->render($this->templates()->forArchive($type), [
                     'items' => $archive['items'],
                     'archive' => $archive,
                     'type' => $type,
@@ -839,7 +840,7 @@ final class App
         );
         $alternates = $this->languageAlternates()->forItem('pages', $page->slug);
         $languageLinks = $this->languageAlternates()->languageLinks('pages', $page);
-        $template = $slug === $homeSlug ? 'templates/home.twig' : $this->resolveItemTemplate($page);
+        $template = $slug === $homeSlug ? 'templates/home.twig' : $this->templates()->forItem($page);
         $this->render($template, [
             'item' => $page,
             'alternate_urls' => $alternates['urls'],
@@ -866,7 +867,7 @@ final class App
         if ($type === 'forms') {
             $formState = $this->handleFormRequest($item, $lang, $path);
             $item = $this->publicForms()->localized($item, $lang, fn(string $markdown): string => $this->applyShortcodes((string)$this->markdown->convert($markdown), $lang, $path));
-            $this->render($this->resolveItemTemplate($item), [
+            $this->render($this->templates()->forItem($item), [
                 'item' => $item,
                 'form_fields' => $formState['fields'],
                 'form_values' => $formState['values'],
@@ -883,7 +884,7 @@ final class App
             ]);
             return;
         }
-        $this->render($this->resolveItemTemplate($item), [
+        $this->render($this->templates()->forItem($item), [
             'item' => $item,
             'alternate_urls' => $alternates['urls'],
             'alternate_default' => $alternates['default'],
@@ -903,7 +904,7 @@ final class App
         $raw = $item->meta['blocks'] ?? null;
         if (is_array($raw) && $raw !== []) {
             // The sidebar template places the text itself, so blocks must not repeat it.
-            $bodyInTemplate = !$isHome && $this->resolveItemTemplate($item) === 'templates/sidebar.twig';
+            $bodyInTemplate = !$isHome && $this->templates()->forItem($item) === 'templates/sidebar.twig';
             $pageBlocks = $this->blockRuntime()->renderer($lang, $path, $this->twig)->render(array_values($raw), $viewDefaults + [
                 'item' => $item,
                 'body_html' => $bodyInTemplate ? '' : $item->html,
@@ -2578,6 +2579,11 @@ final class App
         return new StarterContent($this->basePath, $this->contentDir, $this->basePath . '/public/uploads');
     }
 
+    private function templates(): TemplateResolver
+    {
+        return $this->templateResolver ??= new TemplateResolver($this->theme, $this->singleLayouts(), fn(): array => $this->themeSettings);
+    }
+
     private function singleLayouts(): SingleLayouts
     {
         return $this->singleLayoutsService ??= new SingleLayouts($this->theme, $this->contentTypes());
@@ -2594,7 +2600,7 @@ final class App
             $this->taxonomyEditor(),
             fn(): array => $this->content->getTypes(),
             fn(string $type): int => count($this->content->getItems($type, null, true)),
-            fn(string $type): string => $this->singularizeType($type)
+            fn(string $type): string => TemplateResolver::singular($type)
         );
     }
 
@@ -3761,7 +3767,7 @@ final class App
             'slug' => '404',
             'type' => 'pages',
         ], '', '<p>Sorry, this page does not exist.</p>', '', time());
-        $this->render($this->resolveItemTemplate($item), [
+        $this->render($this->templates()->forItem($item), [
             'item' => $item,
             'lang' => $lang,
             'lang_prefix' => $this->langPrefix($lang),
@@ -4074,43 +4080,6 @@ final class App
         return $this->taxonomyStore ??= new Taxonomies($this->contentDir, array_map('strval', $this->settings['languages']['available'] ?? [(string)($this->settings['languages']['default'] ?? 'el')]));
     }
 
-    private function resolveItemTemplate(ContentItem $item): string
-    {
-        $custom = $this->normalizeTemplateName((string)($item->meta['template'] ?? ''));
-        if ($custom !== '' && $this->theme->hasTemplate($custom)) {
-            return $custom;
-        }
-
-        $default = $this->theme->defaultSingleTemplate($item->type, $this->singularizeType($item->type));
-        // An entry can ask for the plain layout although its content type has another.
-        if ($custom === 'templates/' . SingleLayouts::PLAIN . '.twig') {
-            return $default;
-        }
-        // The page layout chosen for the type (Theme > Single Layouts) applies to the types whose own template is the standard one.
-        $chosen = $this->singleLayouts()->effectiveTemplate($item->type, $this->themeSettings);
-        if ($chosen !== 'default' && $item->type !== 'forms' && $this->theme->hasTemplate('templates/' . $chosen . '.twig') && $this->theme->usesTitleArea($default)) {
-            return 'templates/' . $chosen . '.twig';
-        }
-
-        return $default;
-    }
-
-    /** Front matter `template:` accepts `landing`, `landing.twig`, or `templates/landing.twig`. */
-    private function normalizeTemplateName(string $name): string
-    {
-        $name = trim($name);
-        if ($name === '') {
-            return '';
-        }
-        if (!str_ends_with($name, '.twig')) {
-            $name .= '.twig';
-        }
-        if (!str_starts_with($name, 'templates/')) {
-            $name = 'templates/' . $name;
-        }
-        return Theme::isSafeRelativePath($name) ? $name : '';
-    }
-
     private function renderSitemap(): void
     {
         // A sitemap switched off (or a site that asked to stay out of search) is not there to be found.
@@ -4176,7 +4145,7 @@ final class App
             $page['data']['block_styles'] = array_values(array_filter(array_merge((array)($page['data']['block_styles'] ?? []), [$this->theme->blockStylesheetUrl($base, ['latest', 'map'])])));
             $page['data']['block_scripts'] = array_values(array_filter(array_merge((array)($page['data']['block_scripts'] ?? []), [$this->theme->blockScriptUrl($base, ['map'])])));
         }
-        $this->render($this->resolveTaxonomyTemplate($page['kind'], $page['slug']), $page['data']);
+        $this->render($this->templates()->forTaxonomy($page['kind'], $page['slug']), $page['data']);
     }
 
     private function buildTaxonomyPath(string $taxonomy, string $termId, string $prefix = ''): string
@@ -4191,16 +4160,6 @@ final class App
             return $kind . '/' . $slug;
         }
         return $prefix . '/' . $kind . '/' . $slug;
-    }
-
-    private function resolveTaxonomyTemplate(string $kind, string $slug): string
-    {
-        $safeSlug = Slug::plain(basename($slug));
-        return $this->theme->findTemplate([
-            'templates/archive-' . $kind . '-' . $safeSlug . '.twig',
-            'templates/archive-' . $kind . '.twig',
-            'templates/archive.twig',
-        ]) ?? 'templates/archive.twig';
     }
 
     private function formatDateValue(mixed $value): string
@@ -4275,32 +4234,6 @@ final class App
     private function loadTranslations(string $lang): array
     {
         return $this->theme->translations($lang, (string)($this->settings['languages']['default'] ?? 'en'));
-    }
-
-    private function resolveArchiveTemplate(string $type): string
-    {
-        $singular = $this->singularizeType($type);
-        return $this->theme->findTemplate([
-            'templates/archive-' . $type . '.twig',
-            'templates/archive-' . $singular . '.twig',
-            'templates/' . $type . '_archive.twig',
-            'templates/archive.twig',
-        ]) ?? 'templates/archive.twig';
-    }
-
-    private function singularizeType(string $type): string
-    {
-        // businesses → business, stories → story, routes → route
-        if (str_ends_with($type, 'sses')) {
-            return substr($type, 0, -2);
-        }
-        if (str_ends_with($type, 'ies') && strlen($type) > 4) {
-            return substr($type, 0, -3) . 'y';
-        }
-        if (str_ends_with($type, 's') && strlen($type) > 1) {
-            return substr($type, 0, -1);
-        }
-        return $type;
     }
 
     private function langPrefix(string $lang): string
