@@ -4,7 +4,8 @@
   site can change this one file, or one template, and leave the rest.
   Variables: item, kind ('point', 'route' or 'business').
   The Single Layouts card of the type chooses the map's height, whether to show the facts, the height profile (routes), the download
-  button (routes) and what is near, and how far counts as near.
+  button (routes) and what is near, and how far counts as near, and where the strip of the gallery goes (`gallery_strip`, drawn by
+  the page as a Gallery block: {html, place} with place 'title', 'body' or 'off').
 #}
 {% set single = single_layout(item.type) %}
 {% set opt = single.options|default({}) %}
@@ -49,6 +50,7 @@
     {% endif %}
   </div>
 </section>
+{% if gallery_strip.place|default('off') == 'title' %}<div class="entry-strip entry-strip--title">{{ gallery_strip.html|raw }}</div>{% endif %}
 
 {% if route %}
   {% set stats = [] %}
@@ -84,6 +86,7 @@
 <div class="site-wrap place-layout">
   <article class="place-main prose-block">
     {{ item.html|raw }}
+    {% if gallery_strip.place|default('off') == 'body' %}<div class="entry-strip entry-strip--body">{{ gallery_strip.html|raw }}</div>{% endif %}
   </article>
   <aside class="place-aside" aria-label="{{ t('sidebar.label', 'More on this topic') }}">
     {% if (opt.show_facts ?? true) and (entries or categories) %}

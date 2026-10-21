@@ -3932,6 +3932,20 @@ p.form-error {
   }
 }
 
+/* The strip of an entry's gallery (a Gallery block, Scrolling strip): under the title, or at the end of the text in its column. */
+.entry-strip .block-gallery.block--strip .gallery-list {
+  grid-auto-columns: min(78%, 24rem);
+}
+
+.entry-strip--body .block {
+  padding-block: var(--space-m) 0;
+  background: none;
+}
+
+.entry-strip--body .container {
+  width: 100%;
+}
+
 .place-aside {
   display: grid;
   gap: var(--space-m);

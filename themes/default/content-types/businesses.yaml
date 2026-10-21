@@ -56,6 +56,11 @@ fields:
     type: url
     label: Instagram
     show: false
+  gallery:
+    type: gallery
+    label: { el: Φωτογραφίες, en: Gallery }
+    help: { el: 'Φωτογραφίες από τη βιβλιοθήκη, με τη σειρά που θα φαίνονται στη σελίδα.', en: 'Pictures from the media library, in the order the page shows them.' }
+    span: full
 single:
   sidebar: false
   header: true

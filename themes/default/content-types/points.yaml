@@ -38,6 +38,11 @@ fields:
     type: text
     label: { el: Τηλέφωνο, en: Phone }
 # What the page of a point does, and what its list does (Theme > Single Layouts and Archive Layouts).
+  gallery:
+    type: gallery
+    label: { el: Φωτογραφίες, en: Gallery }
+    help: { el: 'Φωτογραφίες από τη βιβλιοθήκη, με τη σειρά που θα φαίνονται στη σελίδα.', en: 'Pictures from the media library, in the order the page shows them.' }
+    span: full
 single:
   sidebar: false
   header: true

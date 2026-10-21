@@ -931,19 +931,14 @@ final class App
                 'block_preview' => $this->entryPreview,
             ]);
         }
-        $styles = $pageBlocks['styles'] ?? [];
-        $scripts = $pageBlocks['scripts'] ?? [];
-        if ($this->blockRuntime()->hasPlaceField($item->type)) {
-            // The page of a point, a route or a business draws a map: it needs the map's style sheet and script, once.
-            $base = rtrim((string)($this->settings['base_url'] ?? ''), '/');
-            $types = array_values(array_unique(array_merge($pageBlocks['types'] ?? [], ['map'])));
-            $styles = array_values(array_filter([$this->theme->blockStylesheetUrl($base, array_values(array_unique(array_merge($types, array_intersect($pageBlocks['asset_types'] ?? [], [Theme::ROW_STYLES, Theme::CONTAINER_STYLES])))))]));
-            $scripts = array_values(array_filter([$this->theme->blockScriptUrl($base, $types)]));
-        }
+        // The strip of the gallery (a page drawn from a template built with blocks places its own) and the map of a type with a place.
+        $strip = $built !== null || $isHome ? 'off' : (string)($this->singleLayouts()->forType($item->type, $this->themeSettings)['options'][ContentTypes::STRIP_OPTION] ?? 'off');
+        $page = $this->blockRuntime()->singlePage($item, $pageBlocks, $strip, $lang, $path, $this->twig, $viewDefaults);
         return [
             'page_blocks' => $pageBlocks,
-            'block_styles' => $styles,
-            'block_scripts' => $scripts,
+            'block_styles' => $page['styles'],
+            'block_scripts' => $page['scripts'],
+            'gallery_strip' => $page['gallery_strip'],
             'structured_data' => array_merge(
                 $this->structuredData()->forItem($item, $lang, (string)($viewDefaults['canonical_url'] ?? ''), $isHome, (string)($pageBlocks['image'] ?? '')),
                 $pageBlocks['structured_data'] ?? []

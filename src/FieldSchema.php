@@ -17,7 +17,10 @@ namespace GnozioCMS;
  */
 final class FieldSchema
 {
-    public const TYPES = ['text', 'textarea', 'markdown', 'email', 'url', 'link', 'image', 'video', 'file', 'location', 'color', 'tone', 'number', 'decimal', 'date', 'select', 'icon', 'toggle', 'repeater', 'relation'];
+    public const TYPES = ['text', 'textarea', 'markdown', 'email', 'url', 'link', 'image', 'gallery', 'video', 'file', 'location', 'color', 'tone', 'number', 'decimal', 'date', 'select', 'icon', 'toggle', 'repeater', 'relation'];
+
+    /** How many images a gallery field keeps when its definition sets no `max`. */
+    public const GALLERY_MAX = 100;
 
     /** How many repeaters can sit inside one another: a repeater, and a repeater in its rows. */
     public const MAX_DEPTH = 2;
@@ -134,6 +137,10 @@ final class FieldSchema
             if ($type === 'file') {
                 // Which files the Library offers for it: all of them, or only route files (GPX, KML, GeoJSON).
                 $field['kind'] = ($definition['kind'] ?? '') === 'track' ? 'track' : 'all';
+            }
+            if ($type === 'gallery') {
+                // A list of pictures from the library, in the order chosen; `max` caps it.
+                $field['max'] = isset($definition['max']) && is_numeric($definition['max']) && (int)$definition['max'] > 0 ? min((int)$definition['max'], self::GALLERY_MAX) : self::GALLERY_MAX;
             }
             if ($type === 'decimal') {
                 $field['min'] = isset($definition['min']) && is_numeric($definition['min']) ? (float)$definition['min'] : null;
@@ -421,6 +428,9 @@ final class FieldSchema
                 $value = is_scalar($value) ? trim((string)$value) : '';
                 return $value === '' || self::isSafeLink($value) ? $value : $fallback;
 
+            case 'gallery':
+                return self::galleryList($value, (int)($field['max'] ?? self::GALLERY_MAX));
+
             case 'location':
                 // A position, always stored the same way ("35.2012, 26.2744"); anything else is not kept.
                 $value = is_scalar($value) ? trim((string)$value) : '';
@@ -570,6 +580,31 @@ final class FieldSchema
         return true;
     }
 
+    /**
+     * The pictures of a gallery field: a YAML list of addresses (`["/uploads/a.jpg", …]`), or the text of the editor's box, one
+     * address on each line. Each is checked as an image field's value is; a row of a list (`{image: …}`) gives its `image`, so a
+     * list written by hand in the shape of the Gallery block's rows is read too. Repeats and empty lines are dropped, the order is kept.
+     *
+     * @return list<string>
+     */
+    public static function galleryList(mixed $value, int $max = self::GALLERY_MAX): array
+    {
+        if (is_string($value)) {
+            $value = preg_split('/[\r\n]+/', $value) ?: [];
+        }
+        $images = [];
+        foreach (is_array($value) ? $value : [] as $one) {
+            if (is_array($one)) {
+                $one = $one['image'] ?? null;
+            }
+            $one = is_string($one) ? trim($one) : '';
+            if ($one !== '' && self::isSafeUrl($one) && !in_array($one, $images, true)) {
+                $images[] = $one;
+            }
+        }
+        return array_slice($images, 0, max(1, $max));
+    }
+
     /** @return array<string, string> */
     private static function normalizeOptions(mixed $options): array
     {
@@ -598,7 +633,7 @@ final class FieldSchema
         return match ($field['type']) {
             'toggle' => false,
             'number' => ($field['blank'] ?? false) ? '' : ($field['min'] ?? 0),
-            'repeater' => [],
+            'repeater', 'gallery' => [],
             'relation' => ($field['multiple'] ?? false) ? [] : '',
             default => '',
         };

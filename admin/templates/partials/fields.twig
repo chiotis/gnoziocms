@@ -44,6 +44,12 @@
       </span>
       <input type="checkbox" name="{{ name }}" value="1" {% if value %}checked{% endif %} class="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500">
     </label>
+  {% elseif field.type == 'gallery' %}
+    <div class="block{{ span }}" role="group" aria-label="{{ field.label }}">
+      <span class="mb-1 block text-sm font-medium text-slate-700">{{ field.label }}</span>
+      {{ m.gallery(field, name, value, control) }}
+      {% if field.help %}<span class="mt-1 block text-xs text-slate-400">{{ field.help }}</span>{% endif %}
+    </div>
   {% elseif field.type == 'relation' %}
     <div class="block{{ span }}" role="group" aria-label="{{ field.label }}">
       <span class="mb-1 block text-sm font-medium text-slate-700">{{ field.label }}</span>
@@ -82,6 +88,17 @@
       {% if field.help %}<span class="mt-1 block text-xs text-slate-400">{{ field.help }}</span>{% endif %}
     </label>
   {% endif %}
+{% endmacro %}
+
+{#
+  A gallery (pictures of the media library, in order): a box with one address on each line, which is all a form sent with no script
+  needs. admin-gallery-field.js turns it into a row of thumbnails to add from the library, move and remove, and keeps the box in step.
+#}
+{% macro gallery(field, name, value, control) %}
+  {% set images = value is iterable ? value : (value ? [value] : []) %}
+  <div class="gal" data-gallery-field data-max="{{ field.max|default(100) }}">
+    <textarea name="{{ name }}" rows="{{ max(2, min(6, images|length + 1)) }}" class="gal-text {{ control }}" data-gal-text placeholder="/uploads/media/photo.jpg" aria-label="{{ field.label }}: one address on each line" spellcheck="false">{{ images|join("\n") }}</textarea>
+  </div>
 {% endmacro %}
 
 {#

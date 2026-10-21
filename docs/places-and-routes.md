@@ -24,11 +24,46 @@ on. A value that is not a position is not stored. Field keys never change; a sit
   and three that replace what the file says: `distance_km`, `ascent_m`, `descent_m`.
 - **Businesses:** `location`, `area`, `address`, `phone`, `email`, `website`, `booking_url` and `booking_label` (a button in the title
   band), `price_range`, `opening_hours`, `facebook`, `instagram`.
+- **All three** have a **`gallery`** (see *Gallery* below). No field is required.
 
 The kind of business, or of point, or of route, is its **category** (Admin > Taxonomies): that is what the map filters by.
 
-Two field kinds were added for this and can be used by any content type or block: **`location`**, and **`file`** (the address of a
-file, with a *Library* button; `kind: track` offers only route files).
+Three field kinds were added for this and can be used by any content type: **`location`**, **`file`** (the address of a file, with a
+*Library* button; `kind: track` offers only route files), and **`gallery`** (below). `location` and `file` work in blocks too.
+
+## Gallery
+
+A **gallery** is a field of the kind `gallery`: the pictures of the media library an entry shows, in the order chosen. The three types
+here have one under the key `gallery`; any type can have one, under any key (`photos: {type: gallery, label: Photos, max: 30}`, in
+`custom/content-types/<type>.yaml` or in **Admin > Content types**). It is stored as a YAML list of addresses:
+
+```yaml
+custom_fields:
+  gallery:
+    - /uploads/media/gorge-1.jpg
+    - /uploads/media/gorge-2.jpg
+```
+
+A list written at the top of the front matter (`gallery: [...]`, the way an import may write it) is read as the field too, and the
+editor moves it under `custom_fields` the next time the entry is saved. Each address is checked as an image field's is (anything else
+is dropped), a picture is kept once, and a gallery keeps up to its `max` (100 when it sets none).
+
+- **In the editor** the field is a row of thumbnails: *Add pictures* opens the library and stays open, so several can be picked in one
+  go (the ones already in the gallery are marked); each picture moves earlier or later with its buttons, or by dragging it, and is
+  removed with ✕. *Edit as text* shows the addresses, one on each line, which is also what the form holds without JavaScript.
+- **On the page of one**, the gallery is a **strip** (a Gallery block with the *Scrolling strip* layout; the pictures open larger in its
+  viewer). *Theme > Single Layouts* has the choice on the card of every type that has a gallery (`gallery_strip`): *Under the title*
+  (the default), *In the body* (at the end of the text), or *Off*. An entry with no pictures shows nothing, and its page loads none
+  of the gallery's style sheet or script. The strip is the same on the page of any type (`components/page-body.twig`); a type whose
+  template is built with blocks places its own (see below). A gallery is never a line of the information card.
+- **The Gallery block** has a first choice, *Pictures*: *Chosen below* (as before) or *The entry's gallery*, the pictures of the page
+  or entry the block is on, so a Gallery block in an entry's own blocks shows its gallery in any layout (grid, masonry, strip). For a
+  type with more than one gallery, *Gallery field* names the key; empty means the type's gallery (`gallery`, else the first of the
+  kind). With no pictures the block draws nothing.
+- **In a template built with blocks**, the Gallery block can take *The entry's gallery* in the same way, or its *Images* can be bound
+  to the gallery (the chain button): a gallery is offered as a list with one column, *Image*, so each picture is a row, and the other
+  columns (description, caption) can be given a fixed value.
+- **For templates**, `content_values(item).gallery` is the checked list of addresses.
 
 ## Route files
 
@@ -99,7 +134,7 @@ when in view). The block draws nothing for a visitor when there is nothing to sh
   passes near it and the businesses and points around. Nearest first, with the distance. Computed from the positions, so there is
   nothing to keep in step by hand.
 - *Theme > Single Layouts* has a card for each type: the map's height, whether to show the information, the profile, the download
-  button, what is near, what distance counts as near (`opt.nearby_radius`, in km), and how many of each kind to list
+  button, where the strip of the gallery goes, what is near, what distance counts as near (`opt.nearby_radius`, in km), and how many of each kind to list
   (`nearby_limit_routes`, `nearby_limit_points`, `nearby_limit_businesses`; 18 when empty), so a crowded route cannot push the points
   out. A site that set one `nearby_limit` in its own type definition keeps it as the number for every kind.
 - Search engines get a `TouristAttraction` or `LocalBusiness` with its coordinates, address, phone, email and price range.
@@ -113,5 +148,5 @@ limit)` gives `[{item, km}]` (`limit` is a number for all, or a map such as `{po
 
 ## Not in this version
 
-Entries have one main image; the reference pages' strip of pictures is a Gallery block in the entry's blocks for now. Filters on the map
-are by kind, category and search (the other filters reload the page). Route files are not edited in the admin: upload a file, choose it.
+Filters on the map are by kind, category and search (the other filters reload the page). Route files are not edited in the admin:
+upload a file, choose it. A picture of a gallery has no caption of its own (the library's description is its text).

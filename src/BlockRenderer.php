@@ -21,7 +21,7 @@ final class BlockRenderer
 {
     /**
      * @param \Closure(string): string $markdown
-     * @param array<string, \Closure> $providers dynamic data: 'items' (type, lang, limit), 'form' (slug), 'youtube' (playlist id, picture source), 'file' (a site file's size in bytes), 'term' (a category's name), 'geo' (entries as a map draws them), 'geo_items' (given entries as a map draws them), 'geo_load' (when maps load) and 'admin' (whether someone is signed in)
+     * @param array<string, \Closure> $providers dynamic data: 'items' (type, lang, limit), 'form' (slug), 'youtube' (playlist id, picture source), 'file' (a site file's size in bytes), 'term' (a category's name), 'geo' (entries as a map draws them), 'geo_items' (given entries as a map draws them), 'geo_load' (when maps load), 'gallery' (the pictures of an entry's gallery field: entry, field key or '' for its gallery, language) and 'admin' (whether someone is signed in)
      */
     public function __construct(
         private BlockRegistry $registry,
@@ -549,6 +549,15 @@ final class BlockRenderer
                 ? $bindings->factSheet(array_map(static fn(array $row): string => (string)($row['field'] ?? ''), $values['fields']))
                 : [];
             $values['_empty'] = $values['entries'] === [];
+        }
+        if ($type === 'gallery' && ($values['source'] ?? 'manual') === 'entry') {
+            // The pictures of the entry the block is drawn for (its own page, or the entry of a template); none: no block at all.
+            $item = $context['item'] ?? null;
+            $urls = $item instanceof ContentItem && isset($this->providers['gallery'])
+                ? ($this->providers['gallery'])($item, trim((string)($values['field'] ?? '')), (string)($context['lang'] ?? ''))
+                : [];
+            $values['images'] = array_map(static fn(string $url): array => ['image' => $url, 'alt' => '', 'caption' => ''], $urls);
+            $values['_empty'] = $values['images'] === [];
         }
         if ($type === 'cards' && ($values['source'] ?? 'manual') !== 'manual' && isset($this->providers['items'])) {
             $values['entries'] = ($this->providers['items'])((string)$values['source'], (string)($context['lang'] ?? ''), (int)($values['limit'] ?? 3));

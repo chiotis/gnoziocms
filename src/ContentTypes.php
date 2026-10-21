@@ -21,6 +21,8 @@ use Symfony\Component\Yaml\Yaml;
  *     filterable: true               select and relation fields: offered as a filter in the archive
  *     card: true                     shown on the item's card (a repeater as a short list of its rows)
  *     show: false                    not shown on the item's own page
+ *                                    a `gallery` field (a list of pictures) is never a line of the fact sheet: the strip on the
+ *                                    page (Single Layouts, `gallery_strip`) and the Gallery block show it
  *   single:                          how the type's own page can be set in Theme > Single Layouts
  *     sidebar: true                  its template draws a sidebar when the card asks for one (None, Right, Left)
  *     header: true                   its template opens with a section the header can sit over
@@ -68,10 +70,25 @@ final class ContentTypes
     /** Field types an archive can be ordered by. */
     public const SORTABLE_TYPES = ['date', 'number', 'decimal', 'text'];
 
-    public const FIELD_TYPES = ['text', 'textarea', 'markdown', 'email', 'url', 'link', 'image', 'file', 'location', 'color', 'number', 'decimal', 'date', 'select', 'toggle', 'repeater', 'relation'];
+    public const FIELD_TYPES = ['text', 'textarea', 'markdown', 'email', 'url', 'link', 'image', 'gallery', 'file', 'location', 'color', 'number', 'decimal', 'date', 'select', 'toggle', 'repeater', 'relation'];
 
     /** The kinds of field Admin > Content types can create: a repeater needs fields of its own, so it is written in the type's YAML file. */
-    public const FORM_FIELD_TYPES = ['text', 'textarea', 'markdown', 'email', 'url', 'link', 'image', 'file', 'location', 'color', 'number', 'decimal', 'date', 'select', 'toggle'];
+    public const FORM_FIELD_TYPES = ['text', 'textarea', 'markdown', 'email', 'url', 'link', 'image', 'gallery', 'file', 'location', 'color', 'number', 'decimal', 'date', 'select', 'toggle'];
+
+    /** The option of Single Layouts that says where the page of an entry shows the strip of its gallery. */
+    public const STRIP_OPTION = 'gallery_strip';
+
+    /** The option as a type with a gallery gets it (one that declares `gallery_strip` itself keeps its own). */
+    public const STRIP_DEFINITION = [
+        'type' => 'select',
+        'label' => ['el' => 'Λωρίδα φωτογραφιών', 'en' => 'Strip of the gallery'],
+        'default' => 'title',
+        'options' => [
+            'off' => ['el' => 'Όχι', 'en' => 'Off'],
+            'title' => ['el' => 'Κάτω από τον τίτλο', 'en' => 'Under the title'],
+            'body' => ['el' => 'Μέσα στο κείμενο', 'en' => 'In the body'],
+        ],
+    ];
 
     /** @var array<string, array<string, mixed>>|null */
     private ?array $raw = null;
@@ -231,6 +248,11 @@ final class ContentTypes
         $archiveOptions = self::declareOptions($raw['archive_options'] ?? [], $pick);
         $archiveValues['options'] = $archiveOptions === [] ? [] : FieldSchema::resolve($archiveOptions, array_intersect_key(is_array($archive['options'] ?? null) ? $archive['options'] : [], $archiveOptions));
         $single = is_array($raw['single'] ?? null) ? $raw['single'] : [];
+        $singleOptions = self::declareOptions($single['options'] ?? [], $pick);
+        // A type with a gallery gets the choice of where its page shows the strip of it, unless it declares that choice itself.
+        if (!isset($singleOptions[self::STRIP_OPTION]) && self::firstGallery($fields) !== null) {
+            $singleOptions[self::STRIP_OPTION] = FieldSchema::normalize([self::STRIP_OPTION => self::pickTexts(self::STRIP_DEFINITION, $pick)])[self::STRIP_OPTION];
+        }
 
         // Ordering by a declared field: "field:<key>:asc" or "field:<key>:desc".
         $order = (string)($archive['order'] ?? '');
@@ -252,7 +274,7 @@ final class ContentTypes
             'single' => [
                 'sidebar' => ($single['sidebar'] ?? false) === true,
                 'header' => ($single['header'] ?? false) === true,
-                'options' => self::declareOptions($single['options'] ?? [], $pick),
+                'options' => $singleOptions,
             ],
         ];
     }
@@ -324,6 +346,47 @@ final class ContentTypes
     }
 
     /**
+     * The key of a type's gallery: the field `gallery` when it is one, else the first field of the kind `gallery`; '' when it has none.
+     * A field that is hidden does not count.
+     */
+    public function galleryKey(string $type, string $lang = 'en', string $defaultLang = 'en'): string
+    {
+        return self::firstGallery($this->definition($type, $lang, $defaultLang)['fields']) ?? '';
+    }
+
+    /**
+     * The pictures of an entry's gallery, in their order: the field named (it must be of the kind `gallery`), or the type's own
+     * gallery when none is named. An entry without one, or a name that is not a gallery, gives none.
+     *
+     * @param array<string, mixed> $meta front matter of the entry
+     * @return list<string>
+     */
+    public function gallery(string $type, array $meta, string $key = '', string $lang = 'en', string $defaultLang = 'en'): array
+    {
+        $key = $key !== '' ? $key : $this->galleryKey($type, $lang, $defaultLang);
+        $field = $this->editableFields($type, $lang, $defaultLang)[$key] ?? null;
+        if ($field === null || $field['type'] !== 'gallery') {
+            return [];
+        }
+        $value = $this->values($type, $meta, $lang, $defaultLang)[$key] ?? [];
+        return is_array($value) ? array_values($value) : [];
+    }
+
+    /** @param array<string, array<string, mixed>> $fields normalized fields */
+    private static function firstGallery(array $fields): ?string
+    {
+        if (($fields['gallery']['type'] ?? '') === 'gallery' && !$fields['gallery']['hidden']) {
+            return 'gallery';
+        }
+        foreach ($fields as $key => $field) {
+            if ($field['type'] === 'gallery' && !$field['hidden']) {
+                return (string)$key;
+            }
+        }
+        return null;
+    }
+
+    /**
      * Stored values of the declared fields, checked against the definition. Fields without a
      * value are left out.
      *
@@ -339,7 +402,12 @@ final class ContentTypes
                 $stored = self::withLegacyRow((string)$key, $field, $stored);
             }
             if (!array_key_exists($key, $stored)) {
-                continue;
+                // A gallery written at the top of the front matter (`gallery: [...]`, as an import may write it) is read as the
+                // field's; the editor stores it under custom_fields the next time the entry is saved.
+                if ($field['type'] !== 'gallery' || !is_array($meta[$key] ?? null)) {
+                    continue;
+                }
+                $stored[$key] = $meta[$key];
             }
             $raw = $stored[$key];
             if ($field['type'] === 'date' && is_int($raw)) {
@@ -439,7 +507,8 @@ final class ContentTypes
     {
         $entries = [];
         foreach ($fields as $key => $field) {
-            if ($field['hidden'] || !array_key_exists($key, $values) || self::isEmpty($field, $values[$key])) {
+            // A gallery is shown as pictures (the strip, the Gallery block), never as a line of text.
+            if ($field['hidden'] || $field['type'] === 'gallery' || !array_key_exists($key, $values) || self::isEmpty($field, $values[$key])) {
                 continue;
             }
             $value = $values[$key];
@@ -529,7 +598,7 @@ final class ContentTypes
             }
             $raw = $input[$key] ?? '';
             // A list (a repeater's rows) or a text per language comes as a map; anything else is one value.
-            $structured = is_array($raw) && ($field['type'] === 'repeater' || $field['type'] === 'relation' || ($field['translatable'] ?? false) === true);
+            $structured = is_array($raw) && ($field['type'] === 'repeater' || $field['type'] === 'relation' || $field['type'] === 'gallery' || ($field['translatable'] ?? false) === true);
             if (!$structured && (!is_scalar($raw) || trim((string)$raw) === '')) {
                 continue;
             }
