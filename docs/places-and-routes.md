@@ -18,12 +18,12 @@ OpenStreetMap copy it). It is checked as it is typed, stored one way, and has a 
 on. A value that is not a position is not stored. Field keys never change; a site adds fields or hides one in
 `custom/content-types/<type>.yaml`.
 
-- **Points:** `location`, `area`, `altitude`, `opening_hours`, `admission`, `accessible`, `website`, `phone`.
-- **Routes:** `track` (the route file), `location` (the start; optional, the start of the line is used when empty), `area`, `activity`
+- **Points:** `location`, `subtitle`, `area`, `altitude`, `opening_hours`, `admission`, `accessible`, `website`, `phone`.
+- **Routes:** `track` (the route file), `location` (the start; optional, the start of the line is used when empty), `subtitle`, `area`, `activity`
   (hiking, trail running, cycling, mountain biking, driving, walking), `difficulty`, `route_type`, `duration`, `season`, `trailhead`,
   and three that replace what the file says: `distance_km`, `ascent_m`, `descent_m`.
-- **Businesses:** `location`, `area`, `address`, `phone`, `email`, `website`, `booking_url` and `booking_label` (a button in the title
-  band), `price_range`, `opening_hours`, `facebook`, `instagram`.
+- **Businesses:** `location`, `subtitle`, `area`, `address`, `phone`, `email`, `website`, `booking_url` and `booking_label` (a button in the title
+  band), `price_range`, `opening_hours`, `services` and `packages` (two texts of several lines), `facebook`, `instagram`.
 - **All three** have a **`gallery`** (see *Gallery* below). No field is required.
 
 The kind of business, or of point, or of route, is its **category** (Admin > Taxonomies): that is what the map filters by.
@@ -124,17 +124,36 @@ when in view). The block draws nothing for a visitor when there is nothing to sh
 `templates/single-point.twig`, `single-route.twig` and `single-business.twig` are three lines each; the page itself is
 `components/place-single.twig`, so a site can change one file or override one template in `custom/`.
 
-- A **title band** with the main image behind it, the area and the categories (as links), the title, the excerpt, and buttons: *Book
-  now* (a business with a booking link) and *Download the route* (a route).
-- A **route** has a bar of facts (length, duration, climb, descent, highest point, difficulty, type), a large map with the whole line and
-  the places near it, and the profile of the height (a drawing that says its range in its label).
-- A **point or a business** has an information card (type, area, address, phone, email, website… each with an icon), a map card that is
-  close on the place with directions, and the entries near it.
+- A **title band** with the main image behind it, the area and the categories (as links), the title, the **subtitle** (the field
+  `subtitle`, when it is filled), the excerpt, and buttons: *Book now* (a business with a booking link) and *Download the route* (a route).
+- A **route** has a bar of facts (length, duration, climb, descent, highest point, difficulty, the **best season** when `season` is
+  filled, type), a large map with the whole line and the places near it, and the profile of the height (a drawing that says its range
+  in its label).
+- **The profile and the map point at each other.** Moving the pointer or a finger along the profile shows a line and a dot on it with the
+  distance and the height (`2,4 km · 812 m`), and marks the same place on the map's line; the pointer on the map near the line marks
+  the profile. With the keyboard the profile is a slider: Tab to it, then the arrows (a hundredth of the way), Page Up and Page Down (a
+  tenth), Home and End; Escape or leaving it clears the mark. A finger that moves up or down still scrolls the page. The profile works
+  before the map is shown and joins it once it is (the map says so with an event, `geo:ready`). The script is
+  `assets/js/route-profile.js`, loaded only by a page that has a profile; a route without heights has none, and without the script the
+  profile is the drawing it was.
+- A **point or a business** has an information card (type, area, address, phone, email, website, opening hours, and for a business
+  its services and packages, each text with its own lines… each with an icon), a map card that is close on the place with directions,
+  and the entries near it. A field that is empty is not shown.
+- **Terms as chips.** The terms of the entry in the taxonomies a site added (Admin > Taxonomies), and its tags, are a card of chips, a
+  row for each taxonomy with its name above, each chip a link to the term's page (for a point filed under a type and a facet: one row
+  for the type, one for the facet). The categories stay in the title band. An entry in no such taxonomy shows no card.
 - **Nearby.** Routes list the points and businesses within a distance of their line; a point or a business lists the routes whose line
   passes near it and the businesses and points around. Nearest first, with the distance. Computed from the positions, so there is
   nothing to keep in step by hand.
+- **Nearby under headings.** Each kind has its own card (routes, businesses, places), and inside it the entries are under the **top
+  term of a taxonomy with a tree** they are filed in: a point filed under *Gorges*, a child of *Nature*, is under *Nature*. Nothing is
+  stored for it; the group is read from the taxonomy, so moving a term moves its entries. The taxonomy is the one with a tree (at least
+  one term with a parent) that most of the listed entries are filed in, a site's own over the categories on a tie. Groups follow the
+  order of the tree, each heading links to its term's page and lists up to six, nearest first; entries filed in none of its terms come
+  last under *Other*. When no entry is filed in such a taxonomy (a site with flat categories, or none) the card is one list of six, as
+  before.
 - *Theme > Single Layouts* has a card for each type: the map's height, whether to show the information, the profile, the download
-  button, where the strip of the gallery goes, what is near, what distance counts as near (`opt.nearby_radius`, in km), and how many of each kind to list
+  button, where the strip of the gallery goes, the chips of terms (`show_terms`), whether what is near is grouped (`nearby_groups`), what is near, what distance counts as near (`opt.nearby_radius`, in km), and how many of each kind to list
   (`nearby_limit_routes`, `nearby_limit_points`, `nearby_limit_businesses`; 18 when empty), so a crowded route cannot push the points
   out. A site that set one `nearby_limit` in its own type definition keeps it as the number for every kind.
 - Search engines get a `TouristAttraction` or `LocalBusiness` with its coordinates, address, phone, email and price range.
@@ -144,7 +163,9 @@ when in view). The block draws nothing for a visitor when there is nothing to sh
 `geo_dataset(items, {lines, cluster})` and `geo_single(item, {types, radius, limit})` give the data a map draws;
 `include 'components/geo-map.twig' with {geo, height, list, filters, cluster, load, label}` draws it. `geo_nearby(item, types, radius,
 limit)` gives `[{item, km}]` (`limit` is a number for all, or a map such as `{points: 6, businesses: 4}` for each type; a type missing from the map is not cut); `route_facts(item)` the facts of a route; `elevation_profile(profile, label)` the drawing;
-`geo_position(item)` the place of an entry. A type counts as having places when one of its fields is of the kind `location`.
+`geo_position(item)` the place of an entry; `nearby_groups(found, prefix)` the entries of `geo_nearby` of one type under the top terms of
+a tree (`[{id, taxonomy, title, url, entries}]`, none when they are filed in no tree); `item_terms(item, prefix)` the terms of an entry
+in the taxonomies a site added, by taxonomy. A type counts as having places when one of its fields is of the kind `location`.
 
 ## Not in this version
 

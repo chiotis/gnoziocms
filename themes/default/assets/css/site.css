@@ -3823,6 +3823,15 @@ p.form-error {
   opacity: 0.92;
 }
 
+.place-subtitle {
+  max-width: 46rem;
+  margin: 0;
+  font-size: var(--step-2);
+  font-weight: 600;
+  line-height: 1.25;
+  opacity: 0.95;
+}
+
 .place-actions {
   display: flex;
   flex-wrap: wrap;
@@ -3909,6 +3918,75 @@ p.form-error {
   stroke: var(--accent);
   stroke-width: 2.5;
   stroke-linejoin: round;
+}
+
+/* The profile linked to the map (assets/js/route-profile.js): a line and a dot follow the pointer, the finger or the arrow keys,
+   with the distance and the height beside them. A finger that moves up or down still scrolls the page. */
+.route-profile-track {
+  position: relative;
+}
+
+.route-profile-track.is-live {
+  cursor: crosshair;
+  touch-action: pan-y;
+}
+
+.route-profile-track:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: var(--radius-s);
+}
+
+.route-profile-cursor {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-left: 1.5px solid var(--color-text, currentColor);
+  pointer-events: none;
+}
+
+.route-profile-dot {
+  position: absolute;
+  left: 0;
+  width: 0.7rem;
+  height: 0.7rem;
+  margin: -0.35rem 0 0 -0.35rem;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.35);
+}
+
+.route-profile-readout {
+  position: absolute;
+  top: 0;
+  padding: 0.1rem 0.4rem;
+  border-radius: var(--radius-s);
+  background: var(--color-text, #111);
+  color: var(--color-bg, #fff);
+  font-size: var(--step--2);
+  font-weight: 650;
+  white-space: nowrap;
+  transform: translateX(0.4rem);
+}
+
+.route-profile-cursor.is-flipped .route-profile-readout {
+  right: 0;
+  transform: translateX(-0.4rem);
+}
+
+.route-profile-cursor[hidden] {
+  display: none;
+}
+
+.geo-profile-mark {
+  width: 14px;
+  height: 14px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: var(--accent, #e11d48);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.4);
 }
 
 .route-profile-scale {
@@ -4002,6 +4080,79 @@ p.form-error {
   width: 1.2rem;
   height: 1.2rem;
   margin-top: 0.15rem;
+  color: var(--accent);
+}
+
+.place-facts li.is-text > span {
+  display: grid;
+  gap: 0.15rem;
+}
+
+/* The terms of an entry: a row of chips for each taxonomy, its name above. */
+.place-term-groups {
+  display: grid;
+  gap: var(--space-s);
+  margin: 0;
+}
+
+.place-term-group dt {
+  margin-bottom: 0.35rem;
+  color: var(--color-muted);
+  font-size: var(--step--2);
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.place-term-group dd {
+  margin: 0;
+}
+
+.place-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.place-chip {
+  display: inline-block;
+  padding: 0.2rem 0.7rem;
+  border: 1px solid var(--color-border-strong, var(--color-border));
+  border-radius: 999px;
+  color: inherit;
+  font-size: var(--step--1);
+  line-height: 1.4;
+  text-decoration: none;
+}
+
+.place-chip:hover,
+.place-chip:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.place-near-group {
+  margin: var(--space-s) 0 0.5rem;
+  color: var(--color-muted);
+  font-size: var(--step--2);
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.place-card-title + .place-near-group {
+  margin-top: 0;
+}
+
+.place-near-group a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.place-near-group a:hover {
   color: var(--accent);
 }
 

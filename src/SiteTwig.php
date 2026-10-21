@@ -245,6 +245,21 @@ final class SiteTwig
             return $groups;
         }));
 
+        // The entries near one (geo_nearby, one type) under headings by the top term of the taxonomy with a tree they are filed in:
+        // [{id, taxonomy, title, url, entries}], none when they are filed in no such taxonomy (see NearbyGroups).
+        $twig->addFunction(new TwigFunction('nearby_groups', function (mixed $entries, string $prefix = '') use ($termLabel, $termPath, $absoluteUrl): array {
+            $entries = array_values(array_filter(is_array($entries) ? $entries : [], static fn(mixed $e): bool => is_array($e) && ($e['item'] ?? null) instanceof ContentItem));
+            return NearbyGroups::group(
+                array_map(static fn(array $e): array => ['item' => $e['item'], 'km' => (float)($e['km'] ?? 0)], $entries),
+                ($this->taxonomies)(),
+                fn(string $name, string $termId): string => $termLabel($name, $termId, null),
+                function (string $name, string $termId) use ($termPath, $absoluteUrl, $prefix): string {
+                    $path = $termPath($name, $termId, $prefix);
+                    return $path === '' ? '' : $absoluteUrl($path);
+                }
+            );
+        }));
+
         // A text a theme setting may have in several languages, as the text for the language of the page.
         $twig->addFilter(new TwigFilter('localized', fn(array $context, mixed $value): string => Format::localized($value, (string)($context['lang'] ?? $language())), ['needs_context' => true]));
 

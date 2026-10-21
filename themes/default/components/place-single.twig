@@ -5,7 +5,8 @@
   Variables: item, kind ('point', 'route' or 'business').
   The Single Layouts card of the type chooses the map's height, whether to show the facts, the height profile (routes), the download
   button (routes) and what is near, and how far counts as near, and where the strip of the gallery goes (`gallery_strip`, drawn by
-  the page as a Gallery block: {html, place} with place 'title', 'body' or 'off').
+  the page as a Gallery block: {html, place} with place 'title', 'body' or 'off'), whether the terms are shown as chips
+  (`show_terms`) and whether what is near is grouped by the top terms of a taxonomy with a tree (`nearby_groups`).
 #}
 {% set single = single_layout(item.type) %}
 {% set opt = single.options|default({}) %}
@@ -28,7 +29,15 @@
 {% set booking = link_url(fields.booking_url ?? '', prefix) %}
 {% set website = fields.website ?? '' %}
 {% set track_url = is_route ? link_url(fields.track ?? '', prefix) : '' %}
-{% set icons = {area: 'map-pin', address: 'map-pin', phone: 'phone', email: 'mail', website: 'globe', opening_hours: 'clock', admission: 'info', season: 'clock', trailhead: 'map-pin', altitude: 'compass'} %}
+{% set icons = {area: 'map-pin', address: 'map-pin', phone: 'phone', email: 'mail', website: 'globe', opening_hours: 'clock', admission: 'info', season: 'leaf', trailhead: 'map-pin', altitude: 'compass', services: 'check-circle', packages: 'briefcase'} %}
+{# The terms of the entry as chips that link to their pages, a group for each taxonomy (a site's own ones, then the tags; the
+   categories are in the title band). Single Layouts: show_terms. #}
+{% set term_groups = (opt.show_terms ?? true) ? item_terms(item, prefix) : [] %}
+{% if (opt.show_terms ?? true) and item.meta.tags|default([]) %}
+  {% set tag_chips = [] %}
+  {% for tag in item.meta.tags is iterable ? item.meta.tags : item.meta.tags|split(',') %}{% if tag|trim %}{% set tag_chips = tag_chips|merge([{label: taxonomy_label('tags', tag|trim), url: taxonomy_url('tags', tag|trim, prefix)}]) %}{% endif %}{% endfor %}
+  {% if tag_chips %}{% set term_groups = term_groups|merge([{name: 'tags', title: t('place.tags', 'Tags'), terms: tag_chips}]) %}{% endif %}
+{% endif %}
 
 <section class="place-hero{% if cover %} has-cover{% endif %}">
   {% if cover %}<div class="place-hero-media">{{ image(cover, {alt: '', priority: true, sizes: '100vw', max_width: 2000}) }}</div>{% endif %}
@@ -41,6 +50,7 @@
       </p>
     {% endif %}
     <h1 class="place-title">{{ item.meta.title }}</h1>
+    {% if fields.subtitle|default('') is not iterable and fields.subtitle|default('')|trim %}<p class="place-subtitle">{{ fields.subtitle|trim }}</p>{% endif %}
     {% if item.meta.excerpt|default('') %}<p class="place-lead">{{ item.meta.excerpt }}</p>{% endif %}
     {% if booking or (is_route and track_url and (opt.show_download ?? true)) %}
       <p class="place-actions">
@@ -60,6 +70,7 @@
   {% if route.descent_m is not null and route.descent_m > 0 %}{% set stats = stats|merge([{label: t('route.descent', 'Descent'), value: '↓ ' ~ route.descent_m|number_format(0, decimal, thousands) ~ ' m'}]) %}{% endif %}
   {% if route.max_m is not null %}{% set stats = stats|merge([{label: t('route.highest', 'Highest point'), value: route.max_m|number_format(0, decimal, thousands) ~ ' m'}]) %}{% endif %}
   {% if fields.difficulty|default('') %}{% set stats = stats|merge([{label: t('route.difficulty', 'Difficulty'), value: (content_type(item.type).fields.difficulty is defined ? content_type(item.type).fields.difficulty.options[fields.difficulty]|default(fields.difficulty) : fields.difficulty)}]) %}{% endif %}
+  {% if fields.season|default('') is not iterable and fields.season|default('')|trim %}{% set stats = stats|merge([{label: t('route.season', 'Best season'), value: fields.season|trim}]) %}{% endif %}
   {% if fields.route_type|default('') or route.loop %}{% set stats = stats|merge([{label: t('route.type', 'Type'), value: (content_type(item.type).fields.route_type is defined ? content_type(item.type).fields.route_type.options[fields.route_type|default('loop')]|default(t('route.loop', 'Loop')) : t('route.loop', 'Loop'))}]) %}{% endif %}
   {% if stats %}
     <div class="site-wrap">
@@ -74,11 +85,17 @@
   <section class="site-wrap place-map-wide" aria-label="{{ t('map.title', 'Map') }}">
     {% include 'components/geo-map.twig' with {geo: geo_single(item, {types: near_types, radius: nearby_radius, limit: near_limit}), height: map_height, list: 'none', cluster: false, label: item.meta.title ~ ' — ' ~ t('map.title', 'Map')} only %}
     {% if route and route.profile|length > 1 and (opt.show_profile ?? true) %}
-      <figure class="route-profile-figure">
+      {# The profile and the line of the map point at each other (assets/js/route-profile.js): the pointer, a finger or the arrow keys
+         on the profile mark the place on the line, and the pointer on the line marks the profile. Without the script it is a drawing. #}
+      <figure class="route-profile-figure" data-route-profile data-decimal="{{ decimal }}" data-label-hint="{{ t('route.profile_hint', 'Move along the profile to see the place on the map') }}">
         <figcaption>{{ t('route.profile', 'Height profile') }}{% if route.min_m is not null %} <span>{{ route.min_m }}–{{ route.max_m }} m</span>{% endif %}</figcaption>
-        {{ elevation_profile(route.profile, t('route.profile', 'Height profile') ~ ': ' ~ route.min_m ~ '–' ~ route.max_m ~ ' m, ' ~ route.distance_km|number_format(1, decimal, thousands) ~ ' km') }}
+        <div class="route-profile-track" data-route-profile-track>
+          {{ elevation_profile(route.profile, t('route.profile', 'Height profile') ~ ': ' ~ route.min_m ~ '–' ~ route.max_m ~ ' m, ' ~ route.distance_km|number_format(1, decimal, thousands) ~ ' km') }}
+        </div>
         <div class="route-profile-scale" aria-hidden="true"><span>0 km</span><span>{{ route.profile|last|first|number_format(1, decimal, thousands) }} km</span></div>
+        <script type="application/json" data-route-profile-data>{{ geo_json(route.profile) }}</script>
       </figure>
+      <script src="{{ theme_asset('js/route-profile.js') }}" defer></script>
     {% endif %}
   </section>
 {% endif %}
@@ -96,11 +113,12 @@
           {% if categories and kind == 'business' %}
             <li>{{ icon('star', 'place-fact-icon') }}<span><strong>{{ t('place.type', 'Type') }}:</strong> {% for term in categories %}{{ taxonomy_label('categories', term) }}{% if not loop.last %}, {% endif %}{% endfor %}</span></li>
           {% endif %}
-          {% for entry in entries|filter(e => not (is_route and e.key in ['difficulty', 'duration', 'route_type'])) %}
-            <li>
+          {% for entry in entries|filter(e => not (route and e.key in ['difficulty', 'duration', 'route_type', 'season'])) %}
+            <li{% if entry.type in ['textarea', 'markdown'] %} class="is-text"{% endif %}>
               {{ icon(icons[entry.key]|default('info'), 'place-fact-icon') }}
               <span>
-                {%- if entry.type == 'url' -%}<a href="{{ entry.value }}" rel="noopener">{{ entry.display }}</a>
+                {%- if entry.type in ['textarea', 'markdown'] -%}<strong>{{ entry.label }}</strong><span class="place-fact-text">{{ entry.display|trim|nl2br }}</span>
+                {%- elseif entry.type == 'url' -%}<a href="{{ entry.value }}" rel="noopener">{{ entry.display }}</a>
                 {%- elseif entry.type == 'email' -%}<a href="mailto:{{ entry.value }}">{{ entry.value }}</a>
                 {%- elseif entry.type == 'link' -%}{% set href = link_url(entry.value, prefix) %}{% if href %}<a href="{{ href }}">{{ entry.display }}</a>{% else %}{{ entry.display }}{% endif %}
                 {%- elseif entry.type == 'toggle' -%}<strong>{{ entry.label }}</strong>
@@ -121,25 +139,46 @@
         {% if position %}<p class="place-map-links"><a class="text-link" href="https://www.openstreetmap.org/?mlat={{ position.lat }}&amp;mlon={{ position.lng }}#map=16/{{ position.lat }}/{{ position.lng }}" rel="noopener">{{ t('map.open', 'Open in OpenStreetMap') }}{{ icon('arrow-up-right', 'btn-icon') }}</a> <a class="text-link" href="https://www.openstreetmap.org/directions?route=%3B{{ position.lat }}%2C{{ position.lng }}" rel="noopener">{{ t('map.directions', 'Directions') }}{{ icon('arrow-up-right', 'btn-icon') }}</a></p>{% endif %}
       </section>
     {% endif %}
+    {% if term_groups %}
+      <section class="place-card place-terms" aria-label="{{ t('place.terms', 'Filed under') }}">
+        <dl class="place-term-groups">
+          {% for group in term_groups %}
+            <div class="place-term-group" data-terms="{{ group.name }}">
+              <dt>{{ group.title }}</dt>
+              <dd><ul class="place-chips" role="list">{% for term in group.terms %}<li><a class="place-chip" href="{{ term.url }}">{{ term.label }}</a></li>{% endfor %}</ul></dd>
+            </div>
+          {% endfor %}
+        </dl>
+      </section>
+    {% endif %}
     {% for group in near_types %}
       {% set found = near|filter(n => n.item.type == group) %}
       {% if found %}
-        <section class="place-card place-near">
+        {# A heading for each group of the type (the top term of the taxonomy with a tree its entries are filed in), up to six in
+           each; one list of six when they are filed in no such taxonomy, or when Single Layouts says not to group (nearby_groups). #}
+        {% set sections = (opt.nearby_groups ?? true) ? nearby_groups(found, prefix) : [] %}
+        {% set sections = sections ?: [{id: '', title: '', url: '', entries: found}] %}
+        <section class="place-card place-near" data-near-type="{{ group }}">
           <h2 class="place-card-title">{{ t('place.near.' ~ group, group == 'routes' ? 'Routes and trails nearby' : (group == 'businesses' ? 'Businesses nearby' : 'Places nearby')) }}</h2>
-          <ul class="place-near-list" role="list">
-            {% for entry in found|slice(0, 6) %}
-              {% set other = entry.item %}
-              <li>
-                <a class="place-near-item" href="{{ url(item_path(other, prefix)) }}">
-                  <span class="place-near-media">{% if other.meta.main_image|default('') %}{{ image(other.meta.main_image, {alt: '', sizes: '96px', max_width: 240}) }}{% endif %}</span>
-                  <span class="place-near-body">
-                    <span class="place-near-title">{{ other.meta.title }}</span>
-                    <span class="place-near-meta">{% if other.meta.custom_fields.area|default('') %}{{ other.meta.custom_fields.area }} · {% endif %}{{ entry.km < 1 ? (entry.km * 1000)|round(-1)|number_format(0, decimal, thousands) ~ ' m' : entry.km|number_format(1, decimal, thousands) ~ ' km' }}</span>
-                  </span>
-                </a>
-              </li>
-            {% endfor %}
-          </ul>
+          {% for section in sections %}
+            {% if sections|length > 1 or section.id %}
+              <h3 class="place-near-group"{% if section.id %} data-group="{{ section.id }}"{% endif %}>{% if section.url %}<a href="{{ section.url }}">{{ section.title }}</a>{% else %}{{ section.title ?: t('place.near.other', 'Other') }}{% endif %}</h3>
+            {% endif %}
+            <ul class="place-near-list" role="list">
+              {% for entry in section.entries|slice(0, 6) %}
+                {% set other = entry.item %}
+                <li>
+                  <a class="place-near-item" href="{{ url(item_path(other, prefix)) }}">
+                    <span class="place-near-media">{% if other.meta.main_image|default('') %}{{ image(other.meta.main_image, {alt: '', sizes: '96px', max_width: 240}) }}{% endif %}</span>
+                    <span class="place-near-body">
+                      <span class="place-near-title">{{ other.meta.title }}</span>
+                      <span class="place-near-meta">{% if other.meta.custom_fields.area|default('') %}{{ other.meta.custom_fields.area }} · {% endif %}{{ entry.km < 1 ? (entry.km * 1000)|round(-1)|number_format(0, decimal, thousands) ~ ' m' : entry.km|number_format(1, decimal, thousands) ~ ' km' }}</span>
+                    </span>
+                  </a>
+                </li>
+              {% endfor %}
+            </ul>
+          {% endfor %}
         </section>
       {% endif %}
     {% endfor %}
