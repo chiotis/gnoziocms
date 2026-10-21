@@ -22,6 +22,9 @@ final class GeoView
      * @param \Closure(ContentItem, string): string $itemUrl the address of an entry's page: (item, lang)
      * @param \Closure(): array<int, string> $placeTypes the types whose entries can have a place
      * @param array{tiles_url: string, attribution: string} $maps the tiles the site chose
+     * @param (\Closure(string[], string[]|null, string): array<int, array{name: string, label: string, tree: bool, terms: array<int, array{id: string, label: string, depth: int, parents: string[]}>}>)|null $facets
+     *        the taxonomies the bar of a map offers, with their terms (MapFilters::facets): types, what the list chose (null: as each type
+     *        says), language. Without it a map offers its categories only, as a menu.
      */
     public function __construct(
         private GeoMap $geo,
@@ -31,7 +34,8 @@ final class GeoView
         private \Closure $itemUrl,
         private \Closure $placeTypes,
         private array $maps,
-        private ?GeoCache $cache = null
+        private ?GeoCache $cache = null,
+        private ?\Closure $facets = null
     ) {
     }
 
@@ -67,10 +71,13 @@ final class GeoView
     }
 
     /**
-     * The data of a map of entries. Entries with no place are left out. `lines` draws a route as a line too.
+     * The data of a map of entries. Entries with no place are left out. `lines` draws a route as a line too. `filters` names the
+     * taxonomies the bar offers (null or missing: as the card of each type chose); each entry carries its terms of them (`tax`, a term
+     * under a tree with its parents), and `facets` lists each taxonomy with the terms the entries on the map have and how many have
+     * each. A taxonomy with fewer than two such terms is left out.
      *
      * @param array<int, ContentItem> $items
-     * @param array{lines?: bool, cluster?: bool, current?: string, limit?: int} $options
+     * @param array{lines?: bool, cluster?: bool, current?: string, limit?: int, filters?: string[]|null} $options
      * @return array<string, mixed>
      */
     public function dataset(array $items, string $lang, array $options = []): array
@@ -87,7 +94,7 @@ final class GeoView
      * visit does not even gather the entries.
      *
      * @param array<int, string> $types
-     * @param array{lines?: bool, cluster?: bool, current?: string, limit?: int} $options
+     * @param array{lines?: bool, cluster?: bool, current?: string, limit?: int, filters?: string[]|null} $options
      * @return array<string, mixed>
      */
     public function collection(array $types, string $lang, string $term = '', array $options = []): array
@@ -109,6 +116,7 @@ final class GeoView
     private function makeDataset(array $items, string $lang, array $options): array
     {
         $features = [];
+        $placed = [];
         $types = [];
         $cats = [];
         foreach ($items as $item) {
@@ -133,6 +141,7 @@ final class GeoView
                 continue;
             }
             $features[] = $feature;
+            $placed[] = $item;
             $types[$item->type] ??= ['id' => $item->type, 'label' => $kind, 'count' => 0];
             $types[$item->type]['count']++;
             foreach ($terms as $term) {
@@ -141,7 +150,29 @@ final class GeoView
             }
         }
         usort($cats, static fn(array $a, array $b): int => strcmp(mb_strtolower($a['label']), mb_strtolower($b['label'])));
-        return [
+        // The taxonomies of the bar, for the types of the entries on the map (only types with a place, whose definitions the cache's
+        // stamp holds): each entry gets its terms of them, a term of a tree with its parents, and each term how many entries have it.
+        $facets = $this->facets !== null && ($options['facets'] ?? true) ? ($this->facets)(array_keys($types), $options['filters'] ?? null, $lang) : null;
+        $counts = [];
+        foreach ($facets ?? [] as $facet) {
+            $under = [];
+            foreach ($facet['terms'] as $term) {
+                $under[$term['id']] = array_merge([$term['id']], $term['parents']);
+            }
+            foreach ($placed as $i => $item) {
+                $ids = [];
+                foreach (Format::list($item->meta[$facet['name']] ?? null) as $id) {
+                    $ids = array_merge($ids, $under[(string)$id] ?? []);
+                }
+                foreach ($ids = array_values(array_unique($ids)) as $id) {
+                    $counts[$facet['name']][$id] = ($counts[$facet['name']][$id] ?? 0) + 1;
+                }
+                if ($ids !== []) {
+                    $features[$i]['tax'][$facet['name']] = $ids;
+                }
+            }
+        }
+        $data = [
             'items' => $features,
             'types' => array_values($types),
             'cats' => array_values($cats),
@@ -149,6 +180,39 @@ final class GeoView
             'cluster' => $options['cluster'] ?? true,
             'current' => $options['current'] ?? '',
         ];
+        if ($facets !== null) {
+            $data['facets'] = self::offered($facets, $counts);
+        }
+        return $data;
+    }
+
+    /**
+     * The taxonomies the bar offers: each with the terms some entry on the map has, how many have each, a tree in its order (with each
+     * term's depth) and the others by name. One with fewer than two such terms filters nothing and is left out.
+     *
+     * @param array<int, array{name: string, label: string, tree: bool, terms: array<int, array{id: string, label: string, depth: int, parents: string[]}>}> $facets
+     * @param array<string, array<string, int>> $counts taxonomy => term => entries
+     * @return array<int, array{name: string, label: string, tree: bool, options: array<int, array{id: string, label: string, depth: int, count: int}>}>
+     */
+    private static function offered(array $facets, array $counts): array
+    {
+        $offered = [];
+        foreach ($facets as $facet) {
+            $options = [];
+            foreach ($facet['terms'] as $term) {
+                $count = $counts[$facet['name']][$term['id']] ?? 0;
+                if ($count > 0) {
+                    $options[] = ['id' => $term['id'], 'label' => $term['label'] !== '' ? $term['label'] : $term['id'], 'depth' => $term['depth'], 'count' => $count];
+                }
+            }
+            if (!$facet['tree']) {
+                usort($options, static fn(array $a, array $b): int => strcmp(mb_strtolower($a['label']), mb_strtolower($b['label'])));
+            }
+            if (count($options) >= 2) {
+                $offered[] = ['name' => $facet['name'], 'label' => $facet['label'], 'tree' => $facet['tree'], 'options' => $options];
+            }
+        }
+        return $offered;
     }
 
     /**
@@ -175,7 +239,7 @@ final class GeoView
         foreach ($near as $entry) {
             $set[] = $entry['item'];
         }
-        $data = $this->makeDataset($set, $lang, ['lines' => false, 'cluster' => false, 'current' => $item->type . '/' . $item->slug]);
+        $data = $this->makeDataset($set, $lang, ['lines' => false, 'cluster' => false, 'current' => $item->type . '/' . $item->slug, 'facets' => false]);
         $track = $this->geo->track($item);
         if ($track !== null) {
             $data['route'] = [

@@ -28,12 +28,15 @@
   {% include 'components/title-area.twig' with {layout: archive_title_layout, title: title_text, hero_text: subtitle_text, meta_html: '', meta_inline: '', hero_image: archive_title_image, hero_bg: '', hero_parallax: archive_image_behind and config.title_parallax|default(false), crumbs: crumbs} only %}
 
   <section class="site-wrap section-stack single-body archive-body">
-    {# On a map the categories are chosen in the map's own bar, instantly; the page's filters keep the rest (activity, difficulty…). #}
-    {% set page_filters = archive is defined ? archive.filters|filter(f => not (layout == 'map' and f.kind == 'taxonomy' and f.name == 'categories')) : [] %}
+    {# A map's data, made once for the map and for the form. The taxonomies of its bar are chosen there, instantly; the page's form keeps
+       them too (marked, and put away by the script once the bar is drawn), so a page without JavaScript can still filter by them. #}
+    {% set map_geo = layout == 'map' and items ? geo_dataset(items, {lines: true, filters: config.map_filters ?? null}) : null %}
+    {% set bar_names = map_geo and map_geo.facets is defined ? map_geo.facets|column('name') : [] %}
+    {% set page_filters = archive is defined ? archive.filters : [] %}
     {% if archive is defined and page_filters %}
-      <form class="archive-filters" method="get" aria-label="{{ t('filter.label', 'Filter') }}">
+      <form class="archive-filters" method="get" aria-label="{{ t('filter.label', 'Filter') }}"{% if bar_names %} data-geo-form{% endif %}>
         {% for filter in page_filters %}
-          <label class="archive-filter">
+          <label class="archive-filter"{% if filter.kind == 'taxonomy' and filter.name in bar_names %} data-geo-covered="{{ filter.name }}"{% endif %}>
             <span>{{ filter.kind == 'taxonomy' ? t('filter.' ~ filter.name, filter.label) : filter.label }}</span>
             <select name="filter[{{ filter.name }}]">
               <option value="">{{ t('filter.all', 'All') }}</option>
@@ -57,7 +60,7 @@
       {# The map as wide as the screen, with the list over it: drawn after this section, outside the page's margins. #}
     {% elseif layout == 'map' %}
       {# Every entry that has a place, on one map with a list beside it (a route is drawn as a line); the filters above still apply. #}
-      {% include 'components/geo-map.twig' with {geo: geo_dataset(items, {lines: true}), height: config.map_height|default('large'), list: config.map_list|default('right'), filters: true, cluster: true, label: title_text, item_tag: 'h2'} only %}
+      {% include 'components/geo-map.twig' with {geo: map_geo, height: config.map_height|default('large'), list: config.map_list|default('right'), filters: true, cluster: true, label: title_text, item_tag: 'h2'} only %}
     {% else %}
       {# The options a content type declares for its list become classes (opt-cover-shape-portrait, opt-some-toggle) the style sheet can use. #}
       {% set option_classes %}{% for key, value in config.options|default({}) %}{% if value is same as(true) %} opt-{{ key|replace({'_': '-'}) }}{% elseif value is not iterable and value is not same as(false) and value is not null and value != '' %} opt-{{ key|replace({'_': '-'}) }}-{{ value|lower|replace({'_': '-', ' ': '-'}) }}{% endif %}{% endfor %}{% endset %}
@@ -92,7 +95,7 @@
   </section>
   {% if layout == 'map' and items and config.map_list|default('right') in ['over_right', 'over_left'] %}
     <section class="archive-map-full" aria-label="{{ title_text }}">
-      {% include 'components/geo-map.twig' with {geo: geo_dataset(items, {lines: true}), height: config.map_height|default('large'), list: 'right', overlay: config.map_list == 'over_left' ? 'left' : 'right', filters: true, cluster: true, label: title_text, item_tag: 'h2'} only %}
+      {% include 'components/geo-map.twig' with {geo: map_geo, height: config.map_height|default('large'), list: 'right', overlay: config.map_list == 'over_left' ? 'left' : 'right', filters: true, cluster: true, label: title_text, item_tag: 'h2'} only %}
     </section>
   {% endif %}
 {% endblock %}

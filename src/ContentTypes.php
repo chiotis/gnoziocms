@@ -663,6 +663,11 @@ final class ContentTypes
             array_map('strval', is_array($archive['taxonomies'] ?? null) ? $archive['taxonomies'] : []),
             static fn(string $name): bool => (bool)preg_match('/^[a-z][a-z0-9_-]*$/', $name)
         ));
+        // The taxonomies the bar over a map offers (MapFilters); null when none were chosen (the automatic ones), [] for none at all.
+        $values['map_filters'] = is_array($archive['map_filters'] ?? null) ? array_values(array_unique(array_filter(
+            array_map('strval', $archive['map_filters']),
+            static fn(string $name): bool => (bool)preg_match('/^[a-z][a-z0-9_-]*$/', $name)
+        ))) : null;
         return $values;
     }
 
@@ -698,6 +703,15 @@ final class ContentTypes
         }
         $chosen = array_map('strval', is_array($input['taxonomies'] ?? null) ? $input['taxonomies'] : []);
         $submitted['taxonomies'] = array_values(array_intersect($taxonomyNames, $chosen));
+        if (isset($input['map_filters_auto'])) {
+            // The filters of the map (only a form that drew them decides): the ones ticked, or nothing when they are the automatic ones
+            // (`map_filters_auto`, as the card offered them), so the list keeps following the taxonomies; `auto` over a theme's own list.
+            $names = static fn(mixed $list): array => array_values(array_intersect($taxonomyNames, array_map('strval', is_array($list) ? $list : explode(',', (string)$list))));
+            $ticked = $names($input['map_filters'] ?? []);
+            $automatic = $names($input['map_filters_auto']);
+            $same = array_diff($ticked, $automatic) === [] && array_diff($automatic, $ticked) === [];
+            $submitted['map_filters'] = $same ? (($defaults['map_filters'] ?? null) !== null ? 'auto' : null) : $ticked;
+        }
         foreach (['title', 'subtitle'] as $key) {
             $submitted[$key] = trim((string)preg_replace('/\s+/', ' ', (string)($input[$key] ?? '')));
         }
