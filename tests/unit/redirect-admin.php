@@ -121,9 +121,12 @@ $repo->recordNotFound('/en/abuot', 'https://x.test/');
 $repo->recordNotFound('/completely-unknown', '');
 $missing = $admin->missing('');
 check('missed addresses come with the closest existing one', array_column($missing, 'suggestion', 'path'), ['en/abuot' => '/about', 'completely-unknown' => '']);
+$exportPaths = $repo->notFoundPaths(); sort($exportPaths);
+check('the export returns every listed path and respects its search', [$exportPaths, $repo->notFoundPaths('abuot')], [['completely-unknown', 'en/abuot'], ['en/abuot']]);
 $admin->apply(['do' => 'missing_delete', 'path' => '/en/abuot'], 'tester');
 check('one can be ignored', count($admin->missing('')), 1);
 check('an ignored address is kept apart, not lost', [count($admin->missing('', 200, true)), $repo->notFoundCount(), $repo->notFoundIgnoredCount()], [1, 1, 1]);
+check('the export can target ignored paths separately', [$repo->notFoundPaths(), $repo->notFoundPaths('', true)], [['completely-unknown'], ['en/abuot']]);
 $repo->recordNotFound('/en/abuot', '');
 check('and it stays hidden when asked for again, though still counted', [count($admin->missing('')), (int)$admin->missing('', 200, true)[0]['hits']], [1, 2]);
 $admin->apply(['do' => 'missing_restore', 'path' => '/en/abuot'], 'tester');
@@ -180,6 +183,9 @@ $chainId = (int)$repo->findBySource('chain-start')['id'];
 $offId = (int)$repo->findBySource('off-one', false)['id'];
 $tempId = (int)$repo->findBySource('from-2')['id']; // 302
 check('only permanent redirects that are on qualify, each to the end of its chain', $admin->linkFixes([$fixId, $chainId, $offId, $tempId, 9999]), ['to-page' => '/about', 'chain-start' => '/about']);
+
+for ($i = 1; $i <= 205; $i++) { $repo->recordNotFound('/bulk-export-' . $i, ''); }
+check('the export is not limited to the 200 rows on the screen', count($repo->notFoundPaths('bulk-export-')), 205);
 
 check('every action was written to the activity log', array_values(array_unique($log)), ['redirects.create', 'redirects.update', 'redirects.import', 'redirects.delete', 'redirects.missing_ignore_all', 'redirects.missing_clear', 'redirects.missing_restore_all']);
 

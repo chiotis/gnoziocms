@@ -54,7 +54,7 @@ Updating the links that still use an old address needs `content.manage` (it edit
 
 ### Redirects
 
-Redirects are managed with `redirects.manage` (Sensitive: a redirect can send visitors to another website). A target must be a path on this site or an `http(s)` address; `javascript:`, `data:` and other schemes are refused, as are loops and redirects from `/admin`. The list of addresses that were not found keeps only the path and the referring host and path (no query strings, no IP addresses), ignores files and probes, and is capped at 1000 rows. Address changes made by an editor still create their redirect, because that is a side effect of saving, not a redirect management action.
+Redirects are managed with `redirects.manage` (Sensitive: a redirect can send visitors to another website). A target must be a path on this site or an `http(s)` address; `javascript:`, `data:` and other schemes are refused, as are loops and redirects from `/admin`. The list of addresses that were not found keeps only the path and the referring host and path (no query strings, no IP addresses), ignores files and probes, and is capped at 1000 rows. The Not found tab can download the visible or ignored paths as UTF-8 plain text, one path per line, with the current search applied; filtered file probes are not present to export. Address changes made by an editor still create their redirect, because that is a side effect of saving, not a redirect management action.
 
 ### History
 

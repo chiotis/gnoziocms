@@ -1431,6 +1431,15 @@ final class App
         $error = '';
         $importReport = null;
 
+        if ($_SERVER['REQUEST_METHOD'] === 'GET' && $tab === 'missing' && (string)($_GET['export'] ?? '') === 'missing') {
+            $paths = $repo->notFoundPaths(trim((string)($_GET['q'] ?? '')), $showIgnored);
+            $filename = 'not-found-' . ($showIgnored ? 'ignored-' : '') . gmdate('Y-m-d') . '.txt';
+            header('Content-Type: text/plain; charset=utf-8');
+            header('Content-Disposition: attachment; filename="' . $filename . '"');
+            echo $paths === [] ? '' : implode("\n", array_map(static fn(string $path): string => '/' . $path, $paths)) . "\n";
+            return;
+        }
+
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $result = $admin->apply($_POST, $this->currentUsername());
             if ($result['location'] !== null) {
