@@ -18,6 +18,11 @@ fields:
     placeholder: '35.2012, 26.2744'
     help: { el: 'Αν μείνει κενή, χρησιμοποιείται η αρχή της γραμμής.', en: 'When empty, the start of the line is used.' }
     show: false
+  subtitle:
+    type: text
+    label: { el: Υπότιτλος, en: Subtitle }
+    help: { el: 'Μια γραμμή κάτω από τον τίτλο της σελίδας.', en: 'A line under the title of the page.' }
+    show: false
   area:
     type: text
     label: { el: Περιοχή, en: Area }
@@ -79,6 +84,11 @@ fields:
   trailhead:
     type: text
     label: { el: Αφετηρία, en: Trailhead }
+  gallery:
+    type: gallery
+    label: { el: Φωτογραφίες, en: Gallery }
+    help: { el: 'Φωτογραφίες από τη βιβλιοθήκη, με τη σειρά που θα φαίνονται στη σελίδα.', en: 'Pictures from the media library, in the order the page shows them.' }
+    span: full
 single:
   sidebar: false
   header: true
@@ -95,6 +105,8 @@ single:
     show_download: { type: toggle, label: { el: 'Κουμπί λήψης του αρχείου', en: Download button }, default: true }
     show_facts: { type: toggle, label: { el: Πληροφορίες, en: Information }, default: true }
     show_nearby: { type: toggle, label: { el: 'Κοντινά σημεία και επιχειρήσεις', en: Nearby places and businesses }, default: true }
+    show_terms: { type: toggle, label: { el: 'Ετικέτες ταξινομιών', en: Terms as chips }, default: true }
+    nearby_groups: { type: toggle, label: { el: 'Κοντινά σε ομάδες', en: 'Nearby: group by kind' }, default: true }
     nearby_radius: { type: number, label: { el: 'Ακτίνα κοντινών (χλμ.)', en: Nearby radius (km) }, default: 2, min: 1, max: 50 }
     nearby_limit_points: { type: number, label: { el: 'Κοντινά: μέγιστο — Σημεία', en: 'Nearby: most places' }, blank: true, placeholder: '18', min: 0, max: 50 }
     nearby_limit_businesses: { type: number, label: { el: 'Κοντινά: μέγιστο — Επιχειρήσεις', en: 'Nearby: most businesses' }, blank: true, placeholder: '18', min: 0, max: 50 }

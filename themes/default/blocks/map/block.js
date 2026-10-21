@@ -480,6 +480,10 @@
 
     apply(false);
     fit();
+    // Other scripts of the page (the height profile of a route) can join the map once it is drawn: `geo:ready` on the map's root,
+    // and the same on root.gnozioGeo for one that comes later.
+    root.gnozioGeo = { map: map, L: L, route: data.route || null };
+    if (typeof window.CustomEvent === 'function') root.dispatchEvent(new CustomEvent('geo:ready', { bubbles: true, detail: root.gnozioGeo }));
     // The map was laid out while hidden or still growing: ask it to measure again once the page has settled.
     setTimeout(function () { map.invalidateSize(); }, 250);
   }

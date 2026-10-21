@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.175 — 2026-10-21 — Places and routes: galleries and the page of one
+- **Galleries for entries.** A new field kind, `gallery`, holds the pictures of the media library an entry shows, in order. Any content type can have one, also from Admin > Content types, and routes, points and businesses have one under the key `gallery`. In the editor it is a row of thumbnails: add several pictures at once, move them with buttons or by dragging, remove them, or edit the addresses as text.
+- Theme > Single Layouts can show the gallery as a strip under the title, at the end of the text, or not at all. An entry with no pictures shows nothing and loads nothing extra. The Gallery block can show the entry's gallery, and in a template built with blocks its pictures can be bound to it.
+- **A route's height profile and its map point at each other.** Moving along the profile (pointer, finger or arrow keys, since it works as a slider) shows the distance and the height and marks the place on the line, and the pointer on the line marks the profile.
+- Points, routes and businesses get a `subtitle`, shown under the title. Businesses get `services` and `packages`, and a route's season moves into its bar of facts. Empty fields show nothing.
+- An entry's terms in the site's own taxonomies and its tags appear as chips that link to their pages, one row for each taxonomy. Nearby lists are grouped under the top term of a taxonomy with a tree, and stay a single list when nothing is filed in a tree. Single Layouts gets two switches, `show_terms` and `nearby_groups`.
+
 ## 0.1.174 — 2026-10-21 — Filters from taxonomies on maps
 - **The bar over a map offers any taxonomy of the list, not only categories**: a menu for each, with the terms the entries on the map have and how many have each. It works in the Map layout of an archive, the Map block and the Map of the list block. A tree is offered as groups.
 - Several terms of one taxonomy mean "any of them", different taxonomies "all of them", and the numbers follow the other choices. The bar works before the map is loaded.

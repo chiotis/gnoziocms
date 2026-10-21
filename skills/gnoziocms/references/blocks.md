@@ -391,13 +391,15 @@ A set of images in a grid, a masonry layout, or a scrolling strip. Images open l
 
 | field | kind and choices | notes |
 |---|---|---|
+| `source` | choice; one of `manual`, `entry`; default `manual` | The entry's gallery: the pictures of the page or entry the block is on (in a template, the entry it is drawn for). Shows nothing when it has none. |
+| `field` | text; only when `source` is `entry` | The key of the field, for a type with more than one gallery. Empty means its gallery. |
 | `eyebrow` | text |  |
 | `heading` | text |  |
 | `intro` | text (several lines) |  |
 | `columns` | choice; one of `2`, `3`, `4`; default `3` |  |
 | `ratio` | choice; one of `landscape`, `square`, `portrait`, `original`; default `landscape` |  |
 | `lightbox` | true / false; default `true` |  |
-| `images` | list of rows; at most 60 rows |  |
+| `images` | list of rows; at most 60 rows; only when `source` is `manual` |  |
 | &nbsp;&nbsp;`images[].image` | image |  |
 | &nbsp;&nbsp;`images[].alt` | text | What the image shows. Leave empty to use the media library text. |
 | &nbsp;&nbsp;`images[].caption` | text |  |

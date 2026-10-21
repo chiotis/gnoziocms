@@ -18,6 +18,9 @@ namespace GnozioCMS;
  * What may be bound to what is one table, ACCEPTS: it names, for the type of the block's field, the kinds of source it takes. The
  * kind of a declared field is its FieldSchema type; the common fields of an entry have kinds of their own (SOURCES). A new
  * field type becomes bindable by adding it to that one table.
+ *
+ * A gallery field (a list of pictures) is offered as a list whose rows have one column, `image` (GALLERY_COLUMN), so the Gallery
+ * block's list of images (and any list with a column of the kind image) can show it.
  */
 final class EntryBindings
 {
@@ -54,6 +57,9 @@ final class EntryBindings
         'date' => ['Date', 'date'],
         'url' => ['Address of its page', 'link'],
     ];
+
+    /** The one column of a gallery field bound as a list: each picture is a row with its address here. */
+    public const GALLERY_COLUMN = 'image';
 
     /** The block field that holds the choice "hide this block while everything bound in it is empty" (only a `false` is stored). */
     public const HIDE_KEY = 'bind_hide';
@@ -177,6 +183,9 @@ final class EntryBindings
                         $source['columns'][] = ['key' => (string)$columnKey, 'label' => $column['label'], 'kind' => $column['type']];
                     }
                 }
+            } elseif ($field['type'] === 'gallery') {
+                $source['kind'] = 'list';
+                $source['columns'] = [['key' => self::GALLERY_COLUMN, 'label' => 'Image', 'kind' => 'image']];
             }
             $out[] = $source;
             if ($field['type'] === 'relation') {
@@ -418,6 +427,9 @@ final class EntryBindings
         }
         $key = substr($path, strlen('custom_fields.'));
         $source = $this->types->editableFields($this->item->type, $this->lang, $this->defaultLang)[$key] ?? null;
+        if ($source !== null && $source['type'] === 'gallery') {
+            return $this->galleryRows($binding, $field, $key, $missing);
+        }
         if ($source === null || $source['type'] !== 'repeater') {
             return null;
         }
@@ -454,6 +466,46 @@ final class EntryBindings
             // The first row of the list that is drawn gets the first value of a fixed column, the others the rest.
             foreach ($binding['fixed'] ?? [] as $column => $one) {
                 if (isset($field['fields'][$column]) && !isset($columns[$column]) && $field['fields'][$column]['type'] !== 'repeater') {
+                    $out[$column] = is_array($one) ? ($rows === [] ? $one['first'] : $one['rest']) : $one;
+                }
+            }
+            $rows[] = $out;
+        }
+        return $rows;
+    }
+
+    /**
+     * The rows of a list bound to a gallery field: one row for each picture, the block's columns mapped to `image` getting its address
+     * (a column mapped to anything else is missing), and the fixed ones their value.
+     *
+     * @param array<string, mixed> $binding
+     * @param array<string, mixed> $field the block's repeater
+     * @param list<string> $missing
+     * @return array<int, array<string, mixed>>
+     */
+    private function galleryRows(array $binding, array $field, string $key, array &$missing): array
+    {
+        $binding = self::cleanList($binding);
+        $columns = [];
+        foreach ($binding['map'] ?? [] as $column => $from) {
+            $to = $field['fields'][$column] ?? null;
+            if ($to === null || $to['type'] === 'repeater' || !isset(self::ACCEPTS[$to['type']])) {
+                continue;
+            }
+            if ($from !== self::GALLERY_COLUMN || !in_array('image', self::ACCEPTS[$to['type']], true)) {
+                $missing[] = 'custom_fields.' . $key . '.' . $from;
+                continue;
+            }
+            $columns[] = $column;
+        }
+        if ($columns === []) {
+            return [];
+        }
+        $rows = [];
+        foreach ($this->types->gallery($this->item->type, $this->item->meta, $key, $this->lang, $this->defaultLang) as $url) {
+            $out = array_fill_keys($columns, $url);
+            foreach ($binding['fixed'] ?? [] as $column => $one) {
+                if (isset($field['fields'][$column]) && !in_array($column, $columns, true) && $field['fields'][$column]['type'] !== 'repeater') {
                     $out[$column] = is_array($one) ? ($rows === [] ? $one['first'] : $one['rest']) : $one;
                 }
             }

@@ -2096,3 +2096,30 @@ html.dark .rel-result[aria-selected="true"], html.dark .rel-result:hover { backg
 html.dark .rel-type, html.dark .rel-none, html.dark .rel-hint { color: #94a3b8; }
 html.dark .rel-refs li { border-color: #1e293b; }
 html.dark .rel-refs a { color: #e2e8f0; }
+
+/* A gallery field (fields.twig, admin-gallery-field.js): a row of thumbnails, each with its own small buttons, and a tile that adds more. */
+.gal-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr)); gap: .375rem; margin: 0; padding: 0; list-style: none; }
+.gal-item { position: relative; aspect-ratio: 1; overflow: hidden; border: 1px solid #e2e8f0; border-radius: .5rem; background: #f8fafc; cursor: grab; }
+.gal-item img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.gal-item.is-dragging { opacity: .4; }
+.gal-item.is-over { outline: 2px solid #3b82f6; outline-offset: 1px; }
+.gal-num { position: absolute; top: .25rem; left: .25rem; min-width: 1.125rem; padding: 0 .25rem; border-radius: 99px; background: rgba(15, 23, 42, .7); color: #fff; font-size: .625rem; font-weight: 600; line-height: 1.125rem; text-align: center; }
+.gal-tools { position: absolute; right: .25rem; bottom: .25rem; left: .25rem; display: flex; justify-content: flex-end; gap: .125rem; opacity: 0; transition: opacity .15s; }
+.gal-item:hover .gal-tools, .gal-item:focus-within .gal-tools { opacity: 1; }
+.gal-btn { display: inline-flex; align-items: center; justify-content: center; width: 1.375rem; height: 1.375rem; padding: 0; border: 0; border-radius: 99px; background: rgba(255, 255, 255, .92); color: #0f172a; font-size: .75rem; line-height: 1; cursor: pointer; box-shadow: 0 1px 2px rgba(15, 23, 42, .2); }
+.gal-btn:hover { background: #fff; color: #1d4ed8; }
+.gal-btn.is-remove:hover { color: #dc2626; }
+.gal-btn:focus-visible { outline: 2px solid #1d4ed8; outline-offset: 1px; }
+.gal-btn[disabled] { opacity: .35; cursor: default; }
+.gal-add { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .125rem; aspect-ratio: 1; border: 1px dashed #cbd5e1; border-radius: .5rem; background: transparent; color: #475569; font-size: .75rem; font-weight: 500; cursor: pointer; }
+.gal-add:hover { border-color: #3b82f6; color: #1d4ed8; background: #eff6ff; }
+.gal-add[disabled] { opacity: .5; cursor: default; }
+.gal-add-icon { font-size: 1.25rem; line-height: 1; }
+.gal-foot { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-top: .375rem; color: #64748b; font-size: .6875rem; }
+.gal-toggle { padding: 0; border: 0; background: none; color: #1d4ed8; font-size: .6875rem; cursor: pointer; text-decoration: underline; }
+.gal-text[hidden] { display: none; }
+html.dark .gal-item { border-color: #334155; background: #0f172a; }
+html.dark .gal-add { border-color: #475569; color: #cbd5e1; }
+html.dark .gal-add:hover { border-color: #60a5fa; background: #1e293b; color: #bfdbfe; }
+html.dark .gal-foot { color: #94a3b8; }
+html.dark .gal-toggle { color: #93c5fd; }

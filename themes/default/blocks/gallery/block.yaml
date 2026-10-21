@@ -6,6 +6,18 @@ variants:
   masonry: Masonry
   strip: Scrolling strip
 fields:
+  source:
+    type: select
+    label: Pictures
+    default: manual
+    options: { manual: Chosen below, entry: "The entry's gallery" }
+    help: "The entry's gallery: the pictures of the page or entry the block is on (in a template, the entry it is drawn for). Shows nothing when it has none."
+  field:
+    type: text
+    label: Gallery field
+    placeholder: gallery
+    help: The key of the field, for a type with more than one gallery. Empty means its gallery.
+    when: { source: [entry] }
   eyebrow:
     type: text
     label: Eyebrow
@@ -34,6 +46,7 @@ fields:
     label: Images
     item_label: Image
     max: 60
+    when: { source: [manual] }
     fields:
       image: { type: image, label: Image }
       alt: { type: text, label: Description, help: What the image shows. Leave empty to use the media library text. }

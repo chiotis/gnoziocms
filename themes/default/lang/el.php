@@ -202,4 +202,9 @@ return [
     'route.type' => 'Τύπος',
     'route.loop' => 'Κυκλική',
     'route.profile' => 'Υψομετρικό προφίλ',
+    'place.terms' => 'Κατηγοριοποίηση',
+    'place.tags' => 'Ετικέτες',
+    'place.near.other' => 'Άλλα',
+    'route.season' => 'Καλύτερη περίοδος',
+    'route.profile_hint' => 'Κινηθείτε στο προφίλ για να δείτε το σημείο στον χάρτη',
 ];

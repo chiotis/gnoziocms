@@ -202,4 +202,9 @@ return [
     'route.type' => 'Type',
     'route.loop' => 'Loop',
     'route.profile' => 'Height profile',
+    'place.terms' => 'Filed under',
+    'place.tags' => 'Tags',
+    'place.near.other' => 'Other',
+    'route.season' => 'Best season',
+    'route.profile_hint' => 'Move along the profile to see the place on the map',
 ];

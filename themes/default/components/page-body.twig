@@ -1,4 +1,10 @@
-{# Page or post body: the fields of its content type, then its blocks when it has any, otherwise the Markdown text at reading width. #}
+{#
+  Page or post body: the fields of its content type, then its blocks when it has any, otherwise the Markdown text at reading width.
+  The strip of the entry's gallery (`gallery_strip`: {html, place}, Theme > Single Layouts) comes first when it goes under the title,
+  and after the text when it goes in the body.
+#}
+{% set strip = gallery_strip|default({place: 'off', html: ''}) %}
+{% if strip.place == 'title' %}<div class="entry-strip entry-strip--title">{{ strip.html|raw }}</div>{% endif %}
 {% set type_facts = content_fields(item) %}
 {% if type_facts and not facts_shown|default(false) %}
   <div class="site-wrap single-facts">
@@ -7,8 +13,10 @@
 {% endif %}
 {% if page_blocks|default(null) %}
   {{ page_blocks.html|raw }}
+  {% if strip.place == 'body' %}<div class="entry-strip entry-strip--after">{{ strip.html|raw }}</div>{% endif %}
 {% else %}
   <div class="site-wrap single-body">
     <div class="prose-block">{{ item.html|raw }}</div>
+    {% if strip.place == 'body' %}<div class="entry-strip entry-strip--body">{{ strip.html|raw }}</div>{% endif %}
   </div>
 {% endif %}

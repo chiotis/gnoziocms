@@ -141,6 +141,8 @@ final class BlockRuntime
                 },
                 'geo_load' => fn(): string => (($this->settings)()['apis']['maps']['load'] ?? 'click') === 'auto' ? 'auto' : 'click',
                 'term' => fn(string $id, string $itemLang): string => ($this->termLabel)('categories', $id, $itemLang),
+                // The Gallery block that shows the entry's gallery: its pictures, in order (a field key, or '' for the type's gallery).
+                'gallery' => fn(ContentItem $item, string $key, string $itemLang): array => ($this->contentTypes)()->gallery($item->type, $item->meta, $key, $itemLang !== '' ? $itemLang : ($this->language)(), ($this->defaultLanguage)()),
                 'admin' => fn(): bool => ($this->signedIn)(),
             ] + $more,
             rtrim((string)(($this->settings)()['base_url'] ?? ''), '/')
@@ -205,6 +207,44 @@ final class BlockRuntime
             fn(string $taxonomy, string $id): string => ($this->termLabel)($taxonomy, $id, $lang),
             $this->relations !== null ? ($this->relations)() : null
         );
+    }
+
+    /**
+     * What the page of one entry drawn by a theme template needs besides its own blocks: the strip of its gallery, drawn as a Gallery
+     * block (the Scrolling strip layout, its pictures taken from the entry) when its Single Layouts card puts one under the title or in
+     * the body and the entry has pictures, and the style sheets and scripts of the page: those of its blocks, with the map's for a type
+     * that has a place and the gallery's for a strip, each once.
+     *
+     * @param array<string, mixed>|null $pageBlocks what BlockRenderer::render() gave for the entry's blocks (null: it has none)
+     * @param string $strip where the strip goes: 'title', 'body' or 'off' (the card's `gallery_strip`)
+     * @param array<string, mixed> $context the page's view data
+     * @return array{styles: list<string>, scripts: list<string>, gallery_strip: array{html: string, place: string}}
+     */
+    public function singlePage(ContentItem $item, ?array $pageBlocks, string $strip, string $lang, string $path, Environment $twig, array $context): array
+    {
+        $extra = [];
+        $stripHtml = '';
+        if (in_array($strip, ['title', 'body'], true) && ($this->contentTypes)()->galleryKey($item->type) !== '') {
+            $drawn = $this->renderer($lang, $path, $twig)->render(
+                [['type' => 'gallery', 'variant' => 'strip', 'source' => 'entry', 'spacing' => $strip === 'title' ? 'compact' : 'none']],
+                ['item' => $item, 'body_html' => '', 'block_preview' => false, 'block_uid_prefix' => 'gallery-strip-'] + $context
+            );
+            $stripHtml = trim($drawn['html']);
+            $extra = $stripHtml !== '' ? $drawn['types'] : [];
+        }
+        if ($this->hasPlaceField($item->type)) {
+            // The page of a point, a route or a business draws a map.
+            $extra[] = 'map';
+        }
+        $styles = $pageBlocks['styles'] ?? [];
+        $scripts = $pageBlocks['scripts'] ?? [];
+        if ($extra !== []) {
+            $base = rtrim((string)(($this->settings)()['base_url'] ?? ''), '/');
+            $types = array_values(array_unique(array_merge($pageBlocks['types'] ?? [], $extra)));
+            $styles = array_values(array_filter([$this->theme->blockStylesheetUrl($base, array_values(array_unique(array_merge($types, array_intersect($pageBlocks['asset_types'] ?? [], [Theme::ROW_STYLES, Theme::CONTAINER_STYLES])))))]));
+            $scripts = array_values(array_filter([$this->theme->blockScriptUrl($base, $types)]));
+        }
+        return ['styles' => $styles, 'scripts' => $scripts, 'gallery_strip' => ['html' => $stripHtml, 'place' => $stripHtml !== '' ? $strip : 'off']];
     }
 
     /** Whether entries of a content type can have a place (a field of the kind `location`). */

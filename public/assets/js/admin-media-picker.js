@@ -5,6 +5,9 @@
  * nothing is embedded in the page.
  *
  *   GnozioMediaPicker.open(function (url, item) { ... })     open it; the callback gets the chosen picture
+ *   GnozioMediaPicker.open(fn, 'image', { multiple: true, chosen: [urls] })
+ *                                                            stays open: each picture clicked is given to fn, the ones in
+ *                                                            `chosen` (and those picked since) are marked and not given twice
  *   <input data-image-field>                                 gets a thumbnail and a Library button automatically
  *
  * Without JavaScript the address can still be typed into the field.
@@ -37,7 +40,7 @@
   }
 
   var dialog = null;
-  var state = { q: '', tag: '', page: 1, kind: 'image' };
+  var state = { q: '', tag: '', page: 1, kind: 'image', multiple: false, chosen: [] };
   var callback = null;
   var ui = {};
   var timer = null;
@@ -57,7 +60,7 @@
         el('h2', { class: 'shrink-0 text-sm font-semibold text-slate-900', text: 'Choose an image' }),
         ui.search,
         ui.tag,
-        el('button', { type: 'button', class: CLS.btn, text: 'Close', onclick: function () { dialog.close(); } })
+        ui.close = el('button', { type: 'button', class: CLS.btn, text: 'Close', onclick: function () { dialog.close(); } })
       ]),
       el('div', { class: 'max-h-[58vh] overflow-y-auto' }, [ui.grid, ui.status]),
       el('div', { class: 'flex items-center justify-between gap-3 border-t border-slate-200 px-4 py-3' }, [ui.info, el('div', { class: 'flex gap-2' }, [ui.prev, ui.next])])
@@ -98,7 +101,25 @@
         el('span', { class: 'block truncate px-2 py-1 text-[11px] text-slate-600', text: item.name })
       ]);
       button.setAttribute('aria-label', item.name + (item.alt ? ': ' + item.alt : ''));
+      var mark = function () {
+        button.setAttribute('aria-pressed', 'true');
+        button.style.borderColor = '#3b82f6';
+        button.style.boxShadow = '0 0 0 1px #3b82f6';
+        button.insertBefore(el('span', { class: 'block bg-blue-600 px-2 py-0.5 text-[11px] font-medium text-white', text: '✓ Added' }), button.firstChild);
+      };
+      if (state.multiple) {
+        button.setAttribute('aria-pressed', 'false');
+        if (state.chosen.indexOf(item.url) !== -1) mark();
+      }
       button.addEventListener('click', function () {
+        if (state.multiple) {
+          // Several pictures in one visit: each is given as it is clicked, and the dialog stays open.
+          if (state.chosen.indexOf(item.url) !== -1) return;
+          state.chosen.push(item.url);
+          mark();
+          if (callback) callback(item.url, item);
+          return;
+        }
         var done = callback;
         dialog.close();
         if (done) done(item.url, item);
@@ -138,13 +159,16 @@
       });
   }
 
-  function open(onPick, kind) {
+  function open(onPick, kind, options) {
     if (!dialog) build();
     callback = onPick;
-    state = { q: '', tag: '', page: 1, kind: kind === 'video' || kind === 'all' || kind === 'track' ? kind : 'image' };
+    options = options || {};
+    state = { q: '', tag: '', page: 1, kind: kind === 'video' || kind === 'all' || kind === 'track' ? kind : 'image', multiple: !!options.multiple, chosen: (options.chosen || []).slice() };
     var noun = state.kind === 'video' ? 'video' : (state.kind === 'all' ? 'file' : (state.kind === 'track' ? 'route file' : 'image'));
-    dialog.setAttribute('aria-label', 'Choose a ' + noun);
-    dialog.querySelector('h2').textContent = 'Choose a ' + noun;
+    var title = state.multiple ? 'Add ' + noun + 's' : 'Choose a ' + noun;
+    dialog.setAttribute('aria-label', title);
+    dialog.querySelector('h2').textContent = title;
+    ui.close.textContent = state.multiple ? 'Done' : 'Close';
     ui.search.setAttribute('aria-label', 'Search ' + noun + 's');
     ui.search.value = '';
     ui.tag.value = '';
