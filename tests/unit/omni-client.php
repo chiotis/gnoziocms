@@ -139,6 +139,42 @@ $omni['mode'] = 'down';
 $r = $client->disconnect();
 check('when Omni cannot be told, the site still leaves, and says so', [$r['ok'], str_contains($r['message'], 'Omni could not be told'), $client->isConnected()], [true, true, false]);
 
+// ---- commands from Omni
+$omni['mode'] = 'ok';
+$client->connect('https://omni.test/omni', 'K7QM-4TZP-9WXC-2HRD');
+$cmd = function (array $over = [], ?string $body = null) use (&$omni, &$now, $client) {
+    $body ??= json_encode(['protocol' => 1, 'command' => 'update', 'command_id' => 'c_0011223344556677']);
+    $nonce = $over['nonce'] ?? bin2hex(random_bytes(16));
+    $time = (string)($over['time'] ?? $now);
+    $headers = ['x-omni-site' => $over['site'] ?? $omni['site_id'], 'x-omni-timestamp' => $time, 'x-omni-nonce' => $nonce,
+        'x-omni-signature' => C::signature($over['secret'] ?? $omni['secret'], '/_omni/command', $body, $time, $nonce)];
+    return $client->receiveCommand('/_omni/command', $headers, $body);
+};
+check('another secret is refused', [$cmd(['secret' => 'nope'])['status'], $cmd(['secret' => 'nope'])['body']['error']], [401, 'invalid_signature']);
+check('another site id is refused', $cmd(['site' => 's_ffffffffffff'])['body']['error'], 'unknown_site');
+check('a time more than five minutes off is refused', $cmd(['time' => $now - 301])['body']['error'], 'stale_timestamp');
+check('a command other than update is refused', $cmd([], json_encode(['protocol' => 1, 'command' => 'shell', 'command_id' => 'c_0011223344556677']))['body']['error'], 'unknown_command');
+check('another protocol is refused', $cmd([], json_encode(['protocol' => 2, 'command' => 'update', 'command_id' => 'c_0011223344556677']))['status'], 426);
+check('updates are allowed until switched off', $client->allowsUpdates(), true);
+$client->setAllowUpdates(false);
+check('switched off: refused', [$cmd()['status'], $cmd()['body']['error'], $cmd()['run']], [403, 'not_allowed', null]);
+$client->setAllowUpdates(true);
+$r = $cmd(['nonce' => str_repeat('ab', 16)]);
+check('a good command is accepted and given to run', [$r['status'], $r['body'], $r['run']['id'] ?? null, $client->state()['command']['state'] ?? null], [202, ['ok' => true, 'command_id' => 'c_0011223344556677', 'state' => 'accepted'], 'c_0011223344556677', 'accepted']);
+check('the same nonce again is a replay', $cmd(['nonce' => str_repeat('ab', 16)])['body']['error'], 'replayed_nonce');
+check('a second command while one is open is refused', $cmd()['body']['error'], 'busy');
+$omni['requests'] = [];
+$client->runCommand($r['run'], fn() => ['status' => 'installed', 'message' => 'GnozioCMS 0.2.0 is installed.', 'from' => '0.1.9', 'to' => '0.2.0']);
+$sent = json_decode($omni['requests'][0][2] ?? '{}', true);
+check('running it reports at once, with how it ended', [$omni['requests'][0][1] ?? null, $sent['command']['state'] ?? null, $sent['command']['to'] ?? null, $sent['command']['id'] ?? null], ['/omni/api/v1/report', 'installed', '0.2.0', 'c_0011223344556677']);
+check('and the report keeps the rest of itself', $sent['site']['name'] ?? null, 'Doxiadis');
+check('no secret or nonce goes into the report', [isset($sent['command']['secret']), str_contains($omni['requests'][0][2], $omni['secret']), str_contains($omni['requests'][0][2], str_repeat('ab', 16))], [false, false, false]);
+$client->runCommand(['id' => 'c_9999999999999999', 'type' => 'update', 'state' => 'accepted', 'accepted_at' => gmdate('c', $now)], function () { throw new RuntimeException('disk gone'); });
+check('a command that is no longer the current one is not recorded over it', $client->state()['command']['id'], 'c_0011223344556677');
+$r = $cmd();
+$client->runCommand($r['run'], function () { throw new RuntimeException('disk gone'); });
+check('an update that throws ends as failed, with why', [$client->state()['command']['state'], $client->state()['command']['message']], ['failed', 'The update stopped: disk gone']);
+
 // ---- the signature itself, against a known value
 check('the headers of a signed request', C::signatureHeaders('s_x', 'secret', '/api/v1/report', '{}', 1700000000, '00112233445566778899aabbccddeeff'), [
     'X-Omni-Site: s_x', 'X-Omni-Timestamp: 1700000000', 'X-Omni-Nonce: 00112233445566778899aabbccddeeff',

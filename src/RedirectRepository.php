@@ -446,6 +446,20 @@ final class RedirectRepository
         return $stmt->fetchAll() ?: [];
     }
 
+    /** @return list<string> every listed address, without the screen's page-size limit */
+    public function notFoundPaths(string $q = '', bool $ignored = false): array
+    {
+        if (!$this->isAvailable()) {
+            return [];
+        }
+        $stmt = $this->pdo()->prepare(
+            'SELECT path FROM not_found_log WHERE ignored = :ignored' . ($q !== '' ? ' AND path LIKE :q ESCAPE \'\\\'' : '')
+            . ' ORDER BY hits DESC, last_seen_at DESC, path'
+        );
+        $stmt->execute(['ignored' => $ignored ? 1 : 0] + ($q !== '' ? ['q' => self::likePattern($q)] : []));
+        return array_values(array_map('strval', $stmt->fetchAll(PDO::FETCH_COLUMN) ?: []));
+    }
+
     public function deleteNotFound(string $path): void
     {
         if ($this->isAvailable()) {

@@ -162,12 +162,13 @@ final class OmniClient
         if (!$this->isConnected()) {
             return ['ok' => false, 'message' => 'This site is not connected to an Omni.'];
         }
-        $state = $this->state();
         $fingerprint = ($this->fingerprint)();
-        $answer = $this->signed('/api/v1/report', ($this->reportJson)());
+        $answer = $this->signed('/api/v1/report', $this->reportWithCommand());
         $data = json_decode($answer['body'], true);
         $data = is_array($data) ? $data : [];
         $now = $this->now();
+        // Read again: a command may have changed the state while the report was on its way.
+        $state = $this->state();
         $state['last_attempt_at'] = gmdate('c', $now);
 
         if ($answer['status'] === 200 && ($data['ok'] ?? false) === true) {
@@ -218,13 +219,143 @@ final class OmniClient
     /** The headers of a signed request (protocol v1). @return array<int, string> */
     public static function signatureHeaders(string $siteId, string $secret, string $path, string $body, int $time, string $nonce): array
     {
-        $toSign = implode("\n", ['POST', $path, (string)$time, $nonce, hash('sha256', $body)]);
         return [
             'X-Omni-Site: ' . $siteId,
             'X-Omni-Timestamp: ' . $time,
             'X-Omni-Nonce: ' . $nonce,
-            'X-Omni-Signature: v1=' . hash_hmac('sha256', $toSign, $secret),
+            'X-Omni-Signature: ' . self::signature($secret, $path, $body, (string)$time, $nonce),
         ];
+    }
+
+    /** The value of X-Omni-Signature: HMAC-SHA256 of the method, path, timestamp, nonce and body hash, one per line. */
+    public static function signature(string $secret, string $path, string $body, string $time, string $nonce): string
+    {
+        return 'v1=' . hash_hmac('sha256', implode("\n", ['POST', $path, $time, $nonce, hash('sha256', $body)]), $secret);
+    }
+
+    // ---- Commands from Omni (docs/omni-protocol.md, "Commands"). The only one is `update`: install the latest official
+    // release, the same way the Updates screen does, with the verified backup first.
+
+    /** Where Omni sends commands, under the site's address. */
+    public const COMMAND_PATH = '/_omni/command';
+    /** A command still running after this long is taken as dead, and a new one is accepted. */
+    public const COMMAND_TIMEOUT = 1800;
+
+    /** Whether the super admin lets Omni install updates on this site (on unless switched off). */
+    public function allowsUpdates(): bool
+    {
+        return ($this->state()['allow_updates'] ?? true) !== false;
+    }
+
+    public function setAllowUpdates(bool $allow): void
+    {
+        $state = $this->state();
+        $state['allow_updates'] = $allow;
+        $this->meta->setJson(self::META_KEY, $state);
+    }
+
+    /**
+     * Checks a command Omni sent and, when it is good, records it as accepted. The caller answers with `status` and `body`,
+     * and then runs `run` (the command) with runCommand() once the answer has gone.
+     *
+     * @param array<string, string> $headers with lower-case names
+     * @return array{status: int, body: array<string, mixed>, run: ?array<string, mixed>}
+     */
+    public function receiveCommand(string $path, array $headers, string $body): array
+    {
+        $refuse = static fn(int $status, string $error, string $message): array => ['status' => $status, 'body' => ['ok' => false, 'error' => $error, 'message' => $message], 'run' => null];
+        $state = $this->state();
+        $time = (string)($headers['x-omni-timestamp'] ?? '');
+        $nonce = (string)($headers['x-omni-nonce'] ?? '');
+        if (!$this->isConnected() || !hash_equals((string)$state['site_id'], (string)($headers['x-omni-site'] ?? ''))) {
+            return $refuse(401, 'unknown_site', 'This site is not connected to that Omni.');
+        }
+        if (!preg_match('/^\d{1,12}$/', $time) || abs($this->now() - (int)$time) > 300) {
+            return $refuse(401, 'stale_timestamp', 'The timestamp is missing or too far from the time here.');
+        }
+        if (!preg_match('/^[0-9a-f]{32}$/', $nonce)) {
+            return $refuse(400, 'invalid_request', 'The nonce must be 32 hex characters.');
+        }
+        if (!hash_equals(self::signature((string)$state['secret'], $path, $body, $time, $nonce), trim((string)($headers['x-omni-signature'] ?? '')))) {
+            return $refuse(401, 'invalid_signature', 'The signature does not match.');
+        }
+        $nonces = array_filter((array)($state['nonces'] ?? []), fn(mixed $at): bool => is_int($at) && $this->now() - $at <= 600);
+        if (isset($nonces[$nonce])) {
+            return $refuse(401, 'replayed_nonce', 'This command was already received.');
+        }
+        $nonces[$nonce] = $this->now();
+
+        $data = json_decode($body, true);
+        if (!is_array($data) || ($data['protocol'] ?? null) !== self::PROTOCOL) {
+            return ['status' => 426, 'body' => ['ok' => false, 'error' => 'unsupported_protocol', 'message' => 'This site speaks protocol ' . self::PROTOCOL . '.', 'protocols' => [self::PROTOCOL]], 'run' => null];
+        }
+        $type = (string)($data['command'] ?? '');
+        $id = (string)($data['command_id'] ?? '');
+        if ($type !== 'update' || !preg_match('/^c_[0-9a-f]{8,32}$/', $id)) {
+            return $refuse(400, 'unknown_command', 'The only command is update, with a command_id.');
+        }
+        $state['nonces'] = $nonces;
+        if (!$this->allowsUpdates()) {
+            $this->meta->setJson(self::META_KEY, $state);
+            return $refuse(403, 'not_allowed', 'This site does not let Omni install updates (Admin > Omni).');
+        }
+        $running = (array)($state['command'] ?? []);
+        if (in_array($running['state'] ?? '', ['accepted', 'running'], true) && $this->now() - (int)strtotime((string)($running['accepted_at'] ?? '')) < self::COMMAND_TIMEOUT) {
+            $this->meta->setJson(self::META_KEY, $state);
+            return $refuse(409, 'busy', 'This site is already running a command from Omni.');
+        }
+        $command = ['id' => $id, 'type' => $type, 'state' => 'accepted', 'accepted_at' => gmdate('c', $this->now())];
+        $state['command'] = $command;
+        $this->meta->setJson(self::META_KEY, $state);
+        return ['status' => 202, 'body' => ['ok' => true, 'command_id' => $id, 'state' => 'accepted'], 'run' => $command];
+    }
+
+    /**
+     * Runs an accepted command, keeps how it ended, and reports at once so Omni sees it.
+     *
+     * @param array<string, mixed> $command from receiveCommand()
+     * @param callable(): array{status: string, message: string, from?: string, to?: string} $update installs the latest release
+     */
+    public function runCommand(array $command, callable $update): void
+    {
+        $this->recordCommand(['state' => 'running'] + $command);
+        try {
+            $result = $update();
+        } catch (\Throwable $e) {
+            $result = ['status' => 'failed', 'message' => 'The update stopped: ' . $e->getMessage()];
+        }
+        $this->recordCommand([
+            'state' => (string)$result['status'],
+            'message' => (string)$result['message'],
+            'from' => (string)($result['from'] ?? ''),
+            'to' => (string)($result['to'] ?? ''),
+            'finished_at' => gmdate('c', $this->now()),
+        ] + $command);
+        $this->send();
+    }
+
+    /** @param array<string, mixed> $command */
+    private function recordCommand(array $command): void
+    {
+        $state = $this->state();
+        if (($state['command']['id'] ?? null) !== ($command['id'] ?? null)) {
+            return;
+        }
+        $state['command'] = $command;
+        $this->meta->setJson(self::META_KEY, $state);
+    }
+
+    /** The report, with the last command and how it went (an added field: protocol 1 still). */
+    private function reportWithCommand(): string
+    {
+        $json = ($this->reportJson)();
+        $command = $this->state()['command'] ?? null;
+        $report = json_decode($json, true);
+        if (!is_array($command) || !is_array($report)) {
+            return $json;
+        }
+        $report['command'] = array_intersect_key($command, array_flip(['id', 'type', 'state', 'message', 'from', 'to', 'accepted_at', 'finished_at']));
+        return (string)json_encode($report, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
     }
 
     /** @return array{status: int, body: string, headers: array<string, string>, error: string} */

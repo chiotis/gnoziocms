@@ -199,6 +199,9 @@
         <input type="search" name="q" value="{{ filters.q }}" placeholder="Search by address" class="lc-input" aria-label="Search by address">
       </form>
       <div class="ml-auto flex flex-wrap items-center gap-2">
+        {% if missing %}
+          <a class="ct-pill" href="{{ url('admin/redirects?' ~ {tab: 'missing', export: 'missing', q: filters.q, show: show_ignored ? 'ignored' : ''}|url_encode) }}">Download paths (.txt)</a>
+        {% endif %}
         {% if show_ignored %}
           <a href="{{ url('admin/redirects?tab=missing') }}" class="{{ link }} text-xs">Back to the list</a>
           {% if missing %}
@@ -226,6 +229,7 @@
         {% endif %}
       </div>
     </div>
+    <p class="mb-3 text-[11px] text-slate-500">The download contains one path per line from the selected list and search. File probes filtered before they reach this list are not included.</p>
     {% if missing %}
       <section class="lc-card rounded-xl border border-slate-200 bg-white" aria-label="Addresses not found">
         <ul class="rd-list">

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.177 — 2026-10-21 — Export not-found paths
+- Admin > Redirects > Not found can download the matching paths as plain text, one per line, including ignored paths from their own view and results beyond the screen's 200-row limit.
+- The export respects the current search; file probes filtered before logging remain outside it.
+
 ## 0.1.176 — 2026-10-21 — Pages of terms, redirects of old addresses
 - **Pages of terms for sites of places**: a taxonomy whose pages list only types with a place (an activity, a kind of point) opens as a map unless the site chooses another layout; its card says *Map by default*, and the importer's new taxonomies list their types so they do.
 - A term in a tree has its sub-terms as chips under the title, with how many entries each has (a leaf shows its siblings). The bar over its map no longer offers the page's own taxonomy.

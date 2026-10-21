@@ -6,7 +6,8 @@ This page is the contract between the two apps. GnozioCMS (the site) and Omni ar
 
 ## Overview
 
-- **The site calls Omni; Omni never calls the site.** A site opens no new public endpoint. It sends a signed report to Omni from the work it already runs on a schedule (the cron script, after a visit, or when the admin is opened).
+- **The site calls Omni to report.** It sends a signed report to Omni from the work it already runs on a schedule (the cron script, after a visit, or when the admin is opened).
+- **Omni calls the site only to ask it to update.** A site has one endpoint for Omni, `POST /_omni/command`, which takes a single command, `update`: install the latest official release. The command is signed with the site's secret, like a report, and the site can refuse it with a switch (see [Commands](#commands-omni-to-the-site)).
 - **A site joins with a code.** The Omni owner adds a site in Omni and gets a one-time connection code. A superadmin of the site enters the Omni address and the code in the site's settings. The site and Omni exchange a secret, and every report after that is signed with it.
 - **Silence is information.** Omni shows when it last heard from each site. A site that stops reporting is flagged, whatever its last report said.
 
@@ -237,6 +238,66 @@ Errors use the HTTP status and a JSON body:
 | `426` | `unsupported_protocol` | logs it; the body adds `"protocols": [...]` |
 | `429` | `rate_limited` | waits for `Retry-After` |
 | `5xx` | — | tries again at the next tick |
+
+## Commands (Omni to the site)
+
+Omni can ask a site to install the latest release, so that the owner updates many sites without opening each admin.
+
+```
+POST <site address>/_omni/command
+X-Omni-Site: s_8f3a1c2e9b7d
+X-Omni-Timestamp: 1791882000
+X-Omni-Nonce: 3c9e1f0a6b2d4e8f…
+X-Omni-Signature: v1=<hex>
+
+{ "protocol": 1, "command": "update", "command_id": "c_5e2a9d1f0b7c4a63" }
+```
+
+- **Signing.** It is signed exactly as a report is (see [Signing](#signing)), with the same secret. The path is the one of the command under the site's address (`/_omni/command`, or `/sub/_omni/command` for a site in a folder), and `X-Omni-Site` is the site's own id.
+- **What the site checks.** Its own id, the signature, the timestamp (5 minutes either way), and a nonce it has not seen in the last 10 minutes. `command` must be `update`, and `command_id` must be `c_` followed by 8 to 32 hex characters.
+- **What a command can do.** It names no version and carries no code. The site installs the latest release from its own update source, checked against its SHA-256 as on its Updates screen. A stolen Omni could at most make sites install the official release.
+
+| Answer | `error` | When |
+|---|---|---|
+| `202` `{"ok": true, "command_id": "…", "state": "accepted"}` | — | Accepted. The answer goes at once; the work starts after it. |
+| `400` | `invalid_request`, `unknown_command` | No good nonce; not `update`, or no good `command_id` |
+| `401` | `unknown_site`, `invalid_signature`, `stale_timestamp`, `replayed_nonce` | |
+| `403` | `not_allowed` | The site's super admin switched off **Allow Omni to install updates** (Admin > Omni; on by default) |
+| `409` | `busy` | A command is still running (one older than 30 minutes is taken as dead) |
+| `426` | `unsupported_protocol` | |
+
+**After it accepts**, the site:
+
+1. Looks for the latest release.
+2. Makes the verified pre-update backup.
+3. Installs, with the install's own checks and its automatic undo.
+4. Sends a report at once.
+
+The report carries the outcome in an added field (protocol 1 still):
+
+```json
+"command": {
+  "id": "c_5e2a9d1f0b7c4a63",
+  "type": "update",
+  "state": "installed",
+  "message": "GnozioCMS 0.1.180 is installed.",
+  "from": "0.1.176",
+  "to": "0.1.180",
+  "accepted_at": "2026-10-21T09:00:00Z",
+  "finished_at": "2026-10-21T09:01:12Z"
+}
+```
+
+`state` is one of:
+
+- `accepted` or `running`, while it works;
+- `installed`;
+- `unverified`: installed, but the site could not check itself;
+- `rolled_back`: the new version did not work and the old one is back;
+- `up_to_date`: nothing newer;
+- `failed`: nothing changed, for example because the backup failed.
+
+The site keeps the last command and shows it on Admin > Omni. Omni shows it per site until the next one.
 
 ## Versioning
 
