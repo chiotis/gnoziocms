@@ -7,7 +7,7 @@ php scripts/import-wordpress.php https://example.com            # what would hap
 php scripts/import-wordpress.php https://example.com --apply    # do it
 ```
 
-Options: `--profile=FILE`, `--menus`, `--custom=PATH`, `--lang=en` (language of the content), `--default-lang=en` (the site's default language; when it differs, the content lives under `/en/`), `--home=index` (file name of the home page), `--kinds=pages,posts,types` (`types` are the profile's custom types of the REST API, below), `--only-used-media`, `--overwrite`, `--content=PATH`, `--uploads=PATH`, `--out=PATH`. Run it against a copy first and look through the result in the admin.
+Options: `--redirects=apply` and `--storage=PATH` (see *Old addresses*), `--profile=FILE`, `--menus`, `--custom=PATH`, `--lang=en` (language of the content), `--default-lang=en` (the site's default language; when it differs, the content lives under `/en/`), `--home=index` (file name of the home page), `--kinds=pages,posts,types` (`types` are the profile's custom types of the REST API, below), `--only-used-media`, `--overwrite`, `--content=PATH`, `--uploads=PATH`, `--out=PATH`. Run it against a copy first and look through the result in the admin.
 
 ## What comes over
 
@@ -22,7 +22,14 @@ Options: `--profile=FILE`, `--menus`, `--custom=PATH`, `--lang=en` (language of 
 
 ## Old addresses
 
-The run writes `redirects.txt` (default `storage/import/`): one line per old address that is not the same on the new site (a post at `/2020/05/slug/` is now at `/slug`, a picture at `/wp-content/uploads/...` is in the library). Paste it into **Admin → Redirects → Import** on the site that will serve them. An old address that is a page of the new site is never redirected.
+The run writes `redirects.txt` (default `storage/import/`): one line per old address that is not the same on the new site (a post at `/2020/05/slug/` is now at `/slug`, a picture at `/wp-content/uploads/...` is in the library, a merged term at the term it went into). An old address that is a page of the new site (an entry, or the page of a term) is never redirected. Old addresses with Greek letters are written as letters (`/activity/παρατήρηση-πουλιών`); a visitor's browser asks for them encoded, and both are the same address.
+
+Two ways to put them on the site:
+
+- **`--redirects=apply`** (with `--apply`) puts them straight into the site's Redirects, in the database of the site's storage folder (`--storage=PATH`, by default the `storage` beside `--content`). The dry run with `--redirects=apply` says how many it would add and which it would leave out. Running it again adds nothing: a redirect that is already there with the same target is kept; one an earlier import made (or a list pasted in the admin, both noted *Imported*) is pointed at the new target; one the site made itself (by hand, or when an address changed here) is left alone and listed as `taken`. A line that would loop back, from an admin address, or a second line for the same address (two that differ only in case) is listed and left out.
+- **Admin → Redirects → Import**: paste the file (500 lines at a time) on the site that will serve them.
+
+For the terms of a profile with `language_prefixes`, each old address leads to the term's page in its language: the main language's (`/activity/bird-watchin` to `/activity/paratirisi-ptinon`), the same path under the prefix (`/en/activity/bird-watchin`), and the old English address with its own slug, as the old site's English pages give it (`/en/activity/bird-watching`, and those of the terms merged into it), to `/en/activity/paratirisi-ptinon`.
 
 ## Running it again
 
@@ -59,7 +66,7 @@ php scripts/import-wordpress.php https://ruralgreece.gr --lang=el --default-lang
 | `rest_types.<name>.fields` | ACF key → where its value goes, with the key spelled exactly as the API returns it (`υπότιτλος_eν`, with a Greek ν, stays so). `title`, `excerpt` and `body` are the entry's own; any other name is a field of the type. `@el`, `@en` says which language's entry it belongs to (`title_en: title@en`); without it the value goes to every language. `{to: distance_km, type: number}` takes the number out of a text (`12,5 χλμ.` gives 12.5). A text loses its markup but keeps its line breaks; a field that takes several values comes as one text with commas. |
 | `rest_types.<name>.coordinates` | `{lat: latitude, lng: longitude, to: location}`: the two values become the field `location` (`37.4501, 22.3712`). When only one of them is filled in, or the pair is not a place, the field stays empty and the entry is listed in the report. |
 | `rest_types.<name>.media` | ACF keys that point at files (an id of the old library, an address, or a list of them). `main_image` is the entry's main image (instead of WordPress's featured image); `video` is a Video block in the entry (a YouTube or Vimeo address, also out of the embed code an oEmbed field gives); any other name is a field: a library path, or a list of library paths when the old field held a list (`gallery: ["/uploads/media/…", …]`). A route file (GPX, KML, GeoJSON) is fetched into the library and kept only when it reads as a route; one that cannot be read is left out of the entry and listed. `{to: track, length: distance_km}` also puts the file's own length in `distance_km` when the old site left that empty. |
-| `rest_types.<name>.taxonomies` | REST base of the old taxonomy → taxonomy here (`activity: activity`, `categories: categories`). A taxonomy shared by several types is one taxonomy here; it is made when the site has none of that name, with the old site's name for it and a tree only when its terms have parents. |
+| `rest_types.<name>.taxonomies` | REST base of the old taxonomy → taxonomy here (`activity: activity`, `categories: categories`). A taxonomy shared by several types is one taxonomy here; it is made when the site has none of that name, with the old site's name for it, a tree only when its terms have parents, and its pages listing the types the profile files under it (so a taxonomy of places opens as a map, see [Pages of terms](places-and-routes.md#pages-of-terms)). |
 | `rest_types.<name>.ignore` | ACF keys left out without a word (old pictures of maps). Any other key that has a value and is not named is listed in the report. |
 | `rest_types.<name>.front` | Front matter added to every entry of the type. |
 | `term_map` | Duplicate terms: `<REST base>: {<source id>: <source id>}`, one line per merge. |

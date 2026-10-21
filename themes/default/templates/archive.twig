@@ -28,6 +28,16 @@
   {% include 'components/title-area.twig' with {layout: archive_title_layout, title: title_text, hero_text: subtitle_text, meta_html: '', meta_inline: '', hero_image: archive_title_image, hero_bg: '', hero_parallax: archive_image_behind and config.title_parallax|default(false), crumbs: crumbs} only %}
 
   <section class="site-wrap section-stack single-body archive-body">
+    {# The page of a term in a taxonomy with a tree: its sub-terms (or, for a term without any, its parent's) as chips. #}
+    {% if term_chips|default(null) %}
+      <nav class="term-chips" aria-label="{{ term_chips.label }}">
+        <ul>
+          {% for chip in [term_chips.all]|merge(term_chips.items) %}
+            <li><a href="{{ chip.url }}"{% if chip.current %} aria-current="page"{% endif %}>{{ chip.label }}{% if chip.count is not null %} <span class="term-chip-count">{{ chip.count }}</span>{% endif %}</a></li>
+          {% endfor %}
+        </ul>
+      </nav>
+    {% endif %}
     {# A map's data, made once for the map and for the form. The taxonomies of its bar are chosen there, instantly; the page's form keeps
        them too (marked, and put away by the script once the bar is drawn), so a page without JavaScript can still filter by them. #}
     {% set map_geo = layout == 'map' and items ? geo_dataset(items, {lines: true, filters: config.map_filters ?? null}) : null %}

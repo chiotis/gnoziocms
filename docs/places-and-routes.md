@@ -75,6 +75,32 @@ to 800; no paging); a route is drawn as a line. A bar over the map filters by ki
 the list and by a search (see below). The page's own form keeps the filters of its *Filters* row and the select fields of the type
 (activity, difficulty, price range) as before. The three types here use this layout by default.
 
+## Pages of terms
+
+Every taxonomy has a page for each term (`/activity/hiking`, `/poi-type/ecosystem`, `/business-type/stay/hotel` in a tree), set on
+its card in *Theme > Archive Layouts* like any list: the layout (the **Map** too), the title area and its picture, which types it
+lists (*Lists*), the filters, and the title and subtitle. The term's description is the subtitle unless the card writes one.
+
+- **A taxonomy of places opens as a map.** When the pages of a taxonomy list only types with a place (its *Lists* names them, and
+  each has a field of the kind `location`), the page of a term is the Map layout until the site chooses another one; its card says
+  *Map by default*. Choosing the Map there stores nothing; choosing another layout is stored and kept. Categories and tags (they list
+  every type) and any taxonomy that lists a type without a place stay as they were, and so does a site without types with a place.
+  The importer makes the taxonomies of a `rest_types` profile list the types the profile files under them, so `activity`,
+  `location`, `poi-type` and the rest open as maps.
+- **Sub-terms as chips.** In a taxonomy with a tree, a row of chips under the title links to the sub-terms: *All* (the term itself,
+  marked) and each sub-term with how many entries it has (with *List entries of the sub-terms too*, those below it count). A sub-term
+  with no entries in the language of the page is left out. A term without sub-terms shows its parent's, itself marked and *All*
+  leading up to the parent. The numbers come from the content index; while it cannot answer, every sub-term is a chip without a
+  number. *Chips under the title* in the card's *Sub-terms* row switches the row off (`archive.sub_term_chips: false`). A flat
+  taxonomy has no chips.
+- **The bar of a term's page.** The bar over the map (and the page's own form) does not offer the page's own taxonomy: every entry
+  on the page has the term, and in a tree its sub-terms are the chips, so the same choice is not offered twice. The card's *Map
+  filters* row does not list it either. The other taxonomies are offered as on any list (what the card chose, or else what each
+  listed type chose).
+- **Old addresses.** The term pages of a site's own taxonomy are pages of the site for the Redirects screen too (a redirect from one
+  is reported as hidden by a page). The importer's redirects of terms, merged ones and the English ones included, are in
+  [Moving a WordPress site over](wordpress-import.md#old-addresses).
+
 ## Filters on the map
 
 The bar over a map of entries (the Map layout of an archive, the Map block, the Map of the list block) has a menu for each taxonomy

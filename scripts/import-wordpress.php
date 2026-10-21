@@ -20,15 +20,17 @@
  *   --content=PATH       the content folder (default ./content)
  *   --uploads=PATH       the uploads folder (default ./public/uploads)
  *   --out=PATH           where the report and the redirects list are written (default ./storage/import)
+ *   --redirects=apply    also put the redirects into the site's Redirects (with --apply; the dry run says what it would add)
+ *   --storage=PATH       the site's storage folder, where its redirects are kept (default: beside --content)
  */
 require __DIR__ . '/../vendor/autoload.php';
 
-use GnozioCMS\{MediaLibrary, Menus, Taxonomies, WordPressHttp, WordPressImporter, WordPressReader, WordPressRestTypes, WordPressScraper};
+use GnozioCMS\{ImportedRedirects, MediaLibrary, Menus, RedirectRepository, SystemDatabase, Taxonomies, WordPressHttp, WordPressImporter, WordPressReader, WordPressRestTypes, WordPressScraper};
 use Symfony\Component\Yaml\Yaml;
 
 $root = dirname(__DIR__);
 $site = '';
-$opt = ['apply' => false, 'lang' => 'en', 'default-lang' => '', 'home' => 'index', 'kinds' => 'pages,posts,types', 'only-used-media' => false, 'overwrite' => false, 'profile' => '', 'menus' => false, 'custom' => $root . '/custom', 'content' => $root . '/content', 'uploads' => $root . '/public/uploads', 'out' => $root . '/storage/import'];
+$opt = ['apply' => false, 'lang' => 'en', 'default-lang' => '', 'home' => 'index', 'kinds' => 'pages,posts,types', 'only-used-media' => false, 'overwrite' => false, 'profile' => '', 'menus' => false, 'custom' => $root . '/custom', 'content' => $root . '/content', 'uploads' => $root . '/public/uploads', 'out' => $root . '/storage/import', 'redirects' => '', 'storage' => ''];
 foreach (array_slice($argv, 1) as $arg) {
     if (str_starts_with($arg, '--')) {
         [$key, $value] = array_pad(explode('=', substr($arg, 2), 2), 2, null);
@@ -45,7 +47,34 @@ if ($site === '') {
     fwrite(STDERR, "Usage: php scripts/import-wordpress.php https://example.com [--apply] [--lang=en] ...\n");
     exit(2);
 }
+if (!in_array($opt['redirects'], ['', 'apply'], true)) {
+    fwrite(STDERR, "--redirects takes one value: apply\n");
+    exit(2);
+}
 $site = preg_match('#^https?://#i', $site) ? $site : 'https://' . $site;
+// The site's redirects, opened only when they are to be put there.
+$siteRedirects = null;
+if ($opt['redirects'] === 'apply') {
+    $storage = $opt['storage'] !== '' ? (string)$opt['storage'] : dirname(rtrim((string)$opt['content'], '/')) . '/storage';
+    $database = new SystemDatabase($storage);
+    if (!is_file($database->path())) {
+        fwrite(STDERR, "No site database at {$database->path()}: point --storage at the site's storage folder.\n");
+        exit(2);
+    }
+    $database->initialize();
+    if (!$database->isAvailable()) {
+        fwrite(STDERR, 'The site database could not be opened: ' . $database->lastError() . "\n");
+        exit(1);
+    }
+    $siteRedirects = new ImportedRedirects(new RedirectRepository($database));
+}
+$redirectReport = static function (array $report, bool $done): void {
+    printf("  redirects %s: %d new, %d pointed at a new address, %d already there", $done ? 'put into the site' : 'the site would get', $report['added'], $report['updated'], $report['kept']);
+    echo $report['skipped'] !== [] ? ', ' . count($report['skipped']) . " left out:\n" : "\n";
+    foreach (array_slice($report['skipped'], 0, 20) as $line) {
+        echo "    - {$line['from']} {$line['to']} ({$line['reason']})\n";
+    }
+};
 $lang = (string)$opt['lang'];
 $defaultLang = $opt['default-lang'] !== '' ? (string)$opt['default-lang'] : $lang;
 
@@ -178,6 +207,10 @@ foreach ($reportLines($plan['report'], 20) as $line) {
 }
 
 if (!$opt['apply']) {
+    if ($siteRedirects !== null) {
+        echo "\n";
+        $redirectReport($siteRedirects->apply($plan['redirects'], false), false);
+    }
     echo "\nNothing was changed. Run again with --apply to import.\n";
     exit(0);
 }
@@ -217,5 +250,10 @@ foreach ($result['menus'] as $key) {
 foreach ($result['content_types'] as $name) {
     echo "  content type '$name' defined in {$opt['custom']}/content-types\n";
 }
-printf("  redirects: %d, written to %s\n    Paste them in Admin > Redirects > Import on the site that will serve them.\n", count($result['redirects']), $redirectsFile);
+if ($siteRedirects !== null) {
+    printf("  redirects: %d, written to %s\n", count($result['redirects']), $redirectsFile);
+    $redirectReport($siteRedirects->apply($result['redirects']), true);
+} else {
+    printf("  redirects: %d, written to %s\n    Paste them in Admin > Redirects > Import on the site that will serve them, or run again with --redirects=apply.\n", count($result['redirects']), $redirectsFile);
+}
 echo "\nDone. Open the admin to look through what came in; every imported file has 'imported_from' in its front matter, so running this again updates them.\n";

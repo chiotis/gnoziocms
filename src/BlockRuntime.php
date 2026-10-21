@@ -207,6 +207,12 @@ final class BlockRuntime
         );
     }
 
+    /** The content types whose entries can have a place (pages and forms never). @return string[] */
+    public function placeTypes(): array
+    {
+        return array_values(array_filter($this->content->getTypes(), fn(string $type): bool => $type !== 'forms' && $type !== 'pages' && $this->hasPlaceField($type)));
+    }
+
     /** Whether entries of a content type can have a place (a field of the kind `location`). */
     public function hasPlaceField(string $type): bool
     {
@@ -231,7 +237,7 @@ final class BlockRuntime
             fn(string $type, string $lang): string => $this->typeLabel($type, $lang),
             fn(string $slug, string $lang): string => ($this->termLabel)('categories', $slug, $lang),
             fn(ContentItem $item, string $lang): string => ($this->absoluteUrl)(ContentPaths::build($item->type, $item->slug, $lang, (string)((($this->settings)()['home_page'] ?? '') !== '' ? ($this->settings)()['home_page'] : 'index'), ($this->defaultLanguage)())),
-            fn(): array => array_values(array_filter($this->content->getTypes(), fn(string $type): bool => $type !== 'forms' && $type !== 'pages' && $this->hasPlaceField($type))),
+            fn(): array => $this->placeTypes(),
             [
                 'tiles_url' => (string)(($this->settings)()['apis']['maps']['tiles_url'] ?? ''),
                 'attribution' => (string)(($this->settings)()['apis']['maps']['attribution'] ?? ''),

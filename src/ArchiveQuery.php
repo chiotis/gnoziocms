@@ -111,6 +111,28 @@ final class ArchiveQuery
     }
 
     /**
+     * How many entries a scope has (the chips of a term's sub-terms say it), or null when the index cannot answer.
+     *
+     * @param array{types: string[], term: array{taxonomy: string, ids: string[]}|null} $scope
+     */
+    public function total(array $scope, string $lang, bool $includeHidden): ?int
+    {
+        $pdo = $this->index->connection();
+        if ($pdo === null) {
+            return null;
+        }
+        try {
+            $params = [];
+            $where = $this->scope($scope, $lang, $includeHidden, $params);
+            $stmt = $pdo->prepare('SELECT COUNT(*) FROM content_index ci WHERE ' . $where);
+            $stmt->execute($params);
+            return (int)$stmt->fetchColumn();
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /**
      * One page of the entries of the scope that match the chosen filters, in an order, as the entries themselves.
      *
      * @param array{types: string[], term: array{taxonomy: string, ids: string[]}|null} $scope
