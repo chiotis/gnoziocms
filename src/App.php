@@ -230,6 +230,12 @@ final class App
             return;
         }
 
+        // A command from the Omni this site is connected to, signed with the site's secret (docs/omni-protocol.md).
+        if ($path === '_omni/command') {
+            $this->handleOmniCommand();
+            return;
+        }
+
         $this->sendSecurityHeaders(false);
         $this->sendPublicCacheHeaders();
 
@@ -259,8 +265,12 @@ final class App
             // The visitor's session is let go first (its lock would hold their next page), then the response, then the work.
             @session_write_close();
             $finish();
-            @ignore_user_abort(true);
-            @set_time_limit(0);
+            if (function_exists('ignore_user_abort')) {
+                @ignore_user_abort(true);
+            }
+            if (function_exists('set_time_limit')) {
+                @set_time_limit(0);
+            }
             if ($backupDue) {
                 $this->backupManager()->runIfDue();
             }
@@ -285,7 +295,9 @@ final class App
             if ($finish !== null) {
                 @session_write_close();
                 $finish();
-                @ignore_user_abort(true);
+                if (function_exists('ignore_user_abort')) {
+                    @ignore_user_abort(true);
+                }
             }
             $this->omniClient()->sendIfDue();
         } catch (\Throwable) {
@@ -635,7 +647,7 @@ final class App
             return true;
         }
         // The analytics script reports each visit with a POST; it must not hand every visitor a cookie.
-        return !in_array($_SERVER['REQUEST_METHOD'] ?? 'GET', ['GET', 'HEAD'], true) && $path !== '_a/collect';
+        return !in_array($_SERVER['REQUEST_METHOD'] ?? 'GET', ['GET', 'HEAD'], true) && !in_array($path, ['_a/collect', '_omni/command'], true);
     }
 
     /**
@@ -2998,6 +3010,97 @@ final class App
         ]);
     }
 
+    /**
+     * POST /_omni/command: Omni asks the site to install the latest release. The command is checked (signature, time, nonce,
+     * the site's own switch), answered at once, and run after the answer has gone: the verified backup, then the install with
+     * its own checks and undo, then a report with how it ended.
+     */
+    private function handleOmniCommand(): void
+    {
+        FrontCache::doNotKeep();
+        header('Cache-Control: no-store');
+        header('X-Content-Type-Options: nosniff');
+        if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+            http_response_code(405);
+            header('Allow: POST');
+            return;
+        }
+        $body = (string)file_get_contents('php://input', false, null, 0, 65537);
+        $headers = [];
+        foreach (['site', 'timestamp', 'nonce', 'signature'] as $name) {
+            $headers['x-omni-' . $name] = (string)($_SERVER['HTTP_X_OMNI_' . strtoupper($name)] ?? '');
+        }
+        $path = (string)(parse_url((string)($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH) ?? '');
+        $answer = strlen($body) > 65536
+            ? ['status' => 413, 'body' => ['ok' => false, 'error' => 'too_large'], 'run' => null]
+            : $this->omniClient()->receiveCommand($path, $headers, $body);
+
+        $json = (string)json_encode($answer['body'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        http_response_code($answer['status']);
+        header('Content-Type: application/json; charset=utf-8');
+        header('Content-Length: ' . strlen($json));
+        header('Connection: close');
+        echo $json;
+        if ($answer['run'] === null) {
+            return;
+        }
+        $this->logActivity('omni.command_update', 'info', 'omni', (string)$answer['run']['id'], 'Omni asked to install the latest release.', []);
+        // The answer goes first (Omni waits only for that), then the work.
+        @session_write_close();
+        $finish = CronStatus::finishFunction();
+        if ($finish !== null) {
+            $finish();
+        } else {
+            while (ob_get_level() > 0) {
+                @ob_end_flush();
+            }
+            flush();
+        }
+        if (function_exists('ignore_user_abort')) {
+            @ignore_user_abort(true);
+        }
+        if (function_exists('set_time_limit')) {
+            @set_time_limit(0);
+        }
+        $this->omniClient()->runCommand($answer['run'], fn(): array => $this->installForOmni());
+    }
+
+    /**
+     * What the Updates screen does, in one go: look for the latest release, make the verified backup, install.
+     *
+     * @return array{status: string, message: string, from: string, to: string}
+     */
+    private function installForOmni(): array
+    {
+        $updates = $this->updates();
+        $current = $updates->currentVersion();
+        // The Updates screen and its notice learn of the release too.
+        $this->adminNotices()->syncUpdate($updates->status(true));
+        // What decides is the package that would be installed, as on the Updates screen.
+        $manifest = $updates->releaseManifest(true);
+        if ($manifest === null) {
+            return ['status' => 'failed', 'message' => 'The package of the latest release could not be found.', 'from' => $current, 'to' => ''];
+        }
+        if (!version_compare($manifest['version'], $current, '>')) {
+            return ['status' => 'up_to_date', 'message' => 'GnozioCMS ' . $current . ' is already the latest version.', 'from' => $current, 'to' => $current];
+        }
+        $status = ['latest_version' => $manifest['version']];
+        // The report sent at the end needs these classes; they are loaded now, from the code that is running.
+        $this->omniReport()->json();
+        $made = $this->backupAdmin()->preUpdateBackup($current);
+        if (!$made['ok']) {
+            return ['status' => 'failed', 'message' => 'The backup before updating failed, so nothing was installed: ' . $made['message'], 'from' => $current, 'to' => (string)$status['latest_version']];
+        }
+        $this->updateAdmin()->install();
+        $result = $this->systemMeta->getJson('last_install') ?? [];
+        return [
+            'status' => (string)($result['status'] ?? 'failed'),
+            'message' => (string)($result['message'] ?? 'The install did not say how it ended.'),
+            'from' => $current,
+            'to' => (string)($result['to'] ?? $status['latest_version']),
+        ];
+    }
+
     /** Admin > Omni: the connection to an Omni and what the site reports to it (docs/omni-protocol.md). Super admin only. */
     private function handleOmni(): void
     {
@@ -3009,9 +3112,14 @@ final class App
                 'connect' => $client->connect((string)($_POST['omni_url'] ?? ''), (string)($_POST['omni_code'] ?? '')),
                 'send' => $client->send(),
                 'disconnect' => $client->disconnect(),
+                'updates' => (function () use ($client): array {
+                    $allow = isset($_POST['allow_updates']);
+                    $client->setAllowUpdates($allow);
+                    return ['ok' => true, 'message' => $allow ? 'Omni may install updates on this site.' : 'Omni may no longer install updates on this site.'];
+                })(),
                 default => ['ok' => false, 'message' => 'Nothing to do.'],
             };
-            if (in_array($action, ['connect', 'disconnect'], true) && $result['ok']) {
+            if (in_array($action, ['connect', 'disconnect', 'updates'], true) && $result['ok']) {
                 $this->logActivity('omni.' . $action, 'info', 'omni', (string)($action === 'connect' ? ($client->state()['site_id'] ?? '') : ($before['site_id'] ?? '')), $result['message'], ['url' => (string)($client->state()['url'] ?? ($before['url'] ?? ''))]);
             }
             $this->redirect('/admin/omni?' . http_build_query([
@@ -3030,6 +3138,7 @@ final class App
             'title' => 'Omni',
             'connection' => $connection,
             'connected' => $this->omniClient()->isConnected(),
+            'allow_updates' => $this->omniClient()->allowsUpdates(),
             'omni_url' => trim((string)($_GET['url'] ?? '')) ?: (string)($connection['url'] ?? '') ?: OmniClient::DEFAULT_URL,
             'done' => (string)($_GET['done'] ?? ''),
             'message' => trim((string)($_GET['msg'] ?? '')),
