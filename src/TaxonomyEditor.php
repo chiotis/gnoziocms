@@ -168,16 +168,19 @@ final class TaxonomyEditor
     public function archiveFromInput(string $taxonomy, array $submitted): array
     {
         $current = $this->store->load($taxonomy);
+        $listable = $this->listableTypes();
+        $types = array_values(array_intersect($listable, Taxonomies::typeList($submitted['types'] ?? null)));
+        $all = $types === [] || count($types) === count($listable);
         $archive = ContentTypes::archiveFromInput(
             $submitted,
             $current['archive'],
-            ContentTypes::resolveArchive([], static fn(mixed $v): mixed => $v),
+            // A taxonomy of places (with the types it lists after this save) opens as a map unless the site chose otherwise, so
+            // choosing the Map stores nothing and Cards is kept.
+            ContentTypes::resolveArchive($this->store->archiveDefaults($taxonomy, $all ? [] : $types), static fn(mixed $v): mixed => $v),
             array_values(array_diff($this->store->names(), [$taxonomy])),
             false
         );
-        $listable = $this->listableTypes();
-        $types = array_values(array_intersect($listable, Taxonomies::typeList($submitted['types'] ?? null)));
-        if ($types === [] || count($types) === count($listable)) {
+        if ($all) {
             unset($archive['types']);
         } else {
             $archive['types'] = $types;
@@ -188,6 +191,12 @@ final class TaxonomyEditor
                 unset($archive['include_children']);
             } else {
                 $archive['include_children'] = false;
+            }
+            // The chips of the sub-terms under the title of a term's page: on unless unchecked.
+            if (FieldSchema::isTruthy($submitted['sub_term_chips'] ?? false)) {
+                unset($archive['sub_term_chips']);
+            } else {
+                $archive['sub_term_chips'] = false;
             }
         }
         return $archive;

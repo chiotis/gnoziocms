@@ -182,6 +182,28 @@ final class ArchiveBuilder
     }
 
     /**
+     * The taxonomies the bar over a map of these types offers (MapFilters::names), or null when the maps have no filters to offer.
+     *
+     * @param string[] $types
+     * @param string[]|null $chosen what the list chose; null: what the card of each type chose
+     * @return string[]|null
+     */
+    public function mapTaxonomyNames(array $types, ?array $chosen): ?array
+    {
+        return $this->mapTaxonomies === null ? null : ($this->mapTaxonomies)($types, $chosen);
+    }
+
+    /**
+     * How many entries the content index has in a scope, or null when it cannot answer now.
+     *
+     * @param array{types: string[], term: array{taxonomy: string, ids: string[]}|null} $scope
+     */
+    public function totalIndexed(array $scope, bool $includeHidden, string $lang): ?int
+    {
+        return $this->query !== null && $this->query->ready() ? $this->query->total($scope, $lang, $includeHidden) : null;
+    }
+
+    /**
      * The facets a list can filter by: the taxonomies it chose (with the Map layout, also those of the map's bar) and the filterable
      * fields of its type.
      *

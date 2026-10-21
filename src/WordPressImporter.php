@@ -253,6 +253,11 @@ final class WordPressImporter
                         }
                     }
                 }
+                foreach ($term['lang_links'] ?? [] as $lang => $links) {
+                    foreach ($links as $link) {
+                        $this->addRedirect($redirects, $link, '/' . $this->termPath($name, $term['path'], (string)$lang));
+                    }
+                }
             }
         }
         foreach ((array)($this->profile['archives'] ?? []) as $oldPath => $newType) {
@@ -269,6 +274,15 @@ final class WordPressImporter
         $own = [];
         foreach ($items as $item) {
             $own['/' . $item['path']] = true;
+        }
+        // The pages of the terms are pages of this site too, in each language the import writes (a merged term's old address can be
+        // one of them).
+        foreach ($terms as $name => $list) {
+            foreach ($list as $term) {
+                foreach (array_unique(array_merge([$this->lang()], array_map('strval', array_keys($this->rest['language_prefixes'])))) as $lang) {
+                    $own['/' . $this->termPath($name, $term['path'], (string)$lang)] = true;
+                }
+            }
         }
         $redirects = array_values(array_filter($redirects, static fn(array $r): bool => !isset($own[rtrim($r[0], '/')])));
         $media = array_filter($this->mediaFiles, static fn(array $file): bool => $file['uses'] > 0 || (!$onlyUsed && $file['attachment']));
@@ -864,6 +878,13 @@ final class WordPressImporter
             $bySlug = array_column($other, null, 'slug');
             foreach ($list as $i => $term) {
                 $match = $byId[$term['id']] ?? $bySlug[$merged['terms'][$i]['slug']] ?? null;
+                // The old addresses in that language (its own slug, /en/activity/bird-watching, of the term and of those merged
+                // into it) lead to the term's page in that language, besides the prefix put before the main language's address.
+                foreach (array_merge([$match], array_map(static fn(int $alias): ?array => $byId[$alias] ?? null, $merged['terms'][$i]['aliases'])) as $found) {
+                    if ($found !== null && $found['link'] !== '') {
+                        $list[$i]['lang_links'][$lang][] = $found['link'];
+                    }
+                }
                 if ($match !== null && $match['name'] !== '' && $match['name'] !== $term['label']) {
                     $list[$i]['labels'][$lang] = $match['name'];
                     if ($match['description'] !== '' && $match['description'] !== $term['description']) {
@@ -930,7 +951,16 @@ final class WordPressImporter
         }
         if ($added > 0 || $updated > 0) {
             $tree = $isNew ? array_filter($list, static fn(array $t): bool => $t['parent_term'] !== '') !== [] : null;
-            $this->taxonomies->save($name, $isNew && $title !== '' ? $title : $current['title'], $terms, null, $tree);
+            // A new taxonomy's pages list the types the profile files under it (the routes, businesses and points of an activity),
+            // so a taxonomy of places opens as a map. One the site already has keeps its own choice.
+            $types = [];
+            foreach ($isNew ? $this->rest['types'] : [] as $rules) {
+                if (in_array($name, $rules['taxonomies'], true)) {
+                    $types[] = $rules['content_type'];
+                }
+            }
+            $types = array_values(array_unique($types));
+            $this->taxonomies->save($name, $isNew && $title !== '' ? $title : $current['title'], $terms, $types !== [] ? ['types' => $types] + $current['archive'] : null, $tree);
         }
         return [$added, $updated];
     }
@@ -1264,6 +1294,8 @@ final class WordPressImporter
     /** The path of an address on the old site, with no slash at either end. */
     private static function pathOf(string $address): string
     {
+        // parse_url() mangles bytes outside ASCII, and an address made here ("/en/" before a decoded Greek path) has them.
+        $address = (string)preg_replace_callback('/[^\x21-\x7E]/', static fn(array $m): string => rawurlencode($m[0]), trim($address));
         $path = (string)parse_url($address, PHP_URL_PATH);
         return trim(rawurldecode($path), '/');
     }

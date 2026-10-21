@@ -1,4 +1,4 @@
-import json, math, os, re, sys, urllib.request, urllib.error, uuid
+import json, math, os, re, sys, urllib.parse, urllib.request, urllib.error, uuid
 sys.path.insert(0, '.')
 from client import Client, has_field, BASE
 
@@ -279,6 +279,36 @@ loop_page = anon.get('/en/routes/loop')[2]
 check('a route file replaced is read again: the page of the route shows the new length', re.search(r'<dt>Length</dt><dd>([^<]+)</dd>', loop_page).group(1) != length, length)
 after = [x['facts'][0] for x in geo(page('routes-map', {'type': 'map', 'source': 'routes'})[2])[0]['items'] if x['id'] == 'routes/loop']
 check('and so does a map of routes', after != [] and after[0] == re.search(r'<dt>Length</dt><dd>([^<]+)</dd>', loop_page).group(1), (after, length))
+
+# ---- the pages of a taxonomy of places
+# A tree whose pages list only points: its pages open as a map, with the sub-terms as chips.
+write('taxonomies/nature.yaml', 'title: Nature\nhierarchical: true\narchive:\n  types: [points]\nterms:\n'
+      '  - id: water\n    slug: water\n    labels: {en: Water}\n    descriptions: {en: Springs and lakes.}\n'
+      '  - id: springs\n    slug: springs\n    parent: water\n    labels: {en: Springs}\n'
+      '  - id: lakes\n    slug: lakes\n    parent: water\n    labels: {en: Lakes}\n'
+      '  - id: wells\n    slug: wells\n    parent: water\n    labels: {en: Wells}\n')
+entry('points', 'cold-spring', 'Cold spring', {'location': '35.1, 26.1'}, 'nature: [springs]\ncategories: [sights]\n')
+entry('points', 'warm-spring', 'Warm spring', {'location': '35.11, 26.11'}, 'nature: [springs]\ncategories: [hiking]\n')
+entry('points', 'blue-lake', 'Blue lake', {'location': '35.12, 26.12'}, 'nature: [lakes]\ncategories: [sights]\n')
+look_again()
+st, _, html = anon.get('/en/nature/water')
+d = geo(html)[0] if 'data-geo-data' in html else {'items': [], 'facets': []}
+check('a term of a taxonomy of places is a map of its entries and its sub-terms\' entries, with its description', st == 200 and sorted(i['id'] for i in d['items']) == ['points/blue-lake', 'points/cold-spring', 'points/warm-spring'] and 'Springs and lakes.' in html, (st, [i['id'] for i in d['items']]))
+chips = html.split('class="term-chips"')[1].split('</nav>')[0] if 'class="term-chips"' in html else ''
+check('with the sub-terms that have entries as chips, each with its number, the page itself marked', re.findall(r'<a href="([^"]+)"( aria-current="page")?>([^<]+) <span class="term-chip-count">(\d+)</span>', chips) == [('/en/nature/water', ' aria-current="page"', 'All', '3'), ('/en/nature/water/springs', '', 'Springs', '2'), ('/en/nature/water/lakes', '', 'Lakes', '1')] and 'aria-label="Water"' in html, chips[:400])
+check('the bar over the map offers the other taxonomies, not the page\'s own', [f['name'] for f in d['facets']] == ['categories'], [f['name'] for f in d['facets']])
+st, _, html = anon.get('/en/nature/water/springs')
+chips = html.split('class="term-chips"')[1].split('</nav>')[0] if 'class="term-chips"' in html else ''
+check('a sub-term\'s page has its siblings as chips, itself marked, All leading up', st == 200 and '<a href="/en/nature/water/springs" aria-current="page">Springs' in chips and '<a href="/en/nature/water">All' in chips and 'data-geo-data' in html and sorted(i['id'] for i in geo(html)[0]['items']) == ['points/cold-spring', 'points/warm-spring'], chips[:400])
+c = root.get('/admin/theme?tab=archive_layouts')[2]
+c = c.split('id="archive-taxonomy-nature"')[1].split('</article>')[0] if 'id="archive-taxonomy-nature"' in c else ''
+check('its card says the Map is its default, offers the chips and not itself as a filter of the bar', 'Map by default' in c and 'name="archive_taxonomies[nature][sub_term_chips]" value="1" checked' in c and 'archive_taxonomies[nature][map_filters][]" value="nature"' not in c and 'archive_taxonomies[nature][map_filters][]" value="categories"' in c, c[:300])
+st, _, html = anon.get('/en/category/sights')
+check('a category, which lists every type, is not a map unless chosen', st == 200 and 'data-geo-data' not in html and 'term-chips' not in html, st)
+# An old Greek address pasted in Admin > Redirects (as the importer's redirects.txt writes it) leads to the term page.
+root.submit('/admin/redirects', lambda f: ['do', 'import'] in f['fields'], {'lines': '/φύση/πηγές/ /en/nature/water/springs 301'})
+st, hdr, _ = anon.get('/' + urllib.parse.quote('φύση/πηγές') + '/')
+check('a Greek old address leads to the term page', st == 301 and (hdr.get('Location') or '').endswith('/en/nature/water/springs'), (st, hdr.get('Location')))
 
 print('\nALL PASSED' if not fails else '\n%d FAILED: %s' % (len(fails), fails))
 sys.exit(1 if fails else 0)

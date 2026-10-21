@@ -33,8 +33,13 @@ final class RedirectRepository
             // "//x" would otherwise be read as a host name.
             $raw = '/' . ltrim($raw, '/');
         }
+        // parse_url() mangles bytes outside ASCII ("/activity/πεζοπορία" as an import or a paste writes it), so they are
+        // encoded first, as a browser sends them, and decoded below.
+        $raw = (string)preg_replace_callback('/[^\x21-\x7E]/', static fn(array $m): string => rawurlencode($m[0]), $raw);
         $path = (string)(parse_url($raw, PHP_URL_PATH) ?? '');
         $path = rawurldecode($path);
+        // A broken byte sequence is made valid, so a path normalised twice is the same path.
+        $path = mb_check_encoding($path, 'UTF-8') ? $path : mb_scrub($path, 'UTF-8');
         $path = mb_strtolower($path, 'UTF-8');
         $path = (string)preg_replace('#/{2,}#', '/', $path);
         return mb_substr(trim($path, '/'), 0, 300);

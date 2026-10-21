@@ -6,7 +6,7 @@
  *   php tests/unit/wordpress-rest-types.php
  */
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
-use GnozioCMS\{FrontMatter, GeoTrack, MediaLibrary, Taxonomies, WordPressImporter, WordPressReader, WordPressRestTypes, WordPressTermMerge};
+use GnozioCMS\{FrontMatter, GeoTrack, ImportedRedirects, MediaLibrary, RedirectRepository, SystemDatabase, Taxonomies, WordPressImporter, WordPressReader, WordPressRestTypes, WordPressTermMerge};
 use Symfony\Component\Yaml\Yaml;
 
 $fail = 0;
@@ -128,6 +128,11 @@ $web = [
     ],
 ];
 $web['/wp-json/wp/v2/route'][0]['status'] = 'publish';
+// The old site's English pages have slugs of their own, the merged-away term too; a Greek term's address is percent-encoded.
+$web['/en/wp-json/wp/v2/activity'][0]['link'] = "$SITE/en/activity/bird-watching/";
+$web['/en/wp-json/wp/v2/activity'][] = ['id' => 767, 'slug' => 'bird-watchin-en', 'name' => 'Bird watchin', 'link' => "$SITE/en/activity/bird-watchin-en/", 'parent' => 0, 'count' => 27, 'description' => ''];
+$web['/wp-json/wp/v2/location'][1]['slug'] = rawurlencode('π-ε-αρκαδίας');
+$web['/wp-json/wp/v2/location'][1]['link'] = "$SITE/location/" . rawurlencode('π-ε-αρκαδίας') . '/';
 $get = function (string $url) use (&$web, $SITE): ?array {
     $path = (string)parse_url($url, PHP_URL_PATH);
     if (!str_starts_with($url, $SITE) || !isset($web[$path])) { return ['status' => 404, 'body' => '{}']; }
@@ -170,6 +175,9 @@ check('and the ACF keys the profile does not name', $plan['report']['unmapped'],
 $list = array_map(fn($r) => $r[0] . ' ' . $r[1], $plan['redirects']);
 check('old addresses lead to the new ones, in both languages', array_values(array_intersect(['/route/podilatikos-gyros-limnis-taka /routes/podilatikos-gyros-limnis-taka', '/en/route/podilatikos-gyros-limnis-taka /en/routes/podilatikos-gyros-limnis-taka', '/route /routes', '/en/route /en/routes'], $list)), ['/route/podilatikos-gyros-limnis-taka /routes/podilatikos-gyros-limnis-taka', '/en/route/podilatikos-gyros-limnis-taka /en/routes/podilatikos-gyros-limnis-taka', '/route /routes', '/en/route /en/routes']);
 check('a merged term\'s old address leads to the term it went into', [in_array('/activity/bird-watchin /activity/paratirisi-ptinon', $list, true), in_array('/en/activity/bird-watchin /en/activity/paratirisi-ptinon', $list, true), in_array('/category/geodiadromes /category/crete-routes/georoutes', $list, true)], [true, true, true]);
+check('the old English address of a term, with its own slug, and of a term merged into it, lead to the English page', [in_array('/en/activity/bird-watching /en/activity/paratirisi-ptinon', $list, true), in_array('/en/activity/bird-watchin-en /en/activity/paratirisi-ptinon', $list, true)], [true, true]);
+check('a merged term\'s Greek address comes decoded', in_array('/location/π-ε-αρκαδίας /location/arkadia', $list, true), true);
+check('no old address is a term page of the new site', array_values(array_filter($list, fn($l) => in_array(explode(' ', $l)[0], ['/activity/paratirisi-ptinon', '/en/activity/paratirisi-ptinon', '/location/arkadia'], true))), []);
 check('an entry with no English has no English address to redirect', (bool)array_filter($list, fn($l) => str_starts_with($l, '/en/route/silimna')), false);
 
 $result = $importer->apply($plan);
@@ -199,6 +207,29 @@ check('a taxonomy of the old site is one here, with its name and no tree it does
 check('a term has its source address, both names and both descriptions', [$act['terms'][0]['imported_from'], $act['terms'][0]['labels'], $act['terms'][0]['descriptions']], ["$SITE/wp-json/wp/v2/activity/310", ['el' => 'Παρατήρηση Πτηνών', 'en' => 'Bird watching'], ['el' => 'Πουλιά', 'en' => 'Birds']]);
 check('a name the English pages give unchanged is not an English name', $act['terms'][1]['labels'], ['el' => 'Ποδηλασία', 'en' => '']);
 check('the categories keep their tree', array_map(fn($x) => [$x['id'], $x['parent']], $tax->load('categories')['terms']), [['crete-routes', ''], ['georoutes', 'crete-routes']]);
+check('a new taxonomy lists the types the profile files under it (so a taxonomy of places opens as a map); categories keep theirs', [$act['archive']['types'] ?? null, $tax->load('location')['archive']['types'] ?? null, $tax->load('categories')['archive']], [['routes', 'points'], ['routes', 'businesses', 'points'], []]);
+check('and opens as a map on a site whose types have a place', (new Taxonomies("$root/content", ['el', 'en']))->withPlaceTypes(fn() => ['routes', 'businesses', 'points'])->archive('activity', 'el', 'el')['layout'], 'map');
+
+// ---- the redirects put into the site (--redirects=apply), and where they lead
+mkdir("$root/storage/db", 0775, true);
+$database = new SystemDatabase("$root/storage");
+$database->initialize();
+$siteRedirects = new RedirectRepository($database);
+$applied = (new ImportedRedirects($siteRedirects))->apply(ImportedRedirects::parse(WordPressImporter::redirectList($result['redirects'])));
+check('the list the import wrote goes in whole', [$applied['added'], $applied['skipped']], [count($result['redirects']), []]);
+$lands = function (string $asked) use ($siteRedirects, $tax): string {
+    $hit = $siteRedirects->resolve($asked);
+    if ($hit === null) { return 'nothing'; }
+    $parts = explode('/', ltrim($hit['target'], '/'));
+    if ($parts[0] === 'en') { array_shift($parts); }
+    $taxonomy = $tax->fromWord($parts[0]);
+    return $hit['target'] . ($taxonomy !== null && $tax->findByPath($taxonomy, implode('/', array_slice($parts, 1))) !== null ? ' (a term page)' : '');
+};
+check('old term addresses, as a browser asks for them, land on the new term pages, merged ones and English ones too', [
+    $lands('/activity/bird-watchin/'), $lands('/en/activity/bird-watching/'), $lands('/en/activity/bird-watchin-en'), $lands('/location/' . rawurlencode('π-ε-αρκαδίας') . '/'), $lands('/category/geodiadromes/'),
+], ['/activity/paratirisi-ptinon (a term page)', '/en/activity/paratirisi-ptinon (a term page)', '/en/activity/paratirisi-ptinon (a term page)', '/location/arkadia (a term page)', '/category/crete-routes/georoutes (a term page)']);
+$appliedAgain = (new ImportedRedirects($siteRedirects))->apply($result['redirects']);
+check('applying them again adds nothing', [$appliedAgain['added'], $appliedAgain['updated'], $appliedAgain['kept']], [0, 0, count($result['redirects'])]);
 check('the site\'s own additions to the types are written', [is_file("$root/custom/content-types/routes.yaml"), Yaml::parseFile("$root/custom/content-types/routes.yaml")['fields']['activity'] ?? null], [true, ['hidden' => true]]);
 
 // ---- again

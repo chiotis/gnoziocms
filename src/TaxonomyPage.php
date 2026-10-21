@@ -74,6 +74,12 @@ final class TaxonomyPage
             $termIds = array_merge($termIds, $taxonomies->descendantIds($key, $termId));
         }
         $types = array_values(array_filter($this->content->getTypes(), static fn(string $type): bool => !in_array($type, ['pages', 'forms'], true) && ($includeTypes === [] || in_array($type, $includeTypes, true))));
+        // The bar over a map (and the page's own form) does not offer the page's own taxonomy: every entry here has the term, and
+        // its sub-terms are the chips under the title. What the taxonomy's card chose, or else what each type chose, without it.
+        $mapNames = ($this->archive)()->mapTaxonomyNames($types, $archive['map_filters'] ?? null);
+        if ($mapNames !== null) {
+            $archive['map_filters'] = array_values(array_diff($mapNames, [$key]));
+        }
         // The content index answers when it can (only the entries on the page are read); otherwise every entry is looked at.
         $page = ($this->archive)()->buildIndexed(['types' => $types, 'term' => ['taxonomy' => $key, 'ids' => $termIds]], false, $archive, [], null, $lang, $query);
         if ($page === null) {
@@ -110,6 +116,10 @@ final class TaxonomyPage
             $trail[] = ['label' => $taxonomies->label($key, $above['id'], $lang), 'url' => '/' . $prefix . $kind . '/' . $taxonomies->slug($key, $above['id'])];
         }
 
+        $chips = ($archive['sub_term_chips'] ?? true) && $taxonomies->isHierarchical($key)
+            ? $this->subTermChips($taxonomies, $key, $termId, $types, (bool)$archive['include_children'], $lang, '/' . $prefix . $kind . '/', $page['filtered'] ? null : (int)$page['total'])
+            : null;
+
         return ['kind' => $kind, 'slug' => $term['slug'], 'data' => [
             'items' => $page['items'],
             'archive' => $page,
@@ -119,11 +129,59 @@ final class TaxonomyPage
             'archive_subtitle' => $archive['subtitle'] !== '' ? $fill($archive['subtitle']) : $description,
             'term_description' => $description,
             'term_trail' => $trail,
+            'term_chips' => $chips,
             'block_styles' => [$this->theme->blockStylesheetUrl(rtrim((string)($settings['base_url'] ?? ''), '/'), ['latest'])],
             'alternate_urls' => $alternates['urls'],
             'alternate_default' => $alternates['default'],
             'noindex_page' => $page['filtered'],
             'seo_kind' => 'taxonomy',
         ] + $viewDefaults];
+    }
+
+    /**
+     * The chips under the title of a term's page in a taxonomy with a tree: "All" (the term) and its sub-terms; for a term without
+     * sub-terms, its parent's ("All" is then the parent) with the term marked. A sub-term with no entries is left out when the
+     * content index can count them; without the index every one is shown, without numbers. Null when there is nothing to offer.
+     *
+     * @param string[] $types the types the page lists
+     * @param int|null $total how many entries the page itself has (null when filtered: then it is counted like the others)
+     * @return array{label: string, all: array{label: string, url: string, current: bool, count: int|null}, items: array<int, array{label: string, url: string, current: bool, count: int|null}>}|null
+     */
+    private function subTermChips(Taxonomies $taxonomies, string $key, string $termId, array $types, bool $withChildren, string $lang, string $base, ?int $total): ?array
+    {
+        $parent = $termId;
+        $children = $taxonomies->children($key, $termId);
+        if ($children === []) {
+            $parent = (string)(array_column($taxonomies->load($key)['terms'], 'parent', 'id')[$termId] ?? '');
+            if ($parent === '') {
+                return null;
+            }
+            $children = $taxonomies->children($key, $parent);
+        }
+        $count = function (string $id) use ($taxonomies, $key, $types, $withChildren, $lang): ?int {
+            $ids = $withChildren ? array_merge([$id], $taxonomies->descendantIds($key, $id)) : [$id];
+            return ($this->archive)()->totalIndexed(['types' => $types, 'term' => ['taxonomy' => $key, 'ids' => $ids]], false, $lang);
+        };
+        $chip = fn(string $id, string $label): array => [
+            'label' => $label,
+            'url' => $base . $taxonomies->slug($key, $id),
+            'current' => $id === $termId,
+            'count' => $id === $termId && $total !== null ? $total : $count($id),
+        ];
+        $items = [];
+        foreach ($children as $child) {
+            $item = $chip((string)$child['id'], $taxonomies->label($key, (string)$child['id'], $lang));
+            if ($item['current'] || $item['count'] === null || $item['count'] > 0) {
+                $items[] = $item;
+            }
+        }
+        if (array_filter($items, static fn(array $i): bool => !$i['current']) === []) {
+            return null;
+        }
+        return [
+            'label' => $taxonomies->label($key, $parent, $lang),
+            'all' => $chip($parent, ($this->translate)('filter.all', 'All')),
+            'items' => $items,
+        ];
     }
 }

@@ -20,16 +20,51 @@ use Symfony\Component\Yaml\Yaml;
  *             /category/books/english. A slug is unique among the terms of one parent.
  *   archive:  only the layout choices that differ from the defaults, the same ones a content type has
  *             (layout, columns, per_page, order, show_*, title, subtitle, taxonomies), plus `types`: the
- *             content types listed on its pages (none chosen means all of them).
+ *             content types listed on its pages (none chosen means all of them), `include_children` and
+ *             `sub_term_chips` (both on unless written false).
+ *
+ * The defaults of a taxonomy whose pages list only types with a place (a field of the kind `location`, see placeTypes()) have
+ * the Map layout: its terms (an activity, a kind of point) are pages of places. Every other taxonomy, categories and tags
+ * included (they list every type), keeps the defaults of a content type.
  */
 final class Taxonomies
 {
     /** @var array<string, array{title: string, hierarchical: bool, terms: array<int, array{id: string, slug: string, labels: array<string, string>, descriptions: array<string, string>}>, archive: array<string, mixed>}> */
     private array $cache = [];
 
+    /** @var (\Closure(): string[])|null the content types whose entries can have a place */
+    private ?\Closure $placeTypes = null;
+
     /** @param string[] $languages every language of the site */
     public function __construct(private string $contentDir, private array $languages)
     {
+    }
+
+    /**
+     * Tells the store which content types have a place, so the pages of a taxonomy of places open as a map by default.
+     *
+     * @param \Closure(): string[] $placeTypes
+     */
+    public function withPlaceTypes(\Closure $placeTypes): self
+    {
+        $this->placeTypes = $placeTypes;
+        return $this;
+    }
+
+    /**
+     * What the archive of a taxonomy has before the site chose anything: the Map layout when its pages list only types with a
+     * place, nothing otherwise (the defaults of a content type).
+     *
+     * @param string[]|null $types the types its pages list; null: as its file says
+     * @return array<string, mixed>
+     */
+    public function archiveDefaults(string $name, ?array $types = null): array
+    {
+        if ($this->placeTypes === null) {
+            return [];
+        }
+        $types ??= self::typeList($this->load($name)['archive']['types'] ?? null);
+        return $types !== [] && array_diff($types, ($this->placeTypes)()) === [] ? ['layout' => 'map'] : [];
     }
 
     private function dir(): string
@@ -358,6 +393,13 @@ final class Taxonomies
         return $found;
     }
 
+    /** The terms right below a term (the top ones for ''), in the order of the file. @return array<int, array<string, mixed>> */
+    public function children(string $name, string $termId): array
+    {
+        $parent = $termId === '' ? '' : Slug::plain($termId);
+        return array_values(array_filter($this->load($name)['terms'], static fn(array $term): bool => $term['parent'] === $parent));
+    }
+
     /**
      * The terms in the order a tree is read: each term followed by its children, siblings in the order of the file.
      * Every row gets a `depth` (0 at the top).
@@ -474,9 +516,11 @@ final class Taxonomies
     public function archive(string $name, string $lang, string $defaultLang): array
     {
         $raw = $this->load($name)['archive'];
-        $values = ContentTypes::resolveArchive($raw, static fn(mixed $v): mixed => ContentTypes::pick($v, $lang, $defaultLang));
+        $values = ContentTypes::resolveArchive($raw + $this->archiveDefaults($name), static fn(mixed $v): mixed => ContentTypes::pick($v, $lang, $defaultLang));
         $values['types'] = self::typeList($raw['types'] ?? null);
         $values['include_children'] = FieldSchema::isTruthy($raw['include_children'] ?? true);
+        // A row of chips under the title of a term's page, one for each sub-term (taxonomies with a tree only).
+        $values['sub_term_chips'] = FieldSchema::isTruthy($raw['sub_term_chips'] ?? true);
         return $values;
     }
 

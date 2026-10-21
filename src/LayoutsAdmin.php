@@ -93,9 +93,11 @@ final class LayoutsAdmin
         // The taxonomies the bar over the map can offer, ticked as the list chose or, before it chose, as MapFilters would: a type's
         // automatic ones; for a taxonomy, what each type it lists offers.
         $filters = new MapFilters(fn(): Taxonomies => $this->taxonomies, fn(string $type): ?array => $this->types->definition($type, $default, $default)['archive']['map_filters'] ?? null);
-        $mapFilters = function (?array $chosen, array $automatic) use ($names): array {
+        $mapFilters = function (?array $chosen, array $automatic, string $except = '') use ($names): array {
+            // A taxonomy's own pages never offer it in the bar (TaxonomyPage), so its card does not either.
+            $automatic = array_values(array_diff($automatic, [$except]));
             $options = [];
-            foreach ($names as $name) {
+            foreach (array_diff($names, [$except]) as $name) {
                 $loaded = $this->taxonomies->load($name);
                 $options[] = ['name' => $name, 'title' => $loaded['title'], 'terms' => count($loaded['terms']), 'tree' => $loaded['hierarchical'], 'checked' => in_array($name, $chosen ?? $automatic, true)];
             }
@@ -141,7 +143,9 @@ final class LayoutsAdmin
                 'terms' => count($loaded['terms']),
                 'archive' => $archive,
                 'filters' => array_values(array_diff($names, [$name])),
-                'map_filters' => $mapFilters($archive['map_filters'] ?? null, $filters->names($archive['types'] !== [] ? $archive['types'] : $listable)),
+                'map_filters' => $mapFilters($archive['map_filters'] ?? null, $filters->names($archive['types'] !== [] ? $archive['types'] : $listable), $name),
+                // Its pages list only types with a place, so they open as a map until the site chooses another layout.
+                'place_default' => ($this->taxonomies->archiveDefaults($name)['layout'] ?? '') === 'map',
                 'listable' => $listable,
                 'built' => $built(ArchiveTemplates::forTaxonomy($name)),
             ];

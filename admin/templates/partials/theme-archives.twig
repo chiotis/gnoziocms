@@ -24,7 +24,7 @@
         <h3 id="{{ id }}" class="truncate text-sm font-semibold text-slate-900">{{ heading }}</h3>
         <p class="mt-0.5 text-xs text-slate-500">
           {% if kind == 'type' %}{{ item.count }} {{ item.count == 1 ? 'entry' : 'entries' }} · <code class="rounded bg-slate-100 px-1 text-[11px]">/{{ item.type }}</code>
-          {% else %}{{ item.terms }} {{ item.terms == 1 ? 'term' : 'terms' }} · every {{ item.kind }} page{% endif %}
+          {% else %}{{ item.terms }} {{ item.terms == 1 ? 'term' : 'terms' }} · every {{ item.kind }} page{% if item.place_default|default(false) %} · <span class="rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700" title="Its pages list only types with a place, so they open as a map until you choose another layout.">Map by default</span>{% endif %}{% endif %}
         </p>
         <p class="mt-1.5 text-xs font-medium text-slate-700" data-lc-summary>{{ archive_layouts[a.layout] ?? a.layout }} · {{ a.columns }} columns · {{ a.per_page == 0 ? 'all on one page' : a.per_page ~ ' per page' }}</p>
       </div>
@@ -136,7 +136,8 @@
           <dd class="m-0 flex flex-wrap items-center gap-x-3 gap-y-1.5">
             <input type="hidden" name="{{ name }}[children_shown]" value="1">
             {{ c.chip(name ~ '[include_children]', 'List entries of the sub-terms too', a.include_children) }}
-            <span class="text-[11px] text-slate-500">A parent’s page and feed then carry what is filed under its children.</span>
+            {{ c.chip(name ~ '[sub_term_chips]', 'Chips under the title', a.sub_term_chips ?? true) }}
+            <span class="text-[11px] text-slate-500">The chips link to each sub-term’s page (on a term without any, to its siblings’).</span>
           </dd>
         </div>
       {% endif %}

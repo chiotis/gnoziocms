@@ -4050,7 +4050,7 @@ final class App
 
     private function taxonomies(): Taxonomies
     {
-        return $this->taxonomyStore ??= new Taxonomies($this->contentDir, array_map('strval', $this->settings['languages']['available'] ?? [(string)($this->settings['languages']['default'] ?? 'el')]));
+        return $this->taxonomyStore ??= (new Taxonomies($this->contentDir, array_map('strval', $this->settings['languages']['available'] ?? [(string)($this->settings['languages']['default'] ?? 'el')])))->withPlaceTypes(fn(): array => $this->blockRuntime()->placeTypes());
     }
 
     private function renderSitemap(): void

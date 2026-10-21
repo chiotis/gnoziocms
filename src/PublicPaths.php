@@ -58,8 +58,10 @@ final class PublicPaths
         if (in_array($first, ['search', 'pages'], true)) {
             return true;
         }
-        if (in_array($first, ['tag', 'tags', 'category', 'categories'], true)) {
-            return isset($segments[1]) && ($this->taxonomies)()->findByPath(in_array($first, ['category', 'categories'], true) ? 'categories' : 'tags', implode('/', array_slice($segments, 1))) !== null;
+        // The page of a term: categories, tags and a site's own taxonomies (/activity/hiking, /business-type/stay/hotel).
+        $taxonomy = ($this->taxonomies)()->fromWord($first);
+        if ($taxonomy !== null && !in_array($first, $this->content->getTypes(), true)) {
+            return isset($segments[1]) && ($this->taxonomies)()->findByPath($taxonomy, implode('/', array_slice($segments, 1))) !== null;
         }
         if (in_array($first, $this->content->getTypes(), true)) {
             if (count($segments) === 1) {

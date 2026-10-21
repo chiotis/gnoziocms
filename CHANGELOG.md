@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.176 — 2026-10-21 — Pages of terms, redirects of old addresses
+- **Pages of terms for sites of places**: a taxonomy whose pages list only types with a place (an activity, a kind of point) opens as a map unless the site chooses another layout; its card says *Map by default*, and the importer's new taxonomies list their types so they do.
+- A term in a tree has its sub-terms as chips under the title, with how many entries each has (a leaf shows its siblings). The bar over its map no longer offers the page's own taxonomy.
+- `scripts/import-wordpress.php --redirects=apply` puts the old addresses straight into the site's Redirects, again and again without duplicates, never over a redirect the site made. The old English addresses of terms, with their own slugs, now redirect too.
+- Fixed: an old address written with Greek letters, pasted in Redirects or imported, never matched a visitor's request.
+
 ## 0.1.175 — 2026-10-21 — Places and routes: galleries and the page of one
 - **Galleries for entries.** A new field kind, `gallery`, holds the pictures of the media library an entry shows, in order. Any content type can have one, also from Admin > Content types, and routes, points and businesses have one under the key `gallery`. In the editor it is a row of thumbnails: add several pictures at once, move them with buttons or by dragging, remove them, or edit the addresses as text.
 - Theme > Single Layouts can show the gallery as a strip under the title, at the end of the text, or not at all. An entry with no pictures shows nothing and loads nothing extra. The Gallery block can show the entry's gallery, and in a template built with blocks its pictures can be bound to it.
