@@ -90,6 +90,17 @@ final class LayoutsAdmin
     {
         $names = $this->taxonomies->names();
         $cards = [];
+        // The taxonomies the bar over the map can offer, ticked as the list chose or, before it chose, as MapFilters would: a type's
+        // automatic ones; for a taxonomy, what each type it lists offers.
+        $filters = new MapFilters(fn(): Taxonomies => $this->taxonomies, fn(string $type): ?array => $this->types->definition($type, $default, $default)['archive']['map_filters'] ?? null);
+        $mapFilters = function (?array $chosen, array $automatic) use ($names): array {
+            $options = [];
+            foreach ($names as $name) {
+                $loaded = $this->taxonomies->load($name);
+                $options[] = ['name' => $name, 'title' => $loaded['title'], 'terms' => count($loaded['terms']), 'tree' => $loaded['hierarchical'], 'checked' => in_array($name, $chosen ?? $automatic, true)];
+            }
+            return ['options' => $options, 'automatic' => $automatic, 'chosen' => $chosen !== null];
+        };
         // A list drawn with blocks (Edit template): any list the theme has the template for.
         $built = function (string $key) use ($themeSettings): ?array {
             if (!$this->theme->hasTemplate(TemplateResolver::ARCHIVE_BUILT)) {
@@ -112,6 +123,7 @@ final class LayoutsAdmin
                 'options' => $definition['archive_options'],
                 'orders' => ContentTypes::orderOptions($definition['fields']),
                 'filters' => $names,
+                'map_filters' => $mapFilters($definition['archive']['map_filters'] ?? null, $filters->automaticFor([$type])),
                 'built' => $built($type),
             ];
         }
@@ -119,6 +131,7 @@ final class LayoutsAdmin
         $taxonomies = [];
         foreach ($names as $name) {
             $loaded = $this->taxonomies->load($name);
+            $archive = $this->taxonomies->archive($name, $default, $default);
             $taxonomies[] = [
                 'orders' => ContentTypes::ORDERS,
                 'name' => $name,
@@ -126,8 +139,9 @@ final class LayoutsAdmin
                 'kind' => Taxonomies::kind($name),
                 'hierarchical' => $loaded['hierarchical'],
                 'terms' => count($loaded['terms']),
-                'archive' => $this->taxonomies->archive($name, $default, $default),
+                'archive' => $archive,
                 'filters' => array_values(array_diff($names, [$name])),
+                'map_filters' => $mapFilters($archive['map_filters'] ?? null, $filters->names($archive['types'] !== [] ? $archive['types'] : $listable)),
                 'listable' => $listable,
                 'built' => $built(ArchiveTemplates::forTaxonomy($name)),
             ];

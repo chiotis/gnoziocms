@@ -3,7 +3,7 @@
   pages of a point, a route and a business. The map is drawn by the page's script (blocks/map/block.js) from the data in the page;
   without it there is still the list, as links.
   Variables: geo (data from geo_dataset(), geo_single() or the Map block), height (small, medium, large, tall), list (right, left,
-  below, none), filters (a bar of kinds, categories and a search), cluster (group markers that are close), load (click or auto),
+  below, none), filters (a bar of kinds, of the taxonomies in geo.facets and a search), cluster (group markers that are close), load (click or auto),
   label (what the map is called), overlay ('left' or 'right': the list and the filters float over the map on that side, and the map is
   centred on the part that is left; the page gives such a map the whole width), uid, item_tag (the heading level of the list's entries, default h3).
 #}
@@ -19,6 +19,7 @@
   data-cluster-js="{{ theme_asset('vendor/leaflet/leaflet.markercluster.js') }}" data-cluster-css="{{ theme_asset('vendor/leaflet/MarkerCluster.css') }}"
   data-label-all="{{ t('geo.all', 'All') }}" data-label-kinds="{{ t('geo.kinds', 'Kind of place') }}" data-label-category="{{ t('geo.category', 'Category') }}"
   data-label-categories="{{ t('geo.categories', 'All categories') }}" data-label-search="{{ t('geo.search', 'Search places') }}"
+  data-label-clear="{{ t('geo.clear', 'Clear') }}" data-label-reset="{{ t('filter.reset', 'Clear filters') }}"
   data-label-error="{{ t('geo.error', 'The map could not be loaded.') }}">
   {% if bar and not overlay %}<div class="geo-filters" data-geo-filters hidden></div>{% endif %}
   <p class="visually-hidden" role="status" aria-live="polite" data-geo-status></p>
@@ -53,5 +54,7 @@
       </div>
     {% endif %}
   </div>
-  <script type="application/json" data-geo-data>{{ geo_json(geo|merge({cluster: cluster|default(true), overlay: overlay})) }}</script>
+  {# The name of each taxonomy of the bar as the theme's texts say it (filter.<name>), else the taxonomy's own title. #}
+  {% set facets = geo.facets is defined and geo.facets is iterable ? geo.facets|map(f => f|merge({label: t('filter.' ~ f.name, f.label)})) : null %}
+  <script type="application/json" data-geo-data>{{ geo_json(geo|merge({cluster: cluster|default(true), overlay: overlay, facets: facets})) }}</script>
 </div>

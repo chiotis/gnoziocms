@@ -18,7 +18,8 @@ namespace GnozioCMS;
  */
 final class GeoCache
 {
-    private const FORMAT = 1;
+    /** Raised when the shape of what is kept changes (2: the bar's taxonomies, `tax` and `facets`), so an answer of the old shape is not read. */
+    private const FORMAT = 2;
     /** Most answers one stamp keeps; more than this (many different filters) and the oldest are dropped by starting again. */
     private const MAX_ANSWERS = 400;
     private const MAX_BYTES = 8 * 1024 * 1024;

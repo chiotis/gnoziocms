@@ -101,6 +101,24 @@
           </label>
         </dd>
       </div>
+      {% if item.map_filters is defined and item.map_filters.options %}
+        {# The taxonomies the bar over the map offers. Ticking exactly the automatic ones stores nothing, so the list keeps following them. #}
+        <div class="lc-row" data-map-only>
+          <dt>Map filters</dt>
+          <dd class="m-0">
+            <input type="hidden" name="{{ name }}[map_filters_auto]" value="{{ item.map_filters.automatic|join(',') }}">
+            <div class="flex flex-wrap gap-1.5" role="group" aria-label="Filters in the bar over the map" aria-describedby="{{ id }}-mf">
+              {% for option in item.map_filters.options %}
+                <label class="lc-chip" title="{{ option.terms }} {{ option.terms == 1 ? 'term' : 'terms' }}{{ option.tree ? ', a tree: offered as groups' : '' }}"><input type="checkbox" name="{{ name }}[map_filters][]" value="{{ option.name }}"{% if option.checked %} checked{% endif %}><span>{{ option.title }} <span class="text-[10px] font-normal text-slate-500">{{ option.terms }}</span></span></label>
+              {% endfor %}
+            </div>
+            <p id="{{ id }}-mf" class="mt-1 text-[11px] leading-4 text-slate-500">
+              {% if item.map_filters.chosen %}Chosen for this list.{% else %}Automatic: categories and every taxonomy with {{ constant('GnozioCMS\\MapFilters::MIN_TERMS') }} to {{ constant('GnozioCMS\\MapFilters::MAX_TERMS') }} terms{{ kind == 'taxonomy' ? ', as each listed type chose' : '' }}.{% endif %}
+              Ticking {{ item.map_filters.automatic ? 'exactly ' ~ (item.map_filters.options|filter(o => o.name in item.map_filters.automatic)|column('title')|join(', ')) : 'none of them' }} makes it automatic{{ item.map_filters.chosen ? ' again' : '' }}.
+            </p>
+          </dd>
+        </div>
+      {% endif %}
       {% if item.options %}{{ c.options(item.options, name ~ '[options]', a.options|default({})) }}{% endif %}
       {% if item.filters is not empty %}
         <div class="lc-row">

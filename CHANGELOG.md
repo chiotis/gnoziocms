@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.174 — 2026-10-21 — Filters from taxonomies on maps
+- **The bar over a map offers any taxonomy of the list, not only categories**: a menu for each, with the terms the entries on the map have and how many have each. It works in the Map layout of an archive, the Map block and the Map of the list block. A tree is offered as groups.
+- Several terms of one taxonomy mean "any of them", different taxonomies "all of them", and the numbers follow the other choices. The bar works before the map is loaded.
+- Theme > Archive Layouts has a **Map filters** row on each card; until something else is ticked, a list offers categories and every taxonomy for its types with 2 to 40 terms. Without JavaScript the archive's own form filters by the same taxonomies. A type with no taxonomies is unchanged.
+- The cache of the maps' data has a new format, so data cached before the update is never served.
+
 ## 0.1.173 — 2026-10-21 — WordPress import: custom types, ACF fields, merged terms
 - **The importer brings custom post types that the REST API shows, with their ACF fields** (`rest_types` in a profile): each field mapped to the field here with its exact spelling, Greek and English fields as two entries linked by `translation_id`, latitude and longitude as `location`, a route file fetched and checked (an unreadable one is skipped and reported; its length fills an empty `distance_km`), a gallery as library paths, a YouTube video as a Video block, and the site's own taxonomies with parents, descriptions, source ids and English names.
 - **Duplicate terms are merged** by `term_map` lines and, when the profile sets `merge_same_names`, by names that differ only in case, accent or ς/σ. Every merge is printed and its old address redirected; with `skip_empty_terms` unused terms are left out.
