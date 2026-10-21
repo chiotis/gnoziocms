@@ -1054,7 +1054,8 @@ final class App
             fn(string $path): string => $this->buildAbsoluteUrl($path),
             fn(string $markdown, string $lang, string $path): string => $this->applyShortcodes((string)$this->markdown->convert($markdown), $lang, $path),
             fn(string $slug, string $lang, string $path): string => $this->renderFormEmbedBySlug($slug, $lang, $path),
-            fn(): Relations => $this->relations()
+            fn(): Relations => $this->relations(),
+            fn(): Taxonomies => $this->taxonomies()
         );
     }
 
@@ -4006,7 +4007,8 @@ final class App
             fn(): array => $this->taxonomies()->names(),
             fn(string $taxonomy, string $termId, string $lang): string => $this->taxonomyTermLabel($taxonomy, $termId, $lang),
             new ArchiveQuery($this->contentIndex, $this->content),
-            fn(array $ids, string $lang): array => array_column($this->relations()->resolve($ids, [], $lang), 'title', 'id')
+            fn(array $ids, string $lang): array => array_column($this->relations()->resolve($ids, [], $lang), 'title', 'id'),
+            fn(array $types, ?array $chosen): array => $this->blockRuntime()->mapFilters()?->names($types, $chosen) ?? []
         );
     }
 

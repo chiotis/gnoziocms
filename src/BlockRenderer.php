@@ -571,7 +571,9 @@ final class BlockRenderer
         if ($type === 'entry-map' && is_array($context['archive'] ?? null)) {
             // Every entry the list's filters leave that has a place, on one map (the entries of the page are a part of them).
             $mapItems = ($context['archive']['map_items'] ?? null) instanceof \Closure ? ($context['archive']['map_items'])() : [];
-            $values['geo'] = isset($this->providers['geo_items']) ? ($this->providers['geo_items'])($mapItems, (string)($context['lang'] ?? '')) : ['items' => []];
+            // The bar offers the taxonomies the list's card chose (null: as the card of each type says).
+            $chosen = $context['archive']['settings']['map_filters'] ?? null;
+            $values['geo'] = isset($this->providers['geo_items']) ? ($this->providers['geo_items'])($mapItems, (string)($context['lang'] ?? ''), is_array($chosen) ? $chosen : null) : ['items' => []];
             $values['_empty'] = $values['geo']['items'] === [];
             $values['_types'] = ['map'];
             $values['load_mode'] = ($values['load'] ?? 'site') === 'site' && isset($this->providers['geo_load']) ? ($this->providers['geo_load'])() : (($values['load'] ?? 'click') === 'auto' ? 'auto' : 'click');

@@ -179,6 +179,7 @@ return [
     'geo.category' => 'Category',
     'geo.categories' => 'All categories',
     'geo.search' => 'Search places',
+    'geo.clear' => 'Clear',
     'geo.error' => 'The map could not be loaded.',
     'geo.consent' => 'The map is drawn from map tiles (OpenStreetMap, unless the site chose others). Showing it tells the tile server your address.',
     'geo.loading' => 'Loading the map…',

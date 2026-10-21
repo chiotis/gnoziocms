@@ -21,6 +21,7 @@ final class BlockRuntime
     private ?YouTubePlaylist $playlist = null;
     private ?YouTubeThumbs $thumbs = null;
     private ?GeoView $geoView = null;
+    private ?MapFilters $mapFilters = null;
 
     /**
      * @param \Closure(): array<string, mixed> $settings the site's settings, as they are now
@@ -32,6 +33,7 @@ final class BlockRuntime
      * @param \Closure(string): string $absoluteUrl the full address of a public path
      * @param \Closure(string, string, string): string $markdownToHtml Markdown as the site shows it: text, language, path of the page
      * @param \Closure(string, string, string): string $formEmbed the form of a slug, ready to place: slug, language, path of the page
+     * @param (\Closure(): Taxonomies)|null $taxonomies the site's taxonomies (without them the bar of a map offers its categories only)
      */
     public function __construct(
         private string $basePath,
@@ -48,7 +50,8 @@ final class BlockRuntime
         private \Closure $absoluteUrl,
         private \Closure $markdownToHtml,
         private \Closure $formEmbed,
-        private ?\Closure $relations = null
+        private ?\Closure $relations = null,
+        private ?\Closure $taxonomies = null
     ) {
     }
 
@@ -131,9 +134,10 @@ final class BlockRuntime
                     return $view->collection($types, $itemLang, Slug::plain($term), ['limit' => max(1, min(800, $limit))]);
                 },
                 // The entries of a list as a map draws them (the Map of the list block): the dataset of the entries that have a place.
-                'geo_items' => function (array $items, string $itemLang): array {
+                // `$filters`: the taxonomies the list's card chose for the bar (null: as each type's card says).
+                'geo_items' => function (array $items, string $itemLang, ?array $filters = null): array {
                     $view = $this->geoView();
-                    return $view->dataset(array_values(array_filter($items, static fn($item): bool => $item instanceof ContentItem)), $itemLang, ['limit' => ArchiveQuery::MAP_LIMIT]);
+                    return $view->dataset(array_values(array_filter($items, static fn($item): bool => $item instanceof ContentItem)), $itemLang, ['limit' => ArchiveQuery::MAP_LIMIT, 'filters' => $filters]);
                 },
                 'geo_load' => fn(): string => (($this->settings)()['apis']['maps']['load'] ?? 'click') === 'auto' ? 'auto' : 'click',
                 'term' => fn(string $id, string $itemLang): string => ($this->termLabel)('categories', $id, $itemLang),
@@ -272,8 +276,21 @@ final class BlockRuntime
                 'tiles_url' => (string)(($this->settings)()['apis']['maps']['tiles_url'] ?? ''),
                 'attribution' => (string)(($this->settings)()['apis']['maps']['attribution'] ?? ''),
             ],
-            new GeoCache($this->basePath . '/storage/cache/geo-data', fn(): ?string => $this->mapsStamp(), $library, fn(): string => ($this->signedIn)() ? 'editor' : 'visitor')
+            new GeoCache($this->basePath . '/storage/cache/geo-data', fn(): ?string => $this->mapsStamp(), $library, fn(): string => ($this->signedIn)() ? 'editor' : 'visitor'),
+            ($filters = $this->mapFilters()) === null ? null : fn(array $types, ?array $chosen, string $lang): array => $filters->facets($types, $chosen, $lang)
         );
+    }
+
+    /** Which taxonomies the bar over a map offers (see MapFilters), or null when the site's taxonomies were not given. */
+    public function mapFilters(): ?MapFilters
+    {
+        if ($this->mapFilters === null && $this->taxonomies !== null) {
+            $this->mapFilters = new MapFilters($this->taxonomies, function (string $type): ?array {
+                $default = ($this->defaultLanguage)();
+                return ($this->contentTypes)()->definition($type, $default, $default)['archive']['map_filters'] ?? null;
+            });
+        }
+        return $this->mapFilters;
     }
 
     /**

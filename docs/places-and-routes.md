@@ -26,7 +26,8 @@ on. A value that is not a position is not stored. Field keys never change; a sit
   band), `price_range`, `opening_hours`, `services` and `packages` (two texts of several lines), `facebook`, `instagram`.
 - **All three** have a **`gallery`** (see *Gallery* below). No field is required.
 
-The kind of business, or of point, or of route, is its **category** (Admin > Taxonomies): that is what the map filters by.
+The kind of business, or of point, or of route, is its **category** (Admin > Taxonomies). The map filters by it and by any other
+taxonomy of the site (an activity, a difficulty, a price range, a facet of the points): see [Filters on the map](#filters-on-the-map).
 
 Three field kinds were added for this and can be used by any content type: **`location`**, **`file`** (the address of a file, with a
 *Library* button; `kind: track` offers only route files), and **`gallery`** (below). `location` and `file` work in blocks too.
@@ -105,9 +106,40 @@ is loaded from anyone else except the **map tiles**. A page that has no map load
 
 *Admin > Theme > Archive Layouts* offers the layout **Map** for every type and every category or tag. An archive with that layout is
 one map with a list beside it (right, left, below, or no list), with the height you choose; or, as wide as the screen, with the list *over* the map on one side (see below). A popup's text is the entry's excerpt, or, without one, the start of its first paragraph (headings and code blocks are skipped). It shows every entry that has a place (up
-to 800; no paging); a route is drawn as a line. A bar over the map filters by kind (when the list has several), by category, and by a
-search. The filters of the type that are not categories (activity, difficulty, price range) stay as the page's own form. The three
-types here use this layout by default.
+to 800; no paging); a route is drawn as a line. A bar over the map filters by kind (when the list has several), by the taxonomies of
+the list and by a search (see below). The page's own form keeps the filters of its *Filters* row and the select fields of the type
+(activity, difficulty, price range) as before. The three types here use this layout by default.
+
+## Filters on the map
+
+The bar over a map of entries (the Map layout of an archive, the Map block, the Map of the list block) has a menu for each taxonomy
+the list offers. A menu lists the terms the entries on the map have, each with how many of them have it; a taxonomy with a tree
+(categories, or a site's own with parents) lists each term under its parent, a parent with its children as a group, and a parent counts
+every entry filed under it or under a term below it, once. The menus work at once, without loading the page, and before the map itself
+is loaded: the list beside the map follows them, and the markers when the map is shown.
+
+- **Several terms of one taxonomy** mean *any of them* (walking or cycling); **terms of different taxonomies** mean *all of them*
+  (walking, and easy). The kind of entry and the search are chosen with them.
+- **The numbers follow the choice.** Each term says how many entries it would leave with what is chosen in the other menus; a term with
+  none left is shown faded and cannot be ticked. *Clear* empties one menu, *Clear filters* all of them.
+- **Which taxonomies.** *Theme > Archive Layouts*, the card of the list, row *Map filters* (shown with the Map layout): one chip for
+  each taxonomy, with its number of terms. Until something else is ticked, a list offers the **automatic** ones: categories, as always,
+  and every taxonomy that applies to its types (all of them, or those its own pages list) with **2 to 40 terms**; a taxonomy no entry on
+  the map uses, or whose entries all share one term, is left out of the bar. Ticking exactly the automatic ones stores nothing (in
+  `archive.map_filters` of the type's file), so the list keeps following the taxonomies as they change; ticking none offers none. The
+  Map block and the Map of the list block offer what the card of each of their types chose; a page of a term (a category with the Map
+  layout) what its taxonomy's card chose, or else what each type it lists chose.
+- **Without JavaScript** the archive's own form also has a menu for each taxonomy of the bar (`?filter[<taxonomy>]=<term>`, one term
+  each, the different ones together; a parent there is the term itself, not its children), answered by the content index like the
+  other filters. With JavaScript those fields are put away
+  once the bar is drawn (unless one holds a choice, so it can be undone), and the form with them when nothing else is left in it.
+- **A type with no taxonomies** (or entries filed under none) has no menus: the bar has the kinds and the search, as before.
+- **Names.** A taxonomy's menu is called by the theme's text `filter.<name>` (`filter.categories` is *Category*), or else by its title in
+  Admin > Taxonomies; a term by its name in the language of the page.
+
+The numbers are those of the entries on the map (an entry without a place is not counted, as it is not shown), worked out with the
+map's data and kept with it in the cache of the maps; changing the card or a taxonomy changes the token the cache is kept under. The
+counts of the page's own form are the archive's, from the content index.
 
 ## The Map block
 
@@ -160,7 +192,8 @@ when in view). The block draws nothing for a visitor when there is nothing to sh
 
 ## For templates
 
-`geo_dataset(items, {lines, cluster})` and `geo_single(item, {types, radius, limit})` give the data a map draws;
+`geo_dataset(items, {lines, cluster, filters})` (`filters`: the taxonomies of the bar, as a list of names; null or left out: as the card
+of each type chose; each item then has `tax`, its terms of them, and the data has `facets`, each with its `options` and their `count`) and `geo_single(item, {types, radius, limit})` give the data a map draws;
 `include 'components/geo-map.twig' with {geo, height, list, filters, cluster, load, label}` draws it. `geo_nearby(item, types, radius,
 limit)` gives `[{item, km}]` (`limit` is a number for all, or a map such as `{points: 6, businesses: 4}` for each type; a type missing from the map is not cut); `route_facts(item)` the facts of a route; `elevation_profile(profile, label)` the drawing;
 `geo_position(item)` the place of an entry; `nearby_groups(found, prefix)` the entries of `geo_nearby` of one type under the top terms of
@@ -169,5 +202,6 @@ in the taxonomies a site added, by taxonomy. A type counts as having places when
 
 ## Not in this version
 
-Filters on the map are by kind, category and search (the other filters reload the page). Route files are not edited in the admin:
+The select fields of a type (activity, difficulty, price range as fields rather than taxonomies) filter through the page's form,
+which reloads the page; the form takes one term of each taxonomy (the bar takes several). Route files are not edited in the admin:
 upload a file, choose it. A picture of a gallery has no caption of its own (the library's description is its text).
