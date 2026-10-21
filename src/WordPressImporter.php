@@ -18,7 +18,7 @@ use Symfony\Component\Yaml\Yaml;
  * WordPress keeps categories in a tree and so do this site's: a category keeps its name and its parent, its address is
  * the old one (/category/news/child), and a post is filed under the categories it has (the page of a parent also lists
  * what is filed under its children). Two terms of one slug under different parents are different terms. Duplicates are merged
- * before anything is made of them (WordPressTermMerge): the profile's `term_map`, and names that differ only in case or accents.
+ * before anything is made of them (WordPressTermMerge): the profile's `term_map`, and, when the profile asks (`merge_same_names`), names that differ only in case or accents.
  *
  * A profile's `rest_types` (WordPressRestTypes) bring the custom post types the REST API shows, with their ACF fields: an entry
  * in each language the record has text in, linked by `translation_id`, its place, route file, pictures and video, and the
@@ -830,7 +830,7 @@ final class WordPressImporter
         if ($raw === []) {
             return [];
         }
-        $merged = WordPressTermMerge::apply($raw, $this->rest['term_map'][$base] ?? [], (bool)$this->rest['skip_empty_terms']);
+        $merged = WordPressTermMerge::apply($raw, $this->rest['term_map'][$base] ?? [], (bool)$this->rest['skip_empty_terms'], (bool)$this->rest['merge_same_names']);
         foreach ($merged['merges'] as $m) {
             $this->report['merged'][] = "$here: {$m['from_name']} ({$m['from']}) into {$m['into_name']} ({$m['into']}), " . ($m['why'] === 'term_map' ? 'term_map' : "same name; pin it with term_map.$base.{$m['from']}: {$m['into']}");
         }

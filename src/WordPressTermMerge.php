@@ -12,7 +12,7 @@ namespace GnozioCMS;
  *
  *   1. The lines of the profile's `term_map` (source id => source id) merge one term into another, always and first. A chain
  *      (a into b, b into c) ends at its last term; a line naming a term the site does not have is reported, never guessed.
- *   2. Two terms under the same parent whose names differ only in case, accents or final sigma (ς/σ) are one; the one with
+ *   2. With `merge_same_names`, two terms under the same parent whose names differ only in case, accents or final sigma (ς/σ) are one; the one with
  *      more entries stays (the lower id when they have as many). A term under another parent is another term ("Logicomix"
  *      under News and under Reviews), so those need a `term_map` line.
  *   3. With `skip_empty_terms`, a term with no entries (count 0) that nothing was merged into, and that has no term with
@@ -34,7 +34,7 @@ final class WordPressTermMerge
      *   unknown: array<int, array{from: int, into: int}>
      * }
      */
-    public static function apply(array $terms, array $map, bool $skipEmpty): array
+    public static function apply(array $terms, array $map, bool $skipEmpty, bool $mergeSameNames = true): array
     {
         $byId = [];
         foreach ($terms as $term) {
@@ -90,7 +90,7 @@ final class WordPressTermMerge
 
         // 2. The same name under the same parent.
         $groups = [];
-        foreach ($byId as $id => $term) {
+        foreach ($mergeSameNames ? $byId : [] as $id => $term) {
             if (isset($into[$id])) {
                 continue;
             }

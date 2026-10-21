@@ -55,6 +55,8 @@ $shuffled = $activity;
 shuffle($shuffled);
 check('the same terms in another order give the same result', WordPressTermMerge::apply($shuffled, [767 => 310, 149 => 310, 150 => 311, 999 => 310], true), $merged);
 check('and so does a second run', WordPressTermMerge::apply($activity, [149 => 310, 150 => 311, 767 => 310, 999 => 310], true), $merged);
+check('merge_same_names is off unless the profile asks', [WordPressRestTypes::parse([])['merge_same_names'], WordPressRestTypes::parse(['merge_same_names' => true])['merge_same_names']], [false, true]);
+check('without merge_same_names only the term_map lines merge', array_map(fn($m) => $m['why'], WordPressTermMerge::apply($activity, [767 => 310], true, false)['merges']), ['term_map']);
 check('without skip_empty_terms every term without a twin stays', in_array(700, array_column(WordPressTermMerge::apply($activity, [], false)['terms'], 'id'), true), true);
 $chain = WordPressTermMerge::apply([$t(1, 'A', 1), $t(2, 'B', 1), $t(3, 'C', 1), $t(4, 'D', 1)], [1 => 2, 2 => 3, 4 => 4], false);
 check('a chain of lines ends at its last term; a line into itself is nothing', [array_map(fn($m) => [$m['from'], $m['into']], $chain['merges']), array_column($chain['terms'], 'id')], [[[1, 3], [2, 3]], [3, 4]]);

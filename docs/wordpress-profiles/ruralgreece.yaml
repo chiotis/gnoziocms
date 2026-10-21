@@ -17,6 +17,7 @@ language_prefixes:
 
 # A term that no entry uses and nothing was merged into is left out.
 skip_empty_terms: true
+merge_same_names: true
 
 # What the site here adds to the three types of the theme (written to custom/content-types/ only when the site has no file for
 # that type). The select lists of activity, difficulty and price range are hidden: this site files those in taxonomies.

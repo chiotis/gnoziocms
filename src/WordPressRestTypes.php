@@ -29,6 +29,7 @@ namespace GnozioCMS;
  *       front: { hero_layout: minimal }   front matter added to every entry
  *   term_map: { <REST base>: { <source id>: <source id> } }   a term merged into another
  *   skip_empty_terms: true            terms with no entries and no twin are left out
+ *   merge_same_names: true            terms under one parent whose names differ only in case, accents or ς/σ are one
  *   language_prefixes: { en: /en }    where the old site keeps another language (its term names and its old addresses)
  *
  * Nothing in a record is required: an empty value is no value, and a record without any of them still becomes an entry.
@@ -45,7 +46,7 @@ final class WordPressRestTypes
      * What the profile says, checked. Mistakes are listed, never guessed around; the import does not start with any.
      *
      * @param array<string, mixed> $profile
-     * @return array{types: array<string, array<string, mixed>>, taxonomies: array<string, string>, term_map: array<string, array<int, int>>, skip_empty_terms: bool, language_prefixes: array<string, string>, errors: string[]}
+     * @return array{types: array<string, array<string, mixed>>, taxonomies: array<string, string>, term_map: array<string, array<int, int>>, skip_empty_terms: bool, merge_same_names: bool, language_prefixes: array<string, string>, errors: string[]}
      */
     public static function parse(array $profile): array
     {
@@ -171,6 +172,7 @@ final class WordPressRestTypes
             'taxonomies' => $taxonomies,
             'term_map' => $termMap,
             'skip_empty_terms' => FieldSchema::isTruthy($profile['skip_empty_terms'] ?? false),
+            'merge_same_names' => FieldSchema::isTruthy($profile['merge_same_names'] ?? false),
             'language_prefixes' => $prefixes,
             'errors' => $errors,
         ];

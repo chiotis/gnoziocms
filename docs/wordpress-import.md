@@ -63,6 +63,7 @@ php scripts/import-wordpress.php https://ruralgreece.gr --lang=el --default-lang
 | `rest_types.<name>.ignore` | ACF keys left out without a word (old pictures of maps). Any other key that has a value and is not named is listed in the report. |
 | `rest_types.<name>.front` | Front matter added to every entry of the type. |
 | `term_map` | Duplicate terms: `<REST base>: {<source id>: <source id>}`, one line per merge. |
+| `merge_same_names` | `true`: terms under one parent whose names differ only in case, accents or ς/σ are one (rule 2 below). Off by default, so an import without it merges only what `term_map` says. |
 | `skip_empty_terms` | `true`: a term no entry uses (count 0) is left out, unless something was merged into it or a used term sits below it. |
 | `language_prefixes` | `{en: /en}`: where the old site keeps another language. The English names and descriptions of the terms are read from `/en/wp-json/wp/v2/<taxonomy>` (matched by id, then by address; a name the same as the Greek one is not taken as English), and the old English addresses (`/en/route/…`, `/en/activity/…`, `/en/route/`) get their redirects. |
 | `content_types` | As above: the site's additions to the types (a subtitle, services, hidden select lists), written only when the site has no file for that type. |
@@ -76,7 +77,7 @@ Nothing is required: an empty value is no value, and a record with nothing fille
 Old sites collect the same term twice. Before anything is written:
 
 1. Each line of `term_map` merges a term into another, by source id. A chain (a into b, b into c) ends at its last term; a line that names a term the site does not have, or that makes a circle, does nothing and is listed.
-2. Two terms under the same parent whose names differ only in case, accents or `ς`/`σ` are one; the one with more entries stays (the lower id when they have as many). Terms under different parents stay apart; a line merges them.
+2. With `merge_same_names`, two terms under the same parent whose names differ only in case, accents or `ς`/`σ` are one; the one with more entries stays (the lower id when they have as many). Terms under different parents stay apart; a line merges them.
 3. With `skip_empty_terms`, empty terms without a twin are left out.
 
 Every merge is printed with its reason; one made by rule 2 is printed with the `term_map` line that pins it, because which of two terms has more entries can change between runs. An entry filed under a merged term is filed under the term it went into, and the old address of the merged term (in each language) leads there in `redirects.txt`. Terms an earlier import brought (the same `imported_from`) get the names and descriptions they have no text for yet; a name typed here is never replaced.
