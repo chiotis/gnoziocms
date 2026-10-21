@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.173 — 2026-10-21 — WordPress import: custom types, ACF fields, merged terms
+- **The importer brings custom post types that the REST API shows, with their ACF fields** (`rest_types` in a profile): each field mapped to the field here with its exact spelling, Greek and English fields as two entries linked by `translation_id`, latitude and longitude as `location`, a route file fetched and checked (an unreadable one is skipped and reported; its length fills an empty `distance_km`), a gallery as library paths, a YouTube video as a Video block, and the site's own taxonomies with parents, descriptions, source ids and English names.
+- **Duplicate terms are merged** by `term_map` lines and, when the profile sets `merge_same_names`, by names that differ only in case, accent or ς/σ. Every merge is printed and its old address redirected; with `skip_empty_terms` unused terms are left out.
+- The dry run ends with a report (merges, skipped terms, entries without a place or a translation, unnamed ACF fields), also written to `report.txt`. `docs/wordpress-profiles/ruralgreece.yaml` is the first profile. See `docs/wordpress-import.md`.
+
 ## 0.1.172 — 2026-10-19 — Search by related titles, faster maps
 - **Search finds an entry by the titles of the entries it points at**, for example a book by its author's name. The match ranks like a custom field. Titles follow the page's language, and a draft's title is shown only to someone signed in. The search cache keeps only the ids, so a renamed or unpublished entry counts at the next search. See `docs/search.md`.
 - **Maps keep their data in a disposable cache** (`storage/cache/geo-data`): the markers and lines of a map, the map of one entry and *what is near*. Each route file also gets a small summary, so lists no longer read every track. On a test site with 700 places and routes, the Map archive and a place page went from about 3 seconds to under 0.1 s, and the pages are unchanged.

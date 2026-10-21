@@ -10,7 +10,7 @@
  *   --lang=en            language of the imported content (default en)
  *   --default-lang=en    this site's default language (default: the same as --lang)
  *   --home=index         file name of this site's home page (default index)
- *   --kinds=pages,posts  what to bring (default both)
+ *   --kinds=pages,posts,types  what to bring (default all three; types are the profile's rest_types)
  *   --only-used-media    leave out library files that no page or post uses
  *   --overwrite          also replace a file of the site that an import did not bring
  *   --profile=FILE       what to read from the site's pages (custom types, slides, menus) and the home page layout; see
@@ -23,12 +23,12 @@
  */
 require __DIR__ . '/../vendor/autoload.php';
 
-use GnozioCMS\{MediaLibrary, Menus, Taxonomies, WordPressHttp, WordPressImporter, WordPressReader, WordPressScraper};
+use GnozioCMS\{MediaLibrary, Menus, Taxonomies, WordPressHttp, WordPressImporter, WordPressReader, WordPressRestTypes, WordPressScraper};
 use Symfony\Component\Yaml\Yaml;
 
 $root = dirname(__DIR__);
 $site = '';
-$opt = ['apply' => false, 'lang' => 'en', 'default-lang' => '', 'home' => 'index', 'kinds' => 'pages,posts', 'only-used-media' => false, 'overwrite' => false, 'profile' => '', 'menus' => false, 'custom' => $root . '/custom', 'content' => $root . '/content', 'uploads' => $root . '/public/uploads', 'out' => $root . '/storage/import'];
+$opt = ['apply' => false, 'lang' => 'en', 'default-lang' => '', 'home' => 'index', 'kinds' => 'pages,posts,types', 'only-used-media' => false, 'overwrite' => false, 'profile' => '', 'menus' => false, 'custom' => $root . '/custom', 'content' => $root . '/content', 'uploads' => $root . '/public/uploads', 'out' => $root . '/storage/import'];
 foreach (array_slice($argv, 1) as $arg) {
     if (str_starts_with($arg, '--')) {
         [$key, $value] = array_pad(explode('=', substr($arg, 2), 2), 2, null);
@@ -59,13 +59,20 @@ if ($opt['profile'] !== '') {
     $profile = Yaml::parseFile((string)$opt['profile']);
     $profile = is_array($profile) ? $profile : [];
 }
+$rest = WordPressRestTypes::parse($profile);
+if ($rest['errors'] !== []) {
+    fwrite(STDERR, "The profile has mistakes:\n  - " . implode("\n  - ", $rest['errors']) . "\n");
+    exit(2);
+}
+// The languages the terms are kept in: the site's, the content's, and every one the profile writes.
+$languages = array_values(array_unique(array_merge([$defaultLang], WordPressRestTypes::languages($rest, $lang))));
 $reader = new WordPressReader($site, static fn(string $url): ?array => WordPressHttp::get($url));
 $menus = new Menus($opt['content'], static fn(): array => ['languages' => ['default' => $lang, 'available' => array_values(array_unique([$defaultLang, $lang]))]], static fn(string $key, ?string $l = null): string => '', static fn(): array => []);
 $importer = new WordPressImporter(
     $reader,
     $opt['content'],
     $media,
-    new Taxonomies($opt['content'], array_values(array_unique([$defaultLang, $lang]))),
+    new Taxonomies($opt['content'], $languages),
     static fn(string $url, string $to): int => WordPressHttp::download($url, $to),
     ['lang' => $lang, 'default_lang' => $defaultLang, 'home_slug' => $opt['home'], 'overwrite' => $opt['overwrite'], 'only_used_media' => $opt['only-used-media'], 'kinds' => array_values(array_filter(explode(',', (string)$opt['kinds']))), 'custom_dir' => $opt['custom'], 'menus' => $opt['menus']],
     $profile !== [] ? new WordPressScraper($reader, $profile) : null,
@@ -84,13 +91,17 @@ try {
 $c = $plan['counts'];
 echo "\n{$plan['site']['name']}\n";
 printf("  pages and posts: %d new, %d to update, %d left alone\n", $c['new'], $c['update'], $c['skip']);
-foreach (['categories', 'tags'] as $name) {
-    printf("  %s: %d\n", $name, count($plan['terms'][$name]));
+foreach ($plan['terms'] as $name => $list) {
+    printf("  %s: %d\n", $name, count($list));
 }
 printf("  files for the media library: %d\n  redirects from old addresses: %d\n", $c['media'], $c['redirects']);
+if ($plan['route_files'] > 0) {
+    printf("  route files to fetch and check: %d\n", $plan['route_files']);
+}
 $kinds = [];
 foreach ($plan['items'] as $item) {
-    $kinds[$item['type']] = ($kinds[$item['type']] ?? 0) + 1;
+    $kind = $item['type'] . ($item['lang'] !== $lang ? " ({$item['lang']})" : '');
+    $kinds[$kind] = ($kinds[$kind] ?? 0) + 1;
 }
 echo '  by kind: ' . implode(', ', array_map(static fn($k, $n) => "$k $n", array_keys($kinds), $kinds)) . "\n";
 if ($plan['slides'] > 0) {
@@ -131,6 +142,41 @@ if ($plan['unresolved'] !== []) {
     }
 }
 
+// What the run did to the terms and what the custom types lack: every merge, every term left out, every entry without a
+// place or a translation. The screen shows the first lines of each; report.txt (written with --apply) has them all.
+$sections = [
+    'merged' => 'Terms merged',
+    'term_map_unknown' => 'Lines of term_map that do nothing',
+    'skipped_terms' => 'Terms left out (no entries, no twin)',
+    'no_coordinates' => 'Entries without a place',
+    'one_coordinate' => 'Entries with only one of the two coordinates (left without a place)',
+    'missing_translation' => 'Entries without a translation',
+    'unmapped' => 'ACF fields the profile does not name',
+    'field_notes' => 'Values that were left out',
+    'notes' => 'Other notes',
+];
+$reportLines = static function (array $report, int $limit) use ($sections, $opt): array {
+    $out = [];
+    foreach ($sections as $key => $title) {
+        $lines = $report[$key] ?? [];
+        if ($lines === []) {
+            continue;
+        }
+        $out[] = '';
+        $out[] = "$title (" . count($lines) . '):';
+        foreach ($limit > 0 ? array_slice($lines, 0, $limit) : $lines as $line) {
+            $out[] = "  - $line";
+        }
+        if ($limit > 0 && count($lines) > $limit) {
+            $out[] = '  ... ' . (count($lines) - $limit) . ' more' . ($opt['apply'] ? '' : ' (all of them in report.txt after --apply)');
+        }
+    }
+    return $out;
+};
+foreach ($reportLines($plan['report'], 20) as $line) {
+    echo $line . "\n";
+}
+
 if (!$opt['apply']) {
     echo "\nNothing was changed. Run again with --apply to import.\n";
     exit(0);
@@ -144,11 +190,24 @@ if (!is_dir($opt['out'])) {
 }
 $redirectsFile = $opt['out'] . '/redirects.txt';
 file_put_contents($redirectsFile, WordPressImporter::redirectList($result['redirects']));
-printf("  %d written, %d updated, %d left alone\n  %d terms added\n  %d files brought into the library", $result['written'], $result['updated'], $result['skipped'], $result['terms_added'], $result['media_new']);
+printf("  %d written, %d updated, %d left alone\n  %d terms added, %d given names they lacked\n  %d files brought into the library", $result['written'], $result['updated'], $result['skipped'], $result['terms_added'], $result['terms_updated'], $result['media_new']);
 echo count($result['media_failed']) > 0 ? ', ' . count($result['media_failed']) . " could not be fetched\n" : "\n";
 foreach (array_slice($result['media_failed'], 0, 20) as $failed) {
     echo "    - $failed\n";
 }
+if ($result['route_files_failed'] !== []) {
+    echo '  route files that could not be read (the entries were imported without one): ' . count($result['route_files_failed']) . "\n";
+    foreach (array_slice($result['route_files_failed'], 0, 20) as $failed) {
+        echo "    - $failed\n";
+    }
+}
+$reportFile = $opt['out'] . '/report.txt';
+$full = $reportLines($plan['report'], 0);
+if ($result['route_files_failed'] !== []) {
+    $full = array_merge($full, ['', 'Route files that could not be read (' . count($result['route_files_failed']) . '):'], array_map(static fn(string $l): string => "  - $l", $result['route_files_failed']));
+}
+file_put_contents($reportFile, 'Import of ' . $site . ' on ' . date('Y-m-d H:i') . "\n" . implode("\n", $full) . "\n");
+echo "  the whole report: $reportFile\n";
 if ($result['logo'] !== '') {
     echo "  logo brought into the library: {$result['logo']}\n    Set it in Admin > Theme settings > Brand > Logo.\n";
 }

@@ -32,7 +32,7 @@ final class WordPressReader
     /**
      * The site's name and description, the page shown as the home page, and what the API offers.
      *
-     * @return array{name: string, description: string, url: string, home_page_id: int, types: string[], taxonomies: string[]}
+     * @return array{name: string, description: string, url: string, home_page_id: int, types: string[], taxonomies: string[], taxonomy_names: array<string, string>}
      */
     public function info(): array
     {
@@ -49,7 +49,53 @@ final class WordPressReader
             'home_page_id' => ($root['show_on_front'] ?? '') === 'page' ? (int)($root['page_on_front'] ?? 0) : 0,
             'types' => is_array($types) ? array_values(array_map(static fn($t): string => (string)($t['rest_base'] ?? ''), $types)) : [],
             'taxonomies' => is_array($taxonomies) ? array_values(array_map(static fn($t): string => (string)($t['rest_base'] ?? ''), $taxonomies)) : [],
+            'taxonomy_names' => is_array($taxonomies) ? array_column(array_map(static fn($t): array => ['base' => (string)($t['rest_base'] ?? ''), 'name' => self::text((string)($t['name'] ?? ''))], array_filter($taxonomies, 'is_array')), 'name', 'base') : [],
         ];
+    }
+
+    /** The same site seen under a path, such as the /en of its English pages. */
+    public function under(string $prefix): self
+    {
+        return new self($this->site . '/' . trim($prefix, '/'), $this->get);
+    }
+
+    /**
+     * Every published record of a type the REST API shows (a custom post type such as "route"), as the API gives it: id,
+     * slug, link, title, date, content, excerpt, the featured picture, the ACF fields under `acf`, and the term ids of each
+     * taxonomy named. Oldest id first.
+     *
+     * @param string[] $taxonomies the REST bases of the taxonomies to read
+     * @return array<int, array<string, mixed>>
+     */
+    public function records(string $base, array $taxonomies = []): array
+    {
+        $fields = implode(',', array_unique(array_merge(['id', 'slug', 'link', 'title', 'content', 'excerpt', 'date', 'modified', 'status', 'featured_media', 'acf'], $taxonomies)));
+        $records = [];
+        foreach ($this->collection('/wp-json/wp/v2/' . $base, $fields) as $row) {
+            if (($row['status'] ?? 'publish') !== 'publish') {
+                continue;
+            }
+            $row['id'] = (int)($row['id'] ?? 0);
+            $row['slug'] = rawurldecode((string)($row['slug'] ?? ''));
+            $row['link'] = (string)($row['link'] ?? '');
+            $records[] = $row;
+        }
+        usort($records, static fn(array $a, array $b): int => $a['id'] <=> $b['id']);
+        return $records;
+    }
+
+    /**
+     * One file of the media library by its id, for an id a field points at that the list did not have.
+     *
+     * @return array{id: int, url: string, alt: string, title: string, mime: string, parent: int}|null
+     */
+    public function mediaItem(int $id): ?array
+    {
+        $row = $id > 0 ? $this->json($this->site . '/wp-json/wp/v2/media/' . $id . '?_fields=id,source_url,alt_text,title,mime_type,post') : null;
+        if (!is_array($row) || (string)($row['source_url'] ?? '') === '') {
+            return null;
+        }
+        return ['id' => (int)($row['id'] ?? $id), 'url' => (string)$row['source_url'], 'alt' => self::text((string)($row['alt_text'] ?? '')), 'title' => self::text((string)($row['title']['rendered'] ?? '')), 'mime' => (string)($row['mime_type'] ?? ''), 'parent' => (int)($row['post'] ?? 0)];
     }
 
     /**
