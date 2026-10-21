@@ -328,6 +328,17 @@ final class MediaLibrary
         return $this->normalizeMeta($parsed, $id);
     }
 
+    /** Where the file of a library entry is on disk, or null when there is no such entry or its file is gone. */
+    public function filePath(string $id): ?string
+    {
+        $item = $this->find($id);
+        if ($item === null || $item['path'] === '') {
+            return null;
+        }
+        $path = $this->uploadsRootDir() . '/' . $item['path'];
+        return is_file($path) ? $path : null;
+    }
+
     /** @param array<string, mixed> $meta */
     private function saveMeta(array $meta): void
     {

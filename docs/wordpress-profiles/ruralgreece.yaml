@@ -1,0 +1,194 @@
+# Profile for ruralgreece.gr: its three custom post types (route, business, pois) with their ACF fields, its sixteen
+# taxonomies, and the duplicates among their terms. The content model it follows is docs/ruralgreece-content-model.md, the
+# decisions are in docs/places-and-routes-v2-plan.md. Run it against a copy, look through the report, then add --apply:
+#
+#   php scripts/import-wordpress.php https://ruralgreece.gr --lang=el --default-lang=el --kinds=types --only-used-media \
+#     --profile=docs/wordpress-profiles/ruralgreece.yaml --content=/path/to/site/content --uploads=/path/to/site/public/uploads \
+#     --custom=/path/to/site/custom
+#
+# Switch on Points, Routes and Businesses in Admin > Content types first. Add `posts` to --kinds for the site's articles.
+# The old library holds over 11,000 files (October 2026): --only-used-media brings only those the entries use, and reading the
+# list alone takes minutes.
+
+# The English pages of the old site live under /en: the English names of the terms are read from there when it answers, and
+# the old English addresses get their redirects.
+language_prefixes:
+  en: /en
+
+# A term that no entry uses and nothing was merged into is left out.
+skip_empty_terms: true
+
+# What the site here adds to the three types of the theme (written to custom/content-types/ only when the site has no file for
+# that type). The select lists of activity, difficulty and price range are hidden: this site files those in taxonomies.
+content_types:
+  routes:
+    fields:
+      subtitle: { type: text, label: { el: Υπότιτλος, en: Subtitle } }
+      activity: { hidden: true }
+      difficulty: { hidden: true }
+  businesses:
+    fields:
+      subtitle: { type: text, label: { el: Υπότιτλος, en: Subtitle } }
+      services: { type: textarea, label: { el: 'Υπηρεσίες', en: Services } }
+      packages: { type: textarea, label: { el: 'Τουριστικά πακέτα', en: Tour packages } }
+      price_range: { hidden: true }
+  points:
+    fields:
+      subtitle: { type: text, label: { el: Υπότιτλος, en: Subtitle } }
+
+# The old lists, and where they are now (the English ones under /en follow).
+archives:
+  route: routes
+  business: businesses
+  pois: points
+
+# The custom post types. ACF keys are written exactly as the REST API returns them, including `υπότιτλος_eν`, whose last
+# letter is a Greek ν. A key the profile does not name is listed in the report, never dropped without a word.
+rest_types:
+  route:
+    endpoint: route
+    content_type: routes
+    fields:
+      title_en: title@en
+      υπότιτλος_el: subtitle@el
+      υπότιτλος_eν: subtitle@en
+      εισαγωγικό_κείμενο: excerpt@el
+      εισαγωγικό_κείμενο_en: excerpt@en
+      κεντρικό_κείμενο: body@el
+      κεντρικό_κείμενο_en: body@en
+      μήκος_μονοπατιού: { to: distance_km, type: number }
+      διάρκεια_el: duration@el
+      διάρκεια_en: duration@en
+      προτεινόμενη_περίοδος_el: season@el
+      προτεινόμενη_περίοδος_en: season@en
+    coordinates: { lat: latitude, lng: longitude, to: location }
+    media:
+      banner_image: main_image
+      photo_gallery: gallery
+      # The length of the route file goes to distance_km when μήκος_μονοπατιού is empty (it is, in every sample).
+      map_kml: { to: track, length: distance_km }
+      youtube_video: video
+    ignore: [map_img_url, map_img_url_copy]
+    taxonomies:
+      activity: activity
+      difficulty: difficulty
+      location: location
+      path_markers: path_markers
+      categories: categories
+      tags: tags
+
+  business:
+    endpoint: business
+    content_type: businesses
+    fields:
+      title_en: title@en
+      υπότιτλος_el: subtitle@el
+      υπότιτλος_eν: subtitle@en
+      εισαγωγικό_κείμενο: excerpt@el
+      εισαγωγικό_κείμενο_en: excerpt@en
+      κεντρικό_κείμενο: body@el
+      κεντρικό_κείμενο_en: body@en
+      address: address
+      email: email
+      telephone: phone
+      website_url: website
+      booking_url: booking_url
+      open_on: opening_hours
+      υπηρεσίες_επιχείρησης_el: services@el
+      υπηρεσίες_επιχείρησης_en: services@en
+      τουριστικά_πακέτα_el: packages@el
+      τουριστικά_πακέτα_en: packages@en
+    coordinates: { lat: latitude, lng: longitude, to: location }
+    media:
+      banner_image: main_image
+      photo_gallery: gallery
+      map_kml: track
+      youtube_video: video
+    # The kind of business is in the business-type taxonomy already.
+    ignore: [map_img_url, map_img_url_copy, τύπος_επιχείρησης]
+    taxonomies:
+      business-type: business-type
+      kitchen_type: kitchen_type
+      price_range: price_range
+      location: location
+      tags: tags
+
+  pois:
+    endpoint: pois
+    content_type: points
+    fields:
+      title_en: title@en
+      υπότιτλος_el: subtitle@el
+      υπότιτλος_eν: subtitle@en
+      εισαγωγικό_κείμενο: excerpt@el
+      εισαγωγικό_κείμενο_en: excerpt@en
+      κεντρικό_κείμενο: body@el
+      κεντρικό_κείμενο_en: body@en
+      address: address
+      email: email
+      telephone: phone
+      website_url: website
+      ωράριο_λειτουργίας_el: opening_hours@el
+      ωράριο_λειτουργίας_en: opening_hours@en
+    coordinates: { lat: latitude, lng: longitude, to: location }
+    media:
+      banner_image: main_image
+      photo_gallery: gallery
+      map_kml: track
+      youtube_video: video
+    ignore: [map_img_url, map_img_url_copy]
+    taxonomies:
+      activity: activity
+      difficulty: difficulty
+      location: location
+      path_markers: path_markers
+      poi-type: poi-type
+      museum-type: museum-type
+      museum-theme: museum-theme
+      monument-type: monument-type
+      monument-status: monument-status
+      period: period
+      protection-status: protection-status
+      ecosystem-type: ecosystem-type
+      beach-type: beach-type
+      tags: tags
+
+# Duplicates among the terms: <source id>: <source id it goes into>, by the REST base of the taxonomy. The table of
+# docs/places-and-routes-v2-plan.md, as lines; the importer prints each merge it makes, and the old address of a merged term
+# leads to the one it went into. Names that differ only in case, accents or ς/σ under one parent are merged without a line.
+term_map:
+  activity:
+    767: 310   # Bird watchin -> Παρατήρηση Πτηνών
+    149: 310   # Παρατήρηση πουλιών -> Παρατήρηση Πτηνών
+    795: 409   # Κολύμ?ηση -> Κολύμβηση
+    796: 754   # Ο?κοτουρισμός -> Οικοτουρισμός
+    150: 311   # Ορεινή ποδηλασία -> Ποδήλατο Βουνού
+  monument-type:
+    216: 314   # Εγκαταλελειμμένο Μοναστήρι (0) -> Εγκαταλελημένο Μοναστήρι (8)
+    222: 327   # Άλλα (0) -> Άλλο (1)
+    208: 325   # Μινωική βίλα (0) -> Μινωική Βίλλα (5)
+    211: 316   # Αρχαία Πόλη/Δήμος (0) -> Αρχαία Πόλη (25)
+  monument-status:
+    241: 312   # Ανοιχτό - Καλά διατηρημένο (0) -> Ανοιχτός-Καλά διατηρημένος
+    242: 321   # Ανοιχτά - Διάσπαρτα Μνημεία (0) -> Ανοιχτός-Διάσπαρτα Μνημεία
+    243: 324   # Κλειστό (0) -> Κλειστός
+    240: 323   # Καλά οργανωμένο / Υπηρεσίες (0) -> Οργανωμένος Χώρος (a judgement: check)
+  period:
+    200: 320   # 1η Βυζαντινή περίοδος (0) -> Α Βυζαντινή Περίοδος
+    202: 326   # 2η Βυζαντινή περίοδος (0) -> Β Βυζαντινή Περίοδος
+    196: 318   # ΑρχαΪκή - Ελληνική περίοδος (0) -> Αρχαϊκή Περίοδος
+    195: 317   # Γεωμετρική - Ελληνική περίοδος (0) -> Γεωμετρική Περίοδος
+    197: 319   # Κλασική - Ελληνική Περίοδος (0) -> Κλασσική Περίοδος
+    203: 313   # Βενετική περίοδος (0) -> Ενετική Περίοδος
+    206: 315   # Σύγχρονη περίοδος (0) -> Νεότερη Εποχή (a judgement: check)
+  museum-theme:
+    332: 239   # Επιστήμες -> Επιστημών
+    232: 335   # Ναυτικό -> Ναυτιλία
+  poi-type:
+    777: 402   # Παραδοσιακοί οικισμοί -> Παραδοσιακός Οικισμός
+  location:
+    758: 793   # Π.Ε. Αρκαδίας (0) -> Αρκαδία
+    763: 790   # Π.Ε. Έβρου (0) -> Έβρος
+    759: 788   # Π.Ε. Ξάνθης (0) -> Ξάνθη
+  categories:
+    752: 7     # Γεωδιαδρομές at the top (0) -> Γεωδιαδρομές under Διαδρομές Κρήτης

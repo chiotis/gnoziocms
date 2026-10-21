@@ -15,7 +15,8 @@ use Symfony\Component\Yaml\Yaml;
  *             written only when it differs from that default
  *   terms:    id (what content refers to, never changes), slug (the address, may change), labels per language, an
  *             optional description per language (kept only when one is written) and an optional `parent` (the id of
- *             another term, hierarchical taxonomies only). A term's address is its parents' slugs and its own:
+ *             another term, hierarchical taxonomies only), and `imported_from` when an import brought it (the address of
+ *             the term on the old site, kept so the import finds it again). A term's address is its parents' slugs and its own:
  *             /category/books/english. A slug is unique among the terms of one parent.
  *   archive:  only the layout choices that differ from the defaults, the same ones a content type has
  *             (layout, columns, per_page, order, show_*, title, subtitle, taxonomies), plus `types`: the
@@ -119,7 +120,7 @@ final class Taxonomies
         return $this->load($name)['hierarchical'];
     }
 
-    /** @return array{title: string, hierarchical: bool, terms: array<int, array{id: string, slug: string, parent: string, labels: array<string, string>, descriptions: array<string, string>, hero_layout: string}>, archive: array<string, mixed>} */
+    /** @return array{title: string, hierarchical: bool, terms: array<int, array{id: string, slug: string, parent: string, labels: array<string, string>, descriptions: array<string, string>, hero_layout: string, imported_from: string}>, archive: array<string, mixed>} */
     public function load(string $name): array
     {
         $name = Slug::plain($name) ?: 'tags';
@@ -179,6 +180,9 @@ final class Taxonomies
                 if ($term['hero_layout'] === '') {
                     unset($term['hero_layout']);
                 }
+                if ($term['imported_from'] === '') {
+                    unset($term['imported_from']);
+                }
                 return $term;
             }, $this->normalizeTerms($terms, $hierarchical)),
         ];
@@ -208,7 +212,7 @@ final class Taxonomies
         $this->cache = [];
     }
 
-    /** @return array<int, array{id: string, slug: string, parent: string, labels: array<string, string>, descriptions: array<string, string>, hero_layout: string}> */
+    /** @return array<int, array{id: string, slug: string, parent: string, labels: array<string, string>, descriptions: array<string, string>, hero_layout: string, imported_from: string}> */
     private function normalizeTerms(mixed $terms, bool $hierarchical): array
     {
         if (!is_array($terms)) {
@@ -236,7 +240,7 @@ final class Taxonomies
                 $descriptions[(string)$lang] = trim(str_replace("\r\n", "\n", (string)($texts[(string)$lang] ?? '')));
             }
             $parent = $hierarchical ? Slug::plain((string)($term['parent'] ?? '')) : '';
-            $rows[] = ['id' => $id, 'slug' => $slug, 'parent' => $parent, 'labels' => $labels, 'descriptions' => $descriptions, 'hero_layout' => self::heroChoice($term['hero_layout'] ?? '')];
+            $rows[] = ['id' => $id, 'slug' => $slug, 'parent' => $parent, 'labels' => $labels, 'descriptions' => $descriptions, 'hero_layout' => self::heroChoice($term['hero_layout'] ?? ''), 'imported_from' => is_string($term['imported_from'] ?? null) ? trim($term['imported_from']) : ''];
             $seen[$id] = true;
         }
         return $hierarchical ? self::untangle($rows) : $rows;
@@ -541,7 +545,7 @@ final class Taxonomies
             $parent = array_key_exists('parent', $row) && $row['parent'] !== null ? Slug::plain((string)$row['parent']) : ($existing['parent'] ?? '');
             $descriptions = is_array($row['descriptions'] ?? null) ? $row['descriptions'] : ($existing['descriptions'] ?? []);
             $hero = is_string($row['hero_layout'] ?? null) ? self::heroChoice($row['hero_layout']) : ($existing['hero_layout'] ?? '');
-            $drafts[$id] = ['index' => $index, 'id' => $id, 'slug' => $slug !== '' ? $slug : 'term', 'parent' => $parent, 'labels' => $row['labels'], 'descriptions' => $descriptions, 'hero_layout' => $hero, 'new' => $existing === null];
+            $drafts[$id] = ['index' => $index, 'id' => $id, 'slug' => $slug !== '' ? $slug : 'term', 'parent' => $parent, 'labels' => $row['labels'], 'descriptions' => $descriptions, 'hero_layout' => $hero, 'imported_from' => (string)($existing['imported_from'] ?? ''), 'new' => $existing === null];
         }
 
         // The parents: a removed parent hands its children to its own parent; a loop is refused.
@@ -576,7 +580,7 @@ final class Taxonomies
         uasort($drafts, static fn(array $a, array $b): int => $a['index'] <=> $b['index']);
         $terms = [];
         foreach ($drafts as $draft) {
-            $terms[] = ['id' => $draft['id'], 'slug' => $draft['slug'], 'parent' => $draft['parent'], 'labels' => $draft['labels'], 'descriptions' => $draft['descriptions'], 'hero_layout' => $draft['hero_layout']];
+            $terms[] = ['id' => $draft['id'], 'slug' => $draft['slug'], 'parent' => $draft['parent'], 'labels' => $draft['labels'], 'descriptions' => $draft['descriptions'], 'hero_layout' => $draft['hero_layout'], 'imported_from' => $draft['imported_from']];
         }
 
         $moved = [];

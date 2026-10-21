@@ -17,7 +17,12 @@ use Symfony\Component\Yaml\Yaml;
  *
  * WordPress keeps categories in a tree and so do this site's: a category keeps its name and its parent, its address is
  * the old one (/category/news/child), and a post is filed under the categories it has (the page of a parent also lists
- * what is filed under its children). Two terms of one slug under different parents are different terms.
+ * what is filed under its children). Two terms of one slug under different parents are different terms. Duplicates are merged
+ * before anything is made of them (WordPressTermMerge): the profile's `term_map`, and names that differ only in case or accents.
+ *
+ * A profile's `rest_types` (WordPressRestTypes) bring the custom post types the REST API shows, with their ACF fields: an entry
+ * in each language the record has text in, linked by `translation_id`, its place, route file, pictures and video, and the
+ * terms of the site's own taxonomies.
  */
 final class WordPressImporter
 {
@@ -60,6 +65,15 @@ final class WordPressImporter
 
     /** @var array<int, array{image: string, title: string, text: string, buttons: array<int, array{label: string, url: string}>}> */
     private array $slides = [];
+
+    /** @var array<string, mixed> the profile's custom types, term map and languages, checked (WordPressRestTypes::parse) */
+    private array $rest = [];
+
+    /** @var array<string, mixed> what the end of the run reports: merges, skipped terms, entries without a place or a translation */
+    private array $report = [];
+
+    /** @var array<string, float> canonical address of a route file => its length in km, once it is in the library */
+    private array $trackKm = [];
 
     /**
      * @param \Closure(string, string): int $download fetches an address into a file and returns the answer's status, 0 when the site could not be reached
@@ -104,11 +118,29 @@ final class WordPressImporter
     {
         $this->reset();
         $info = $this->reader->info();
-        $kinds = $this->options['kinds'] ?? ['pages', 'posts'];
+        $kinds = $this->options['kinds'] ?? ['pages', 'posts', 'types'];
+        $this->rest = WordPressRestTypes::parse($this->profile);
+        if ($this->rest['errors'] !== []) {
+            throw new \InvalidArgumentException('The profile has mistakes: ' . implode('; ', $this->rest['errors']));
+        }
+        $withTypes = in_array('types', $kinds, true) && $this->rest['types'] !== [];
+        $restTaxonomies = $withTypes ? $this->rest['taxonomies'] : [];
 
-        $categories = in_array('posts', $kinds, true) ? $this->reader->terms('categories') : [];
-        $tags = in_array('posts', $kinds, true) && in_array('tags', $info['taxonomies'], true) ? $this->reader->terms('tags') : [];
-        $terms = ['categories' => $this->buildTerms($categories, true), 'tags' => $this->buildTerms($tags, false)];
+        $categories = in_array('posts', $kinds, true) || isset($restTaxonomies['categories']) ? $this->reader->terms('categories') : [];
+        $tags = (in_array('posts', $kinds, true) || isset($restTaxonomies['tags'])) && in_array('tags', $info['taxonomies'], true) ? $this->reader->terms('tags') : [];
+        $terms = ['categories' => $this->termsOf('categories', 'categories', $categories, true), 'tags' => $this->termsOf('tags', 'tags', $tags, false)];
+        $titles = [];
+        foreach ($restTaxonomies as $base => $here) {
+            if ($base === 'categories' || $base === 'tags') {
+                continue;
+            }
+            if ($info['taxonomies'] !== [] && !in_array($base, $info['taxonomies'], true)) {
+                $this->report['notes'][] = "taxonomy '$base': the site's API does not list it, so it was not read";
+                continue;
+            }
+            $terms[$here] = $this->termsOf($base, $here, $this->reader->terms($base), true);
+            $titles[$here] = (string)($info['taxonomy_names'][$base] ?? '');
+        }
 
         foreach ($this->reader->media() as $file) {
             $this->attachmentUrls[$file['id']] = $this->registerMedia($file['url'], $file['alt'], $file['title'], true);
@@ -133,7 +165,9 @@ final class WordPressImporter
         }
         foreach ($terms as $name => $list) {
             foreach ($list as $term) {
-                $this->linkMap[self::pathOf($term['link'])] = $this->termPath($name, $term['path']);
+                foreach (array_merge([$term['link']], $term['alias_links'] ?? []) as $link) {
+                    $this->linkMap[self::pathOf($link)] = $this->termPath($name, $term['path']);
+                }
             }
         }
 
@@ -164,8 +198,21 @@ final class WordPressImporter
             $this->scrapedBySlug[$type . ':' . $entry['id']] = $entry;
             $entries[] = $entry;
         }
+        if ($withTypes) {
+            foreach ($this->restEntries($slugs, $info['types']) as $entry) {
+                if ($entry['old'] !== '') {
+                    $this->linkMap[self::pathOf($entry['old'])] ??= $entry['new_path'];
+                }
+                $entries[] = $entry;
+            }
+        }
         foreach ((array)($this->profile['archives'] ?? []) as $oldPath => $newType) {
             $this->linkMap[trim((string)$oldPath, '/')] = ContentPaths::archive((string)$newType, $this->lang(), $this->defaultLang());
+            foreach ($this->rest['language_prefixes'] as $lang => $prefix) {
+                if ($lang !== $this->lang()) {
+                    $this->linkMap[trim($prefix . '/' . trim((string)$oldPath, '/'), '/')] = ContentPaths::archive((string)$newType, (string)$lang, $this->defaultLang());
+                }
+            }
         }
 
         $items = [];
@@ -176,11 +223,12 @@ final class WordPressImporter
             foreach ($made['notes'] as $note) {
                 $notes[$entry['type'] . '/' . $entry['new_slug'] . ': ' . $note] = 1;
             }
-            $file = $this->contentDir . '/' . $entry['type'] . '/' . (new ContentPaths(['languages' => ['default' => $this->defaultLang()]]))->filename($entry['new_slug'], $this->lang());
+            $file = $this->contentDir . '/' . $entry['type'] . '/' . (new ContentPaths(['languages' => ['default' => $this->defaultLang()]]))->filename($entry['new_slug'], (string)($entry['lang'] ?? $this->lang()));
             [$state, $reason] = $this->stateOf($file, $entry['link']);
             $items[] = [
                 'id' => $entry['id'],
                 'type' => $entry['type'],
+                'lang' => (string)($entry['lang'] ?? $this->lang()),
                 'slug' => $entry['new_slug'],
                 'title' => $entry['title'],
                 'file' => $file,
@@ -190,15 +238,30 @@ final class WordPressImporter
                 'path' => $entry['new_path'],
                 'words' => (int)preg_match_all('/\S+/u', $made['body']),
             ];
-            $this->addRedirect($redirects, $entry['link'], '/' . $entry['new_path']);
+            if (($entry['old'] ?? $entry['link']) !== '') {
+                $this->addRedirect($redirects, $entry['old'] ?? $entry['link'], '/' . $entry['new_path']);
+            }
         }
         foreach ($terms as $name => $list) {
             foreach ($list as $term) {
-                $this->addRedirect($redirects, $term['link'], '/' . $this->termPath($name, $term['path']));
+                // A merged term's old address leads to the term it went into, in every language the old site has.
+                foreach (array_merge([$term['link']], $term['alias_links'] ?? []) as $link) {
+                    $this->addRedirect($redirects, $link, '/' . $this->termPath($name, $term['path']));
+                    foreach ($this->rest['language_prefixes'] as $lang => $prefix) {
+                        if ($lang !== $this->lang() && $link !== '') {
+                            $this->addRedirect($redirects, $prefix . '/' . self::pathOf($link), '/' . $this->termPath($name, $term['path'], (string)$lang));
+                        }
+                    }
+                }
             }
         }
         foreach ((array)($this->profile['archives'] ?? []) as $oldPath => $newType) {
             $this->addRedirect($redirects, '/' . trim((string)$oldPath, '/'), '/' . ContentPaths::archive((string)$newType, $this->lang(), $this->defaultLang()));
+            foreach ($this->rest['language_prefixes'] as $lang => $prefix) {
+                if ($lang !== $this->lang()) {
+                    $this->addRedirect($redirects, $prefix . '/' . trim((string)$oldPath, '/'), '/' . ContentPaths::archive((string)$newType, (string)$lang, $this->defaultLang()));
+                }
+            }
         }
 
         $onlyUsed = (bool)($this->options['only_used_media'] ?? false);
@@ -215,6 +278,9 @@ final class WordPressImporter
             'items' => $items,
             'entries' => $entries,
             'terms' => $terms,
+            'taxonomy_titles' => $titles,
+            'report' => array_map(static fn(array $lines): array => array_values(array_unique($lines)), $this->report) + ['merged' => [],'skipped_terms' => [], 'term_map_unknown' => [], 'no_coordinates' => [], 'one_coordinate' => [], 'missing_translation' => [], 'unmapped' => [], 'field_notes' => [], 'notes' => []],
+            'route_files' => count(array_filter($media, static fn(array $f): bool => !empty($f['track']))),
             'menus' => $menus,
             'slides' => count($this->slides),
             'has_logo' => $this->logo !== '',
@@ -245,15 +311,18 @@ final class WordPressImporter
             throw new \LogicException('apply() needs the same importer that made the plan.');
         }
         $this->final = true;
-        $result = ['written' => 0, 'updated' => 0, 'skipped' => 0, 'media_new' => 0, 'media_failed' => [], 'terms_added' => 0, 'redirects' => [], 'notes' => [], 'menus' => [], 'content_types' => [], 'logo' => ''];
+        $result = ['written' => 0, 'updated' => 0, 'skipped' => 0, 'media_new' => 0, 'media_failed' => [], 'route_files_failed' => [], 'terms_added' => 0, 'terms_updated' => 0, 'redirects' => [], 'notes' => [], 'menus' => [], 'content_types' => [], 'logo' => ''];
 
         foreach ($plan['terms'] as $name => $list) {
-            $result['terms_added'] += $this->saveTerms((string)$name, $list);
+            [$added, $updated] = $this->saveTerms((string)$name, $list, (string)($plan['taxonomy_titles'][$name] ?? ''));
+            $result['terms_added'] += $added;
+            $result['terms_updated'] += $updated;
         }
 
         foreach ($plan['media'] as $canonical => $file) {
             if ($this->media->find($file['id']) !== null) {
                 $this->mediaReady[$canonical] = true;
+                $this->measureTrack($canonical, $file);
                 continue;
             }
             $tmp = tempnam(sys_get_temp_dir(), 'wpimp');
@@ -272,9 +341,14 @@ final class WordPressImporter
                 }
                 $this->media->import($tmp, $file['name'], $file['id'], $file['alt'], 'wordpress-import');
                 $this->mediaReady[$canonical] = true;
+                $this->measureTrack($canonical, $file);
                 $result['media_new']++;
             } catch (\Throwable $e) {
                 $result['media_failed'][] = $canonical . ' (' . $e->getMessage() . ')';
+                if (!empty($file['track'])) {
+                    // The library keeps a route file only when it reads as one; the entries that point at it are listed.
+                    $result['route_files_failed'][] = $canonical . ' (' . $e->getMessage() . ') for ' . implode(', ', $file['entries'] ?? []);
+                }
             } finally {
                 if (is_file($tmp)) {
                     @unlink($tmp);
@@ -314,10 +388,10 @@ final class WordPressImporter
         }
         $byLink = []; // a page and a post can share an address on the old site, so they are told apart by kind and id
         foreach ($plan['items'] as $item) {
-            $byLink[$item['type'] . '/' . $item['id']] = $item;
+            $byLink[$item['type'] . '/' . $item['id'] . '/' . $item['lang']] = $item;
         }
         foreach ($plan['entries'] as $entry) {
-            $item = $byLink[$entry['type'] . '/' . $entry['id']] ?? null;
+            $item = $byLink[$entry['type'] . '/' . $entry['id'] . '/' . ($entry['lang'] ?? $this->lang())] ?? null;
             if ($item === null || $item['state'] === 'skip') {
                 $result['skipped']++;
                 continue;
@@ -369,6 +443,8 @@ final class WordPressImporter
         $this->scrapedBySlug = [];
         $this->logo = '';
         $this->logoMedia = '';
+        $this->report = [];
+        $this->trackKm = [];
         $this->planned = false;
         $this->final = false;
     }
@@ -436,6 +512,9 @@ final class WordPressImporter
     {
         if (isset($entry['post_type'])) {
             return $this->renderScraped($entry, $terms);
+        }
+        if (isset($entry['rest'])) {
+            return $this->renderRest($entry, $terms);
         }
         $converter = new HtmlToMarkdown(fn(string $address, string $kind): string => $this->resolve($address, $kind));
         $body = $converter->convert((string)$entry['html']);
@@ -717,6 +796,10 @@ final class WordPressImporter
         $byId = [];
         foreach ($terms as $term) {
             $byId[$term['id']] = $term['term_id'];
+            // A post filed under a term that was merged is filed under the term it went into.
+            foreach ($term['aliases'] ?? [] as $alias) {
+                $byId[$alias] = $term['term_id'];
+            }
         }
         $out = [];
         foreach ($ids as $id) {
@@ -727,43 +810,350 @@ final class WordPressImporter
         return array_keys($out);
     }
 
-    private function termPath(string $taxonomy, string $path): string
+    private function termPath(string $taxonomy, string $path, ?string $lang = null): string
     {
-        $prefix = $this->lang() === $this->defaultLang() ? '' : $this->lang() . '/';
+        $lang ??= $this->lang();
+        $prefix = $lang === $this->defaultLang() ? '' : $lang . '/';
         return $prefix . Taxonomies::kind($taxonomy) . '/' . $path;
     }
 
     /**
-     * Adds the terms that are not in the taxonomy yet; the ones it has are left as they are.
+     * The terms of a taxonomy of the old site as this one keeps them: duplicates merged (and reported), then the tree and the
+     * ids of buildTerms(), each with its source address (`imported_from`), the ids of the terms merged into it, and its names
+     * in the other languages the profile names a prefix for.
      *
-     * @param array<int, array{term_id: string, slug: string, parent_term: string, label: string, description: string}> $list
+     * @param array<int, array{id: int, slug: string, name: string, link: string, parent: int, count: int, description: string}> $raw
+     * @return array<int, array<string, mixed>>
      */
-    private function saveTerms(string $name, array $list): int
+    private function termsOf(string $base, string $here, array $raw, bool $tree): array
+    {
+        if ($raw === []) {
+            return [];
+        }
+        $merged = WordPressTermMerge::apply($raw, $this->rest['term_map'][$base] ?? [], (bool)$this->rest['skip_empty_terms']);
+        foreach ($merged['merges'] as $m) {
+            $this->report['merged'][] = "$here: {$m['from_name']} ({$m['from']}) into {$m['into_name']} ({$m['into']}), " . ($m['why'] === 'term_map' ? 'term_map' : "same name; pin it with term_map.$base.{$m['from']}: {$m['into']}");
+        }
+        foreach ($merged['skipped'] as $t) {
+            $this->report['skipped_terms'][] = "$here: {$t['name']} ({$t['id']}), no entries";
+        }
+        foreach ($merged['unknown'] as $u) {
+            $this->report['term_map_unknown'][] = "term_map.$base.{$u['from']}: {$u['into']} names a term the site does not have, or makes a circle";
+        }
+        $list = $this->buildTerms($merged['terms'], $tree);
+        foreach ($list as $i => $term) {
+            $source = $merged['terms'][$i];
+            $list[$i]['aliases'] = $source['aliases'];
+            $list[$i]['alias_links'] = $source['alias_links'];
+            $list[$i]['imported_from'] = $this->reader->site() . '/wp-json/wp/v2/' . $base . '/' . $source['id'];
+            $list[$i]['labels'] = [$this->lang() => $term['label']];
+            $list[$i]['descriptions'] = [$this->lang() => $term['description']];
+        }
+        // The names in another language, from the old site's pages in that language, matched by id and then by address.
+        foreach ($this->rest['language_prefixes'] as $lang => $prefix) {
+            if ($lang === $this->lang()) {
+                continue;
+            }
+            try {
+                $other = $this->reader->under($prefix)->terms($base);
+            } catch (\Throwable $e) {
+                $this->report['notes'][] = "taxonomy '$base' in '$lang': " . $e->getMessage();
+                continue;
+            }
+            $byId = array_column($other, null, 'id');
+            $bySlug = array_column($other, null, 'slug');
+            foreach ($list as $i => $term) {
+                $match = $byId[$term['id']] ?? $bySlug[$merged['terms'][$i]['slug']] ?? null;
+                if ($match !== null && $match['name'] !== '' && $match['name'] !== $term['label']) {
+                    $list[$i]['labels'][$lang] = $match['name'];
+                    if ($match['description'] !== '' && $match['description'] !== $term['description']) {
+                        $list[$i]['descriptions'][$lang] = $match['description'];
+                    }
+                }
+            }
+        }
+        return $list;
+    }
+
+    /**
+     * Adds the terms that are not in the taxonomy yet. A term an earlier import brought (the same `imported_from`) gets the
+     * names and descriptions it has no text for yet; every other term of the site is left as it is. A taxonomy that has no
+     * file yet takes the old site's name for it, and has a tree only when its terms do.
+     *
+     * @param array<int, array{term_id: string, slug: string, parent_term: string, label: string, description: string, labels?: array<string, string>, descriptions?: array<string, string>, imported_from?: string}> $list
+     * @return array{0: int, 1: int} added, and updated
+     */
+    private function saveTerms(string $name, array $list, string $title = ''): array
     {
         if ($list === []) {
-            return 0;
+            return [0, 0];
         }
+        $isNew = Taxonomies::isCustom($name) && !in_array($name, $this->taxonomies->names(), true);
         $current = $this->taxonomies->load($name);
         $terms = $current['terms'];
-        $have = array_column($terms, 'id');
+        $at = [];
+        foreach ($terms as $i => $term) {
+            $at[$term['id']] = $i;
+        }
         $added = 0;
+        $updated = 0;
         foreach ($list as $term) {
-            if (in_array($term['term_id'], $have, true)) {
+            $labels = $term['labels'] ?? [$this->lang() => $term['label']];
+            $descriptions = $term['descriptions'] ?? [$this->lang() => $term['description']];
+            $from = (string)($term['imported_from'] ?? '');
+            if (isset($at[$term['term_id']])) {
+                $i = $at[$term['term_id']];
+                if ($from === '' || ($terms[$i]['imported_from'] ?? '') !== $from) {
+                    continue;
+                }
+                $changed = false;
+                foreach (['labels' => $labels, 'descriptions' => $descriptions] as $key => $texts) {
+                    foreach ($texts as $lang => $text) {
+                        if ($text !== '' && trim((string)($terms[$i][$key][$lang] ?? '')) === '') {
+                            $terms[$i][$key][$lang] = $text;
+                            $changed = true;
+                        }
+                    }
+                }
+                $updated += $changed ? 1 : 0;
                 continue;
             }
             $terms[] = [
                 'id' => $term['term_id'],
                 'slug' => $term['slug'],
                 'parent' => $term['parent_term'],
-                'labels' => [$this->lang() => $term['label']],
-                'descriptions' => [$this->lang() => $term['description']],
+                'labels' => $labels,
+                'descriptions' => $descriptions,
+                'imported_from' => $from,
             ];
             $added++;
         }
-        if ($added > 0) {
-            $this->taxonomies->save($name, $current['title'], $terms);
+        if ($added > 0 || $updated > 0) {
+            $tree = $isNew ? array_filter($list, static fn(array $t): bool => $t['parent_term'] !== '') !== [] : null;
+            $this->taxonomies->save($name, $isNew && $title !== '' ? $title : $current['title'], $terms, null, $tree);
         }
-        return $added;
+        return [$added, $updated];
+    }
+
+    // ------------------------------------------------------------------ custom types of the REST API
+
+    /**
+     * The entries the profile's `rest_types` bring: one for each record in the main language, and one in each other language
+     * the record has a title, excerpt, text or field in. They share an address and a `translation_id` made from the old
+     * address, so a second run finds them again. What the end report says about them (no place, one coordinate, no text in a
+     * language, ACF fields the profile does not name) is collected here.
+     *
+     * @param array<string, array<string, bool>> $slugs addresses already taken, by kind
+     * @param string[] $listed the REST bases of the types the site's API lists (empty when it does not say)
+     * @return array<int, array<string, mixed>>
+     */
+    private function restEntries(array &$slugs, array $listed): array
+    {
+        $main = $this->lang();
+        $others = array_values(array_diff(WordPressRestTypes::languages($this->rest, $main), [$main]));
+        $entries = [];
+        foreach ($this->rest['types'] as $rules) {
+            if ($listed !== [] && !in_array($rules['endpoint'], $listed, true)) {
+                $this->report['notes'][] = "type '{$rules['endpoint']}': the site's API does not list it, so it was not read";
+                continue;
+            }
+            $type = $rules['content_type'];
+            $group = ContentPaths::isRoot($type) ? 'root' : $type;
+            $unmapped = [];
+            foreach ($this->reader->records($rules['endpoint'], array_keys($rules['taxonomies'])) as $record) {
+                $mapped = WordPressRestTypes::map($record, $rules, $main);
+                $title = $mapped['texts'][$main]['title'];
+                $slug = $this->slugFor(['slug' => $record['slug'], 'title' => $title, 'id' => $record['id'], 'type' => $type], false, $slugs[$group] ?? []);
+                $slugs[$group][$slug] = true;
+                $label = "$type/$slug";
+                if ($rules['coordinates'] !== null && $mapped['coordinates'] !== 'both') {
+                    $this->report[$mapped['coordinates'] === 'one' ? 'one_coordinate' : 'no_coordinates'][] = $label;
+                }
+                foreach ($mapped['notes'] as $note) {
+                    $this->report['field_notes'][] = "$label: $note";
+                }
+                foreach ($mapped['unmapped'] as $key) {
+                    $unmapped[$key] = ($unmapped[$key] ?? 0) + 1;
+                }
+                $translationId = substr(sha1('wordpress:' . $record['link']), 0, 16);
+                $langs = [$main];
+                foreach ($others as $lang) {
+                    $text = $mapped['texts'][$lang] ?? null;
+                    $has = $text !== null && (trim($text['title']) !== '' || trim(WordPressReader::text($text['excerpt'])) !== '' || trim(WordPressReader::text($text['body'])) !== '' || $text['fields'] !== []);
+                    if (!$has) {
+                        $this->report['missing_translation'][] = "$label: no text in '$lang'";
+                        continue;
+                    }
+                    if (trim($text['title']) === '') {
+                        $this->report['missing_translation'][] = "$label: no title in '$lang', the '$main' one is used";
+                    }
+                    $langs[] = $lang;
+                }
+                foreach ($langs as $lang) {
+                    $prefix = $this->rest['language_prefixes'][$lang] ?? '';
+                    $old = $lang === $main ? $record['link'] : ($prefix !== '' && $record['link'] !== '' ? $this->reader->site() . $prefix . '/' . self::pathOf($record['link']) . '/' : '');
+                    $entries[] = [
+                        'rest' => $rules['name'],
+                        'type' => $type,
+                        'id' => $record['id'],
+                        'lang' => $lang,
+                        'slug' => $record['slug'],
+                        'title' => trim($mapped['texts'][$lang]['title'] ?? '') !== '' ? $mapped['texts'][$lang]['title'] : ($title !== '' ? $title : Slug::title($slug)),
+                        'date' => (string)($record['date'] ?? ''),
+                        'link' => $record['link'],
+                        'old' => $old,
+                        'image' => (int)($record['featured_media'] ?? 0),
+                        'mapped' => $mapped,
+                        'translation_id' => $translationId,
+                        'new_slug' => $slug,
+                        'new_path' => ContentPaths::build($type, $slug, $lang, $this->homeSlug(), $this->defaultLang()),
+                    ];
+                }
+            }
+            ksort($unmapped);
+            foreach ($unmapped as $key => $count) {
+                $this->report['unmapped'][] = "{$rules['name']}: $key ($count entries have a value; the profile does not say where it goes)";
+            }
+        }
+        return $entries;
+    }
+
+    /**
+     * An entry of a custom type: its text in its language, its terms, its place, its files and its video.
+     *
+     * @param array<string, mixed> $entry
+     * @param array<string, array<int, array<string, mixed>>> $terms
+     * @return array{front: array<string, mixed>, body: string, notes: string[]}
+     */
+    private function renderRest(array $entry, array $terms): array
+    {
+        $mapped = $entry['mapped'];
+        $lang = (string)$entry['lang'];
+        $text = $mapped['texts'][$lang] ?? ['title' => '', 'excerpt' => '', 'body' => '', 'fields' => []];
+        $rules = $this->rest['types'][$entry['rest']];
+        $label = $entry['type'] . '/' . $entry['new_slug'];
+        $converter = new HtmlToMarkdown(fn(string $address, string $kind): string => $this->resolve($address, $kind));
+        $html = self::asHtml($text['body']);
+        $body = trim($converter->convert($html));
+
+        $front = ['title' => $entry['title'], 'status' => 'published', 'visible' => true];
+        if (preg_match('/^\d{4}-\d{2}-\d{2}/', (string)$entry['date'], $m)) {
+            $front['date'] = $m[0];
+        }
+        $excerpt = $this->explicitExcerpt($text['excerpt'], $html);
+        if ($excerpt !== '') {
+            $front['excerpt'] = $excerpt;
+        }
+
+        $fields = $text['fields'] + $mapped['fields'];
+        if ($rules['coordinates'] !== null && $mapped['location'] !== '') {
+            $fields[$rules['coordinates']['to']] = $mapped['location'];
+        }
+        $mainRef = $entry['image'] > 0 ? $entry['image'] : null;
+        foreach ($mapped['media'] as $key => $rule) {
+            if ($rule['to'] === 'main_image') {
+                $mainRef = $rule['refs'][0];
+                continue;
+            }
+            $paths = [];
+            foreach ($rule['refs'] as $ref) {
+                $canonical = $this->restMedia($ref, "$label: $key");
+                if ($canonical === '') {
+                    continue;
+                }
+                if (in_array(strtolower($this->mediaFiles[$canonical]['ext']), GeoTrack::EXTENSIONS, true)) {
+                    $this->mediaFiles[$canonical]['track'] = true;
+                    if (!in_array($label, $this->mediaFiles[$canonical]['entries'] ?? [], true)) {
+                        $this->mediaFiles[$canonical]['entries'][] = $label;
+                    }
+                }
+                $this->mediaFiles[$canonical]['uses']++;
+                $path = $this->final && empty($this->mediaReady[$canonical]) ? '' : $this->mediaPath($this->mediaFiles[$canonical]);
+                if ($path !== '') {
+                    $paths[] = $path;
+                    // A route file gives its length to the field the profile names, when the old site left that empty.
+                    if ($rule['length'] !== '' && !isset($fields[$rule['length']]) && ($this->trackKm[$canonical] ?? 0.0) > 0) {
+                        $fields[$rule['length']] = $this->trackKm[$canonical];
+                    }
+                }
+            }
+            if ($paths !== []) {
+                $fields[$rule['to']] = $rule['list'] ? $paths : $paths[0];
+            }
+        }
+        if ($mainRef !== null) {
+            $canonical = $this->restMedia($mainRef, "$label: main image");
+            if ($canonical !== '') {
+                $this->mediaFiles[$canonical]['uses']++;
+                $front['main_image'] = $this->resolve($canonical, 'image');
+            }
+        }
+
+        foreach ($mapped['terms'] as $taxonomy => $ids) {
+            $filed = $this->termIds($ids, $terms[$taxonomy] ?? []);
+            if ($filed !== []) {
+                $front[$taxonomy] = $filed;
+            }
+        }
+        foreach ($rules['front'] as $key => $value) {
+            $front[(string)$key] = $value;
+        }
+        $front['translation_id'] = $entry['translation_id'];
+        if ($fields !== []) {
+            ksort($fields);
+            $front['custom_fields'] = $fields;
+        }
+        if ($mapped['video'] !== '') {
+            $front['blocks'] = [['type' => 'video', 'variant' => 'featured', 'videos' => [['url' => $mapped['video']]]]];
+        }
+        $front['imported_from'] = $entry['link'];
+        return ['front' => $front, 'body' => $body, 'notes' => $converter->notes()];
+    }
+
+    /**
+     * The file a media field points at, noted for the library: an id of the old library (asked for on its own when the list
+     * did not have it), or an address. Empty when the old site does not have it.
+     */
+    private function restMedia(int|string $ref, string $where): string
+    {
+        if (is_int($ref)) {
+            if (!isset($this->attachmentUrls[$ref])) {
+                $item = $this->final ? null : $this->reader->mediaItem($ref);
+                if ($item === null) {
+                    if (!$this->final) {
+                        $this->report['field_notes'][] = "$where: file $ref is not in the old site's media library";
+                    }
+                    return '';
+                }
+                $this->attachmentUrls[$ref] = $this->registerMedia($item['url'], $item['alt'], $item['title'], true);
+            }
+            return $this->attachmentUrls[$ref];
+        }
+        $address = str_starts_with($ref, '//') ? 'https:' . $ref : (str_starts_with($ref, '/') ? $this->reader->site() . $ref : $ref);
+        return $this->registerMedia(html_entity_decode($address, ENT_QUOTES | ENT_HTML5, 'UTF-8'), '', '', false);
+    }
+
+    /** The length of a route file that is in the library now, for the entries that leave their own length empty. @param array<string, mixed> $file */
+    private function measureTrack(string $canonical, array $file): void
+    {
+        if (empty($file['track'])) {
+            return;
+        }
+        $path = $this->media->filePath((string)$file['id']);
+        $parsed = $path !== null ? GeoTrack::parse((string)file_get_contents($path), (string)$file['ext']) : null;
+        if ($parsed !== null) {
+            $this->trackKm[$canonical] = GeoTrack::stats($parsed['lines'])['distance_km'];
+        }
+    }
+
+    /** A text that is plain (an ACF textarea) as paragraphs, so it is read like the HTML of the editor. */
+    private static function asHtml(string $text): string
+    {
+        if ($text === '' || preg_match('/<(p|div|br|h[1-6]|ul|ol|table|blockquote|img|figure)\b/i', $text)) {
+            return $text;
+        }
+        $paragraphs = preg_split('/\R\s*\R/u', trim($text)) ?: [];
+        return implode('', array_map(static fn(string $p): string => '<p>' . nl2br(htmlspecialchars(trim($p), ENT_QUOTES, 'UTF-8'), false) . '</p>', $paragraphs));
     }
 
     // ------------------------------------------------------------------ addresses
