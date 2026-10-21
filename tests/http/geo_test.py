@@ -25,6 +25,7 @@ def upload(c, name, data, mime='application/octet-stream'):
     except urllib.error.HTTPError as e:
         where = e.headers.get('Location') or ''
         return e.code, (c.get(where)[2] if where else e.read().decode('utf-8', 'replace'))
+def geo_data(html): return json.loads(re.search(r'data-geo-data>(.*?)</script>', html, re.S).group(1))
 def picker(kind): return json.loads(root.get('/admin/media-picker?kind=' + kind)[2])
 
 # ---- route files in the media library
@@ -50,6 +51,8 @@ check('GeoJSON and KML are accepted', len(picker('track')['items']) == 3, picker
 # ---- the content
 CATS = 'title: Categories\nterms:\n' + ''.join('  - id: %s\n    slug: %s\n    labels:\n      en: %s\n      el: %s\n' % (s, s, e, e) for s, e in (('hiking', 'Hiking'), ('sights', 'Sights'), ('hotels', 'Hotels'), ('food', 'Food')))
 write('taxonomies/categories.yaml', CATS)
+# A taxonomy of the site's own, for the bar over the map (three terms: offered without being chosen).
+write('taxonomies/facility.yaml', 'title: Facility\nterms:\n' + ''.join('  - id: %s\n    slug: %s\n    labels:\n      en: %s\n' % (s, s, e) for s, e in (('pool', 'Pool'), ('parking', 'Parking'), ('garden', 'Garden'))))
 def entry(type_, slug, title, fields, extra=''):
     lines = ''.join("  %s: %s\n" % (k, json.dumps(v, ensure_ascii=False)) for k, v in fields.items())
     write('%s/%s.en.md' % (type_, slug), "---\ntitle: '%s'\nstatus: published\nvisible: true\ndate: '2026-01-02'\n%scustom_fields:\n%s---\nBody of %s.\n" % (title, extra, lines, title))
@@ -58,8 +61,8 @@ entry('routes', 'no-file', 'A route without a file', {'activity': 'cycling', 'di
 entry('points', 'spring', 'The spring', {'location': '35.0, 26.041', 'area': 'Sitia', 'opening_hours': 'Always', 'phone': '+30 28430 29623', 'accessible': True}, 'categories: [sights]\n')
 entry('points', 'far-away', 'Far away', {'location': '36.9, 27.9'}, 'categories: [sights]\n')
 entry('points', 'unplaced', 'Not on a map', {'area': 'Nowhere'})
-entry('businesses', 'hotel', 'The hotel', {'location': '35.031, 26.0', 'area': 'Sitia', 'address': 'Main street 1', 'phone': '+30 28430 11111', 'email': 'info@example.test', 'website': 'https://example.test', 'booking_url': 'https://example.test/book', 'price_range': 'moderate'}, 'categories: [hotels]\n')
-entry('businesses', 'tavern', 'The tavern', {'location': '35.2, 26.3'}, 'categories: [food]\n')
+entry('businesses', 'hotel', 'The hotel', {'location': '35.031, 26.0', 'area': 'Sitia', 'address': 'Main street 1', 'phone': '+30 28430 11111', 'email': 'info@example.test', 'website': 'https://example.test', 'booking_url': 'https://example.test/book', 'price_range': 'moderate'}, 'categories: [hotels]\nfacility: [pool, parking]\n')
+entry('businesses', 'tavern', 'The tavern', {'location': '35.2, 26.3'}, 'categories: [food]\nfacility: [parking]\n')
 for i in range(15):
     entry('businesses', 'shop-%02d' % i, 'Shop %02d' % i, {'location': '35.%02d, 26.%02d' % (50 + i, 50 + i)}, 'categories: [food]\n')
 
@@ -75,13 +78,22 @@ check('a route with no file is a pin at its start, with the length typed', nofil
 check('the data holds the tiles, and is safe to put in a page', data['tiles']['url'].startswith('https://tile.openstreetmap.org/') and '</script>' not in html.split('data-geo-data>')[1].split('</script>')[0])
 check('the stylesheet and the script of the map come with the page, and Leaflet is only named, not loaded', re.search(r'_blocks\.css\?b=[^"]*map', html) is not None and re.search(r'_blocks\.js\?b=[^"]*map', html) is not None and 'vendor/leaflet/leaflet.js' in html and '<script src="/_themes/default/vendor/leaflet' not in html, re.findall(r'_blocks\.(?:css|js)\?b=[^&"]*', html))
 check('a map is shown when the visitor asks (the site\'s choice until it says otherwise)', 'data-geo-load-mode="click"' in html and 'data-geo-load' in html)
-check('the page keeps the filters of the type (activity, difficulty) as a form, but not the categories', 'name="filter[activity]"' in html and 'name="filter[difficulty]"' in html and 'filter[categories]' not in html)
-check('and the map has its own category menu to fill (the bar is made by the script)', 'data-geo-filters' in html)
+check('the page keeps the filters of the type (activity, difficulty) as a form; a category all of them share is no filter', 'name="filter[activity]"' in html and 'name="filter[difficulty]"' in html and 'filter[categories]' not in html and data['facets'] == [])
+check('and the map has its own bar to fill (made by the script)', 'data-geo-filters' in html)
 st, _, html = anon.get('/en/businesses')
 data = json.loads(re.search(r'data-geo-data>(.*?)</script>', html, re.S).group(1))
 check('there is no paging on a map: every business with a place is on it and in the list (per page does not apply)', len(data['items']) == 17 and html.count('data-geo-item=') == 17, (len(data['items']), html.count('data-geo-item=')))
 check('the categories are there to filter by, with their names and counts', {c['slug']: c['count'] for c in data['cats']} == {'food': 16, 'hotels': 1} and {c['label'] for c in data['cats']} == {'Food', 'Hotels'}, data['cats'])
 check('without pagination links', 'class="pagination"' not in html)
+facets = {f['name']: f for f in data['facets']}
+check('the bar offers every taxonomy of the type with terms in use, not only the categories', list(facets) == ['categories', 'facility'] and facets['categories']['tree'] and not facets['facility']['tree'], data['facets'])
+check('each term with how many entries on the map have it', [(o['id'], o['label'], o['count']) for o in facets['facility']['options']] == [('parking', 'Parking', 2), ('pool', 'Pool', 1)] and {o['id']: o['count'] for o in facets['categories']['options']} == {'food': 16, 'hotels': 1}, data['facets'])
+tax = {i['id']: i.get('tax') for i in data['items']}
+check('and each entry its terms, so the bar can filter at once', tax['businesses/hotel'] == {'categories': ['hotels'], 'facility': ['pool', 'parking']} and tax['businesses/shop-00'] == {'categories': ['food']}, (tax['businesses/hotel'], tax['businesses/shop-00']))
+check('the taxonomies are named as the theme names them', facets['categories']['label'] == 'Category' and facets['facility']['label'] == 'Facility', [f['label'] for f in data['facets']])
+check('without JavaScript the page\'s own form has them too, marked as covered by the bar', 'data-geo-form' in html and 'data-geo-covered="facility"' in html and 'name="filter[facility]"' in html and 'data-geo-covered="categories"' in html)
+html = anon.get('/en/businesses?filter[facility]=pool')[2]
+check('and the form filters the list and the map', sorted(i['id'] for i in geo_data(html)['items']) == ['businesses/hotel'], [i['id'] for i in geo_data(html)['items']])
 st, _, html = anon.get('/en/points')
 data = json.loads(re.search(r'data-geo-data>(.*?)</script>', html, re.S).group(1))
 check('an entry with no place is not on the map', sorted(i['id'] for i in data['items']) == ['points/far-away', 'points/spring'], [i['id'] for i in data['items']])
@@ -200,6 +212,21 @@ check('what is chosen is what the archive does', 'geo-h-tall' in html and 'has-l
 root.request('/admin/theme', data=[tuple(x) for x in fields] + [('archive_types[routes][layout]', 'cards'), ('active_tab', 'archive_layouts')])
 html = anon.get('/en/routes')[2]
 check('and with another layout the routes are a list of cards again, with no map', 'data-geo ' not in html and 'The loop' in html)
+
+# ---- the filters of the bar on the card
+def card(html, type_): return html.split('id="archive-type-%s"' % type_)[1].split('</article>')[0]
+c = card(root.get('/admin/theme?tab=archive_layouts')[2], 'businesses')
+check('the card offers the taxonomies for the bar, the automatic ones ticked (tags too: the bar leaves out what no entry uses), with their number of terms', 'name="archive_types[businesses][map_filters][]" value="facility" checked' in c and 'value="categories" checked' in c and 'value="tags" checked' in c and 'name="archive_types[businesses][map_filters_auto]" value="categories,facility,tags"' in c and 'Facility <span class="text-[10px] font-normal text-slate-500">3</span>' in c, re.findall(r'map_filters_auto]" value="[^"]*"|value="\w+" checked', c))
+def save_map_filters(*names):
+    form = [tuple(x) for x in next(f for f in root.forms('/admin/theme?tab=archive_layouts') if theme_form(f))['fields'] if x[0] not in ('archive_types[businesses][map_filters][]', 'active_tab')]
+    root.request('/admin/theme', data=form + [('archive_types[businesses][map_filters][]', n) for n in names] + [('active_tab', 'archive_layouts')])
+save_map_filters('facility')
+html = anon.get('/en/businesses')[2]
+check('what is ticked is what the bar offers', [f['name'] for f in geo_data(html)['facets']] == ['facility'] and 'map_filters' in open('app/custom/content-types/businesses.yaml', encoding='utf-8').read(), [f['name'] for f in geo_data(html)['facets']])
+check('and the form of the page follows it: the categories (a filter of the page, Filters on the card) stay in it, no longer covered by the bar', 'data-geo-covered="facility"' in html and 'name="filter[categories]"' in html and 'data-geo-covered="categories"' not in html)
+save_map_filters('categories', 'facility', 'tags')
+check('ticking exactly the automatic ones again stores nothing', 'map_filters' not in (open('app/custom/content-types/businesses.yaml', encoding='utf-8').read() if os.path.exists('app/custom/content-types/businesses.yaml') else ''))
+check('and the bar has them again', [f['name'] for f in geo_data(anon.get('/en/businesses')[2])['facets']] == ['categories', 'facility'])
 
 # ---- the data of the maps is kept, and made again whenever what it is made from changes
 import glob, sqlite3, time

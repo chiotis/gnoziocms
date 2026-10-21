@@ -16,8 +16,10 @@ final class ArchiveBuilder
      * @param callable(string, string, string): string $termLabel the name of a term: taxonomy, term id, language
      * @param (callable(string[], string): array<string, string>)|null $relationTitles the titles of the entries a relation filter offers, by id,
      *        for the ones a visitor may see: ids, language (without it a relation is not offered as a filter)
+     * @param (callable(string[], string[]|null): string[])|null $mapTaxonomies the taxonomies the bar over a map offers (MapFilters::names):
+     *        types, what the list chose. A list with the Map layout offers them in its own form too, the way to filter without JavaScript.
      */
-    public function __construct(private $taxonomyNames, private $termLabel, private ?ArchiveQuery $query = null, private $relationTitles = null)
+    public function __construct(private $taxonomyNames, private $termLabel, private ?ArchiveQuery $query = null, private $relationTitles = null, private $mapTaxonomies = null)
     {
     }
 
@@ -36,7 +38,7 @@ final class ArchiveBuilder
     public function build(array $settings, array $fields, ?array $definition, string $lang, array $items, array $query): array
     {
         [$settings, $sort] = self::withVisitorSort($settings, $query);
-        $facets = $this->facets($settings, $fields);
+        $facets = $this->facets($settings, $fields, array_values(array_unique(array_map(static fn(ContentItem $item): string => $item->type, $items))));
         $valuesOf = function (ContentItem $item, string $name, array $facet): array {
             if ($facet['kind'] === 'taxonomy') {
                 return Format::list($item->meta[$name] ?? null);
@@ -136,7 +138,7 @@ final class ArchiveBuilder
             return null;
         }
         [$settings, $sort] = self::withVisitorSort($settings, $query);
-        $facets = $this->facets($settings, $fields);
+        $facets = $this->facets($settings, $fields, $scope['types']);
         $kinds = array_map(static fn(array $facet): string => $facet['kind'], $facets);
         $counts = $this->query->counts($scope, $lang, $includeHidden, $kinds);
         if ($counts === null) {
@@ -180,17 +182,23 @@ final class ArchiveBuilder
     }
 
     /**
-     * The facets a list can filter by: the taxonomies it chose and the filterable fields of its type.
+     * The facets a list can filter by: the taxonomies it chose (with the Map layout, also those of the map's bar) and the filterable
+     * fields of its type.
      *
      * @param array<string, mixed> $settings
      * @param array<string, array<string, mixed>> $fields
+     * @param string[] $types the content types of the list
      * @return array<string, array{label: string, kind: string, labels: array<string, string>}>
      */
-    private function facets(array $settings, array $fields): array
+    private function facets(array $settings, array $fields, array $types = []): array
     {
         $facets = [];
         $taxonomyNames = ($this->taxonomyNames)();
-        foreach ($settings['taxonomies'] as $taxonomy) {
+        $chosen = $settings['taxonomies'];
+        if (($settings['layout'] ?? '') === 'map' && $this->mapTaxonomies !== null) {
+            $chosen = array_values(array_unique(array_merge($chosen, ($this->mapTaxonomies)($types, is_array($settings['map_filters'] ?? null) ? $settings['map_filters'] : null))));
+        }
+        foreach ($chosen as $taxonomy) {
             if (in_array($taxonomy, $taxonomyNames, true)) {
                 $facets[$taxonomy] = ['label' => Slug::title($taxonomy), 'kind' => 'taxonomy', 'labels' => []];
             }

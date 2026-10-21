@@ -91,26 +91,252 @@
     });
   }
 
+  /* The filters of a map: what is chosen (a kind, terms of the taxonomies of the bar, a search) and which entries that leaves. It is
+     made when the page loads, so the bar filters the list before the map is drawn; the map, once drawn, follows it too.
+     Several terms of one taxonomy mean "any of them", different taxonomies "all of them". */
+  function setup(root) {
+    if (root._geo) return root._geo;
+    var dataNode = root.querySelector('[data-geo-data]');
+    var data;
+    try { data = JSON.parse(dataNode ? dataNode.textContent : ''); } catch (e) { return null; }
+    var items = data.items || [];
+    var state = { type: '', cat: '', query: '', chosen: {} };
+    var listeners = [];
+    var listItems = Array.prototype.slice.call(root.querySelectorAll('[data-geo-item]'));
+    var byId = {};
+    items.forEach(function (item) { byId[item.id] = item; });
+    var status = root.querySelector('[data-geo-status]');
+    var facets = Array.isArray(data.facets) ? data.facets : null;
+    var controls = [];
+    var reset = null;
+
+    function has(item, name, id) {
+      return ((item.tax || {})[name] || []).indexOf(id) !== -1;
+    }
+
+    // `skip`: a taxonomy left out, to count what each of its terms would give with the other choices as they are.
+    function matches(item, skip) {
+      if (state.type && item.type !== state.type) return false;
+      if (state.cat && (item.cats || []).indexOf(state.cat) === -1) return false;
+      for (var name in state.chosen) {
+        if (name === skip || !state.chosen[name].length) continue;
+        if (!state.chosen[name].some(function (id) { return has(item, name, id); })) return false;
+      }
+      if (state.query) {
+        var hay = (item.title + ' ' + (item.area || '') + ' ' + (item.kind || '')).toLowerCase();
+        if (hay.indexOf(state.query) === -1) return false;
+      }
+      return true;
+    }
+
+    function recount() {
+      controls.forEach(function (c) {
+        var counts = {};
+        items.forEach(function (item) {
+          if (!matches(item, c.name)) return;
+          ((item.tax || {})[c.name] || []).forEach(function (id) { counts[id] = (counts[id] || 0) + 1; });
+        });
+        var picked = state.chosen[c.name] || [];
+        c.boxes.forEach(function (b) {
+          var n = counts[b.input.value] || 0;
+          b.count.textContent = String(n);
+          b.input.disabled = n === 0 && !b.input.checked;
+          b.label.classList.toggle('is-empty', n === 0);
+        });
+        c.badge.textContent = picked.length ? String(picked.length) : '';
+        c.badge.hidden = !picked.length;
+        c.details.classList.toggle('is-chosen', picked.length > 0);
+      });
+      if (reset) reset.hidden = !Object.keys(state.chosen).some(function (k) { return state.chosen[k].length; });
+    }
+
+    function change(refit) {
+      var shown = 0;
+      items.forEach(function (item) { if (matches(item)) shown++; });
+      listItems.forEach(function (li) {
+        var item = byId[li.getAttribute('data-geo-item')];
+        li.hidden = !(item && matches(item));
+      });
+      if (status) status.textContent = shown + ' / ' + items.length;
+      recount();
+      listeners.forEach(function (fn) { fn(refit); });
+    }
+
+    var bar = root.querySelector('[data-geo-filters]');
+    if (bar) {
+      // A button for each kind of entry.
+      var types = data.types || [];
+      if (types.length > 1) {
+        var group = el('div', 'geo-chips');
+        group.setAttribute('role', 'group');
+        group.setAttribute('aria-label', root.getAttribute('data-label-kinds') || 'Kind');
+        var chip = function (id, label, count, index) {
+          var b = el('button', 'geo-chip' + (id === '' ? ' is-active' : ''));
+          b.type = 'button';
+          b.setAttribute('aria-pressed', id === '' ? 'true' : 'false');
+          b.setAttribute('data-type', id);
+          if (id !== '') b.appendChild(el('i', 'geo-dot geo-t' + (index % 4)));
+          b.appendChild(el('span', null, label));
+          b.appendChild(el('small', null, String(count)));
+          b.addEventListener('click', function () {
+            state.type = id;
+            Array.prototype.forEach.call(group.children, function (c) { var on = c === b; c.classList.toggle('is-active', on); c.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+            change(true);
+          });
+          return b;
+        };
+        group.appendChild(chip('', root.getAttribute('data-label-all') || 'All', items.length, 0));
+        types.forEach(function (t, i) { group.appendChild(chip(t.id, t.label, t.count, i)); });
+        bar.appendChild(group);
+      }
+      if (facets) {
+        // A menu for each taxonomy, with a box for each term and how many entries it has; a tree's terms under their parent.
+        var row = el('div', 'geo-facets');
+        facets.forEach(function (f) {
+          var details = el('details', 'geo-facet');
+          details.setAttribute('data-geo-facet', f.name);
+          var summary = el('summary', 'geo-facet-toggle');
+          summary.appendChild(el('span', null, f.label));
+          var badge = el('b', 'geo-facet-n');
+          badge.hidden = true;
+          summary.appendChild(badge);
+          details.appendChild(summary);
+          var panel = el('div', 'geo-facet-panel');
+          panel.setAttribute('role', 'group');
+          panel.setAttribute('aria-label', f.label);
+          var control = { name: f.name, details: details, badge: badge, boxes: [] };
+          var holder = panel;
+          f.options.forEach(function (o, i) {
+            var depth = f.tree ? Math.min(3, o.depth || 0) : 0;
+            var next = f.options[i + 1];
+            if (f.tree && depth === 0) {
+              // A term at the top with terms under it is a group of its own: choosing it chooses all of them.
+              holder = panel;
+              if (next && (next.depth || 0) > 0) {
+                holder = el('div', 'geo-opt-group');
+                holder.setAttribute('role', 'group');
+                holder.setAttribute('aria-label', o.label);
+                panel.appendChild(holder);
+              }
+            }
+            var label = el('label', 'geo-opt geo-d' + depth + (f.tree && depth === 0 && holder !== panel ? ' is-head' : ''));
+            var input = el('input');
+            input.type = 'checkbox';
+            input.value = o.id;
+            label.appendChild(input);
+            label.appendChild(el('span', null, o.label));
+            var count = el('small', null, String(o.count));
+            label.appendChild(count);
+            holder.appendChild(label);
+            control.boxes.push({ input: input, count: count, label: label });
+            input.addEventListener('change', function () {
+              var list = state.chosen[f.name] || [];
+              list = list.filter(function (id) { return id !== o.id; });
+              if (input.checked) list.push(o.id);
+              state.chosen[f.name] = list;
+              change(true);
+            });
+          });
+          var clear = el('button', 'geo-facet-clear', root.getAttribute('data-label-clear') || 'Clear');
+          clear.type = 'button';
+          clear.addEventListener('click', function () {
+            control.boxes.forEach(function (b) { b.input.checked = false; });
+            state.chosen[f.name] = [];
+            change(true);
+          });
+          panel.appendChild(clear);
+          details.appendChild(panel);
+          details.addEventListener('toggle', function () {
+            // One menu open at a time.
+            if (!details.open) return;
+            controls.forEach(function (c) { if (c.details !== details) c.details.open = false; });
+          });
+          details.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && details.open) { details.open = false; summary.focus(); }
+          });
+          controls.push(control);
+          row.appendChild(details);
+        });
+        if (controls.length) {
+          reset = el('button', 'geo-reset', root.getAttribute('data-label-reset') || 'Clear filters');
+          reset.type = 'button';
+          reset.hidden = true;
+          reset.addEventListener('click', function () {
+            controls.forEach(function (c) { c.boxes.forEach(function (b) { b.input.checked = false; }); });
+            state.chosen = {};
+            change(true);
+          });
+          row.appendChild(reset);
+          bar.appendChild(row);
+          root.ownerDocument.addEventListener('click', function (e) {
+            controls.forEach(function (c) { if (c.details.open && !c.details.contains(e.target)) c.details.open = false; });
+          });
+        }
+      } else if ((data.cats || []).length > 1) {
+        // Data made without the taxonomies of the bar: its categories, as a menu.
+        var select = el('select', 'geo-select');
+        select.setAttribute('aria-label', root.getAttribute('data-label-category') || 'Category');
+        var all = el('option', null, root.getAttribute('data-label-categories') || 'All categories');
+        all.value = '';
+        select.appendChild(all);
+        data.cats.forEach(function (c) { var o = el('option', null, c.label + ' (' + c.count + ')'); o.value = c.slug; select.appendChild(o); });
+        select.addEventListener('change', function () { state.cat = select.value; change(true); });
+        bar.appendChild(select);
+      }
+      if (items.length > 6) {
+        var search = el('input', 'geo-search');
+        search.type = 'search';
+        search.placeholder = root.getAttribute('data-label-search') || 'Search';
+        search.setAttribute('aria-label', root.getAttribute('data-label-search') || 'Search');
+        var timer = null;
+        search.addEventListener('input', function () {
+          clearTimeout(timer);
+          timer = setTimeout(function () { state.query = search.value.trim().toLowerCase(); change(true); }, 160);
+        });
+        bar.appendChild(search);
+      }
+      bar.hidden = bar.children.length === 0;
+      if (controls.length) hideCovered(root.ownerDocument, controls.map(function (c) { return c.name; }));
+    }
+
+    root._geo = { data: data, matches: matches, listen: function (fn) { listeners.push(fn); } };
+    return root._geo;
+  }
+
+  /* The page's own form keeps the taxonomies of the bar for a visitor without JavaScript; with the bar drawn, a field the bar covers is
+     put away (unless it holds a choice, so it can be undone), and the form with it when nothing is left in it. */
+  function hideCovered(doc, names) {
+    doc.querySelectorAll('[data-geo-covered]').forEach(function (field) {
+      if (names.indexOf(field.getAttribute('data-geo-covered')) === -1) return;
+      var select = field.querySelector('select');
+      if (select && select.value) return;
+      field.hidden = true;
+    });
+    doc.querySelectorAll('form[data-geo-form]').forEach(function (form) {
+      var fields = form.querySelectorAll('.archive-filter');
+      form.hidden = fields.length > 0 && Array.prototype.every.call(fields, function (f) { return f.hidden; });
+    });
+  }
+
   function start(root) {
     if (root.getAttribute('data-geo-ready') === '1') return;
     root.setAttribute('data-geo-ready', '1');
     var canvas = root.querySelector('[data-geo-canvas]');
-    var dataNode = root.querySelector('[data-geo-data]');
-    if (!canvas || !dataNode) return;
-    var data;
-    try { data = JSON.parse(dataNode.textContent); } catch (e) { return; }
+    var filters = setup(root);
+    if (!canvas || !filters) return;
+    var data = filters.data;
     leaflet(root).then(function () {
       var L = window.L;
       var needCluster = data.cluster && (data.items || []).length > 20;
       return needCluster ? fetchScript(root.getAttribute('data-cluster-js')).then(function () { fetchStyle(root.getAttribute('data-cluster-css')); }) : null;
     }).then(function () {
-      draw(root, canvas, data);
+      draw(root, canvas, data, filters);
     }).catch(function () {
       canvas.textContent = root.getAttribute('data-label-error') || 'The map could not be loaded.';
     });
   }
 
-  function draw(root, canvas, data) {
+  function draw(root, canvas, data, filters) {
     var L = window.L;
     var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     canvas.innerHTML = '';
@@ -201,19 +427,9 @@
       focus.addTo(map);
     }
 
-    var query = '', typeFilter = '', catFilter = '';
     var listItems = Array.prototype.slice.call(root.querySelectorAll('[data-geo-item]'));
-    var status = root.querySelector('[data-geo-status]');
-
-    function matches(item) {
-      if (typeFilter && item.type !== typeFilter) return false;
-      if (catFilter && (item.cats || []).indexOf(catFilter) === -1) return false;
-      if (query) {
-        var hay = (item.title + ' ' + (item.area || '') + ' ' + (item.kind || '')).toLowerCase();
-        if (hay.indexOf(query) === -1) return false;
-      }
-      return true;
-    }
+    // What the bar leaves (see setup(), which also filters the list) is what the map shows.
+    var matches = function (item) { return filters.matches(item); };
 
     function fit() {
       // The page of one place: close on the place itself (the places near it are around, not what the map is fitted to).
@@ -232,77 +448,17 @@
     }
 
     function apply(refit) {
-      var shown = 0;
       layer.clearLayers();
       lines.clearLayers();
       items.forEach(function (item) {
+        if (!matches(item)) return;
         var shape = shapes[item.id];
-        var on = matches(item);
-        if (on) {
-          shown++;
-          layer.addLayer(shape.marker);
-          shape.lines.forEach(function (p) { lines.addLayer(p); });
-        }
+        layer.addLayer(shape.marker);
+        shape.lines.forEach(function (p) { lines.addLayer(p); });
       });
-      listItems.forEach(function (li) {
-        var item = shapes[li.getAttribute('data-geo-item')];
-        li.hidden = !(item && matches(item.item));
-      });
-      if (status) status.textContent = shown + ' / ' + items.length;
       if (refit) fit();
     }
-
-    // Filters: a button for each kind of entry, a menu of categories, and a search.
-    var bar = root.querySelector('[data-geo-filters]');
-    if (bar) {
-      var types = data.types || [];
-      if (types.length > 1) {
-        var group = el('div', 'geo-chips');
-        group.setAttribute('role', 'group');
-        group.setAttribute('aria-label', root.getAttribute('data-label-kinds') || 'Kind');
-        var chip = function (id, label, count, index) {
-          var b = el('button', 'geo-chip' + (id === '' ? ' is-active' : ''));
-          b.type = 'button';
-          b.setAttribute('aria-pressed', id === '' ? 'true' : 'false');
-          b.setAttribute('data-type', id);
-          if (id !== '') b.appendChild(el('i', 'geo-dot geo-t' + (index % 4)));
-          b.appendChild(el('span', null, label));
-          b.appendChild(el('small', null, String(count)));
-          b.addEventListener('click', function () {
-            typeFilter = id;
-            Array.prototype.forEach.call(group.children, function (c) { var on = c === b; c.classList.toggle('is-active', on); c.setAttribute('aria-pressed', on ? 'true' : 'false'); });
-            apply(true);
-          });
-          return b;
-        };
-        group.appendChild(chip('', root.getAttribute('data-label-all') || 'All', items.length, 0));
-        types.forEach(function (t, i) { group.appendChild(chip(t.id, t.label, t.count, i)); });
-        bar.appendChild(group);
-      }
-      if ((data.cats || []).length > 1) {
-        var select = el('select', 'geo-select');
-        select.setAttribute('aria-label', root.getAttribute('data-label-category') || 'Category');
-        var all = el('option', null, root.getAttribute('data-label-categories') || 'All categories');
-        all.value = '';
-        select.appendChild(all);
-        data.cats.forEach(function (c) { var o = el('option', null, c.label + ' (' + c.count + ')'); o.value = c.slug; select.appendChild(o); });
-        select.addEventListener('change', function () { catFilter = select.value; apply(true); });
-        bar.appendChild(select);
-      }
-      if (items.length > 6) {
-        var search = el('input', 'geo-search');
-        search.type = 'search';
-        search.placeholder = root.getAttribute('data-label-search') || 'Search';
-        search.setAttribute('aria-label', root.getAttribute('data-label-search') || 'Search');
-        var timer = null;
-        search.addEventListener('input', function () {
-          clearTimeout(timer);
-          timer = setTimeout(function () { query = search.value.trim().toLowerCase(); apply(true); }, 160);
-        });
-        bar.appendChild(search);
-      }
-      bar.hidden = bar.children.length === 0;
-    }
+    filters.listen(apply);
 
     // The list and the map speak to each other: the pointer on an entry opens it on the map.
     listItems.forEach(function (li) {
@@ -330,6 +486,7 @@
 
   function init() {
     document.querySelectorAll('[data-geo]').forEach(function (root) {
+      setup(root);
       var button = root.querySelector('[data-geo-load]');
       if (root.getAttribute('data-geo-load-mode') === 'auto' || !button) {
         if ('IntersectionObserver' in window) {
