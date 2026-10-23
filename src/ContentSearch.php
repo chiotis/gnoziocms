@@ -116,6 +116,11 @@ final class ContentSearch
             foreach ($terms as $term) {
                 $strength = SearchText::strength($text, $term);
                 if ($strength === 0) {
+                    // Another form of the word («πόλη» for «πόλεις») counts, below the word as typed.
+                    if (SearchText::inflected($text, $term)) {
+                        $found[$term] = true;
+                        $score += max(1, intdiv($weight * 5, 8));
+                    }
                     continue;
                 }
                 $found[$term] = true;
@@ -152,7 +157,7 @@ final class ContentSearch
                 continue;
             }
             $normal = $document['normal'][$key];
-            $matches = count(array_filter($terms, static fn(string $term): bool => SearchText::strength($normal, $term) > 0));
+            $matches = count(array_filter($terms, static fn(string $term): bool => SearchText::strength($normal, $term) > 0 || SearchText::inflected($normal, $term)));
             if ($matches > $score) {
                 $score = $matches;
                 $best = $text;
