@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.180 — 2026-10-23 — Importer: descriptions, floated pictures, videos
+- A picture with no alternative text is described by its title, else by its caption (a figure's `figcaption`, WordPress's `wp-caption-text`). A file name or a camera's name (`IMG_0042`, `DSC00123`) is never used. A library file with no alternative text takes its title by the same rule.
+- A picture that floated to a side (`alignleft`, `alignright`, a `float` style or the `align` attribute, also on its link or the box of its caption) is written with `{align=left}` or `{align=right}` in the paragraph that goes around it, as the editor writes it.
+- A link to a YouTube video that stands alone in a paragraph cuts the page there: the text before and after become Text blocks and the video a Video block. A link in a sentence, a list, a quote or code stays a link.
+- A site imported earlier gets these only by importing again with `--overwrite`. `docs/wordpress-import.md` and the ROADMAP are updated; the ROADMAP's heading is now 0.1.179 with a line for what came since 0.1.154.
+
 ## 0.1.179 — 2026-10-23 — Caching closed: Latest content from the index, the site's own copy of its pages
 - **Latest content** asks the content index for the newest entries of a type (a category or a tag, a language) and reads only the files it shows. When the index cannot be trusted the entries are read as before.
 - **The site's own copy of its public pages** for a host with no cache in front (System > Page cache, off until turned on, needs the site's address). A GET with no query, without a session, that answered 200 with a page, sitemap or feed and no cookie is kept in `storage/cache/pages` and sent again; answers carry `X-Page-Cache: hit` or `miss`.
