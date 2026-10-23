@@ -64,6 +64,8 @@ final class App
     private ?TaxonomyPage $taxonomyPageService = null;
     private ?PublicForms $publicFormsService = null;
     private ?FrontCache $frontCacheService = null;
+    private ?PageCache $pageCacheService = null;
+    private ?ArchiveQuery $archiveQueryService = null;
     private ?SettingsAdmin $settingsAdminService = null;
     private ?AdminChrome $adminChromeService = null;
     private ?UpdateInstaller $updateInstallerService = null;
@@ -241,15 +243,25 @@ final class App
             return;
         }
 
-        $this->sendSecurityHeaders(false);
-        $this->sendPublicCacheHeaders();
+        // The site's own copy of a public page, when it keeps them (System > Page cache) and has one that is current.
+        $pageKey = $this->pageCacheKey($path);
+        $served = $pageKey !== null && $this->pageCache()->serve($pageKey);
+        if (!$served) {
+            $this->sendSecurityHeaders(false);
+            $this->sendPublicCacheHeaders();
+            if ($pageKey !== null) {
+                $this->pageCache()->capture($pageKey);
+            }
+        }
 
         // A scheduled backup that is due starts after the page has been sent, so it does not depend on someone opening the admin.
         if (!$this->updateCheck && ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
             register_shutdown_function(fn() => $this->runScheduledAfterResponse());
         }
 
-        $this->handleFront($path);
+        if (!$served) {
+            $this->handleFront($path);
+        }
     }
 
     /**
@@ -1072,7 +1084,8 @@ final class App
             fn(string $markdown, string $lang, string $path): string => $this->applyShortcodes((string)$this->markdown->convert($markdown), $lang, $path),
             fn(string $slug, string $lang, string $path): string => $this->renderFormEmbedBySlug($slug, $lang, $path),
             fn(): Relations => $this->relations(),
-            fn(): Taxonomies => $this->taxonomies()
+            fn(): Taxonomies => $this->taxonomies(),
+            fn(): ArchiveQuery => $this->archiveQuery()
         );
     }
 
@@ -1134,7 +1147,37 @@ final class App
     private function frontCache(): FrontCache
     {
         $host = (string)(parse_url((string)($this->settings['base_url'] ?? ''), PHP_URL_HOST) ?: ($_SERVER['HTTP_HOST'] ?? 'localhost'));
-        return $this->frontCacheService ??= new FrontCache($this->systemMeta, $host);
+        if ($this->frontCacheService === null) {
+            $this->frontCacheService = new FrontCache($this->systemMeta, $host);
+            $this->frontCacheService->keepPages($this->pageCache());
+        }
+        return $this->frontCacheService;
+    }
+
+    /** The site's own copy of its public pages (docs/caching.md). */
+    private function pageCache(): PageCache
+    {
+        return $this->pageCacheService ??= new PageCache($this->systemMeta, $this->basePath . '/storage/cache/pages', trim((string)@file_get_contents($this->basePath . '/VERSION')));
+    }
+
+    /**
+     * The key of the copy this request may be answered with, when it is one: a GET of the public site without a session or a query,
+     * on the host the site's address says. Null otherwise, and then the page is made and not kept.
+     */
+    private function pageCacheKey(string $path): ?string
+    {
+        if ($this->updateCheck || session_status() === PHP_SESSION_ACTIVE) {
+            return null;
+        }
+        $siteUrl = (string)($this->settings['base_url'] ?? '');
+        $siteHost = (string)(parse_url($siteUrl, PHP_URL_HOST) ?: '');
+        $port = parse_url($siteUrl, PHP_URL_PORT);
+        if ($siteHost !== '' && $port !== null && $port !== false) {
+            $siteHost .= ':' . $port;
+        }
+        // The query of the address the visitor asked for (a rewrite may have added parameters of its own).
+        $query = (string)(parse_url((string)($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_QUERY) ?? '') . ($_GET === [] ? '' : '&');
+        return $this->pageCache()->keyFor((string)($_SERVER['REQUEST_METHOD'] ?? 'GET'), (string)($_SERVER['HTTP_HOST'] ?? ''), $this->isHttpsRequest(), $path, $query, $siteHost);
     }
 
     private function handleAdmin(string $path): void
@@ -2958,6 +3001,14 @@ final class App
             return;
         }
 
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (string)($_POST['system_action'] ?? '') === 'page_cache') {
+            $on = (string)($_POST['page_cache'] ?? '') === '1';
+            $saved = $this->pageCache()->setEnabled($on);
+            $this->logActivity('system.page_cache', 'info', 'system', 'page_cache', $on ? 'The site keeps its own copy of its public pages.' : 'The site no longer keeps its own copy of its pages.', ['enabled' => $on, 'saved' => $saved]);
+            $this->redirect('/admin/system?cache=' . ($saved ? ($on ? 'pages_on' : 'pages_off') : 'pages_failed'));
+            return;
+        }
+
         if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && in_array((string)($_POST['system_action'] ?? ''), ['purge_cache', 'cache_address'], true)) {
             $cache = $this->frontCache();
             if ((string)$_POST['system_action'] === 'cache_address') {
@@ -2974,6 +3025,8 @@ final class App
             $mode = $cache->mode();
             $status = $mode === 'varnish' ? $cache->sendPurge($cache->address()) : 0;
             $ok = $mode === 'cloudpanel' ? $cache->cloudPanelTag() !== '' : ($status >= 200 && $status < 300);
+            // The site's own copies are dropped by the purge handleAdmin asked for, whatever a cache in front answers.
+            $ok = $ok || ($mode === 'none' && $this->pageCache()->isEnabled());
             $this->logActivity($ok ? 'system.cache_purge' : 'system.cache_purge_failure', $ok ? 'info' : 'warning', 'system', 'front_cache', $ok ? 'Page cache emptied.' : 'The page cache could not be emptied.', ['mode' => $mode, 'status' => $status]);
             $this->redirect('/admin/system?cache=' . ($ok ? 'purged' : 'purge_failed') . ($mode === 'varnish' ? '&cache_status=' . $status : ''));
             return;
@@ -3016,6 +3069,7 @@ final class App
                 'address' => $this->frontCache()->address(),
                 'notice' => (string)($_GET['cache'] ?? ''),
                 'status' => (int)($_GET['cache_status'] ?? 0),
+                'pages' => ['enabled' => $this->pageCache()->isEnabled(), 'ttl_minutes' => intdiv(PageCache::TTL, 60)] + $this->pageCache()->stats(),
             ],
             'rebuilt' => (string)($_GET['rebuilt'] ?? ''),
             'rebuilt_message' => trim((string)($_GET['msg'] ?? '')),
@@ -4130,12 +4184,18 @@ final class App
         return $facts;
     }
 
+    /** The content index as lists ask it (archives, terms, the Latest content block). */
+    private function archiveQuery(): ArchiveQuery
+    {
+        return $this->archiveQueryService ??= new ArchiveQuery($this->contentIndex, $this->content);
+    }
+
     private function archiveBuilder(): ArchiveBuilder
     {
         return $this->archiveBuilderService ??= new ArchiveBuilder(
             fn(): array => $this->taxonomies()->names(),
             fn(string $taxonomy, string $termId, string $lang): string => $this->taxonomyTermLabel($taxonomy, $termId, $lang),
-            new ArchiveQuery($this->contentIndex, $this->content),
+            $this->archiveQuery(),
             fn(array $ids, string $lang): array => array_column($this->relations()->resolve($ids, [], $lang), 'title', 'id'),
             fn(array $types, ?array $chosen): array => $this->blockRuntime()->mapFilters()?->names($types, $chosen) ?? []
         );

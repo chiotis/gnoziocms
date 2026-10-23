@@ -31,3 +31,21 @@ sub vcl_recv {
     }
 }
 ```
+
+## No cache in front: the site's own copy
+
+For a host with no Varnish or CDN, **System > Page cache > The site's own copy** (off until it is turned on) makes the site keep what
+a cache in front would keep. A page seen without a session is the same for everyone, so its answer is written to
+`storage/cache/pages` and sent again: a visit then reads a file and does not run the site.
+
+What is kept: a GET on the site's own address (the `base_url` of the settings, so the site must have one), with no query string (a
+filter, a sort or a search is made each time), that answered 200 with a page, a sitemap, a feed or `robots.txt`, set no cookie and
+did not say it must not be kept (the same `FrontCache::doNotKeep()` and `Cache-Control: private` that keep a Varnish from keeping
+it). Not kept: anything with a session (an editor sees drafts), a page that is not found or redirects, a picture or download, an
+answer over 2 MB. At most 3,000 copies are kept. The answer carries `X-Page-Cache: hit` or `miss`.
+
+Emptying: by the same call that empties the cache in front, on every change saved in the admin and by the button. Copies are not
+deleted on the spot: when the request that saved ends, a new generation number is written and the files are removed; an answer that
+began under the old number is not kept, so a visit that overlaps a save cannot put the old page back. A copy is also not used for more
+than 10 minutes (`PageCache::TTL`), for what changes outside the admin (a file edited by hand, a script). With a cache in front the
+switch does nothing the cache does not already do.
