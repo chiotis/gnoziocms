@@ -171,6 +171,12 @@ check('a list of choices is one cell, a missing field an empty one', [$x['rows']
 check('a site with no title still names the file', $admin->export($form, '')['filename'], 'site-contact-submissions.csv');
 check('a title that has no usable letters falls back to the form address', $admin->export(new ContentItem('forms', 'contact', 'el', ['title' => '日本'], '', '', '', 0), '!!!')['filename'], 'site-contact-submissions.csv');
 
+check('a cell that would run as a formula in a spreadsheet gets a quote in front of it', array_map([FormsAdmin::class, 'spreadsheetSafe'], ['=HYPERLINK("http://e.test","x")', '+1', '-2+3', '@SUM(A1)', " =1+1", "\t=1", 'plain', 'a=b', '', '3.5']), ["'=HYPERLINK(\"http://e.test\",\"x\")", "'+1", "'-2+3", "'@SUM(A1)", "' =1+1", "'\t=1", 'plain', 'a=b', '', '3.5']);
+$hostile = new ContentItem('forms', 'hostile', 'el', ['title' => 'Hostile'], '', '', '', 0);
+$subs->store('hostile', ['form' => 'hostile', 'lang' => 'el', 'submitted_at' => date('c'), 'ip' => '1.1.1.1', 'user_agent' => '=cmd|calc', 'fields' => ['name' => '=HYPERLINK("http://e.test","Open")']]);
+$h = $admin->export($hostile, 'S');
+check('in the export neither a field nor the browser\'s name can start a formula', [$h['rows'][0][array_search('user_agent', $h['headers'], true)], $h['rows'][0][array_search('name', $h['headers'], true)]], ["'=cmd|calc", "'=HYPERLINK(\"http://e.test\",\"Open\")"]);
+
 // ---- deleting
 check('nothing is deleted without a known action', $admin->deleteSubmissions('contact', ['submission_action' => 'wipe', 'id' => $a]), ['deleted' => 0, 'ids' => [], 'files' => 0]);
 check('one is deleted by id', [$admin->deleteSubmissions('contact', ['submission_action' => 'delete', 'id' => $a])['deleted'], $subs->find('contact', $a)], [1, null]);

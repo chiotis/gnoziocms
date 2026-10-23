@@ -129,4 +129,16 @@ db.execute("UPDATE system_meta SET value='not json' WHERE key='role_permissions'
 check('unreadable stored value falls back to defaults', code(ed, '/admin/content') == 200 and code(ed, '/admin/menus') == 403)
 db.execute("DELETE FROM system_meta WHERE key='role_permissions'"); db.commit()
 
+# ---- an account that is deactivated stops seeing drafts on the public site at once, not only in the admin
+st, _, _ = root.submit('/admin/users-edit', has_field('username'),
+    {'username': 'gone1', 'email': 'gone1@example.test', 'display_name': 'Gone', 'role': 'editor', 'status': 'active', 'password': 'Sturdy-pass-99', 'password_confirm': 'Sturdy-pass-99'})
+gone = Client(); gone.login('gone1', 'Sturdy-pass-99')
+root.submit('/admin/edit?type=pages&slug=secret-draft&lang=en', has_field('body'),
+    {'type': 'pages', 'slug': 'secret-draft', 'lang': 'en', 'title': 'Secret draft', 'status': 'draft', 'visible': '1', 'body': 'Not yet public'})
+check('a draft is hidden from visitors', Client().get('/en/secret-draft')[0] == 404)
+check('and shown to a signed-in editor', gone.get('/en/secret-draft')[0] == 200)
+gone_id = re.search(r'users-edit\?id=(\d+)', next(m for m in re.findall(r'<tr.*?</tr>', root.get('/admin/users')[2], re.S) if 'gone1' in m)).group(1)
+root.submit(f'/admin/users-edit?id={gone_id}', has_field('username'), {'status': 'inactive', 'password': '', 'password_confirm': ''})
+check('after the account is deactivated the same cookie sees no draft', gone.get('/en/secret-draft')[0] == 404)
+
 print('\nALL PASSED' if not fails else '\n%d FAILED: %s' % (len(fails), fails))

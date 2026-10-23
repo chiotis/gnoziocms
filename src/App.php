@@ -177,6 +177,11 @@ final class App
         if (session_status() !== PHP_SESSION_ACTIVE && $this->needsSession($path)) {
             $this->configureSession();
             session_start();
+            // Whatever asks later whether someone is signed in (drafts on the public site, the admin bar) sees the account as it is
+            // now: one that was deactivated, or lost its sign-in, is signed out here and not only on its next visit to the admin.
+            if ($this->auth->check()) {
+                $this->auth->refresh();
+            }
         }
 
         // Only the current install's token can ask for an uncached proof of the version that actually booted.
@@ -2120,6 +2125,12 @@ final class App
 
     private function handleSave(): void
     {
+        // Only a form that was sent saves: the CSRF check above covers POST, so an address opened from another site writes nothing.
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+            http_response_code(405);
+            header('Allow: POST');
+            return;
+        }
         $type = $this->sanitizeType((string)($_POST['type'] ?? 'pages'));
         if (!$this->canAccessContentType($type)) {
             $this->denyContentType($type);

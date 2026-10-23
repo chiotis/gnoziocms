@@ -553,10 +553,10 @@ final class FieldSchema
         );
     }
 
-    /** URLs end up inside CSS url('...') and attributes, so quotes, brackets and spaces are refused. */
+    /** URLs end up inside CSS url('...') and attributes, so quotes, brackets, spaces and control characters (a browser drops those before the scheme) are refused. */
     public static function isSafeUrl(string $value): bool
     {
-        if (preg_match('/[\s"\'()<>\\\\]/', $value)) {
+        if (preg_match('/[\x00-\x1f\x7f\s"\'()<>\\\\]/', $value)) {
             return false;
         }
         if (preg_match('#^[a-z][a-z0-9+.-]*:#i', $value)) {
@@ -567,11 +567,11 @@ final class FieldSchema
 
     /**
      * Links may also point inside the page (#id), to email, or to a phone number; script and data
-     * schemes, quotes, brackets, and whitespace are refused.
+     * schemes, quotes, brackets, whitespace and control characters (a browser drops those in front of a scheme) are refused.
      */
     public static function isSafeLink(string $value): bool
     {
-        if (preg_match('/[\s"\'<>\\\\]/', $value)) {
+        if (preg_match('/[\x00-\x1f\x7f\s"\'<>\\\\]/', $value)) {
             return false;
         }
         if (preg_match('#^[a-z][a-z0-9+.-]*:#i', $value)) {

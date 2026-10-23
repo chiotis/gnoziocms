@@ -45,6 +45,7 @@ $settings = ['base_url' => 'https://s.test'];
 $google = ['calls' => [], 'token' => ['body' => '{"access_token":"tok"}', 'status' => 200, 'error' => ''], 'profile' => ['body' => '{"email":"ada@example.org","sub":"g1","email_verified":true}', 'status' => 200, 'error' => '']];
 
 [$login, $site, $users, $auth, $notifications] = site(true, $settings, $google);
+$users->importYamlUsersIfEmpty(); // as the app does at start
 $users->create(['username' => 'ada', 'email' => 'ada@example.org', 'password_hash' => $users->passwordHash('Correct-horse-1'), 'role' => 'admin']);
 $users->create(['username' => 'off', 'email' => 'off@example.org', 'password_hash' => $users->passwordHash('Correct-horse-1'), 'role' => 'editor', 'status' => 'inactive']);
 

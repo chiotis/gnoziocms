@@ -67,6 +67,7 @@ check('without a domain rule any verified account is accepted', $g->accept(['ema
 
 // ---- passwords
 $users = new UserRepository($db, "$dir/content/users/users.yaml");
+$users->importYamlUsersIfEmpty(); // as the app does at start: the shipped account lives in the database from then on
 $users->create(['username' => 'ada', 'email' => 'ada@x.test', 'password_hash' => $users->passwordHash('Correct-horse-1'), 'role' => 'admin']);
 $auth = new Auth("$dir/content/users/users.yaml", $users);
 $throttle = new LoginThrottle($db);
@@ -78,6 +79,23 @@ check('the right one signs in, is logged, and is not flagged', [$r['status'], $r
 check('a user that does not exist fails the same way', $in->password('ghost', 'x', '10.0.0.2')['message'], 'Invalid credentials.');
 $r = $in->password('shipped', '1234', '10.0.0.3');
 check('the shipped password works but is flagged', [$r['status'], $r['default_password']], ['ok', true]);
+// An account that only users.yaml still knows (renamed or deleted in the database since) does not sign in any more.
+$auth->logout();
+file_put_contents("$dir/content/users/users.yaml", "- username: shipped\n  password: 'plain:1234'\n  role: admin\n- username: oldname\n  password: 'plain:legacy-pass-1'\n  role: admin\n");
+check('a name only users.yaml has does not sign in while the database is there', [$auth->attempt('oldname', 'legacy-pass-1'), isset($_SESSION['user'])], [false, false]);
+$shippedRow = $users->findByUsername('shipped');
+$users->update((int)$shippedRow['id'], ['username' => 'renamed', 'email' => '', 'role' => 'user', 'status' => 'active'] + $shippedRow);
+check('nor does the old name of an account renamed in the database, with the password users.yaml still has', [$auth->attempt('shipped', '1234'), isset($_SESSION['user'])], [false, false]);
+$users->update((int)$shippedRow['id'], $shippedRow);
+$_SESSION['user'] = ['username' => 'oldname', 'role' => 'admin'];
+check('a session that came from users.yaml has no account to keep and ends at the next look', [$auth->refresh(), isset($_SESSION['user'])], [false, false]);
+$active = $users->findByUsername('ada');
+$_SESSION['user'] = $users->publicUser($active);
+check('a session of an active account stays', $auth->refresh(), true);
+$users->update((int)$active['id'], ['status' => 'inactive'] + $active);
+check('one whose account was deactivated ends at the next look, which the public site now takes too', [$auth->refresh(), $auth->check()], [false, false]);
+$users->update((int)$active['id'], $active);
+
 for ($i = 0; $i < LoginThrottle::MAX_FAILURES_PER_ADDRESS; $i++) { $throttle->recordFailure('10.0.0.9', 'nobody' . $i); }
 $r = $in->password('ada', 'Correct-horse-1', '10.0.0.9');
 check('after too many failures from one place even the right password is blocked', [$r['status'], str_starts_with($r['message'], 'Too many failed sign-in attempts. Try again in '), $r['retry_after'] > 0, end($log)[0]], ['blocked', true, true, 'auth.login_throttled']);
@@ -164,7 +182,7 @@ $formOnlyAdmin = ['in_form' => ['admin'], 'caps' => ['admin' => array_fill_keys(
 $roles->apply(new PermissionService($meta->getJson('role_permissions'), null), $formOnlyAdmin);
 check('a role not on the form keeps what it has', (new PermissionService($meta->getJson('role_permissions'), null))->capabilitiesForRole('editor'), $before);
 $screen = $roles->screen(new PermissionService($meta->getJson('role_permissions'), $meta->getJson('custom_roles')));
-check('the screen has a column per built-in role with its people', [array_keys($screen['columns']), $screen['columns']['admin']['users'], $screen['can_add_role'], $screen['custom_roles']], [['admin', 'editor', 'user'], 1, true, []]);
+check('the screen has a column per built-in role with its people', [array_keys($screen['columns']), $screen['columns']['admin']['users'], $screen['can_add_role'], $screen['custom_roles']], [['admin', 'editor', 'user'], 2, true, []]);
 check('permissions are grouped, and the super admin has all', [count($screen['groups']) > 1, count($screen['super_caps']) > 10], [true, true]);
 
 exec('rm -rf ' . escapeshellarg($dir));

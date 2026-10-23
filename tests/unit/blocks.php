@@ -115,6 +115,18 @@ check('their kinds', [$kinds['image'], $kinds['divider'], $kinds['downloads'], $
 // A table: one row to a line, cells divided by | or a tab; escaped; a few marks only.
 $t = BlockRenderer::tableData("Plan | Users | Price", "Starter | 3 | €9\nTeam | 20 | €29\n");
 check('table: header, rows, and a column of figures aligned to the right', [$t['header'], $t['body'], $t['align'], $t['columns']], [['Plan', 'Users', 'Price'], [['Starter', '3', '€9'], ['Team', '20', '€29']], ['left', 'right', 'right'], 3]);
+foreach (["\x01", "\x08", "\x1f", "\x7f", "\x00"] as $control) {
+    $t = BlockRenderer::tableData('', "Name | Link\nA | [x](" . $control . "javascript:alert`1`)");
+    check('table: a link with a control character before the scheme is not made a link (' . bin2hex($control) . ')', str_contains(implode('', $t['body'][1]), '<a '), false);
+}
+$t = BlockRenderer::tableData('', "Name | Link\nA | [x](&#x1;javascript:alert`1`)");
+check('table: written as an entity it stays text of the address and never becomes the character', [str_contains(implode('', $t['body'][1]), "\x01"), str_contains(implode('', $t['body'][1]), 'href="&amp;#x1;')], [false, true]);
+$t = BlockRenderer::tableData('', "Name | Link\nA | [a](/contact) [b](https://e.org/x) [c](mailto:a@e.org) [d](tel:+30210)");
+check('table: ordinary addresses still become links', substr_count(implode('', $t['body'][1]), '<a href='), 4);
+foreach (["\x01javascript:alert(1)", "\x1fjavascript:alert(1)", "\x7fjavascript:alert(1)", "/\x01x", "javascript:alert(1)", "data:text/html,x"] as $unsafe) {
+    check('a link with a control character or a script scheme is not safe (' . bin2hex($unsafe) . ')', [FieldSchema::isSafeLink($unsafe), FieldSchema::isSafeUrl($unsafe)], [false, false]);
+}
+check('addresses are safe still', [FieldSchema::isSafeLink('/a/b?x=1#y'), FieldSchema::isSafeLink('mailto:a@e.org'), FieldSchema::isSafeUrl('https://e.org/a.jpg'), FieldSchema::isSafeUrl('/uploads/a.jpg')], [true, true, true, true]);
 $t = BlockRenderer::tableData('', "| a | b |\n|---|:--:|\n| c | d |\n");
 check('table: the rule of a Markdown table is skipped, and the outer bars with it', [$t['header'], $t['body']], [[], [['a', 'b'], ['c', 'd']]]);
 $t = BlockRenderer::tableData('A | B', "x\ty\tz\n1");

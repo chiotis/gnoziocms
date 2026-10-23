@@ -237,6 +237,18 @@ check('and a template with no Entry text does not show the text', str_contains($
 
 // A field added to the type later is available at once: a new file for the same type.
 file_put_contents("$root/custom/content-types/education.yaml", file_get_contents("$root/custom/content-types/education.yaml") . "\n  teacher:\n    type: text\n    label: Teacher\n");
+// The Markdown of the site lets raw HTML through, so a Markdown field bound from an entry must not carry markup of the entry's writer.
+$realMarkdown = new League\CommonMark\MarkdownConverter((function () { $e = new League\CommonMark\Environment\Environment(['allow_unsafe_links' => false]); $e->addExtension(new League\CommonMark\Extension\CommonMark\CommonMarkCoreExtension()); return $e; })());
+$realRenderer = new BlockRenderer($registry, $twig, $theme, fn(string $md): string => (string)$realMarkdown->convert($md), [], 'https://s.test');
+$drawReal = static fn(array $blocks, ContentItem $item): array => $realRenderer->render($blocks, ['item' => $item, 'lang' => 'en', 'lang_prefix' => '', 'body_html' => $item->html, 'template_mode' => true, 'bindings' => $bind($item)]);
+$page = $drawReal([['type' => 'text', 'heading' => 'H', 'body' => ['bind' => 'custom_fields.syllabus']]], $attack);
+check('markup in a bound Markdown field is shown as text with the real Markdown converter', [str_contains($page['html'], '<img src=x'), str_contains($page['html'], '&lt;img')], [false, true]);
+$excerpted = new ContentItem('education', 'x', 'en', ['title' => 'X', 'excerpt' => '<script>alert(1)</script> **fine**'], '', '', '', 0);
+$page = $drawReal([['type' => 'text', 'heading' => 'H', 'body' => ['bind' => 'excerpt']]], $excerpted);
+check('so is the excerpt, while the Markdown in it still works', [str_contains($page['html'], '<script>alert(1)'), str_contains($page['html'], '<strong>fine</strong>')], [false, true]);
+$page = $drawReal([['type' => 'text', 'heading' => 'H', 'body' => '<b>typed in the template</b>']], $excerpted);
+check('Markdown typed in the template itself is left as its author wrote it', str_contains($page['html'], '<b>typed in the template</b>'), true);
+
 $types2 = new ContentTypes($theme);
 check('a field added to the type later is offered, and its binding works', [in_array('custom_fields.teacher', array_column(EntryBindings::sources($types2, 'education', 'en', 'en'), 'path'), true), (new EntryBindings($course(['teacher' => 'Dr. Who']), $types2, 'en', 'en', $fmt, $labels))->value('custom_fields.teacher', 'text')], [true, 'Dr. Who']);
 

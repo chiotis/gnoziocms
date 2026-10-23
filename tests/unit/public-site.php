@@ -153,6 +153,14 @@ foreach (['https://evil.test/x', '//evil.test/x'] as $bad) {
     $r = $forms->handle($form, 'el', 'contact', $req('POST', ['form_slug' => 'contact', 'name' => 'Ada', 'email' => 'ada@x.test', 'redirect_url' => $bad]));
     check("somewhere else ($bad) is not a way back", [$r['location'], $r['state']['success']], ['', true]);
 }
+foreach (['/\\evil.test/x', '\\evil.test', "/\t/evil.test", "/\x01/evil.test", 'javascript:alert(1)', 'ftp://s.test/x', 'http://s.test.evil.test/x', 'https://user@evil.test/', 'HTTPS://EVIL.test/x'] as $bad) {
+    $r = $forms->handle($form, 'el', 'contact', $req('POST', ['form_slug' => 'contact', 'name' => 'Ada', 'email' => 'ada@x.test', 'redirect_url' => $bad]));
+    check('a way that a browser reads as another site (' . bin2hex($bad) . ') is not a way back', [$r['location'], $r['state']['success']], ['', true]);
+}
+$r = $forms->handle($form, 'el', 'contact', $req('POST', ['form_slug' => 'contact', 'name' => 'Ada', 'email' => 'ada@x.test', 'redirect_url' => 'HTTPS://S.test/done']));
+check('the host is compared without regard to case', $r['location'], 'HTTPS://S.test/done?form=contact&sent=1');
+$safe = new ReflectionMethod($forms, 'safeRedirect');
+check('without an address of the site no full address is the site\'s own, but a path is', [$safe->invoke($forms, 'https://evil.test/x', ''), $safe->invoke($forms, 'http://s.test/x', ''), $safe->invoke($forms, '/thanks', '')], ['', '', '/thanks']);
 $write('forms', 'quiet', "---\ntitle: Quiet\nstatus: published\nstore_submissions: false\nfields:\n  - name: name\n    label: Name\n    type: text\n---\n\n");
 $contentForms = new ContentRepository("$dir/content", new MarkdownConverter($environment), $settings);
 $forms->handle($contentForms->find('forms', 'quiet', 'el', false, false), 'el', 'quiet', $req('POST', ['form_slug' => 'quiet', 'name' => 'Ada']));
