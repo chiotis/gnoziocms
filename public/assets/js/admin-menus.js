@@ -7,7 +7,8 @@
  *     button, ticked and added with others, or dragged into the menu. Its title in each language fills the labels.
  *   - an item moves by dragging its handle (sideways sets how deep it is), by the arrow keys on the handle, or by the buttons
  *   - an item opens to edit its labels in every language, its address, whether it opens in a new tab, looks like a button,
- *     or is hidden
+ *     is hidden, or is shown only to some roles
+ *   - the preview shows the menu as a visitor who is not signed in sees it: items limited to roles are left out
  *   - a language switch shows the labels in that language and counts the items missing one; those can be filled from the
  *     titles of the pages they link to
  *   - undo and redo, and a warning before leaving with unsaved changes
@@ -48,6 +49,7 @@
   var languages = (data.languages || []).map(function (l) { return l.code; });
   var languageNames = {};
   (data.languages || []).forEach(function (l) { languageNames[l.code] = l.name; });
+  var roles = data.roles || [];
   var defaultLang = data.default_language || languages[0] || 'en';
   var multilingual = languages.length > 1;
   var maxItems = data.max_items || 300;
@@ -152,6 +154,7 @@
       target: o.target || '',
       hidden: !!o.hidden,
       languages: (o.languages || []).slice(),
+      roles: (o.roles || []).slice(),
       icon: o.icon || '',
       badges: fillLangs(o.badges),
       rel: (o.rel || []).slice(),
@@ -162,7 +165,7 @@
   function plain(item) {
     return {
       depth: item.depth, label_key: item.label_key, labels: item.labels, url: item.url, 'class': item.css, target: item.target, hidden: item.hidden,
-      languages: item.languages, icon: item.icon, badges: item.badges, rel: item.rel
+      languages: item.languages, roles: item.roles, icon: item.icon, badges: item.badges, rel: item.rel
     };
   }
   function serialize() { return JSON.stringify(items.map(plain)); }
@@ -206,7 +209,7 @@
 
   function snapshot() {
     return JSON.stringify(items.map(function (it) {
-      return { id: it.id, depth: it.depth, label_key: it.label_key, labels: it.labels, hints: it.hints, url: it.url, css: it.css, target: it.target, hidden: it.hidden, languages: it.languages, icon: it.icon, badges: it.badges, rel: it.rel, open: it.open };
+      return { id: it.id, depth: it.depth, label_key: it.label_key, labels: it.labels, hints: it.hints, url: it.url, css: it.css, target: it.target, hidden: it.hidden, languages: it.languages, roles: it.roles, icon: it.icon, badges: it.badges, rel: it.rel, open: it.open };
     }));
   }
   function restore(text) {
@@ -339,6 +342,12 @@
   }
   function langName(code) { return languageNames[code] || code.toUpperCase(); }
 
+  /** The name of a role for the screen: the site's name for it, or the key when the site has no role of that key any more. */
+  function roleName(key) {
+    for (var i = 0; i < roles.length; i++) if (roles[i].key === key) return roles[i].name;
+    return key;
+  }
+
   /* ---------- drawing the list ---------- */
 
   function badge(text, tone, iconName, title) {
@@ -379,6 +388,9 @@
     if (/(^|\s)nav-cta(\s|$)/.test(item.css)) badges.push(badge('Button', 'blue'));
     if (item.languages.length) {
       badges.push(badge(item.languages.map(function (code) { return code.toUpperCase(); }).join(' · '), 'blue', null, 'Shown only in ' + item.languages.map(langName).join(', ')));
+    }
+    if (item.roles.length) {
+      badges.push(badge(item.roles.map(roleName).join(' · '), 'slate', null, 'Shown only to signed-in users with these roles: ' + item.roles.map(roleName).join(', ')));
     }
     if (multilingual) {
       languages.forEach(function (code) {
@@ -475,6 +487,27 @@
     return group;
   }
 
+  /**
+   * The roles an item is shown to, one tick each. Nothing ticked is no limit: every visitor sees the item. With some ticked,
+   * only a signed-in user of one of them sees it, so a visitor who is not signed in never does.
+   */
+  function roleChoice(item) {
+    var group = h('div', { 'class': 'grid gap-2 border-t border-slate-100 pt-2.5', role: 'group', 'aria-label': 'Show to these roles' }, [
+      h('span', { 'class': 'text-sm text-slate-700' }, ['Only for roles']),
+      h('span', { 'class': 'text-xs text-slate-500' }, ['Nothing ticked: everyone sees it. Ticked: only signed-in users with one of these roles.'])
+    ]);
+    roles.forEach(function (role) {
+      var box = h('input', { type: 'checkbox', 'class': 'h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-400', checked: item.roles.indexOf(role.key) !== -1 });
+      box.addEventListener('change', function () {
+        var now = roles.map(function (r) { return r.key; }).filter(function (key) { return key === role.key ? box.checked : item.roles.indexOf(key) !== -1; });
+        edit(item, 'roles:' + item.id, function () { item.roles = now; });
+        renderPreview();
+      });
+      group.appendChild(h('label', { 'class': 'flex items-center gap-2 text-sm text-slate-700' }, [box, role.name]));
+    });
+    return group;
+  }
+
   function placeholderFor(item, lang) {
     if (item.hints[lang]) return item.hints[lang] + ' (from the theme)';
     if (lang !== defaultLang) return textFor(item, defaultLang) || 'Label';
@@ -564,7 +597,8 @@
             var li = cardFor(item.id);
             if (li) li.firstChild.className = cardClasses(item);
           }, 'Keeps the item here without showing it.'),
-          multilingual ? languageChoice(item) : null
+          multilingual ? languageChoice(item) : null,
+          roles.length ? roleChoice(item) : null
         ])
       ]),
       h('details', { 'class': 'rounded-md border border-slate-200 bg-slate-50/60 px-3 py-2' }, [
@@ -734,7 +768,7 @@
     items.forEach(function (it) {
       if (skipDepth && it.depth > skipDepth) return;
       skipDepth = 0;
-      if (it.hidden || !inLanguage(it, lang)) { skipDepth = it.depth; return; }
+      if (it.hidden || !inLanguage(it, lang) || it.roles.length) { skipDepth = it.depth; return; }
       var node = { item: it, kids: [] };
       if (it.depth === 1) tops.push(node);
       else {

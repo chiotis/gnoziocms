@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.183 — 2026-10-23 — Menu items shown to chosen roles
+- **Menus:** an item can be shown only to some roles of the site (`roles`, a list of role keys in the menu file; the editor's *Only for roles* ticks). Nothing ticked means everyone. With roles, only a signed-in user of one of them sees the item, so a visitor who is not signed in never does; the super admin sees every item. What is under a hidden item goes with it.
+- The page cache keeps no copy of a page for a signed-in visitor, so a page shown to one role is never sent to another. A role that is later deleted matches nobody.
+- The editor's preview shows the menu as a visitor who is not signed in sees it.
+- `docs/theming.md` (*Menu items*) describes it; the ROADMAP's menu item is done and removed.
+
 ## 0.1.182 — 2026-10-23 — Menu item settings, term pictures, taxonomy rules
 - **Menus:** an item can be shown only in some languages (`languages`; the editor's *Show in* ticks), with an icon of the theme, a badge per language (shown only in its language) and link relations (`rel`: nofollow, sponsored, ugc, noreferrer; noopener is added for a link in a new tab). The editor's **Suggest** names a theme text key `nav.<menu>.<item>`, under the key of the item above when it has one.
 - A theme text key the theme does not know is no longer shown as the label of the item.

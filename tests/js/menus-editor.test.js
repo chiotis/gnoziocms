@@ -8,6 +8,8 @@
  *   3. icon and badges     the icon chosen from the theme's list, a badge kept for its language
  *   4. link relations      rel values in the order the menu offers them, noopener kept as the file has it
  *   5. the list            the header says where an item is limited to, the preview leaves it out in other languages, undo
+ *   6. roles               the roles an item is shown to: ticked in the site's order, nothing ticked = no limit, the header
+ *                          names them, the preview (a visitor who is not signed in) leaves the item out, undo
  *
  *   node tests/js/menus-editor.test.js        (after: npm ci --prefix tests/js)
  */
@@ -56,6 +58,7 @@ const data = {
   locations: [],
   can_place: false,
   icons: ['bolt', 'chart'],
+  roles: [{ key: 'editor', name: 'Editor' }, { key: 'admin', name: 'Admin' }],
   rel_values: ['nofollow', 'sponsored', 'ugc', 'noopener', 'noreferrer'],
   max_items: 300,
 };
@@ -147,6 +150,21 @@ const preview = () => root.querySelector('[data-menu-preview]').textContent;
 check('the preview leaves out an item that is not shown in the language being previewed', !preview().includes('Επικοινωνία') && preview().includes('Υπηρεσίες'), preview());
 root.querySelector('[data-undo]').click();
 check('undo brings back the relations of an item', saved()[4].rel.join() === 'noopener', saved()[4].rel);
+
+// ---- 6. roles
+check('nothing is ticked for an item with no role limit', labelled(1, 'Editor').checked === false && labelled(1, 'Admin').checked === false);
+labelled(1, 'Editor').click();
+check('ticking a role limits the item to it', saved()[0].roles.join() === 'editor', saved()[0].roles);
+labelled(1, 'Admin').click();
+check('a second role is added in the order the site has them', saved()[0].roles.join() === 'editor,admin', saved()[0].roles);
+labelled(1, 'Editor').click();
+labelled(1, 'Admin').click();
+check('unticking the last role removes the limit', saved()[0].roles.length === 0, saved()[0].roles);
+labelled(4, 'Admin').click();
+check('an item limited to a role says so in its header', root.querySelector('[data-id="4"]').textContent.includes('Admin'), root.querySelector('[data-id="4"]').textContent);
+check('the preview leaves it out: a visitor who is not signed in does not see it', !preview().includes('Μελέτη') && preview().includes('Υπηρεσίες'), preview());
+root.querySelector('[data-undo]').click();
+check('undo takes the role off again', saved()[3].roles.length === 0, saved()[3].roles);
 
 console.log(failed === 0 ? '\nALL PASSED' : `\n${failed} FAILED`);
 process.exit(failed === 0 ? 0 : 1);

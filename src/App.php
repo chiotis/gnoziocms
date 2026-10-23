@@ -440,7 +440,8 @@ final class App
             $this->permissions->can($this->auth->user(), 'settings.manage')
                 ? fn(string $location, string $menu): bool => $this->siteSettings()->setMenuLocation($location, $menu)
                 : null,
-            fn(): array => $this->theme->iconNames()
+            fn(): array => $this->theme->iconNames(),
+            fn(): array => array_map(static fn(array $role): string => $role['label'], $this->permissions->allRoles())
         );
     }
 
@@ -788,7 +789,7 @@ final class App
             'current_lang' => $lang,
             'path_no_lang' => $route['path_no_lang'],
             'canonical_url' => $currentUrl,
-            'theme_menus' => $this->menus()->forTheme($lang, $route['path_no_lang']),
+            'theme_menus' => $this->menus()->forTheme($lang, $route['path_no_lang'], $this->visitorRole()),
         ];
 
         if ($route['kind'] === 'not_found') {
@@ -3844,7 +3845,7 @@ final class App
         http_response_code(404);
         $lang = $this->currentLang ?: ($this->settings['languages']['default'] ?? 'en');
         // The site's own menus, as on every other page; without them the header falls back to the theme's sample links.
-        $menus = $this->menus()->forTheme($lang, '');
+        $menus = $this->menus()->forTheme($lang, '', $this->visitorRole());
         if ($this->theme->hasTemplate('templates/404.twig')) {
             $this->render('templates/404.twig', [
                 'lang' => $lang,
@@ -4415,6 +4416,13 @@ final class App
     private function currentUsername(): string
     {
         return (string)($this->auth->user()['username'] ?? '');
+    }
+
+    /** The role of the signed-in visitor for the public pages, '' when nobody is signed in or the account is not active. */
+    private function visitorRole(): string
+    {
+        $user = $this->auth->user();
+        return $user !== null && (string)($user['status'] ?? 'active') === 'active' ? (string)($user['role'] ?? '') : '';
     }
 
     /** The upload size and file kinds typed on the settings form, or nothing for what this person may not change. @return array{mb: ?int, types: ?string} */

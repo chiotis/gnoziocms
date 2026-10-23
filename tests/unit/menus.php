@@ -166,6 +166,36 @@ check('a badge is only shown in the language it was written in', [array_column($
 check('the icon and rel reach the theme', [array_map(fn($r) => $r['icon'] ?? '', $el)[0], $en[0]['rel'], isset($en[1]['rel'])], ['bolt', ['nofollow', 'sponsored'], true]);
 check('a theme key the theme does not know is never shown as the label', $en[2]['label'], '');
 
+// ---- roles an item is shown to
+$roled = $m->normalize([
+    ['label' => 'Όλοι', 'url' => 'all'],
+    ['label' => 'Μέλη', 'url' => 'members', 'roles' => ['EDITOR', ' editor ', 'not a role!', 'admin'], 'children' => [
+        ['label' => 'Παιδί', 'url' => 'members/child'],
+    ]],
+    ['label' => 'Διαχειριστές', 'url' => 'admins', 'roles' => ['admin']],
+]);
+check('an item is limited to the role keys it names: cleaned, no duplicates, no text that is not a key', $roled[1]['roles'], ['editor', 'admin']);
+check('an item with no roles has none', isset($roled[0]['roles']), false);
+$m->write('roled', ['title' => 'Roled', 'items' => $roled]);
+$back = $m->load('roled')['items'];
+check('roles are written and read back whole', [$back[1]['roles'], $back[2]['roles']], [['editor', 'admin'], ['admin']]);
+$roledFile = file_get_contents($dir . '/menus/roled.yaml');
+check('and an item with no roles has no line for them', str_contains(explode('url: members', explode('url: all', $roledFile)[1])[0], 'roles'), false);
+$flat = $m->flatten($roled, ['el', 'en']);
+check('the editor gets the roles of each row', [$flat[1]['roles'], $flat[0]['roles']], [['editor', 'admin'], []]);
+$sent = $m->fromRows([['depth' => 1, 'labels' => ['el' => 'X', 'en' => ''], 'url' => 'x', 'roles' => ['editor']]], ['el', 'en']);
+check('rows the editor sends keep the roles', $sent[0]['roles'], ['editor']);
+
+$withRoled = $settings;
+$withRoled['menu_locations']['aside'] = 'roled';
+$m7 = new Menus($dir, fn() => $withRoled, $translate, fn() => $locations);
+$labelsFor = fn(string $role): array => array_column($m7->forTheme('el', '', $role)['aside'], 'label');
+check('a visitor who is not signed in sees only the items with no roles', $labelsFor(''), ['Όλοι']);
+check('a signed-in user with one of the roles sees the item and what is under it', [$labelsFor('editor'), array_column($m7->forTheme('el', '', 'editor')['aside'][1]['children'], 'label')], [['Όλοι', 'Μέλη'], ['Παιδί']]);
+check('a role the item does not name does not see it', $labelsFor('user'), ['Όλοι']);
+check('the super admin sees every item', $labelsFor('superadmin'), ['Όλοι', 'Μέλη', 'Διαχειριστές']);
+check('a role of its own sees the items it is named in', $labelsFor('admin'), ['Όλοι', 'Μέλη', 'Διαχειριστές']);
+
 // ---- addresses that change
 $m->relink('about', 'about-us');
 check('an address change is followed in every menu', [$m->load('main')['items'][1]['url'], $m->load('footer')['items'][0]['url']], ['about-us', 'terms']);

@@ -22,6 +22,7 @@ final class MenuAdmin
      * @param ?\Closure(string, string): string $themeText the theme's text for a label key in a language, '' when it has none
      * @param ?\Closure(string, string): bool $setLocation puts a menu in a place of the theme (location, menu key); null when the person may not
      * @param ?\Closure(): string[] $icons the icons the theme has, names an item can show
+     * @param ?\Closure(): array<string, string> $roles the roles of the site, role key => its name, for the items shown to some of them
      */
     public function __construct(
         private Menus $menus,
@@ -30,7 +31,8 @@ final class MenuAdmin
         private ?MenuSources $sources = null,
         private ?\Closure $themeText = null,
         private ?\Closure $setLocation = null,
-        private ?\Closure $icons = null
+        private ?\Closure $icons = null,
+        private ?\Closure $roles = null
     ) {
     }
 
@@ -228,7 +230,7 @@ final class MenuAdmin
     /**
      * Everything the editor starts with, as JSON for the page: the items (one row each, with their depth, the theme's text
      * where a label is left to the theme, and the settings of each item), the languages, what can be added, the icons and
-     * `rel` values an item can use, and the places of the theme.
+     * `rel` values an item can use, the roles an item can be shown to, and the places of the theme.
      *
      * @param array<int, array<string, mixed>> $items
      * @param string[] $languages
@@ -251,6 +253,7 @@ final class MenuAdmin
             $row['hints'] = $hints;
             $rows[] = $row;
         }
+        $roles = $this->roles !== null ? ($this->roles)() : [];
         $places = [];
         foreach ($this->menus->locations() as $place) {
             $places[] = [
@@ -265,6 +268,7 @@ final class MenuAdmin
             'title' => $title,
             'default_language' => $defaultLang,
             'languages' => array_map(static fn(string $code): array => ['code' => $code, 'name' => self::languageName($code)], $languages),
+            'roles' => array_map(static fn(string $key, string $name): array => ['key' => $key, 'name' => $name], array_keys($roles), $roles),
             'items' => $rows,
             'groups' => $this->sources?->groups() ?? [],
             'icons' => $this->icons !== null ? ($this->icons)() : [],

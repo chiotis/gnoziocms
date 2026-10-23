@@ -18,6 +18,9 @@ final class Menus
     /** A language code an item can be limited to: "el", "en", "pt-br". */
     private const LANGUAGE_PATTERN = '/^[a-z]{2,3}(-[a-z0-9]{2,8})?$/';
 
+    /** A role key an item can be limited to: the same shape as a custom role's key (`PermissionService::validCustomKey`). */
+    private const ROLE_PATTERN = '/^[a-z][a-z0-9-]{1,29}$/';
+
     /** @var array<string, array{title: string, items: array<int, array<string, mixed>>}> */
     private array $menusCache = [];
 
@@ -263,6 +266,9 @@ final class Menus
             if (!empty($item['languages'])) {
                 $row['languages'] = $item['languages'];
             }
+            if (!empty($item['roles'])) {
+                $row['roles'] = $item['roles'];
+            }
             if (!empty($item['icon'])) {
                 $row['icon'] = $item['icon'];
             }
@@ -343,12 +349,13 @@ final class Menus
     }
 
     /**
-     * What an item says about how it is shown, beyond its text and address: the languages it is limited to (none: all of
-     * them), an icon of the theme, a badge in each language, and the `rel` values of its link. Only what is set is returned.
+     * What an item says about how it is shown, beyond its text and address: the languages and the roles it is limited to
+     * (none: all of them), an icon of the theme, a badge in each language, and the `rel` values of its link. Only what is
+     * set is returned.
      *
      * @param array<string, mixed> $row
      * @param string[] $languages the languages of the site
-     * @return array{languages?: string[], icon?: string, badges?: array<string, string>, rel?: string[]}
+     * @return array{languages?: string[], roles?: string[], icon?: string, badges?: array<string, string>, rel?: string[]}
      */
     private static function presentation(array $row, array $languages): array
     {
@@ -362,6 +369,18 @@ final class Menus
         }
         if ($only !== []) {
             $out['languages'] = $only;
+        }
+
+        // A role that no longer exists stays in the file and matches nobody, so it is kept as it was typed.
+        $roles = [];
+        foreach (is_array($row['roles'] ?? null) ? $row['roles'] : [] as $role) {
+            $role = strtolower(trim((string)$role));
+            if (preg_match(self::ROLE_PATTERN, $role) === 1 && !in_array($role, $roles, true)) {
+                $roles[] = $role;
+            }
+        }
+        if ($roles !== []) {
+            $out['roles'] = $roles;
         }
 
         $icon = trim((string)($row['icon'] ?? ''));
@@ -389,7 +408,7 @@ final class Menus
         return $out;
     }
 
-    /** @return array<int, array{depth: string, label_key: string, labels: array<string, string>, url: string, class: string, target: string, hidden: bool, languages: string[], icon: string, badges: array<string, string>, rel: string[]}> */
+    /** @return array<int, array{depth: string, label_key: string, labels: array<string, string>, url: string, class: string, target: string, hidden: bool, languages: string[], roles: string[], icon: string, badges: array<string, string>, rel: string[]}> */
     public function flatten(mixed $items, array $languages, int $depth = 1): array
     {
         $depth = max(1, min(3, $depth));
@@ -415,6 +434,7 @@ final class Menus
                 'target' => trim((string)($item['target'] ?? '')),
                 'hidden' => !empty($item['hidden']),
                 'languages' => $item['languages'] ?? [],
+                'roles' => $item['roles'] ?? [],
                 'icon' => (string)($item['icon'] ?? ''),
                 'badges' => $rowBadges,
                 'rel' => $item['rel'] ?? [],
@@ -542,8 +562,13 @@ final class Menus
         return array_values($places);
     }
 
-    /** @return array<string, array<int, array<string, mixed>>> */
-    public function forTheme(string $lang, string $currentPath): array
+    /**
+     * The menus of each place for a page of a language. `$role` is the role of the visitor who is signed in (empty for a
+     * visitor who is not, or whose account is not active): items limited to roles show only to that role.
+     *
+     * @return array<string, array<int, array<string, mixed>>>
+     */
+    public function forTheme(string $lang, string $currentPath, string $role = ''): array
     {
         $locations = [];
         foreach ($this->locations() as $place) {
@@ -559,14 +584,14 @@ final class Menus
             }
             $menu = $this->load($key);
             $activeItems = $this->applyActiveState($menu['items'] ?? [], $this->normalizePath($currentPath));
-            $resolved[$location] = $this->localize($activeItems, $lang);
+            $resolved[$location] = $this->localize($activeItems, $lang, $role);
         }
 
         if (empty($resolved['header'] ?? [])) {
             $legacyHeader = $this->settings()['menu']['header'] ?? [];
             if (is_array($legacyHeader)) {
                 $activeItems = $this->applyActiveState($this->normalize($legacyHeader), $this->normalizePath($currentPath));
-                $resolved['header'] = $this->localize($activeItems, $lang);
+                $resolved['header'] = $this->localize($activeItems, $lang, $role);
             }
         }
 
@@ -576,12 +601,12 @@ final class Menus
     /** @param array<int, array<string, mixed>> $items
      *  @return array<int, array<string, mixed>>
      */
-    private function localize(array $items, string $lang): array
+    private function localize(array $items, string $lang, string $role): array
     {
         $defaultLang = (string)($this->settings()['languages']['default'] ?? 'el');
         $rows = [];
         foreach ($items as $item) {
-            if (!is_array($item) || !empty($item['hidden']) || !self::showsIn($item, $lang)) {
+            if (!is_array($item) || !empty($item['hidden']) || !self::showsIn($item, $lang) || !self::showsTo($item, $role)) {
                 continue;
             }
             $labels = is_array($item['labels'] ?? null) ? $item['labels'] : [];
@@ -606,7 +631,7 @@ final class Menus
             $item['badge'] = trim((string)($badges[$lang] ?? ''));
             unset($item['badges']);
             if (isset($item['children']) && is_array($item['children'])) {
-                $item['children'] = $this->localize($item['children'], $lang);
+                $item['children'] = $this->localize($item['children'], $lang, $role);
             }
             $rows[] = $item;
         }
@@ -618,6 +643,16 @@ final class Menus
     {
         $languages = is_array($item['languages'] ?? null) ? $item['languages'] : [];
         return $languages === [] || in_array($lang, $languages, true);
+    }
+
+    /**
+     * An item limited to some roles shows only to a signed-in visitor of one of them. The super admin has every permission,
+     * so sees every item; a visitor who is not signed in (`$role` is '') sees only the items with no limit.
+     */
+    private static function showsTo(array $item, string $role): bool
+    {
+        $roles = is_array($item['roles'] ?? null) ? $item['roles'] : [];
+        return $roles === [] || $role === 'superadmin' || ($role !== '' && in_array($role, $roles, true));
     }
 
     /** @param array<int, array<string, mixed>> $items
