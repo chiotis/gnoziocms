@@ -299,7 +299,7 @@ final class EntryBindings
                     unset($raw[$key]);
                     continue;
                 }
-                $raw[$key] = $rows;
+                $raw[$key] = self::inertRows($rows, $field);
                 $filled += $rows === [] ? 0 : 1;
                 continue;
             }
@@ -309,7 +309,7 @@ final class EntryBindings
                 unset($raw[$key]);
                 continue;
             }
-            $raw[$key] = $value;
+            $raw[$key] = $field['type'] === 'markdown' ? self::inert($value) : $value;
             if ($value !== '') {
                 $filled++;
             }
@@ -318,6 +318,35 @@ final class EntryBindings
         $hide = $bound > 0 && ($raw[self::HIDE_KEY] ?? true) !== false && $filled === 0;
         unset($raw[self::HIDE_KEY]);
         return ['raw' => $raw, 'hidden' => $hide, 'missing' => $missing];
+    }
+
+    /**
+     * Text of an entry that is drawn as Markdown by a block shows any HTML in it as text. The people who write the entry's fields
+     * may not be allowed to add HTML (the editor's save only checks the body and the blocks), and the Markdown converter would
+     * pass it through to the page.
+     */
+    private static function inert(string $text): string
+    {
+        return str_replace('<', '&lt;', $text);
+    }
+
+    /**
+     * The rows of a list binding with the Markdown columns made inert.
+     *
+     * @param array<int, array<string, mixed>> $rows
+     * @param array<string, mixed> $field the block's repeater
+     * @return array<int, array<string, mixed>>
+     */
+    private static function inertRows(array $rows, array $field): array
+    {
+        foreach ($rows as $r => $row) {
+            foreach ($field['fields'] ?? [] as $column => $sub) {
+                if (($sub['type'] ?? '') === 'markdown' && is_string($row[$column] ?? null)) {
+                    $rows[$r][$column] = self::inert($row[$column]);
+                }
+            }
+        }
+        return $rows;
     }
 
     /**

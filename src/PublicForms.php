@@ -282,13 +282,18 @@ final class PublicForms
     private function safeRedirect(string $url, string $baseUrl): string
     {
         $url = trim($url);
-        if ($url === '' || str_starts_with($url, '//')) {
+        // A backslash or a control character is read by a browser as a slash or dropped, so "/\\host" would lead off the site.
+        if ($url === '' || preg_match('/[\x00-\x1f\x7f\\\\]/', $url) === 1 || str_starts_with($url, '//')) {
             return '';
         }
-        if (str_starts_with($url, 'http')) {
-            $parts = parse_url($url);
-            $baseHost = trim($baseUrl) !== '' ? parse_url(trim($baseUrl), PHP_URL_HOST) : '';
-            return $baseHost && isset($parts['host']) && $parts['host'] !== $baseHost ? '' : $url;
+        if (preg_match('#^[a-z][a-z0-9+.-]*:#i', $url) === 1) {
+            if (preg_match('#^https?://#i', $url) !== 1) {
+                return '';
+            }
+            $host = strtolower((string)(parse_url($url, PHP_URL_HOST) ?? ''));
+            $baseHost = trim($baseUrl) !== '' ? strtolower((string)(parse_url(trim($baseUrl), PHP_URL_HOST) ?? '')) : '';
+            // Without an address of the site to compare with, no full address is the site's own.
+            return $host !== '' && $baseHost !== '' && $host === $baseHost ? $url : '';
         }
         return str_starts_with($url, '/') ? $url : '/' . $url;
     }

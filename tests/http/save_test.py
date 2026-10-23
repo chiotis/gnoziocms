@@ -136,4 +136,17 @@ check('re-saving keeps the translation id', re.search(r"translation_id: '?" + ti
 check('re-saving twice gives the same file', second == third)
 compare('page-resaved', path)
 
+# 9. Opening /admin/save as an address (from another site, say) writes nothing: only a posted form saves
+def listing():
+    out = []
+    for d in ('pages', 'posts'):
+        base = 'app/content/' + d
+        out += [os.path.join(d, f) for f in os.listdir(base)] if os.path.isdir(base) else []
+    return sorted(out)
+before = listing()
+for method_path in ('/admin/save', '/admin/save?type=posts&title=Gift'):
+    st, hdr, _ = root.get(method_path)
+    check(f'GET {method_path} is refused', st == 405 and hdr.get('Allow') == 'POST', (st, hdr.get('Allow')))
+check('and no file was written', listing() == before)
+
 print('\nALL PASSED' if not fails else '\n%d FAILED: %s' % (len(fails), fails))

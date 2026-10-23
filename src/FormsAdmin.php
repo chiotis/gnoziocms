@@ -299,10 +299,19 @@ final class FormsAdmin
                     default => FormProcessor::text($submission['fields'][$header] ?? ''),
                 };
             }
-            $rows[] = $row;
+            $rows[] = array_map([self::class, 'spreadsheetSafe'], $row);
         }
         $siteSlug = Slug::plain($siteTitle !== '' ? $siteTitle : 'site') ?: 'site';
         $formSlug = Slug::plain($formTitle) ?: $form->slug;
         return ['filename' => $siteSlug . '-' . $formSlug . '-submissions.csv', 'headers' => $headers, 'rows' => $rows, 'count' => count($submissions)];
+    }
+
+    /**
+     * A cell that starts like a formula (or after spaces or control characters, which a spreadsheet skips) would run when the
+     * file is opened: it gets a quote in front of it, as in the analytics export. Submissions are written by anyone.
+     */
+    public static function spreadsheetSafe(string $cell): string
+    {
+        return preg_match('/^[\x00-\x20]*[=+\-@]|^[\t\r\n]/', $cell) === 1 ? "'" . $cell : $cell;
     }
 }

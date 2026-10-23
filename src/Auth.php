@@ -42,6 +42,9 @@ final class Auth
                 }
                 return false;
             }
+            // The database knows every account once it is there (users.yaml is imported into it): a name it does not have is not
+            // one that signs in, whatever an old users.yaml still says about a renamed, demoted or deleted account.
+            return false;
         }
 
         $users = $this->loadUsers();
@@ -94,9 +97,14 @@ final class Auth
         if (!is_array($current)) {
             return false;
         }
-        $id = (int)($current['id'] ?? 0);
-        if ($id <= 0 || !$this->users || !$this->users->isAvailable()) {
+        if (!$this->users || !$this->users->isAvailable()) {
             return true;
+        }
+        $id = (int)($current['id'] ?? 0);
+        if ($id <= 0) {
+            // A session from users.yaml, from before the database was there: it has no account to keep up with.
+            $this->logout();
+            return false;
         }
         $fresh = $this->users->find($id);
         if (!$fresh || !$this->users->isActive($fresh)) {
