@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.178 — 2026-10-23 — Security review fixes
+- Markdown fields bound from an entry (the excerpt, a custom field, a column of a list) show any HTML in them as text. Before, an editor without the raw HTML permission could put script in an excerpt and have it run in a block-built archive card.
+- Links and addresses with control characters are refused everywhere (table cells included): a browser drops them before the scheme, so a hidden `javascript:` was accepted as a relative link.
+- Sign-in uses the database alone once it is there. An account that only `users.yaml` still knows (renamed or deleted since) no longer signs in, and a session that came from that file ends at its next look.
+- A form's `redirect_url` refuses backslashes, control characters and full addresses when the site has no `base_url` to compare with.
+- The session is refreshed at the start of each request: a deactivated account stops seeing drafts on the public site at once.
+- The export of a form's submissions writes cells that start like a formula (`=`, `+`, `-`, `@`) as text.
+- `/admin/save` answers only POST; opened as an address it writes nothing.
+
 ## 0.1.177 — 2026-10-21 — Export not-found paths
 - Admin > Redirects > Not found can download the matching paths as plain text, one per line, including ignored paths from their own view and results beyond the screen's 200-row limit.
 - The export respects the current search; file probes filtered before logging remain outside it.
