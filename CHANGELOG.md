@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.181 — 2026-10-23 — Search finds other forms of a Greek word
+- A Greek word of four or more letters also finds its other forms: «πόλη» finds «πόλεις», «πόλης» and «πόλεων», «βιβλίο» finds «βιβλία». A light stemmer takes one usual ending off the word, and a text word matches when it is that stem alone or with one usual ending. Whole words only, so «πόλη» does not find «πόλεμος» or «πολιτεία».
+- A match in another form ranks below the word as typed in the same field; the whole word is highlighted and the excerpt is cut around it. Latin words, words under four letters and words with no usual ending are matched as before.
+- `docs/search.md` describes it; the ROADMAP's search item keeps typo tolerance and the filters for places.
+
 ## 0.1.180 — 2026-10-23 — Importer: descriptions, floated pictures, videos
 - A picture with no alternative text is described by its title, else by its caption (a figure's `figcaption`, WordPress's `wp-caption-text`). A file name or a camera's name (`IMG_0042`, `DSC00123`) is never used. A library file with no alternative text takes its title by the same rule.
 - A picture that floated to a side (`alignleft`, `alignright`, a `float` style or the `align` attribute, also on its link or the box of its caption) is written with `{align=left}` or `{align=right}` in the paragraph that goes around it, as the editor writes it.
