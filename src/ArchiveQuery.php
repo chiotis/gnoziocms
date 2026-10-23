@@ -78,7 +78,7 @@ final class ArchiveQuery
     /**
      * How many entries each value of each facet has among the entries of the scope (before any filter is applied).
      *
-     * @param array{types: string[], term: array{taxonomy: string, ids: string[]}|null} $scope
+     * @param array{types: string[], term: array{taxonomy: string|string[], ids: string[]}|null} $scope
      * @param array<string, string> $facets name => 'taxonomy' or 'field'
      * @return array<string, array<string, int>>|null
      */
@@ -113,7 +113,7 @@ final class ArchiveQuery
     /**
      * How many entries a scope has (the chips of a term's sub-terms say it), or null when the index cannot answer.
      *
-     * @param array{types: string[], term: array{taxonomy: string, ids: string[]}|null} $scope
+     * @param array{types: string[], term: array{taxonomy: string|string[], ids: string[]}|null} $scope
      */
     public function total(array $scope, string $lang, bool $includeHidden): ?int
     {
@@ -135,7 +135,7 @@ final class ArchiveQuery
     /**
      * One page of the entries of the scope that match the chosen filters, in an order, as the entries themselves.
      *
-     * @param array{types: string[], term: array{taxonomy: string, ids: string[]}|null} $scope
+     * @param array{types: string[], term: array{taxonomy: string|string[], ids: string[]}|null} $scope
      * @param array<string, string> $selected facet name => the chosen value
      * @param array<string, string> $facets name => 'taxonomy' or 'field'
      * @param string $order an archive order (`date_desc`, `date_asc`, `title_asc`, `title_desc`, `random`, `field:<key>:asc|desc`)
@@ -242,7 +242,7 @@ final class ArchiveQuery
      * The conditions that choose the entries of a scope: the languages and types, the ones a visitor may see, and the ones filed under
      * one of the term ids of a taxonomy.
      *
-     * @param array{types: string[], term: array{taxonomy: string, ids: string[]}|null} $scope
+     * @param array{types: string[], term: array{taxonomy: string|string[], ids: string[]}|null} $scope
      * @param array<string, string> $params filled with what the conditions use
      */
     private function scope(array $scope, string $lang, bool $includeHidden, array &$params): string
@@ -264,8 +264,13 @@ final class ArchiveQuery
                 $ids[] = ':term' . $i;
                 $params['term' . $i] = (string)$id;
             }
-            $params['term_taxonomy'] = $scope['term']['taxonomy'];
-            $where .= ' AND EXISTS (SELECT 1 FROM content_terms t WHERE t.type = ci.type AND t.slug = ci.slug AND t.lang = ci.lang AND t.taxonomy = :term_taxonomy AND t.term_id IN (' . ($ids === [] ? "''" : implode(', ', $ids)) . '))';
+            // One taxonomy, or several when the term may be filed in any of them (the Latest content block takes categories and tags alike).
+            $taxonomies = [];
+            foreach (array_values((array)$scope['term']['taxonomy']) as $i => $taxonomy) {
+                $taxonomies[] = ':taxonomy' . $i;
+                $params['taxonomy' . $i] = (string)$taxonomy;
+            }
+            $where .= ' AND EXISTS (SELECT 1 FROM content_terms t WHERE t.type = ci.type AND t.slug = ci.slug AND t.lang = ci.lang AND t.taxonomy IN (' . implode(', ', $taxonomies) . ') AND t.term_id IN (' . ($ids === [] ? "''" : implode(', ', $ids)) . '))';
         }
         return $where;
     }

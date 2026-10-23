@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.179 — 2026-10-23 — Caching closed: Latest content from the index, the site's own copy of its pages
+- **Latest content** asks the content index for the newest entries of a type (a category or a tag, a language) and reads only the files it shows. When the index cannot be trusted the entries are read as before.
+- **The site's own copy of its public pages** for a host with no cache in front (System > Page cache, off until turned on, needs the site's address). A GET with no query, without a session, that answered 200 with a page, sitemap or feed and no cookie is kept in `storage/cache/pages` and sent again; answers carry `X-Page-Cache: hit` or `miss`.
+- Every change saved in the admin empties it, with the same call that empties Varnish. A new generation number is written when the saving request ends, so a visit that overlaps a save cannot put the old page back; a copy is not used for more than 10 minutes either.
+- The ROADMAP's Caching section is closed. Emptying page by page is not planned (`docs/varnish.md`).
+
 ## 0.1.178 — 2026-10-23 — Security review fixes
 - Markdown fields bound from an entry (the excerpt, a custom field, a column of a list) show any HTML in them as text. Before, an editor without the raw HTML permission could put script in an excerpt and have it run in a block-built archive card.
 - Links and addresses with control characters are refused everywhere (table cells included): a browser drops them before the scheme, so a hidden `javascript:` was accepted as a relative link.

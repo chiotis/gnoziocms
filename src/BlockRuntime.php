@@ -34,6 +34,7 @@ final class BlockRuntime
      * @param \Closure(string, string, string): string $markdownToHtml Markdown as the site shows it: text, language, path of the page
      * @param \Closure(string, string, string): string $formEmbed the form of a slug, ready to place: slug, language, path of the page
      * @param (\Closure(): Taxonomies)|null $taxonomies the site's taxonomies (without them the bar of a map offers its categories only)
+     * @param (\Closure(): ArchiveQuery)|null $archiveQuery the content index, which answers the Latest content block without reading every entry of the type
      */
     public function __construct(
         private string $basePath,
@@ -51,7 +52,8 @@ final class BlockRuntime
         private \Closure $markdownToHtml,
         private \Closure $formEmbed,
         private ?\Closure $relations = null,
-        private ?\Closure $taxonomies = null
+        private ?\Closure $taxonomies = null,
+        private ?\Closure $archiveQuery = null
     ) {
     }
 
@@ -86,6 +88,26 @@ final class BlockRuntime
         ]);
     }
 
+    /**
+     * The newest entries of a type in a language, as the Latest content block lists them: the content index gives their addresses and only
+     * those files are read. Null when the index cannot answer (the caller then reads every entry of the type, as before).
+     *
+     * @return ContentItem[]|null
+     */
+    private function latestFromIndex(string $type, string $lang, bool $includeHidden, int $limit, string $term): ?array
+    {
+        if ($this->archiveQuery === null) {
+            return null;
+        }
+        $query = ($this->archiveQuery)();
+        if (!$query->ready()) {
+            return null;
+        }
+        // A category or a tag, whichever the entry is filed under.
+        $scope = ['types' => [$type], 'term' => $term === '' ? null : ['taxonomy' => ['categories', 'tags'], 'ids' => [$term]]];
+        return $query->page($scope, $lang, $includeHidden, [], [], 'date_desc', '', 0, 0, 1, $limit)['items'] ?? null;
+    }
+
     /** The renderer for the blocks of one page, drawing with the given Twig (which can be replaced during a request). */
     public function renderer(string $lang, string $path, Environment $twig, array $more = []): BlockRenderer
     {
@@ -100,8 +122,13 @@ final class BlockRuntime
                     if ($type === 'forms' || !in_array($type, $this->content->getTypes(), true)) {
                         return [];
                     }
-                    $items = $this->content->getItems($type, $itemLang, $includeHidden, false);
                     $term = Slug::plain($term);
+                    $limit = max(1, min(24, $limit));
+                    $indexed = $this->latestFromIndex($type, $itemLang, $includeHidden, $limit, $term);
+                    if ($indexed !== null) {
+                        return $indexed;
+                    }
+                    $items = $this->content->getItems($type, $itemLang, $includeHidden, false);
                     if ($term !== '') {
                         // Only items filed under this category or tag.
                         $items = array_values(array_filter($items, function (ContentItem $item) use ($term): bool {
@@ -113,7 +140,7 @@ final class BlockRuntime
                             return false;
                         }));
                     }
-                    return array_slice($items, 0, max(1, min(24, $limit)));
+                    return array_slice($items, 0, $limit);
                 },
                 'form' => fn(string $slug): string => $slug === '' ? '' : ($this->formEmbed)(Slug::plain($slug), $lang, $path),
                 'youtube' => function (string $playlistId, string $thumbs): array {

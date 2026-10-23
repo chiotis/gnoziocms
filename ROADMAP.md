@@ -58,16 +58,16 @@ Saved working drafts for published pages are not a current priority.
 
 ## Caching
 
-Runtime cache only (no static export pipeline), filesystem backend by default (portable, no extra services).
+**Done.** Runtime cache only (no static export pipeline), filesystem backend by default (portable, no extra services).
 
-- Layer 1: parsed-content cache (front matter and rendered Markdown). **Done** (0.1.115, `storage/cache/content`); search keeps its own extracted-text cache (`storage/cache/search`).
-- Layer 2: data and index cache. **Done** for reverse relationships (0.1.167), for archives and taxonomy pages (lists are answered by the content index, `ArchiveQuery`, `docs/theming.md`, reading only the entries on the page) and for the maps: the facts and short lines of each route file (`*.sum.json`), and the marker data of a map, the map of a page of one and the entries near one, in `storage/cache/geo-data`, per visitor or editor, under a token the content index keeps and checked against the route files' time and size. A page with 150 routes and 550 points went from about 3 s to under 0.1 s, with identical output (`docs/places-and-routes.md`). **Left:** the Latest content block's source.
-- Layer 3: full-page HTML cache by route and language (and query variants where needed). Partly in place: public pages carry `s-maxage` for a cache in front of the site (Varnish on CloudPanel), and an admin change purges it (0.1.116).
-- Deterministic keys including route, language, content type and theme
-- Targeted invalidation on save, delete and import: the item page, related archives and taxonomies, the home page and widgets, the sitemap and feed, and linked translations (`translation_id`); a route file replaced in Media invalidates the routes that use it and the maps that show them
-- A TTL as a safety net; invalidation stays the main way to stay fresh
+- Layer 1: parsed-content cache (front matter and rendered Markdown). Done (0.1.115, `storage/cache/content`); search keeps its own extracted-text cache (`storage/cache/search`).
+- Layer 2: data and index cache. Done for reverse relationships (0.1.167), for archives, taxonomy pages and the Latest content block (lists are answered by the content index, `ArchiveQuery`, `docs/theming.md`, reading only the entries shown) and for the maps: the facts and short lines of each route file (`*.sum.json`), and the marker data of a map, the map of a page of one and the entries near one, in `storage/cache/geo-data`, per visitor or editor, under a token the content index keeps and checked against the route files' time and size. A page with 150 routes and 550 points went from about 3 s to under 0.1 s, with identical output (`docs/places-and-routes.md`).
+- Layer 3: full-page cache. Public pages carry `s-maxage` for a cache in front of the site (Varnish on CloudPanel, or any Varnish at an address set in System), and an admin change empties it (0.1.116). For a host with no cache in front the site keeps its own copy of the pages a visitor sees without a session (`PageCache`, `storage/cache/pages`, System > Page cache, off until turned on): a GET with no query, a 200 page, sitemap or feed, no cookie, nothing that said it must not be kept. `docs/varnish.md`.
+- Keys by site address, scheme, path (the language is in it) and the version of the code; a copy is emptied by the same call that empties the cache in front, on every change saved in the admin, with a generation number so a visit that overlaps a save cannot put the old page back; a copy is not used for more than 10 minutes, for what changes outside the admin.
+- Invalidation is the whole site, not page by page (see *Not planned*).
 
 ## Not planned
 
 - A static export pipeline.
 - Editing route files in the admin: a file is uploaded and chosen (`docs/places-and-routes.md`).
+- Invalidating the cache page by page. A change empties every copy: that is always right and costs one render of each page. Emptying only the pages that show a changed entry needs a map of what each page depends on (lists, relations, maps, menus, widgets, the home page, translations); a mistake in it shows a visitor an old page, and a site of this size does not need it.

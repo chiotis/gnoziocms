@@ -6,7 +6,7 @@ namespace GnozioCMS;
 
 /**
  * A cache in front of the site (Varnish) that keeps public pages: emptied whenever the site changes, so a change shows at once
- * however long the cache keeps a page.
+ * however long the cache keeps a page. The site's own copy of its pages (PageCache) is emptied by the same call.
  *
  * - CloudPanel: its Varnish controller (`~/.varnish-cache/controller.php`, prepended to every request) is found by itself. A purge
  *   is handed to it with the site's cache tag and sent when the request ends; nothing to set up.
@@ -18,11 +18,19 @@ final class FrontCache
     public const META_ADDRESS = 'front_cache_address';
 
     private bool $queued = false;
+    private static bool $refused = false;
+    private ?PageCache $pages = null;
 
     public function __construct(
         private SystemMetaRepository $meta,
         private string $host
     ) {
+    }
+
+    /** The site's own copy of its pages, which a purge empties too. */
+    public function keepPages(PageCache $pages): void
+    {
+        $this->pages = $pages;
     }
 
     /** 'cloudpanel', 'varnish' (an address is set) or 'none'. */
@@ -61,25 +69,28 @@ final class FrontCache
 
     /**
      * Empties the cache of the whole site, once per request: CloudPanel sends it when the request ends; another Varnish is asked
-     * after the response, so what was saved is on disk first. False when there is no cache to empty.
+     * after the response, so what was saved is on disk first; the site's own copies are dropped at the same moment. False when there
+     * is no cache to empty.
      */
     public function purgeAll(): bool
     {
         if ($this->queued) {
             return true;
         }
+        $this->pages?->purgeAtEnd();
+        $own = $this->pages !== null && $this->pages->isEnabled();
         $cloudPanel = self::cloudPanel();
         if ($cloudPanel !== null) {
             $tag = $this->cloudPanelTag();
             if ($tag === '') {
-                return false;
+                return $own && ($this->queued = true);
             }
             $cloudPanel->addTagsToPurge([$tag]);
             return $this->queued = true;
         }
         $address = $this->address();
         if ($address === '') {
-            return false;
+            return $own && ($this->queued = true);
         }
         register_shutdown_function(fn() => $this->sendPurge($address));
         return $this->queued = true;
@@ -107,7 +118,14 @@ final class FrontCache
     /** This response is not to be kept (an editor's view, a page that failed, an answer to a script). */
     public static function doNotKeep(): void
     {
+        self::$refused = true;
         self::cloudPanel()?->setIsCacheable(false);
+    }
+
+    /** Whether something in this request said its response is not to be kept (doNotKeep). */
+    public static function refused(): bool
+    {
+        return self::$refused;
     }
 
     /** CloudPanel's controller of this request, when it runs. */
