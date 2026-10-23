@@ -85,8 +85,8 @@ final class HtmlToMarkdown
                 }
                 continue;
             }
-            if ($node instanceof \DOMElement && strtolower($node->nodeName) === 'img' && trim($run) === '') {
-                // A picture that opens a paragraph (floated to one side on the old page) is a picture of its own here.
+            if ($node instanceof \DOMElement && strtolower($node->nodeName) === 'img' && trim($run) === '' && $this->floatOf($node) === '') {
+                // A picture that opens a paragraph is a picture of its own here (one floated to a side stays with the text that goes around it).
                 $flush();
                 $image = $this->image($node);
                 if ($image !== '') {
@@ -448,17 +448,153 @@ final class HtmlToMarkdown
         if ($src === '' || str_starts_with($src, 'data:')) {
             return '';
         }
-        $alt = trim(preg_replace('/\s+/', ' ', $image->getAttribute('alt')) ?? '');
-        // A file name as the picture's description (hoos_l.gif) tells nobody anything.
-        if (preg_match('/^[\w\-. ]+\.(gif|jpe?g|png|webp|bmp)$/i', $alt)) {
-            $alt = '';
-        }
+        $alt = $this->description($image);
         $src = $this->mapped($src, 'image');
         if ($src === '') {
             return '';
         }
         $alt = str_replace(['[', ']'], ['(', ')'], $alt);
-        return '![' . $alt . '](' . $this->destination($src) . ')';
+        // A picture that floated to a side on the old page goes there here too (the attribute the editor writes for it).
+        $side = $this->floatOf($image);
+        return '![' . $alt . '](' . $this->destination($src) . ')' . ($side !== '' ? '{align=' . $side . '} ' : '');
+    }
+
+    /**
+     * What a reader who cannot see the picture is told: its alternative text, else its title, else the caption it has on the page
+     * (a figure's figcaption, WordPress's wp-caption-text). A file name or a camera's name tells nobody anything.
+     */
+    private function description(\DOMElement $image): string
+    {
+        foreach ([$image->getAttribute('alt'), $image->getAttribute('title')] as $text) {
+            $text = trim(preg_replace('/\s+/', ' ', $text) ?? '');
+            if (self::describes($text)) {
+                return $text;
+            }
+        }
+        $caption = $this->captionOf($image);
+        return self::describes($caption) && mb_strlen($caption) <= 200 ? $caption : '';
+    }
+
+    /**
+     * The Markdown cut at the links to a YouTube video that stand alone in a paragraph (what WordPress turns into an embedded player):
+     * the text before, the video, the text after. A link inside a sentence, a list, a quote or a code block stays where it is, and
+     * Markdown with no such link comes back as one text segment.
+     *
+     * @return array<int, array{type: 'text'|'video', value: string}> a video's value is its address, as the Video block takes it
+     */
+    public static function splitVideos(string $markdown): array
+    {
+        $segments = [];
+        $text = '';
+        $fenced = false;
+        foreach (preg_split('/\n{2,}/', trim($markdown, "\n")) ?: [] as $paragraph) {
+            // A fence can hold a blank line, so a paragraph is also looked at for where one opens and closes.
+            $opens = preg_match_all('/^(?:```|~~~)/m', $paragraph);
+            $video = !$fenced && $opens === 0 ? self::youtubeAddress($paragraph) : '';
+            if ($video !== '') {
+                if (trim($text) !== '') {
+                    $segments[] = ['type' => 'text', 'value' => trim($text, "\n") . "\n"];
+                }
+                $text = '';
+                $segments[] = ['type' => 'video', 'value' => $video];
+                continue;
+            }
+            if ($opens % 2 === 1) {
+                $fenced = !$fenced;
+            }
+            $text .= ($text === '' ? '' : "\n\n") . $paragraph;
+        }
+        if (trim($text) !== '') {
+            $segments[] = ['type' => 'text', 'value' => trim($text, "\n") . "\n"];
+        }
+        return $segments;
+    }
+
+    /** The address of a YouTube video when the paragraph is only a link to it (written out, or as a link whose text is the address); else ''. */
+    private static function youtubeAddress(string $paragraph): string
+    {
+        $line = trim($paragraph);
+        if (str_contains($line, "\n")) {
+            return '';
+        }
+        if (preg_match('/^\[(https?:\/\/[^\s\]]+)\]\((?:<)?(https?:\/\/[^\s>)]+)(?:>)?\)$/i', $line, $m) === 1 && $m[1] === $m[2]) {
+            $line = $m[1];
+        } elseif (preg_match('/^<(https?:\/\/[^\s>]+)>$/i', $line, $m) === 1) {
+            $line = $m[1];
+        }
+        if (preg_match('/^https?:\/\/\S+$/i', $line) !== 1) {
+            return '';
+        }
+        $info = BlockRenderer::videoInfo($line);
+        return $info !== null && $info['provider'] === 'youtube' ? $info['watch_url'] : '';
+    }
+
+    /** Whether a text says something about a picture: not empty, not a file name (hoos_l.gif), not a camera's name (IMG_1234, DSC00123). */
+    public static function describes(string $text): bool
+    {
+        $text = trim($text);
+        if ($text === '' || preg_match('/^[\w\-. ]+\.(gif|jpe?g|png|webp|bmp)$/i', $text)) {
+            return false;
+        }
+        return preg_match('/^(?:img|dsc[nf]?|dcim|pxl|mvimg|pic|image|photo|scan|screenshot|untitled)[-_ ]*[\d_\- ]*$/i', $text) !== 1 && preg_match('/^[\d_\- ]+$/', $text) !== 1;
+    }
+
+    /** The caption a picture has on the page: the wrapper it sits in (a figure, WordPress's caption box), without the picture's own link. */
+    private function captionOf(\DOMElement $image): string
+    {
+        $wrapper = $this->wrapperOf($image);
+        if ($wrapper === null) {
+            return '';
+        }
+        foreach ($wrapper->getElementsByTagName('*') as $child) {
+            if (strtolower($child->nodeName) === 'figcaption' || preg_match('/(?:^|\s)wp-caption-text(?:\s|$)/i', $child->getAttribute('class')) === 1) {
+                return trim(preg_replace('/\s+/u', ' ', $child->textContent) ?? '');
+            }
+        }
+        return '';
+    }
+
+    /** The figure or caption box a picture sits in (straight, or inside its own link). */
+    private function wrapperOf(\DOMElement $image): ?\DOMElement
+    {
+        $parent = $image->parentNode;
+        if ($parent instanceof \DOMElement && strtolower($parent->nodeName) === 'a') {
+            $parent = $parent->parentNode;
+        }
+        if ($parent instanceof \DOMElement && (strtolower($parent->nodeName) === 'figure' || preg_match('/(?:^|\s)(?:wp-caption|wp-block-image)(?:\s|$)/i', $parent->getAttribute('class')) === 1)) {
+            return $parent;
+        }
+        return null;
+    }
+
+    /** The side a picture floated to on the old page, 'left' or 'right' (its align attribute, WordPress's alignleft / alignright, or a float style); '' for one in the line of text. */
+    private function floatOf(\DOMElement $image): string
+    {
+        $align = strtolower(trim($image->getAttribute('align')));
+        if ($align === 'left' || $align === 'right') {
+            return $align;
+        }
+        $candidates = [$image];
+        $parent = $image->parentNode;
+        if ($parent instanceof \DOMElement && strtolower($parent->nodeName) === 'a') {
+            $candidates[] = $parent;
+        }
+        if (($wrapper = $this->wrapperOf($image)) !== null) {
+            $candidates[] = $wrapper;
+        }
+        foreach ($candidates as $element) {
+            $class = ' ' . strtolower($element->getAttribute('class')) . ' ';
+            if (str_contains($class, ' alignleft ')) {
+                return 'left';
+            }
+            if (str_contains($class, ' alignright ')) {
+                return 'right';
+            }
+            if (preg_match('/(?:^|;)\s*float:\s*(left|right)/i', $element->getAttribute('style'), $m) === 1) {
+                return strtolower($m[1]);
+            }
+        }
+        return '';
     }
 
     private function mapped(string $address, string $kind): string

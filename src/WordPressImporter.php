@@ -524,6 +524,41 @@ final class WordPressImporter
      */
     private function render(array $entry, array $terms): array
     {
+        return $this->videoBlocks($this->renderEntry($entry, $terms));
+    }
+
+    /**
+     * The text of a page cut at the links to a YouTube video that stand alone in a paragraph (WordPress shows them as a player): the
+     * text becomes Text blocks and each video a Video block, in order, before any blocks the page already has. A page with no such
+     * link, or a landing page whose text is already in its blocks, is left as it is.
+     *
+     * @param array{front: array<string, mixed>, body: string, notes: string[]} $page
+     * @return array{front: array<string, mixed>, body: string, notes: string[]}
+     */
+    private function videoBlocks(array $page): array
+    {
+        $segments = HtmlToMarkdown::splitVideos($page['body']);
+        if (!in_array('video', array_column($segments, 'type'), true)) {
+            return $page;
+        }
+        $blocks = [];
+        foreach ($segments as $segment) {
+            $blocks[] = $segment['type'] === 'video'
+                ? ['type' => 'video', 'variant' => 'featured', 'videos' => [['url' => $segment['value']]]]
+                : ['type' => 'text', 'body' => $segment['value']];
+        }
+        $page['front']['blocks'] = array_merge($blocks, is_array($page['front']['blocks'] ?? null) ? $page['front']['blocks'] : []);
+        $page['body'] = '';
+        return $page;
+    }
+
+    /**
+     * @param array<string, mixed> $entry
+     * @param array<string, array<int, array<string, mixed>>> $terms
+     * @return array{front: array<string, mixed>, body: string, notes: string[]}
+     */
+    private function renderEntry(array $entry, array $terms): array
+    {
         if (isset($entry['post_type'])) {
             return $this->renderScraped($entry, $terms);
         }
@@ -1251,6 +1286,8 @@ final class WordPressImporter
      */
     private function registerMedia(string $url, string $alt, string $title, bool $attachment, bool $used = false): string
     {
+        // A picture with no alternative text is described by its title, when the title says something (not a camera's name).
+        $alt = $alt !== '' ? $alt : (HtmlToMarkdown::describes($title) ? trim($title) : '');
         $original = strtok($url, '?#') ?: $url;
         $canonical = (string)preg_replace('/-(?:\d{2,5}x\d{2,5}|scaled)(\.[A-Za-z0-9]+)$/', '$1', $original);
         $path = (string)parse_url($canonical, PHP_URL_PATH);
