@@ -158,6 +158,33 @@ check('and keeps a choice already made', $editor->archiveFromInput('categories',
 $made = $editor->create('Regions', '', [], ['el', 'en'], 'index', 'tester', true);
 check('a new taxonomy can be a tree from the start', [$made['error'], $store->isHierarchical('regions')], ['', true]);
 
+// ---- the form: a picture, the search text, and the content types a taxonomy is filed by
+$formRows = $editor->rowsFromPost([
+    'term_id' => ['news'], 'term_slug' => ['news'], 'term_label' => ['el' => ['Νέα'], 'en' => ['News']], 'term_description' => ['el' => [''], 'en' => ['']],
+    'term_image' => ['/uploads/news.jpg'], 'term_image_alt' => ['el' => ['Νέα εικόνα'], 'en' => ['']], 'term_seo_title' => ['el' => ['Νέα του σάιτ'], 'en' => ['']], 'term_seo_description' => ['el' => [''], 'en' => ['Latest news']],
+], ['el', 'en']);
+check('the form reads a picture, its text and the search text of a term per language', [$formRows[0]['image'], $formRows[0]['image_alt'], $formRows[0]['seo_title'], $formRows[0]['seo_description']], ['/uploads/news.jpg', ['el' => 'Νέα εικόνα', 'en' => ''], ['el' => 'Νέα του σάιτ', 'en' => ''], ['el' => '', 'en' => 'Latest news']]);
+$oldRows = $editor->rowsFromPost(['term_id' => ['news'], 'term_slug' => ['news'], 'term_label' => ['el' => ['Νέα'], 'en' => ['News']]], ['el', 'en']);
+check('a form without them says nothing about them (null)', [$oldRows[0]['image'], $oldRows[0]['image_alt'], $oldRows[0]['seo_title']], [null, null, null]);
+
+$editor->apply('tags', [
+    'taxonomy_title' => 'Tags', 'term_id' => ['news'], 'term_slug' => ['news'], 'term_label' => ['el' => ['Νέα'], 'en' => ['News']],
+    'term_image' => ['/uploads/news.jpg'], 'term_image_alt' => ['el' => ['Νέα εικόνα'], 'en' => ['']],
+    'term_seo_title' => ['el' => [''], 'en' => ['']], 'term_seo_description' => ['el' => [''], 'en' => ['']],
+], ['el', 'en'], 'el', 'tester');
+$news = array_values(array_filter($store->load('tags')['terms'], fn($x) => $x['id'] === 'news'))[0];
+check('saving the form stores the picture and its text', [$news['image'], $news['image_alt']['el']], ['/uploads/news.jpg', 'Νέα εικόνα']);
+
+$editor->apply('tags', ['taxonomy_title' => 'Tags', 'taxonomy_assign_present' => '1', 'taxonomy_assign' => ['posts', 'forms', 'pages']], ['el', 'en'], 'el', 'tester');
+check('a rule is saved as the types ticked that can be filed (pages and forms never are)', $store->load('tags')['assign'], ['posts']);
+$editor->apply('tags', ['taxonomy_title' => 'Tags'], ['el', 'en'], 'el', 'tester');
+check('a form without the choice keeps the rule', $store->load('tags')['assign'], ['posts']);
+$editor->apply('tags', ['taxonomy_title' => 'Tags', 'taxonomy_assign_present' => '1', 'taxonomy_assign' => ['posts', 'projects', 'pages', 'forms']], ['el', 'en'], 'el', 'tester');
+check('ticking every type that can be filed clears the rule (every type can)', $store->load('tags')['assign'], []);
+$editor->apply('tags', ['taxonomy_title' => 'Tags', 'taxonomy_assign_present' => '1', 'taxonomy_assign' => ['posts']], ['el', 'en'], 'el', 'tester');
+$screen = $editor->screen('tags', [], ['el', 'en'], 'el', false, fn(string $t): string => $t);
+check('the screen offers the rule as it is', $screen['taxonomy_assign'], ['posts']);
+
 exec('rm -rf ' . escapeshellarg($dir));
 echo $fail === 0 ? "\nALL PASSED\n" : "\n$fail FAILED\n";
 exit($fail === 0 ? 0 : 1);

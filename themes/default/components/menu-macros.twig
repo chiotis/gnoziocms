@@ -1,3 +1,14 @@
+{# The text of a link: the label alone, or with the icon of the item and its badge in this language when it has either. #}
+{% macro menu_text(item) -%}
+  {%- if (item.icon ?? '') == '' and (item.badge ?? '') == '' -%}
+    {{- item.label -}}
+  {%- else -%}
+    {%- if (item.icon ?? '') != '' -%}<span class="menu-icon" aria-hidden="true">{{ icon(item.icon) }}</span>{%- endif -%}
+    <span class="menu-label">{{- item.label -}}</span>
+    {%- if (item.badge ?? '') != '' -%}<span class="menu-badge">{{ item.badge }}</span>{%- endif -%}
+  {%- endif -%}
+{%- endmacro %}
+
 {% macro menu_link(item, prefix, link_class) %}
   {% set path = item.url ?? '' %}
   {% set target = item.target is defined ? item.target|trim : '' %}
@@ -10,12 +21,16 @@
     {% set state_classes = state_classes ~ ' is-trail' %}
   {% endif %}
   {% set classes = (link_class ~ state_classes ~ ' ' ~ (item.class ?? ''))|trim %}
+  {# The rel values the editor chose, and noopener for a link that opens in a new tab. #}
+  {% set rel_tokens = item.rel ?? [] %}
+  {% if target == '_blank' and 'noopener' not in rel_tokens %}{% set rel_tokens = rel_tokens|merge(['noopener']) %}{% endif %}
+  {% set rel_attr = rel_tokens|join(' ') %}
   {% set is_external = path starts with 'http' or path starts with 'mailto:' or path starts with 'tel:' or path starts with '#' %}
   {% if is_external %}
-    <a class="{{ classes }}" href="{{ path }}" {% if current %}aria-current="page"{% endif %} {% if target %}target="{{ target }}"{% endif %} {% if target == '_blank' %}rel="noopener"{% endif %}>{{ item.label }}</a>
+    <a class="{{ classes }}" href="{{ path }}" {% if current %}aria-current="page"{% endif %} {% if target %}target="{{ target }}"{% endif %} {% if rel_attr %}rel="{{ rel_attr }}"{% endif %}>{{ _self.menu_text(item) }}</a>
   {% else %}
     {% set clean = path == '' ? prefix : (path == '/' ? prefix : prefix ~ path|trim('/')) %}
-    <a class="{{ classes }}" href="{{ url(clean) }}" {% if current %}aria-current="page"{% endif %} {% if target %}target="{{ target }}"{% endif %} {% if target == '_blank' %}rel="noopener"{% endif %}>{{ item.label }}</a>
+    <a class="{{ classes }}" href="{{ url(clean) }}" {% if current %}aria-current="page"{% endif %} {% if target %}target="{{ target }}"{% endif %} {% if rel_attr %}rel="{{ rel_attr }}"{% endif %}>{{ _self.menu_text(item) }}</a>
   {% endif %}
 {% endmacro %}
 

@@ -12,7 +12,7 @@
 {% set header_floats_over = true %}
 {# The title area is one of the entry layouts (settings: title_layout, title_image, title_parallax). A cover needs its picture; the picture is
    the background of the area in the default and cover layouts, and then the header can sit over it, in the light colours, as on a page. #}
-{% set archive_title_image = config.title_image|default('') %}
+{% set archive_title_image = config.title_image|default('') ?: term_image.url|default('') %}
 {% set archive_title_choice = config.title_layout|default('default') in ['default', 'centered', 'split', 'cover', 'minimal'] ? config.title_layout|default('default') : 'default' %}
 {% set archive_title_layout = archive_title_choice == 'cover' and not archive_title_image ? 'default' : archive_title_choice %}
 {% set archive_image_behind = archive_title_image != '' and archive_title_layout in ['default', 'cover'] %}

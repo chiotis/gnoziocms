@@ -51,6 +51,9 @@
   var defaultLang = data.default_language || languages[0] || 'en';
   var multilingual = languages.length > 1;
   var maxItems = data.max_items || 300;
+  var menuSlug = String(data.key || 'menu').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'menu';
+  var relValues = (data.rel_values || []).filter(function (v) { return v !== 'noopener'; });
+  var relLabels = { nofollow: 'Not followed by search engines', sponsored: 'Paid or sponsored link', ugc: 'Made by users', noreferrer: 'Do not send the page address' };
 
   var nextId = 1;
   var items = [];
@@ -148,12 +151,19 @@
       css: o.css !== undefined ? o.css : (o['class'] || ''),
       target: o.target || '',
       hidden: !!o.hidden,
+      languages: (o.languages || []).slice(),
+      icon: o.icon || '',
+      badges: fillLangs(o.badges),
+      rel: (o.rel || []).slice(),
       open: !!o.open
     };
   }
 
   function plain(item) {
-    return { depth: item.depth, label_key: item.label_key, labels: item.labels, url: item.url, 'class': item.css, target: item.target, hidden: item.hidden };
+    return {
+      depth: item.depth, label_key: item.label_key, labels: item.labels, url: item.url, 'class': item.css, target: item.target, hidden: item.hidden,
+      languages: item.languages, icon: item.icon, badges: item.badges, rel: item.rel
+    };
   }
   function serialize() { return JSON.stringify(items.map(plain)); }
 
@@ -196,7 +206,7 @@
 
   function snapshot() {
     return JSON.stringify(items.map(function (it) {
-      return { id: it.id, depth: it.depth, label_key: it.label_key, labels: it.labels, hints: it.hints, url: it.url, css: it.css, target: it.target, hidden: it.hidden, open: it.open };
+      return { id: it.id, depth: it.depth, label_key: it.label_key, labels: it.labels, hints: it.hints, url: it.url, css: it.css, target: it.target, hidden: it.hidden, languages: it.languages, icon: it.icon, badges: it.badges, rel: it.rel, open: it.open };
     }));
   }
   function restore(text) {
@@ -295,7 +305,37 @@
     return info.entry ? info.entry.title : (item.url || 'Untitled item');
   }
   function missingCount(lang) {
-    return items.filter(function (it) { return !it.hidden && missing(it, lang); }).length;
+    return items.filter(function (it) { return !it.hidden && inLanguage(it, lang) && missing(it, lang); }).length;
+  }
+
+  /** An item with no language list shows in every language; one limited to some shows only in them. */
+  function inLanguage(item, lang) {
+    return !item.languages.length || item.languages.indexOf(lang) !== -1;
+  }
+
+  /**
+   * The theme text key an item is named with, in the nav.<menu>.<item> form: the menu's key, then the item's own name,
+   * which is the last part of its address ("home" for the home page). An item under another one takes the key of the
+   * item above it, as the defaults do (nav.main.services.workplace_strategy). A key another item of this menu has takes
+   * a number. A name is made of Latin letters and figures only, so a Greek label is never the source.
+   */
+  function suggestKey(item) {
+    var index = items.indexOf(item);
+    var prefix = 'nav.' + menuSlug + '.';
+    for (var up = index - 1; up >= 0 && item.depth > 1; up--) {
+      if (items[up].depth < item.depth) {
+        if (items[up].label_key) prefix = items[up].label_key + '.';
+        break;
+      }
+    }
+    var address = norm(item.url);
+    var name = address === '' ? 'home' : address.split('/').pop();
+    name = name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'item';
+    var taken = {};
+    items.forEach(function (it) { if (it !== item && it.label_key) taken[it.label_key] = true; });
+    var key = prefix + name;
+    for (var n = 2; taken[key]; n++) key = prefix + name + '_' + n;
+    return key;
   }
   function langName(code) { return languageNames[code] || code.toUpperCase(); }
 
@@ -337,9 +377,12 @@
     if (info.kind === 'external') badges.push(badge('External', 'slate', 'external'));
     if (item.target === '_blank') badges.push(badge('New tab', 'slate'));
     if (/(^|\s)nav-cta(\s|$)/.test(item.css)) badges.push(badge('Button', 'blue'));
+    if (item.languages.length) {
+      badges.push(badge(item.languages.map(function (code) { return code.toUpperCase(); }).join(' · '), 'blue', null, 'Shown only in ' + item.languages.map(langName).join(', ')));
+    }
     if (multilingual) {
       languages.forEach(function (code) {
-        if (missing(item, code)) badges.push(badge(code.toUpperCase(), 'amber', null, 'No label in ' + langName(code)));
+        if (inLanguage(item, code) && missing(item, code)) badges.push(badge(code.toUpperCase(), 'amber', null, 'No label in ' + langName(code)));
       });
     }
 
@@ -407,6 +450,31 @@
     return h('label', { 'class': 'flex items-start gap-2 text-sm text-slate-700' }, [box, h('span', {}, [labelText, hint ? h('span', { 'class': 'block text-xs text-slate-500' }, [hint]) : null])]);
   }
 
+  /**
+   * The languages an item is shown in, one tick each. Every language is ticked for an item with no limit, and saving with
+   * all of them ticked stores no limit. At least one stays ticked.
+   */
+  function languageChoice(item) {
+    var group = h('div', { 'class': 'grid gap-2 border-t border-slate-100 pt-2.5', role: 'group', 'aria-label': 'Show in these languages' }, [
+      h('span', { 'class': 'text-sm text-slate-700' }, ['Show in'])
+    ]);
+    languages.forEach(function (code) {
+      var box = h('input', { type: 'checkbox', 'class': 'h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-400', checked: inLanguage(item, code) ? true : false });
+      box.addEventListener('change', function () {
+        var now = languages.filter(function (c) { return c === code ? box.checked : inLanguage(item, c); });
+        if (now.length === 0) {
+          box.checked = true;
+          announce('An item shows in at least one language.');
+          return;
+        }
+        edit(item, 'languages:' + item.id, function () { item.languages = now.length === languages.length ? [] : now; });
+        renderPreview();
+      });
+      group.appendChild(h('label', { 'class': 'flex items-center gap-2 text-sm text-slate-700' }, [box, langName(code)]));
+    });
+    return group;
+  }
+
   function placeholderFor(item, lang) {
     if (item.hints[lang]) return item.hints[lang] + ' (from the theme)';
     if (lang !== defaultLang) return textFor(item, defaultLang) || 'Label';
@@ -442,8 +510,47 @@
       if (box) box.checked = /(^|\s)nav-cta(\s|$)/.test(item.css);
     });
 
-    var keyInput = h('input', { type: 'text', 'class': inputClass, value: item.label_key, placeholder: 'nav.main.home' });
+    var keyInput = h('input', { type: 'text', 'class': inputClass, value: item.label_key, placeholder: suggestKey(item), 'aria-label': 'Theme text key' });
     keyInput.addEventListener('input', function () { edit(item, 'key:' + item.id, function () { item.label_key = keyInput.value.trim(); }); });
+    var suggest = h('button', {
+      type: 'button',
+      'class': 'shrink-0 rounded-md border border-slate-300 bg-white px-2.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50',
+      text: 'Suggest',
+      onclick: function () {
+        keyInput.value = suggestKey(item);
+        edit(item, '', function () { item.label_key = keyInput.value; });
+      }
+    });
+    var keyField = h('div', { 'class': 'grid gap-1 text-xs font-medium text-slate-600' }, [
+      h('span', {}, ['Theme text key']),
+      h('div', { 'class': 'flex gap-2' }, [keyInput, suggest]),
+      h('span', { 'class': 'font-normal text-slate-500' }, ['Named nav.' + menuSlug + '.item. Used for the label in a language that has none typed, when the theme has text for it.'])
+    ]);
+
+    // An icon the theme no longer has stays in the list, so saving the item does not lose it without a choice.
+    var iconNames = (data.icons || []).slice();
+    if (item.icon && iconNames.indexOf(item.icon) === -1) iconNames.push(item.icon);
+    var iconSelect = h('select', { 'class': inputClass, 'data-icon': '1' }, [h('option', { value: '' }, ['No icon'])].concat(iconNames.map(function (name) {
+      return h('option', { value: name }, [name]);
+    })));
+    iconSelect.value = item.icon;
+    iconSelect.addEventListener('change', function () { edit(item, '', function () { item.icon = iconSelect.value; }); });
+
+    var badgeInputs = languages.map(function (code) {
+      var input = h('input', { type: 'text', 'class': inputClass, value: item.badges[code], maxlength: 24, 'data-badge': code });
+      input.addEventListener('input', function () {
+        edit(item, 'badge:' + item.id + ':' + code, function () { item.badges[code] = input.value.trim(); });
+      });
+      return field(multilingual ? 'Badge · ' + langName(code) : 'Badge', input);
+    });
+
+    var relBoxes = relValues.map(function (value) {
+      return check(relLabels[value] || value, item.rel.indexOf(value) !== -1, function (on) {
+        edit(item, '', function () {
+          item.rel = (data.rel_values || []).filter(function (v) { return v === value ? on : item.rel.indexOf(v) !== -1; });
+        });
+      }, 'rel="' + value + '"');
+    });
 
     return h('div', { id: 'menu-body-' + item.id, 'class': 'grid gap-4 border-t border-slate-100 p-3 sm:p-4' }, [
       h('div', { 'class': 'grid gap-3 sm:grid-cols-2' }, labelInputs),
@@ -456,14 +563,22 @@
             edit(item, '', function () { item.hidden = on; });
             var li = cardFor(item.id);
             if (li) li.firstChild.className = cardClasses(item);
-          }, 'Keeps the item here without showing it.')
+          }, 'Keeps the item here without showing it.'),
+          multilingual ? languageChoice(item) : null
         ])
       ]),
       h('details', { 'class': 'rounded-md border border-slate-200 bg-slate-50/60 px-3 py-2' }, [
         h('summary', { 'class': 'cursor-pointer text-xs font-medium text-slate-600' }, ['Advanced']),
         h('div', { 'class': 'mt-3 grid gap-3 sm:grid-cols-2' }, [
           field('CSS classes', cssInput, 'Added to the link, for the theme to style.'),
-          field('Theme text key', keyInput, 'Used for the label in a language that has none typed, when the theme has text for it.')
+          keyField,
+          field('Icon', iconSelect, 'A small picture from the theme’s icons, shown before the label.'),
+          h('div', { 'class': 'sm:col-span-2 grid gap-3 sm:grid-cols-2' }, badgeInputs.concat([h('span', { 'class': 'font-normal text-slate-500 sm:col-span-2 text-xs' }, ['A short word after the label, such as New or Sale. Each one is shown only in its own language.'])])),
+          h('div', { 'class': 'sm:col-span-2 grid gap-2' }, [
+            h('span', { 'class': 'text-xs font-medium text-slate-600' }, ['Link relations']),
+            h('div', { 'class': 'grid gap-2 sm:grid-cols-2' }, relBoxes),
+            h('span', { 'class': 'text-xs font-normal text-slate-500' }, ['A link that opens in a new tab always gets noopener as well.'])
+          ])
         ])
       ]),
       h('div', { 'class': 'flex flex-wrap items-center justify-between gap-2' }, [
@@ -619,7 +734,7 @@
     items.forEach(function (it) {
       if (skipDepth && it.depth > skipDepth) return;
       skipDepth = 0;
-      if (it.hidden) { skipDepth = it.depth; return; }
+      if (it.hidden || !inLanguage(it, lang)) { skipDepth = it.depth; return; }
       var node = { item: it, kids: [] };
       if (it.depth === 1) tops.push(node);
       else {

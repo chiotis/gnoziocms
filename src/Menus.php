@@ -12,6 +12,12 @@ use Symfony\Component\Yaml\Yaml;
  */
 final class Menus
 {
+    /** The `rel` values a link of a menu item can carry. `noopener` is also added by itself to a link in a new tab. */
+    public const REL_VALUES = ['nofollow', 'sponsored', 'ugc', 'noopener', 'noreferrer'];
+
+    /** A language code an item can be limited to: "el", "en", "pt-br". */
+    private const LANGUAGE_PATTERN = '/^[a-z]{2,3}(-[a-z0-9]{2,8})?$/';
+
     /** @var array<string, array{title: string, items: array<int, array<string, mixed>>}> */
     private array $menusCache = [];
 
@@ -254,6 +260,19 @@ final class Menus
             if (!empty($item['hidden'])) {
                 $row['hidden'] = true;
             }
+            if (!empty($item['languages'])) {
+                $row['languages'] = $item['languages'];
+            }
+            if (!empty($item['icon'])) {
+                $row['icon'] = $item['icon'];
+            }
+            $badges = array_filter(is_array($item['badges'] ?? null) ? $item['badges'] : [], static fn($text): bool => $text !== '');
+            if ($badges !== []) {
+                $row['badges'] = $badges;
+            }
+            if (!empty($item['rel'])) {
+                $row['rel'] = $item['rel'];
+            }
             if (!empty($item['children']) && is_array($item['children'])) {
                 $row['children'] = $this->lean($item['children']);
             }
@@ -311,7 +330,7 @@ final class Menus
                 'url' => $url,
                 'class' => $class,
                 'target' => $target,
-            ];
+            ] + self::presentation($row, $languages);
             if (Format::isTruthy($row['hidden'] ?? false)) {
                 $item['hidden'] = true;
             }
@@ -323,7 +342,54 @@ final class Menus
         return $rows;
     }
 
-    /** @return array<int, array{depth: string, label_key: string, labels: array<string, string>, url: string, class: string, target: string, hidden: bool}> */
+    /**
+     * What an item says about how it is shown, beyond its text and address: the languages it is limited to (none: all of
+     * them), an icon of the theme, a badge in each language, and the `rel` values of its link. Only what is set is returned.
+     *
+     * @param array<string, mixed> $row
+     * @param string[] $languages the languages of the site
+     * @return array{languages?: string[], icon?: string, badges?: array<string, string>, rel?: string[]}
+     */
+    private static function presentation(array $row, array $languages): array
+    {
+        $out = [];
+        $only = [];
+        foreach (is_array($row['languages'] ?? null) ? $row['languages'] : [] as $code) {
+            $code = strtolower(trim((string)$code));
+            if (preg_match(self::LANGUAGE_PATTERN, $code) === 1 && !in_array($code, $only, true)) {
+                $only[] = $code;
+            }
+        }
+        if ($only !== []) {
+            $out['languages'] = $only;
+        }
+
+        $icon = trim((string)($row['icon'] ?? ''));
+        if (preg_match('/^[a-z0-9-]{1,40}$/', $icon) === 1) {
+            $out['icon'] = $icon;
+        }
+
+        $sourceBadges = is_array($row['badges'] ?? null) ? $row['badges'] : [];
+        $badges = [];
+        foreach ($languages as $language) {
+            $text = trim((string)($sourceBadges[$language] ?? ''));
+            if ($text !== '') {
+                $badges[$language] = $text;
+            }
+        }
+        if ($badges !== []) {
+            $out['badges'] = $badges;
+        }
+
+        $given = is_string($row['rel'] ?? null) ? preg_split('/\s+/', trim($row['rel'])) : (is_array($row['rel'] ?? null) ? $row['rel'] : []);
+        $rel = array_values(array_intersect(self::REL_VALUES, array_map(static fn(mixed $value): string => strtolower(trim((string)$value)), $given ?: [])));
+        if ($rel !== []) {
+            $out['rel'] = $rel;
+        }
+        return $out;
+    }
+
+    /** @return array<int, array{depth: string, label_key: string, labels: array<string, string>, url: string, class: string, target: string, hidden: bool, languages: string[], icon: string, badges: array<string, string>, rel: string[]}> */
     public function flatten(mixed $items, array $languages, int $depth = 1): array
     {
         $depth = max(1, min(3, $depth));
@@ -335,6 +401,11 @@ final class Menus
                 $language = (string)$language;
                 $rowLabels[$language] = trim((string)($labels[$language] ?? ''));
             }
+            $rowBadges = [];
+            foreach ($languages as $language) {
+                $language = (string)$language;
+                $rowBadges[$language] = (string)($item['badges'][$language] ?? '');
+            }
             $rows[] = [
                 'depth' => (string)$depth,
                 'label_key' => trim((string)($item['label_key'] ?? '')),
@@ -343,6 +414,10 @@ final class Menus
                 'class' => trim((string)($item['class'] ?? '')),
                 'target' => trim((string)($item['target'] ?? '')),
                 'hidden' => !empty($item['hidden']),
+                'languages' => $item['languages'] ?? [],
+                'icon' => (string)($item['icon'] ?? ''),
+                'badges' => $rowBadges,
+                'rel' => $item['rel'] ?? [],
             ];
             if ($depth < 3 && isset($item['children']) && is_array($item['children'])) {
                 $rows = array_merge($rows, $this->flatten($item['children'], $languages, $depth + 1));
@@ -399,7 +474,7 @@ final class Menus
                 'class' => trim((string)($row['class'] ?? '')),
                 'target' => trim((string)($row['target'] ?? '')),
                 'hidden' => Format::isTruthy($row['hidden'] ?? false),
-            ];
+            ] + self::presentation($row, $languages);
 
             if ($depth === 1) {
                 $roots[] = $item;
@@ -506,7 +581,7 @@ final class Menus
         $defaultLang = (string)($this->settings()['languages']['default'] ?? 'el');
         $rows = [];
         foreach ($items as $item) {
-            if (!is_array($item) || !empty($item['hidden'])) {
+            if (!is_array($item) || !empty($item['hidden']) || !self::showsIn($item, $lang)) {
                 continue;
             }
             $labels = is_array($item['labels'] ?? null) ? $item['labels'] : [];
@@ -514,7 +589,9 @@ final class Menus
             if ($label === '') {
                 $labelKey = trim((string)($item['label_key'] ?? ''));
                 if ($labelKey !== '') {
-                    $label = ($this->translate)($labelKey, $labelKey);
+                    // A key the theme does not know comes back as itself: that is never shown in place of a label.
+                    $text = trim((string)($this->translate)($labelKey, $labelKey));
+                    $label = $text !== $labelKey ? $text : '';
                 }
             }
             if ($label === '' && $defaultLang !== $lang) {
@@ -524,12 +601,23 @@ final class Menus
                 $label = trim((string)($item['label'] ?? ''));
             }
             $item['label'] = $label;
+            // A badge is only ever in the language it was written in: a "New" in Greek is not shown to an English visitor.
+            $badges = is_array($item['badges'] ?? null) ? $item['badges'] : [];
+            $item['badge'] = trim((string)($badges[$lang] ?? ''));
+            unset($item['badges']);
             if (isset($item['children']) && is_array($item['children'])) {
                 $item['children'] = $this->localize($item['children'], $lang);
             }
             $rows[] = $item;
         }
         return $rows;
+    }
+
+    /** An item limited to some languages shows only in them; one with no limit shows in every language. */
+    private static function showsIn(array $item, string $lang): bool
+    {
+        $languages = is_array($item['languages'] ?? null) ? $item['languages'] : [];
+        return $languages === [] || in_array($lang, $languages, true);
     }
 
     /** @param array<int, array<string, mixed>> $items

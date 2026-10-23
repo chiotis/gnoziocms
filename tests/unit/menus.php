@@ -134,6 +134,38 @@ $strip = $bare + ['menu_locations' => ['strip' => 'extra']];
 $m5 = new Menus($dir, fn() => $strip, $translate, fn() => $locations);
 check('a place only the settings know is listed with a title made from its key', array_values(array_filter($m5->locations(), fn($p) => $p['key'] === 'strip'))[0], ['key' => 'strip', 'label' => 'Strip', 'default' => '', 'menu' => 'extra']);
 
+// ---- languages an item is limited to, its icon, badges and rel
+$extra = $m->normalize([
+    ['label' => 'Νέο', 'url' => 'new', 'languages' => ['EL', ' el ', 'not a code', 'en'], 'icon' => 'bolt', 'badges' => ['el' => 'Νέο', 'en' => ''], 'rel' => 'nofollow  Sponsored bogus', 'target' => '_blank'],
+    ['label' => 'Plain', 'url' => 'plain', 'icon' => 'Bad Icon!', 'badges' => 'nope', 'rel' => ['ugc', 'nofollow']],
+    ['label' => 'Μόνο', 'url' => 'only', 'languages' => ['el']],
+    ['label_key' => 'nav.main.gone', 'url' => 'gone'],
+]);
+check('an item is limited to the codes it names: cleaned, no duplicates, no text that is not a code', $extra[0]['languages'], ['el', 'en']);
+check('an icon is a plain name, and a badge is kept for the languages that have text', [$extra[0]['icon'], $extra[0]['badges']], ['bolt', ['el' => 'Νέο']]);
+check('rel keeps only the values the menu offers, in their order', [$extra[0]['rel'], $extra[1]['rel']], [['nofollow', 'sponsored'], ['nofollow', 'ugc']]);
+check('an item with none of these has none of these keys', array_keys($extra[3]), ['label', 'label_key', 'labels', 'url', 'class', 'target']);
+$m->write('extra', ['title' => 'Extra', 'items' => $extra]);
+$back = $m->load('extra')['items'];
+check('the settings are written and read back whole', [$back[0]['languages'], $back[0]['icon'], $back[0]['badges'], $back[0]['rel']], [['el', 'en'], 'bolt', ['el' => 'Νέο'], ['nofollow', 'sponsored']]);
+$file = file_get_contents($dir . '/menus/extra.yaml');
+check('and an item with none of them has no line for them', [str_contains(explode('url: plain', $file)[1] ?? '', 'icon'), str_contains(explode('url: only', $file)[1] ?? '', 'badges')], [false, false]);
+$flat = $m->flatten($extra, ['el', 'en']);
+check('the editor gets the same settings for each row', [$flat[0]['languages'], $flat[0]['icon'], $flat[0]['badges'], $flat[0]['rel']], [['el', 'en'], 'bolt', ['el' => 'Νέο', 'en' => ''], ['nofollow', 'sponsored']]);
+check('and a row with none gets empty ones', [$flat[1]['languages'], $flat[1]['icon'], $flat[1]['badges']], [[], '', ['el' => '', 'en' => '']]);
+$sent = $m->fromRows([['depth' => 1, 'labels' => ['el' => 'X', 'en' => ''], 'url' => 'x', 'languages' => ['en'], 'icon' => 'bolt', 'badges' => ['en' => 'New'], 'rel' => ['nofollow']]], ['el', 'en']);
+check('rows the editor sends keep the settings', [$sent[0]['languages'], $sent[0]['icon'], $sent[0]['badges'], $sent[0]['rel']], [['en'], 'bolt', ['en' => 'New'], ['nofollow']]);
+
+$withExtra = $settings;
+$withExtra['menu_locations']['sidebar'] = 'extra';
+$m6 = new Menus($dir, fn() => $withExtra, $translate, fn() => $locations);
+$en = $m6->forTheme('en', '')['sidebar'];
+$el = $m6->forTheme('el', '')['sidebar'];
+check('an item limited to Greek is not shown in English, and one with no limit is shown in both', [array_column($en, 'label'), array_column($el, 'label')], [['Νέο', 'Plain', ''], ['Νέο', 'Plain', 'Μόνο', '']]);
+check('a badge is only shown in the language it was written in', [array_column($en, 'badge'), array_column($el, 'badge')], [['', '', ''], ['Νέο', '', '', '']]);
+check('the icon and rel reach the theme', [array_map(fn($r) => $r['icon'] ?? '', $el)[0], $en[0]['rel'], isset($en[1]['rel'])], ['bolt', ['nofollow', 'sponsored'], true]);
+check('a theme key the theme does not know is never shown as the label', $en[2]['label'], '');
+
 // ---- addresses that change
 $m->relink('about', 'about-us');
 check('an address change is followed in every menu', [$m->load('main')['items'][1]['url'], $m->load('footer')['items'][0]['url']], ['about-us', 'terms']);

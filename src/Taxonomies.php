@@ -13,11 +13,15 @@ use Symfony\Component\Yaml\Yaml;
  *   title:    what the admin calls it
  *   hierarchical: whether a term can have a parent (categories do by default, tags and a site's own taxonomies do not);
  *             written only when it differs from that default
+ *   assign:   the content types whose entries can be filed under it (none written: every type that can be filed). Written
+ *             only when a choice was made; a rule stops new choices, it does not remove terms an entry already has.
  *   terms:    id (what content refers to, never changes), slug (the address, may change), labels per language, an
  *             optional description per language (kept only when one is written) and an optional `parent` (the id of
  *             another term, hierarchical taxonomies only), and `imported_from` when an import brought it (the address of
  *             the term on the old site, kept so the import finds it again). A term's address is its parents' slugs and its own:
- *             /category/books/english. A slug is unique among the terms of one parent.
+ *             /category/books/english. A slug is unique among the terms of one parent. A term can also have a picture
+ *             (`image`: an address in the library, or a full link; `image_alt` per language) and its own text for search
+ *             engines per language (`seo_title`, `seo_description`), each kept only when written.
  *   archive:  only the layout choices that differ from the defaults, the same ones a content type has
  *             (layout, columns, per_page, order, show_*, title, subtitle, taxonomies), plus `types`: the
  *             content types listed on its pages (none chosen means all of them), `include_children` and
@@ -101,8 +105,12 @@ final class Taxonomies
         return !in_array($name, ['categories', 'tags'], true);
     }
 
-    /** @return string[] */
-    public function names(): array
+    /**
+     * The taxonomies of the site. With a content type, only those its entries can be filed under (see `assign`).
+     *
+     * @return string[]
+     */
+    public function names(?string $type = null): array
     {
         $names = ['tags', 'categories'];
         foreach (glob($this->dir() . '/*.yaml') ?: [] as $path) {
@@ -112,7 +120,17 @@ final class Taxonomies
             }
         }
         sort($names);
-        return $names;
+        if ($type === null) {
+            return $names;
+        }
+        return array_values(array_filter($names, fn(string $name): bool => $this->acceptsType($name, $type)));
+    }
+
+    /** Whether the entries of a content type can be filed under a taxonomy (every type can, unless the taxonomy's rule says otherwise). */
+    public function acceptsType(string $name, string $type): bool
+    {
+        $types = $this->load($name)['assign'];
+        return $types === [] || in_array($type, $types, true);
     }
 
     /** Writes the two built-in taxonomies with a few example terms when a site has none yet. */
@@ -177,6 +195,7 @@ final class Taxonomies
         return $this->cache[$name] = [
             'title' => $title !== '' ? $title : Slug::title($name),
             'hierarchical' => $hierarchical,
+            'assign' => self::typeList($data['assign'] ?? null),
             'terms' => $this->normalizeTerms($data['terms'] ?? [], $hierarchical),
             'archive' => is_array($data['archive'] ?? null) ? $data['archive'] : [],
         ];
@@ -186,8 +205,9 @@ final class Taxonomies
      * @param array<int, array<string, mixed>> $terms
      * @param array<string, mixed>|null $archive the layout choices to keep; null leaves what the file holds
      * @param bool|null $hierarchical whether terms can have a parent; null leaves what the file holds
+     * @param string[]|null $assign the content types entries can be filed under (none: all); null leaves what the file holds
      */
-    public function save(string $name, string $title, array $terms, ?array $archive = null, ?bool $hierarchical = null): void
+    public function save(string $name, string $title, array $terms, ?array $archive = null, ?bool $hierarchical = null, ?array $assign = null): void
     {
         $name = Slug::plain($name);
         if ($name === '') {
@@ -203,6 +223,10 @@ final class Taxonomies
         if ($hierarchical !== self::hierarchicalByDefault($name)) {
             $payload['hierarchical'] = $hierarchical;
         }
+        $assign ??= $this->load($name)['assign'];
+        if ($assign !== []) {
+            $payload['assign'] = self::typeList($assign);
+        }
         $payload += [
             'terms' => array_map(static function (array $term): array {
                 if (($term['parent'] ?? '') === '') {
@@ -217,6 +241,14 @@ final class Taxonomies
                 }
                 if ($term['imported_from'] === '') {
                     unset($term['imported_from']);
+                }
+                if ($term['image'] === '') {
+                    unset($term['image']);
+                }
+                foreach (['image_alt', 'seo_title', 'seo_description'] as $text) {
+                    if (implode('', $term[$text]) === '') {
+                        unset($term[$text]);
+                    }
                 }
                 return $term;
             }, $this->normalizeTerms($terms, $hierarchical)),
@@ -275,7 +307,12 @@ final class Taxonomies
                 $descriptions[(string)$lang] = trim(str_replace("\r\n", "\n", (string)($texts[(string)$lang] ?? '')));
             }
             $parent = $hierarchical ? Slug::plain((string)($term['parent'] ?? '')) : '';
-            $rows[] = ['id' => $id, 'slug' => $slug, 'parent' => $parent, 'labels' => $labels, 'descriptions' => $descriptions, 'hero_layout' => self::heroChoice($term['hero_layout'] ?? ''), 'imported_from' => is_string($term['imported_from'] ?? null) ? trim($term['imported_from']) : ''];
+            $rows[] = [
+                'id' => $id, 'slug' => $slug, 'parent' => $parent, 'labels' => $labels, 'descriptions' => $descriptions,
+                'hero_layout' => self::heroChoice($term['hero_layout'] ?? ''), 'imported_from' => is_string($term['imported_from'] ?? null) ? trim($term['imported_from']) : '',
+                'image' => self::imageChoice($term['image'] ?? ''), 'image_alt' => $this->textsByLanguage($term['image_alt'] ?? null),
+                'seo_title' => $this->textsByLanguage($term['seo_title'] ?? null), 'seo_description' => $this->textsByLanguage($term['seo_description'] ?? null),
+            ];
             $seen[$id] = true;
         }
         return $hierarchical ? self::untangle($rows) : $rows;
@@ -474,6 +511,27 @@ final class Taxonomies
         return preg_match('/^[a-z][a-z0-9_-]{0,23}$/', $value) === 1 ? $value : '';
     }
 
+    /** A picture of a term: an address in the library ("/uploads/…") or a full link, or '' for none. */
+    private static function imageChoice(mixed $value): string
+    {
+        $value = is_string($value) ? trim($value) : '';
+        if ($value === '' || strlen($value) > 500) {
+            return '';
+        }
+        return preg_match('#^(/[^\s"\'<>]*|https?://[^\s"\'<>]+)$#', $value) === 1 ? $value : '';
+    }
+
+    /** One line of text for each language of the site, trimmed; what is not a list of texts is taken as none. @return array<string, string> */
+    private function textsByLanguage(mixed $source): array
+    {
+        $source = is_array($source) ? $source : [];
+        $texts = [];
+        foreach ($this->languages as $lang) {
+            $texts[(string)$lang] = trim((string)($source[(string)$lang] ?? ''));
+        }
+        return $texts;
+    }
+
     /** The style of title area the entries filed under a term open with (their own choice still wins), or '' to follow their type. */
     public function heroLayout(string $name, string $termId): string
     {
@@ -589,7 +647,12 @@ final class Taxonomies
             $parent = array_key_exists('parent', $row) && $row['parent'] !== null ? Slug::plain((string)$row['parent']) : ($existing['parent'] ?? '');
             $descriptions = is_array($row['descriptions'] ?? null) ? $row['descriptions'] : ($existing['descriptions'] ?? []);
             $hero = is_string($row['hero_layout'] ?? null) ? self::heroChoice($row['hero_layout']) : ($existing['hero_layout'] ?? '');
-            $drafts[$id] = ['index' => $index, 'id' => $id, 'slug' => $slug !== '' ? $slug : 'term', 'parent' => $parent, 'labels' => $row['labels'], 'descriptions' => $descriptions, 'hero_layout' => $hero, 'imported_from' => (string)($existing['imported_from'] ?? ''), 'new' => $existing === null];
+            // A picture and the text for search engines are left as they are when the form did not send them.
+            $image = is_string($row['image'] ?? null) ? self::imageChoice($row['image']) : ($existing['image'] ?? '');
+            $imageAlt = is_array($row['image_alt'] ?? null) ? $row['image_alt'] : ($existing['image_alt'] ?? []);
+            $seoTitle = is_array($row['seo_title'] ?? null) ? $row['seo_title'] : ($existing['seo_title'] ?? []);
+            $seoDescription = is_array($row['seo_description'] ?? null) ? $row['seo_description'] : ($existing['seo_description'] ?? []);
+            $drafts[$id] = ['index' => $index, 'id' => $id, 'slug' => $slug !== '' ? $slug : 'term', 'parent' => $parent, 'labels' => $row['labels'], 'descriptions' => $descriptions, 'hero_layout' => $hero, 'imported_from' => (string)($existing['imported_from'] ?? ''), 'new' => $existing === null, 'image' => $image, 'image_alt' => $imageAlt, 'seo_title' => $seoTitle, 'seo_description' => $seoDescription];
         }
 
         // The parents: a removed parent hands its children to its own parent; a loop is refused.
@@ -624,7 +687,7 @@ final class Taxonomies
         uasort($drafts, static fn(array $a, array $b): int => $a['index'] <=> $b['index']);
         $terms = [];
         foreach ($drafts as $draft) {
-            $terms[] = ['id' => $draft['id'], 'slug' => $draft['slug'], 'parent' => $draft['parent'], 'labels' => $draft['labels'], 'descriptions' => $draft['descriptions'], 'hero_layout' => $draft['hero_layout'], 'imported_from' => $draft['imported_from']];
+            $terms[] = ['id' => $draft['id'], 'slug' => $draft['slug'], 'parent' => $draft['parent'], 'labels' => $draft['labels'], 'descriptions' => $draft['descriptions'], 'hero_layout' => $draft['hero_layout'], 'imported_from' => $draft['imported_from'], 'image' => $draft['image'], 'image_alt' => $draft['image_alt'], 'seo_title' => $draft['seo_title'], 'seo_description' => $draft['seo_description']];
         }
 
         $moved = [];

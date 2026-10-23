@@ -284,6 +284,10 @@ archive:
 - **Taxonomy archives:** each taxonomy (categories, tags) has its own archive settings in `content/taxonomies/<name>.yaml` under `archive:`, edited in Admin > Theme > Archive Layouts. The keys are those of a content type's archive (`layout`, `columns`, `per_page`, `order`, `show_*`, `title`, `subtitle`, `taxonomies` for filters) plus `types: [posts, projects]` for the content types listed (none means all). `{term}` in `title` and `subtitle` is replaced by the term's name. A term can also have a description per language (Admin > Taxonomies): it is shown as the subtitle unless the taxonomy sets one, and templates receive it as `term_description`. Only what differs from the defaults is stored. The templates lookup is unchanged, so `archive-category.twig` or `archive-tag-<term>.twig` can still take over.
 
   **A tree of terms.** Categories are a tree by default (tags and a site's own taxonomies are not, unless `hierarchical: true` is in the file or *Terms can have a parent* is ticked in Admin > Taxonomies). A term has an optional `parent` (the id of another term). Its address holds its parents' slugs: `/category/books/english`, drawn by `archive-category-<own slug>.twig` → `archive-category.twig` → `archive.twig`. Moving a term or changing a parent's slug leaves redirects behind for the old address of the term and of every term below it, in every language, and updates menu links. The archive card of a tree has a *Sub-terms* chip (`include_children`, on by default): the page, the feed and the language links of a parent then also cover what is filed under its children. Deleting a parent moves its children up a level. The template receives `term_trail`, the parents above the term as `[{label, url}]`, and with *Breadcrumbs* on the trail is Home, the parents, the term.
+
+**A picture and search text for a term.** A term can have a picture (`image`: an address in the library or a full link, and `image_alt` per language). It is drawn behind the title of the term's page in the default and cover title areas, unless the archive chose a picture of its own, and the template receives it as `term_image` (`{url, alt}`, or null). Its search text (`seo_title` and `seo_description` per language, Admin > Taxonomies > a term > *Search engines*) is the title and description of the term's page (`meta.seo`); a language with no text there uses the site's own rules, as any page does. Both are written to the taxonomy's file only when set.
+
+**Which content types a taxonomy is filed by.** The Settings tab of a taxonomy (*Filed by*) names the content types whose entries can be filed under it (`assign: [projects]` in its file). With none ticked, every type that can be filed can. The entry editor offers only the taxonomies its type may carry, and saving an entry of another type leaves the terms it already has as they are: the rule decides what is offered and accepted, it does not remove what is there. Pages and forms are never filed under a taxonomy.
 - **Per-type templates** still work: `custom/templates/archive-<type>.twig` and `single-<type>.twig` win over the defaults.
 - **Latest content block:** the block lists any type, so a new type is available in it straight away.
 
@@ -600,6 +604,18 @@ Footer:
 - **Content**: the summary, the copyright line (`{year}`, `{site}` and `{copyright}`, the © sign, are filled in), a credits line under it (for example *Designed by [Unicorg](https://…)*; links are written `[text](address)`, and the same three words work), email, phone, address and opening hours, the **links at the bottom** (a menu given the place *Footer bottom links*), the social icons, a language switcher and a back to top link.
 
 A site-specific block goes in `custom/blocks/<type>/` with the same files.
+
+## Menu items
+
+A menu is a file in `content/menus/<key>.yaml`, placed in a place of the theme (Admin > Menus). Besides its address, its labels and its children, an item can say:
+
+- `languages:` the languages it is shown in, as a list of codes (`[el]`). Nothing written means every language. An item left out of a language takes the items under it with it. The editor's *Show in* ticks write the same list; all of them ticked stores none.
+- `icon:` the name of an icon of the theme (`icons/<name>.svg`, or one in `custom/icons`), shown before the label. A name the theme does not have shows nothing.
+- `badges:` a short word per language, shown after the label in that language only (*New* in English, *Νέο* in Greek). A language with no badge shows none.
+- `rel:` the link relations of the link: `nofollow`, `sponsored`, `ugc`, `noreferrer` or `noopener`. A link that opens in a new tab always gets `noopener` as well.
+- `label_key:` the key of a theme text, used for the label in a language that has none typed. **Suggest** in the editor names the key `nav.<menu>.<item>`: under the key of the item above when that item has one (`nav.main.services.design`), otherwise under the menu's key (`nav.main.design`), and with a number when another item of the menu has the name. A key the theme has no text for is never shown as the label; the label of the language is then the default language's, or nothing.
+
+`components/menu-macros.twig` draws them: the icon with `icon(item.icon)`, the badge as `item.badge` (the text in the page's language, '' for none), and the link's `rel` from `item.rel` (joined with spaces). A menu link with neither icon nor badge is drawn as before. The default theme styles `.menu-icon` and `.menu-badge`. Items reach the theme already filtered for the page's language: `localize()` in `Menus` leaves out hidden items and items of other languages, together with what is under them.
 
 ## Branding
 

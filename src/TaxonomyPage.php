@@ -107,6 +107,9 @@ final class TaxonomyPage
             default => $taxonomies->load($key)['title'],
         };
         $description = $taxonomies->description($key, $termId, $lang, $defaultLang);
+        // The picture of the term and the text for search engines it has in this language (Admin > Taxonomies). No text in a
+        // language means the site's own rules, as for any page.
+        $termImage = $term['image'] !== '' ? ['url' => $term['image'], 'alt' => (string)($term['image_alt'][$lang] ?? '')] : null;
         $alternates = ($this->alternates)()->forTaxonomy($key, $taxonomies->slug($key, $termId));
 
         // The trail follows the tree: each parent above the term, with the address of its page.
@@ -128,6 +131,8 @@ final class TaxonomyPage
             'archive_title' => $archive['title'] !== '' ? $fill($archive['title']) : $titlePrefix . ': ' . $label,
             'archive_subtitle' => $archive['subtitle'] !== '' ? $fill($archive['subtitle']) : $description,
             'term_description' => $description,
+            'term_image' => $termImage,
+            'meta' => ['seo' => ['title' => (string)($term['seo_title'][$lang] ?? ''), 'description' => (string)($term['seo_description'][$lang] ?? '')]],
             'term_trail' => $trail,
             'term_chips' => $chips,
             'block_styles' => [$this->theme->blockStylesheetUrl(rtrim((string)($settings['base_url'] ?? ''), '/'), ['latest'])],

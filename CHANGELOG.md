@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.182 — 2026-10-23 — Menu item settings, term pictures, taxonomy rules
+- **Menus:** an item can be shown only in some languages (`languages`; the editor's *Show in* ticks), with an icon of the theme, a badge per language (shown only in its language) and link relations (`rel`: nofollow, sponsored, ugc, noreferrer; noopener is added for a link in a new tab). The editor's **Suggest** names a theme text key `nav.<menu>.<item>`, under the key of the item above when it has one.
+- A theme text key the theme does not know is no longer shown as the label of the item.
+- **Taxonomies:** a term has a picture (`image`, with alternative text per language), drawn behind the title of its page in the default and cover title areas and given to templates as `term_image`; and its own title and description for search engines per language (`seo_title`, `seo_description`), used as the page's SEO text.
+- A taxonomy can name the content types whose entries it is filed by (*Filed by*, `assign` in its file). The entry editor offers only those taxonomies; terms an entry already has under another taxonomy stay as they are.
+- `docs/theming.md` (*Menu items*, and the taxonomy section) describes them; the ROADMAP's taxonomy item is done and the menu item keeps only the role part.
+
 ## 0.1.181 — 2026-10-23 — Search finds other forms of a Greek word
 - A Greek word of four or more letters also finds its other forms: «πόλη» finds «πόλεις», «πόλης» and «πόλεων», «βιβλίο» finds «βιβλία». A light stemmer takes one usual ending off the word, and a text word matches when it is that stem alone or with one usual ending. Whole words only, so «πόλη» does not find «πόλεμος» or «πολιτεία».
 - A match in another form ranks below the word as typed in the same field; the whole word is highlighted and the excerpt is cut around it. Latin words, words under four letters and words with no usual ending are matched as before.

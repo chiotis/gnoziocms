@@ -21,6 +21,7 @@ final class MenuAdmin
      * @param ?MenuSources $sources what the editor offers to add (without it, only a typed link)
      * @param ?\Closure(string, string): string $themeText the theme's text for a label key in a language, '' when it has none
      * @param ?\Closure(string, string): bool $setLocation puts a menu in a place of the theme (location, menu key); null when the person may not
+     * @param ?\Closure(): string[] $icons the icons the theme has, names an item can show
      */
     public function __construct(
         private Menus $menus,
@@ -28,7 +29,8 @@ final class MenuAdmin
         private \Closure $log,
         private ?MenuSources $sources = null,
         private ?\Closure $themeText = null,
-        private ?\Closure $setLocation = null
+        private ?\Closure $setLocation = null,
+        private ?\Closure $icons = null
     ) {
     }
 
@@ -224,8 +226,9 @@ final class MenuAdmin
     }
 
     /**
-     * Everything the editor starts with, as JSON for the page: the items (one row each, with their depth, and the theme's
-     * text where a label is left to the theme), the languages, what can be added, and the places of the theme.
+     * Everything the editor starts with, as JSON for the page: the items (one row each, with their depth, the theme's text
+     * where a label is left to the theme, and the settings of each item), the languages, what can be added, the icons and
+     * `rel` values an item can use, and the places of the theme.
      *
      * @param array<int, array<string, mixed>> $items
      * @param string[] $languages
@@ -264,6 +267,8 @@ final class MenuAdmin
             'languages' => array_map(static fn(string $code): array => ['code' => $code, 'name' => self::languageName($code)], $languages),
             'items' => $rows,
             'groups' => $this->sources?->groups() ?? [],
+            'icons' => $this->icons !== null ? ($this->icons)() : [],
+            'rel_values' => Menus::REL_VALUES,
             'locations' => $places,
             'can_place' => $this->setLocation !== null,
             'max_items' => self::MAX_ITEMS,

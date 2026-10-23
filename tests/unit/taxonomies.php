@@ -187,6 +187,35 @@ check('a parent\'s page lists its children\'s entries unless the archive says no
 $t->save('categories', 'Categories', $t->load('categories')['terms'], ['include_children' => false]);
 check('and the choice is kept', [$t->archive('categories', 'el', 'el')['include_children'], $t->includesChildren('categories')], [false, false]);
 
+// ---- a picture and the text for search engines
+$t->save('industries', 'Industries', [['id' => 'retail', 'slug' => 'retail', 'labels' => ['el' => 'Λιανική', 'en' => 'Retail'], 'image' => '/uploads/shop.jpg', 'image_alt' => ['el' => 'Βιτρίνα', 'en' => 'A shop window'], 'seo_title' => ['el' => 'Λιανική πώληση'], 'seo_description' => ['en' => 'Shops and stores']]]);
+$r = $term($t->load('industries'), 'retail');
+check('a picture, its alternative text and the search text are kept per language', [$r['image'], $r['image_alt'], $r['seo_title'], $r['seo_description']], ['/uploads/shop.jpg', ['el' => 'Βιτρίνα', 'en' => 'A shop window'], ['el' => 'Λιανική πώληση', 'en' => ''], ['el' => '', 'en' => 'Shops and stores']]);
+check('and written to the file only when set', [substr_count((string)file_get_contents("$dir/taxonomies/industries.yaml"), 'seo_title'), str_contains((string)file_get_contents("$dir/taxonomies/industries.yaml"), 'image: /uploads/shop.jpg')], [1, true]);
+$t->save('industries', 'Industries', [
+    ['id' => 'retail', 'slug' => 'retail', 'labels' => ['el' => 'Λιανική', 'en' => 'Retail'], 'image' => '/uploads/shop.jpg', 'image_alt' => ['el' => 'Βιτρίνα', 'en' => 'A shop window'], 'seo_title' => ['el' => 'Λιανική πώληση'], 'seo_description' => ['en' => 'Shops and stores']],
+    ['id' => 'food', 'slug' => 'food', 'labels' => ['el' => 'Φαγητό', 'en' => 'Food'], 'image' => 'javascript:alert(1)', 'image_alt' => ['el' => '<b>x</b>']],
+]);
+$f = $term($t->load('industries'), 'food');
+check('a picture that is not an address of the library or a full link is dropped, and no text is kept with markup', [$f['image'], str_contains((string)file_get_contents("$dir/taxonomies/industries.yaml"), 'javascript')], ['', false]);
+$p = $t->prepare('industries', [['id' => 'retail', 'slug' => 'retail', 'labels' => ['el' => 'Λιανική', 'en' => 'Retail']]], 'el');
+check('a form that did not send the picture or the search text leaves them as they are', [$p['terms'][0]['image'], $p['terms'][0]['seo_title']['el']], ['/uploads/shop.jpg', 'Λιανική πώληση']);
+$p = $t->prepare('industries', [['id' => 'retail', 'slug' => 'retail', 'labels' => ['el' => 'Λιανική', 'en' => 'Retail'], 'image' => '', 'image_alt' => ['el' => '', 'en' => ''], 'seo_title' => ['el' => '', 'en' => ''], 'seo_description' => ['el' => '', 'en' => '']]], 'el');
+check('a form that sent them empty clears them', [$p['terms'][0]['image'], $p['terms'][0]['image_alt'], $p['terms'][0]['seo_title']], ['', ['el' => '', 'en' => ''], ['el' => '', 'en' => '']]);
+$p = $t->prepare('industries', [['id' => '', 'slug' => '', 'labels' => ['el' => 'Νέος', 'en' => ''], 'image' => '/uploads/new.png', 'image_alt' => ['el' => 'Νέα', 'en' => ''], 'seo_title' => null, 'seo_description' => null]], 'el');
+check('a new term takes its picture', [$p['terms'][0]['image'], $p['terms'][0]['image_alt']['el']], ['/uploads/new.png', 'Νέα']);
+
+// ---- which content types a taxonomy is filed by
+$t->save('industries', 'Industries', $t->load('industries')['terms'], null, null, ['projects', 'books']);
+$everything = ['broken', 'categories', 'industries', 'looped', 'tags'];
+check('a rule is kept in the file, and the types it names can file it', [$t->load('industries')['assign'], $t->names('projects') === $everything, $t->names('posts')], [['projects', 'books'], true, ['broken', 'categories', 'looped', 'tags']]);
+check('a taxonomy with no rule can be filed by every type', [$t->acceptsType('tags', 'anything'), $t->acceptsType('industries', 'posts')], [true, false]);
+check('names with no type are all of them, as before', $t->names(), $everything);
+$t->save('industries', 'Industries', $t->load('industries')['terms']);
+check('saving without a choice keeps the rule', $t->load('industries')['assign'], ['projects', 'books']);
+$t->save('industries', 'Industries', $t->load('industries')['terms'], null, null, []);
+check('an empty choice means every type, and nothing is written', [$t->load('industries')['assign'], str_contains((string)file_get_contents("$dir/taxonomies/industries.yaml"), 'assign:')], [[], false]);
+
 exec('rm -rf ' . escapeshellarg($dir));
 echo $fail === 0 ? "\nALL PASSED\n" : "\n$fail FAILED\n";
 exit($fail ? 1 : 0);

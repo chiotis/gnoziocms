@@ -107,6 +107,7 @@ final class TaxonomyEditor
             'taxonomy_terms' => $terms,
             'taxonomy_kind' => Taxonomies::kind($taxonomy),
             'hierarchical' => $current['hierarchical'],
+            'taxonomy_assign' => $current['assign'],
             'languages' => $languages,
             'default_language' => $defaultLang,
             'archive' => $this->store->archive($taxonomy, $defaultLang, $defaultLang),
@@ -284,12 +285,13 @@ final class TaxonomyEditor
     }
 
     /**
-     * The terms of a submitted form, in the order they were sent. A description box (or a title area choice) that was not
-     * sent at all leaves those of the terms alone (null); one that was sent empty clears them.
+     * The terms of a submitted form, in the order they were sent. A description box (or a title area choice, a picture, the
+     * text for search engines) that was not sent at all leaves those of the terms alone (null); one that was sent empty
+     * clears them.
      *
      * @param array<string, mixed> $post
      * @param string[] $languages
-     * @return array<int, array{id: string, slug: string, labels: array<string, string>, descriptions: array<string, string>|null, hero_layout: string|null, parent: string|null}>
+     * @return array<int, array{id: string, slug: string, labels: array<string, string>, descriptions: array<string, string>|null, hero_layout: string|null, parent: string|null, image: string|null, image_alt: array<string, string>|null, seo_title: array<string, string>|null, seo_description: array<string, string>|null}>
      */
     public function rowsFromPost(array $post, array $languages): array
     {
@@ -300,13 +302,32 @@ final class TaxonomyEditor
         $texts = $list('term_description');
         $heroes = $list('term_hero_layout');
         $parents = $list('term_parent');
+        $images = $list('term_image');
+        $imageAlts = $list('term_image_alt');
+        $seoTitles = $list('term_seo_title');
+        $seoDescriptions = $list('term_seo_description');
         $rows = [];
         for ($i = 0, $count = max(count($ids), count($slugs)); $i < $count; $i++) {
-            $row = ['id' => trim((string)($ids[$i] ?? '')), 'slug' => (string)($slugs[$i] ?? ''), 'labels' => [], 'descriptions' => $texts === [] ? null : [], 'hero_layout' => $heroes === [] ? null : trim((string)($heroes[$i] ?? '')), 'parent' => $parents === [] ? null : trim((string)($parents[$i] ?? ''))];
+            $row = [
+                'id' => trim((string)($ids[$i] ?? '')), 'slug' => (string)($slugs[$i] ?? ''), 'labels' => [],
+                'descriptions' => $texts === [] ? null : [], 'hero_layout' => $heroes === [] ? null : trim((string)($heroes[$i] ?? '')),
+                'parent' => $parents === [] ? null : trim((string)($parents[$i] ?? '')),
+                'image' => $images === [] ? null : trim((string)($images[$i] ?? '')),
+                'image_alt' => $imageAlts === [] ? null : [], 'seo_title' => $seoTitles === [] ? null : [], 'seo_description' => $seoDescriptions === [] ? null : [],
+            ];
             foreach ($languages as $lang) {
                 $row['labels'][$lang] = trim((string)($labels[$lang][$i] ?? ''));
                 if ($texts !== []) {
                     $row['descriptions'][$lang] = trim((string)($texts[$lang][$i] ?? ''));
+                }
+                if ($imageAlts !== []) {
+                    $row['image_alt'][$lang] = trim((string)($imageAlts[$lang][$i] ?? ''));
+                }
+                if ($seoTitles !== []) {
+                    $row['seo_title'][$lang] = trim((string)($seoTitles[$lang][$i] ?? ''));
+                }
+                if ($seoDescriptions !== []) {
+                    $row['seo_description'][$lang] = trim((string)($seoDescriptions[$lang][$i] ?? ''));
                 }
             }
             $rows[] = $row;
@@ -334,7 +355,14 @@ final class TaxonomyEditor
         // How the pages of this taxonomy look is edited in Theme > Archive Layouts; a form without it leaves it alone.
         $archive = is_array($post['archive'] ?? null) ? $this->archiveFromInput($taxonomy, $post['archive']) : null;
 
-        $this->store->save($taxonomy, $title, $prepared['terms'], $archive, $hierarchical);
+        // The content types whose entries can be filed under it: none chosen means all of them, and a form without the choice leaves it alone.
+        $assign = null;
+        if (isset($post['taxonomy_assign_present'])) {
+            $chosen = array_values(array_intersect($listable, Taxonomies::typeList($post['taxonomy_assign'] ?? null)));
+            $assign = count($chosen) === count($listable) ? [] : $chosen;
+        }
+
+        $this->store->save($taxonomy, $title, $prepared['terms'], $archive, $hierarchical, $assign);
 
         // A term whose address changed leaves the old one behind, in every language, like a page does. Moving a term or
         // renaming a parent changes the address of everything below it too, so each of those is in the list.

@@ -45,8 +45,7 @@ Saved working drafts for published pages are not a current priority.
 - **Forms**: showing a field only when another has an answer (conditional logic), forms in several steps, and a rating field. The builder, the site's form template and `FormProcessor` would all need to know about a condition, so it is a feature of its own. Submissions: archive actions. Optional: frontend form theme variants (compact/stacked) without changing the form schema.
 - **Import UX**: dry-run preview, row-level undo, resumable imports.
 - **Theme**: a switcher in settings with a preview mode; draft preview links; admin-level user management with limits; updates for private repositories. Style references from the owner can refine the design system at any point (tokens and block CSS).
-- **Taxonomies**: term images and meta, per-content-type assignment rules.
-- **Menus**: per-item visibility (by language, and by role in future); item metadata (icon, badge, `rel`); a key helper for the `nav.<menu>.<item>` naming.
+- **Menus**: per-item visibility by role (by language is done: `languages` on an item, `docs/theming.md`, *Menu items*).
 - **Backups**: a one-click restore-to-staging drill with a periodic restore report; Google Drive as a remote target.
 - **Settings > APIs**: credentials for services the site may use for generated excerpts and content (nothing uses them yet); other map providers' presets.
 

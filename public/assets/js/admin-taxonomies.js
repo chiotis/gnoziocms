@@ -161,6 +161,15 @@
       if (chosen) heroNote.querySelector('[data-term-hero-label]').textContent = chosen.textContent;
     }
 
+    var extras = row.querySelector('[data-term-extras]');
+    if (extras) {
+      var picture = field(row, 'image').value.trim() !== '';
+      var search = row.querySelectorAll('[data-field="seo_title"],[data-field="seo_description"]');
+      var hasSearch = Array.prototype.some.call(search, function (input) { return input.value.trim() !== ''; });
+      extras.textContent = [picture ? 'Picture' : '', hasSearch ? 'Search text' : ''].filter(function (part) { return part !== ''; }).join(' · ');
+      extras.classList.toggle('hidden', !picture && !hasSearch);
+    }
+
     var text = field(row, 'description', defaultLang);
     var describe = text && text.value.trim() !== '' ? text.value.trim() : '';
     if (describe === '') {
@@ -382,6 +391,7 @@
   var dlgSlug = dialog.querySelector('[data-dialog-slug]');
   var dlgNote = dialog.querySelector('[data-dialog-slug-note]');
   var dlgOld = dialog.querySelector('[data-dialog-old-slug]');
+  var dlgImage = dialog.querySelector('[data-dialog-image]');
 
   function dialogInput(kindName, lang) { return dialog.querySelector('[data-dialog-' + kindName + '="' + lang + '"]'); }
 
@@ -433,6 +443,12 @@
       dialogInput('description', lang).value = row ? field(row, 'description', lang).value : '';
     });
     dlgSlug.value = row ? field(row, 'slug').value : '';
+    dlgImage.value = row ? field(row, 'image').value : '';
+    langs().forEach(function (lang) {
+      dialogInput('image-alt', lang).value = row ? field(row, 'image_alt', lang).value : '';
+      dialogInput('seo-title', lang).value = row ? field(row, 'seo_title', lang).value : '';
+      dialogInput('seo-description', lang).value = row ? field(row, 'seo_description', lang).value : '';
+    });
     if (dlgHero) dlgHero.value = row && field(row, 'hero_layout') ? field(row, 'hero_layout').value : '';
     fillParents(row);
     dlgTitle.textContent = row ? 'Edit term' : 'Add term';
@@ -443,6 +459,9 @@
     var first = dialogInput('label', defaultLang) || dialog.querySelector('[data-dialog-label]');
     if (first) { first.focus(); first.select(); }
   }
+
+  // A picture is an address in the library ("/uploads/…") or a full link, with no spaces or markup (the server checks it too).
+  var PICTURE_PATTERN = /^(\/[^\s"'<>]*|https?:\/\/[^\s"'<>]+)$/;
 
   function applyDialog() {
     var names = {};
@@ -458,6 +477,13 @@
       dlgError.classList.remove('hidden');
       var target = dialogInput('label', defaultLang) || dialog.querySelector('[data-dialog-label]');
       if (target) target.focus();
+      return;
+    }
+    var picture = dlgImage.value.trim();
+    if (picture !== '' && !PICTURE_PATTERN.test(picture)) {
+      dlgError.textContent = 'The picture needs an address that starts with / (from the library) or https://, with no spaces.';
+      dlgError.classList.remove('hidden');
+      dlgImage.focus();
       return;
     }
     var row = editing;
@@ -477,6 +503,16 @@
     });
     var heroField = field(row, 'hero_layout');
     if (heroField && dlgHero && heroField.value !== dlgHero.value) { heroField.value = dlgHero.value; changed = true; }
+    var imageField = field(row, 'image');
+    if (imageField.value !== picture) { imageField.value = picture; changed = true; }
+    langs().forEach(function (lang) {
+      [['image-alt', 'image_alt'], ['seo-title', 'seo_title'], ['seo-description', 'seo_description']].forEach(function (pair) {
+        var input = dialogInput(pair[0], lang);
+        var target = field(row, pair[1], lang);
+        var value = input.value.trim();
+        if (target.value !== value) { target.value = value; changed = true; }
+      });
+    });
     var parentField = field(row, 'parent');
     if (parentField && dlgParent && parentField.value !== dlgParent.value) { parentField.value = dlgParent.value; changed = true; }
     var slugField = field(row, 'slug');

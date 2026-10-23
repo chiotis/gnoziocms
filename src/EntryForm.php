@@ -167,7 +167,7 @@ final class EntryForm
             $metaForm['hero_parallax'] = is_bool($heroParallax) ? ($heroParallax ? 'on' : 'off') : (string)$heroParallax;
             $headerTransparent = $meta['header_transparent'] ?? '';
             $metaForm['header_transparent'] = is_bool($headerTransparent) ? ($headerTransparent ? 'on' : 'off') : (string)$headerTransparent;
-            foreach (($this->taxonomies)()->names() as $taxonomyName) {
+            foreach (($this->taxonomies)()->names($type) as $taxonomyName) {
                 $metaForm['taxonomy_terms'][$taxonomyName] = Format::list($meta[$taxonomyName] ?? null);
             }
             $seo = $meta['seo'] ?? [];
@@ -281,7 +281,7 @@ final class EntryForm
             'type_fields' => $type === 'forms' ? [] : $this->withLabels($this->types->editableFields($type, 'en', $defaultLang), $typeValues, $lang),
             'type_values' => $typeValues,
             'referenced_by' => $itemExists && $this->relations !== null && $type !== 'forms' ? $this->relations->referrers($type, $slug) : [],
-            'taxonomies' => $this->taxonomyChoices(),
+            'taxonomies' => $this->taxonomyChoices($type),
             'translations' => $translations,
             'front_url' => $frontUrl,
             'types' => $this->content->getTypes(),
@@ -506,12 +506,12 @@ final class EntryForm
         return implode("\n", $lines);
     }
 
-    /** @return array<int, array{name: string, title: string, terms: array<int, array{id: string, slug: string, labels: array<string, string>}>}> */
-    private function taxonomyChoices(): array
+    /** The taxonomies an entry of the type can be filed under, with their terms. @return array<int, array{name: string, title: string, terms: array<int, array{id: string, slug: string, labels: array<string, string>}>}> */
+    private function taxonomyChoices(string $type): array
     {
         $rows = [];
         $taxonomies = ($this->taxonomies)();
-        foreach ($taxonomies->names() as $name) {
+        foreach ($taxonomies->names($type) as $name) {
             $taxonomy = $taxonomies->load($name);
             $rows[] = [
                 'name' => $name,

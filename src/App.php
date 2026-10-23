@@ -348,7 +348,7 @@ final class App
             $this->redirects,
             $this->htmlGuard(),
             fn(): BlockRegistry => $this->blockRuntime()->registry(),
-            fn(): array => $this->taxonomies()->names(),
+            fn(?string $type = null): array => $this->taxonomies()->names($type),
             $this->revisions,
             $this->relations()
         );
@@ -439,7 +439,8 @@ final class App
             },
             $this->permissions->can($this->auth->user(), 'settings.manage')
                 ? fn(string $location, string $menu): bool => $this->siteSettings()->setMenuLocation($location, $menu)
-                : null
+                : null,
+            fn(): array => $this->theme->iconNames()
         );
     }
 

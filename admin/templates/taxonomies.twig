@@ -53,6 +53,9 @@
           </p>
           <p data-term-hero class="mt-0.5 text-xs text-slate-500{% if term.hero_layout|default('') == '' %} hidden{% endif %}">Title area: <span data-term-hero-label>{{ title_layouts[term.hero_layout|default('')]|default(term.hero_layout|default('')) }}</span></p>
           <p data-term-description class="mt-1 line-clamp-1 max-w-xl text-xs text-slate-500">{{ term.descriptions[default_language]|default('') }}</p>
+          {% set has_picture = term.image|default('') != '' %}
+          {% set has_search = ((term.seo_title|default({})|join('')) ~ (term.seo_description|default({})|join(''))) != '' %}
+          <p data-term-extras class="mt-0.5 text-xs text-slate-500{% if not has_picture and not has_search %} hidden{% endif %}">{% if has_picture %}Picture{% endif %}{% if has_picture and has_search %} · {% endif %}{% if has_search %}Search text{% endif %}</p>
           <p data-term-removed-note class="mt-1 hidden text-xs font-medium text-rose-700"></p>
         </div>
       </div>
@@ -60,9 +63,13 @@
       <input type="hidden" name="term_slug[]" value="{{ term.slug|default('') }}" data-field="slug">
       {% if hierarchical %}<input type="hidden" name="term_parent[]" value="{{ term.parent|default('') }}" data-field="parent">{% endif %}
       {% if title_layouts|default([]) is not empty %}<input type="hidden" name="term_hero_layout[]" value="{{ term.hero_layout|default('') }}" data-field="hero_layout">{% endif %}
+      <input type="hidden" name="term_image[]" value="{{ term.image|default('') }}" data-field="image">
       {% for lang in languages %}
         <input type="hidden" name="term_label[{{ lang }}][]" value="{{ term.labels[lang]|default('') }}" data-field="label" data-lang="{{ lang }}">
         <input type="hidden" name="term_description[{{ lang }}][]" value="{{ term.descriptions[lang]|default('') }}" data-field="description" data-lang="{{ lang }}">
+        <input type="hidden" name="term_image_alt[{{ lang }}][]" value="{{ term.image_alt[lang]|default('') }}" data-field="image_alt" data-lang="{{ lang }}">
+        <input type="hidden" name="term_seo_title[{{ lang }}][]" value="{{ term.seo_title[lang]|default('') }}" data-field="seo_title" data-lang="{{ lang }}">
+        <input type="hidden" name="term_seo_description[{{ lang }}][]" value="{{ term.seo_description[lang]|default('') }}" data-field="seo_description" data-lang="{{ lang }}">
       {% endfor %}
     </td>
     <td class="hidden px-3 py-3 align-top md:table-cell">
@@ -275,6 +282,19 @@
           <label class="lc-chip"><input type="checkbox" name="taxonomy_hierarchical" value="1"{% if hierarchical %} checked{% endif %}><span>Terms can have a parent</span></label>
         </div>
 
+        <div class="flex flex-wrap items-start justify-between gap-3 border-t border-slate-200 px-4 py-4">
+          <div class="min-w-0">
+            <h3 class="text-sm font-semibold text-slate-900">Filed by</h3>
+            <p class="mt-0.5 text-xs text-slate-500">The content types whose entries can be filed under this taxonomy. An entry of another type keeps the terms it already has. With none ticked, every type can be filed.</p>
+          </div>
+          <input type="hidden" name="taxonomy_assign_present" value="1">
+          <div class="flex flex-wrap items-center gap-1.5">
+            {% for type in listable_types %}
+              <label class="lc-chip"><input type="checkbox" name="taxonomy_assign[]" value="{{ type }}"{% if taxonomy_assign is empty or type in taxonomy_assign %} checked{% endif %}><span>{{ type_labels[type] }}</span></label>
+            {% endfor %}
+          </div>
+        </div>
+
         <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-4 py-4">
           <div class="min-w-0">
             <h3 class="text-sm font-semibold text-slate-900">How its pages look</h3>
@@ -322,7 +342,7 @@
 
   {# What JavaScript copies when a term is added. #}
   <template data-term-row-template>
-    {{ me.term_row({id: '', slug: '', parent: '', depth: 0, labels: {}, descriptions: {}, hero_layout: ''}, languages, default_language, taxonomy_kind, type_names, icon_btn, taxonomy, title_layouts, hierarchical) }}
+    {{ me.term_row({id: '', slug: '', parent: '', depth: 0, labels: {}, descriptions: {}, hero_layout: '', image: '', image_alt: {}, seo_title: {}, seo_description: {}}, languages, default_language, taxonomy_kind, type_names, icon_btn, taxonomy, title_layouts, hierarchical) }}
   </template>
 
   {# The dialog for adding or editing one term. Its fields have no names, so they are never submitted: Apply copies them into the row. #}
@@ -351,6 +371,40 @@
             </label>
           </fieldset>
         {% endfor %}
+        <div class="grid gap-3 border-t border-slate-100 pt-4">
+          <div class="grid gap-1">
+            <label for="term-dialog-image" class="text-sm font-medium text-slate-700">Picture</label>
+            <input id="term-dialog-image" type="text" data-dialog-image data-image-field placeholder="/uploads/your-image.jpg" autocomplete="off" class="{{ input_class }}">
+            <p class="text-xs text-slate-500">Behind the title of the term’s page, in the default and cover title areas. Chosen from the library, or a full link.</p>
+          </div>
+          {% for lang in languages %}
+            <label class="grid gap-1 text-sm font-medium text-slate-700">
+              <span>Alternative text <span class="font-normal uppercase text-slate-500">{{ lang }}</span></span>
+              <input type="text" data-dialog-image-alt="{{ lang }}" autocomplete="off" class="{{ input_class }}">
+            </label>
+          {% endfor %}
+        </div>
+
+        <details class="rounded-md border border-slate-200 px-3 py-2">
+          <summary class="cursor-pointer text-sm font-medium text-slate-700">Search engines</summary>
+          <p class="mt-2 text-xs text-slate-500">The title and description of the term’s page in search results and shared links. Left empty, the site’s own rules are used, as for any page.</p>
+          <div class="mt-3 grid gap-4">
+            {% for lang in languages %}
+              <fieldset class="grid gap-2">
+                <legend class="text-xs font-semibold uppercase text-slate-600">{{ lang }}</legend>
+                <label class="grid gap-1 text-sm font-medium text-slate-700">
+                  Title
+                  <input type="text" data-dialog-seo-title="{{ lang }}" autocomplete="off" class="{{ input_class }}">
+                </label>
+                <label class="grid gap-1 text-sm font-medium text-slate-700">
+                  Description
+                  <textarea data-dialog-seo-description="{{ lang }}" rows="2" class="{{ input_class }}"></textarea>
+                </label>
+              </fieldset>
+            {% endfor %}
+          </div>
+        </details>
+
         {% if hierarchical %}
           <div class="grid gap-1 border-t border-slate-100 pt-4">
             <label for="term-dialog-parent" class="text-sm font-medium text-slate-700">Parent</label>

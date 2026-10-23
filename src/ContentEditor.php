@@ -17,7 +17,7 @@ final class ContentEditor
     /**
      * @param array<string, mixed> $settings site settings (languages, home page, date format)
      * @param \Closure(): BlockRegistry $blocks
-     * @param \Closure(): string[] $taxonomyNames names of the taxonomies (tags, categories, ...)
+     * @param \Closure(?string): string[] $taxonomyNames names of the taxonomies (tags, categories, ...), those a content type can be filed under when one is given
      */
     public function __construct(
         private string $contentDir,
@@ -256,7 +256,8 @@ final class ContentEditor
         $data['translation_id'] = $translationId;
 
         $taxonomyTermsInput = is_array($taxonomyTermsInput) ? $taxonomyTermsInput : [];
-        $taxonomyNames = ($this->taxonomyNames)();
+        // Only the taxonomies this type can be filed under are read; the terms an entry already has under another one stay as they are.
+        $taxonomyNames = ($this->taxonomyNames)($type);
         if ($type !== 'pages' && $type !== 'forms') {
             foreach ($taxonomyNames as $taxonomyName) {
                 $selectedRaw = $taxonomyTermsInput[$taxonomyName] ?? [];
@@ -276,7 +277,7 @@ final class ContentEditor
                 }
             }
         } else {
-            foreach ($taxonomyNames as $taxonomyName) {
+            foreach (($this->taxonomyNames)() as $taxonomyName) {
                 unset($data[$taxonomyName]);
             }
         }

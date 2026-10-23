@@ -41,7 +41,7 @@ $types = new ContentTypes($theme);
 $taxonomies = new Taxonomies("$dir/content", ['el', 'en']);
 $registry = new BlockRegistry($theme);
 $guard = new HtmlGuard(fn() => $environment, fn() => $registry);
-$editor = new ContentEditor("$dir/content", $settings, $content, $index, $types, $theme, $redirects, $guard, fn() => $registry, fn() => $taxonomies->names(), $revisions);
+$editor = new ContentEditor("$dir/content", $settings, $content, $index, $types, $theme, $redirects, $guard, fn() => $registry, fn(?string $type = null) => $taxonomies->names($type), $revisions);
 $log = [];
 $logger = function (string $action, string $level, ?string $type, ?string $id, string $message, array $ctx) use (&$log) { $log[] = $action; };
 $translations = new EntryTranslations($content, fn() => $settings);
@@ -60,7 +60,7 @@ $taxonomies = new Taxonomies("$dir/content", ['el', 'en']);
 $content = new ContentRepository("$dir/content", $markdown, $settings);
 $translations = new EntryTranslations($content, fn() => $settings);
 $publicPaths = new PublicPaths($content, fn() => $taxonomies, fn() => $settings, fn() => 'https://s.test');
-$editor = new ContentEditor("$dir/content", $settings, $content, $index, $types, $theme, $redirects, $guard, fn() => $registry, fn() => $taxonomies->names(), $revisions);
+$editor = new ContentEditor("$dir/content", $settings, $content, $index, $types, $theme, $redirects, $guard, fn() => $registry, fn(?string $type = null) => $taxonomies->names($type), $revisions);
 // Entries are listed once per request, so what a test changes needs the lists read again.
 $flush = fn() => (function () { $this->cache = []; })->call($content);
 $scanner = fn() => new LinkScanner("$dir/content", ['el', 'en'], 'el');
@@ -274,6 +274,16 @@ check('a file that is refused changes nothing', [$r, count($media->list())], [['
 $room = false;
 $r = $mediaAdmin->uploadMainImage($many($upload('big.png', $png)), 'tester');
 check('a full storage keeps the file out and says so', [$r, count($media->list())], [['url' => null, 'blocked' => true], 1]);
+
+// ---- the content types a taxonomy is filed by: a post can only be filed under the taxonomies its type may carry
+$taxonomies->save('genre', 'Genre', [['id' => 'drama', 'slug' => 'drama', 'labels' => ['el' => 'Δράμα', 'en' => 'Drama']]], null, null, ['projects']);
+$filed = $editor->save('posts', ['title' => 'Rule test', 'slug' => 'rule-test', 'status' => 'published', 'body' => 'Body', 'taxonomy_terms' => ['genre' => ['drama'], 'tags' => ['news']]], null, false, 'tester');
+$flush();
+$ruled = $content->getItems('posts', null, true);
+$rule = array_values(array_filter($ruled, fn($item) => $item->slug === 'rule-test'))[0] ?? null;
+check('a term of a taxonomy the type cannot be filed under is not saved, the others are', [$filed['slug'] ?? null, $rule?->meta['genre'] ?? 'none', $rule?->meta['tags'] ?? null], ['rule-test', 'none', ['news']]);
+$offered = $taxonomies->names('posts');
+check('the names offered for a post leave out the taxonomy that does not take posts', [in_array('genre', $offered, true), in_array('tags', $offered, true)], [false, true]);
 
 // tidy up
 exec('rm -rf ' . escapeshellarg($dir));
