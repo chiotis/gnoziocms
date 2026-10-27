@@ -6,7 +6,7 @@ storage/db/*.sqlite-*
 storage/restore/
 storage/updates/
 node_modules/
-# Site-specific customizations are not part of the FarosCMS codebase.
+# Site-specific customizations are not part of the GnozioCMS codebase.
 custom/*
 !custom/README.md
 # Packages built by scripts/build-release.php.

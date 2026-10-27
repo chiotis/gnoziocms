@@ -232,5 +232,5 @@
     records.forEach(function (record) { record.addedNodes.forEach(scan); });
   }).observe(document.body, { childList: true, subtree: true });
 
-  window.FarosIconPicker = { enhance: enhance };
+  window.GnozioIconPicker = window.FarosIconPicker = { enhance: enhance };
 })();

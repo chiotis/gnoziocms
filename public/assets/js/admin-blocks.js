@@ -2404,7 +2404,8 @@
 
   // Choosing a picture is the shared picker (admin-media-picker.js): a dialog that asks the server a page at a time.
   function openMediaPicker(callback, kind) {
-    if (window.FarosMediaPicker) window.FarosMediaPicker.open(callback, kind);
+    var picker = window.GnozioMediaPicker || window.FarosMediaPicker;
+    if (picker) picker.open(callback, kind);
   }
 
   /* Save selected blocks as a reusable section ---------------------------------- */

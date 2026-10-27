@@ -222,7 +222,7 @@ proc_close($proc);
 $eml = (string)@file_get_contents($sent);
 check('the mailer delivered it', $result['ok'], true);
 check('as a message with a text part and the file as an attachment', [str_contains($eml, 'Content-Type: multipart/mixed; boundary='), str_contains($eml, 'Content-Disposition: attachment; filename="cv.pdf"'), str_contains($eml, 'Content-Type: application/pdf; name="cv.pdf"')], [true, true, true]);
-preg_match('/filename="cv.pdf"\r?\n\r?\n(.*?)\r?\n--faros-/s', $eml, $m);
+preg_match('/filename="cv.pdf"\r?\n\r?\n(.*?)\r?\n--gnozio-/s', $eml, $m);
 check('the attached bytes are the file', base64_decode(str_replace(["\r", "\n"], '', $m[1] ?? '')), $pdf);
 check('a message without files is still plain text', true, !str_contains(Mailer::extractEmailAddress('a@b.test'), 'multipart'));
 

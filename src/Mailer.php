@@ -186,7 +186,7 @@ final class Mailer
             $lines[] = '';
             $lines[] = str_replace(["\r\n", "\r"], "\n", $body);
         } else {
-            $boundary = 'faros-' . bin2hex(random_bytes(12));
+            $boundary = 'gnozio-' . bin2hex(random_bytes(12));
             $lines[] = 'Content-Type: multipart/mixed; boundary="' . $boundary . '"';
             $lines[] = '';
             $lines[] = '--' . $boundary;

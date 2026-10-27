@@ -46,10 +46,10 @@ final class HtmlToMarkdown
         }
         $document = new \DOMDocument('1.0', 'UTF-8');
         $previous = libxml_use_internal_errors(true);
-        $document->loadHTML('<?xml encoding="UTF-8"><body><div id="faros-root">' . $html . '</div></body>', LIBXML_NOERROR | LIBXML_NOWARNING | LIBXML_NONET);
+        $document->loadHTML('<?xml encoding="UTF-8"><body><div id="gnozio-root">' . $html . '</div></body>', LIBXML_NOERROR | LIBXML_NOWARNING | LIBXML_NONET);
         libxml_clear_errors();
         libxml_use_internal_errors($previous);
-        $root = $document->getElementById('faros-root');
+        $root = $document->getElementById('gnozio-root');
         if (!$root instanceof \DOMElement) {
             return '';
         }

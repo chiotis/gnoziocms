@@ -8,7 +8,7 @@ GnozioCMS is the new product name. This change updates labels, messages, the PHP
 - The Composer project name is `chiotis/gnoziocms`. No dependency versions change, and production installations still need neither Composer nor Node.
 - Release packages are named `gnoziocms-<version>.zip`. Their layout and `release.json` format stay the same. Existing installers read the package URL from the manifest, so they can install the renamed package.
 - The skill for AI assistants is now `skills/gnoziocms`, with the skill ID `gnoziocms`, the helper `gnozio_lib.py` and the archive `gnoziocms-skill.zip`. Remove an installed `faroscms` skill and install the new one in its place. The skill still recognises requests that name FarosCMS or Faros.
-- JavaScript exposes `GnozioEditor`, `GnozioMediaPicker`, `gnozioSlug` and `gnozio.event(name)`. The corresponding `FarosEditor`, `FarosMediaPicker`, `farosSlug` and `faros.event(name)` names refer to the same functions or objects.
+- JavaScript exposes `GnozioEditor`, `GnozioMediaPicker`, `GnozioIconPicker`, `gnozioSlug` and `gnozio.event(name)`. The corresponding `FarosEditor`, `FarosMediaPicker`, `FarosIconPicker`, `farosSlug` and `faros.event(name)` names refer to the same functions or objects.
 
 ## Repository transition
 

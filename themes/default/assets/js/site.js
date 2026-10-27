@@ -1,4 +1,4 @@
-/* FarosCMS default theme: colour mode, navigation, accessible mobile drawer, sticky header. */
+/* GnozioCMS default theme: colour mode, navigation, accessible mobile drawer, sticky header. */
 (function () {
   const root = document.documentElement;
   const modeKey = 'faroscms-mode';

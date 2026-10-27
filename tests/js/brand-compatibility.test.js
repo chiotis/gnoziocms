@@ -33,5 +33,10 @@ picker.window.FarosMediaPicker.enhance(input);
 check('using both picker names does not duplicate controls', picker.window.document.body.innerHTML === before && input.dataset.imageReady === '1');
 picker.window.close();
 
+const icons = new JSDOM('<script type="application/json" id="icon-library">{"star":"<svg></svg>"}</script><body><select data-icon-picker><option value="star">star</option></select></body>', { runScripts: 'outside-only', url: 'https://site.test/admin' });
+icons.window.eval(source('admin-icons.js'));
+check('both icon picker names expose the same picker', !!icons.window.GnozioIconPicker && icons.window.GnozioIconPicker === icons.window.FarosIconPicker);
+icons.window.close();
+
 console.log(failed ? `${failed} FAILED` : 'ALL PASSED');
 process.exit(failed ? 1 : 0);

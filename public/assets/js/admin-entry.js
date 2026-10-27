@@ -75,8 +75,9 @@
   var library = document.querySelector('[data-media-picker-toggle]');
   if (library) {
     library.addEventListener('click', function () {
-      if (!window.FarosMediaPicker || !input) { return; }
-      window.FarosMediaPicker.open(function (url) { input.value = url; showImage(); });
+      var picker = window.GnozioMediaPicker || window.FarosMediaPicker;
+      if (!picker || !input) { return; }
+      picker.open(function (url) { input.value = url; showImage(); });
     });
   }
   if (input) { input.addEventListener('input', showImage); }

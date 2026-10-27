@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.184 — 2026-10-27 — Old product name left in comments and internal names
+- The admin scripts call the shared picture picker by its new name, `GnozioMediaPicker`. They fall back to `FarosMediaPicker` when only a custom script sets that one.
+- The icon picker is also `GnozioIconPicker`. `FarosIconPicker` stays the same object.
+- Comments in the admin CSS, the default theme's CSS and JS, and `.gitignore` name GnozioCMS.
+- Internal names that are never stored now use the new name: the boundary of a mail with attachments, the temporary file for zipping form uploads, the wrapper used while turning HTML into Markdown, and the file the S3 connection test writes and deletes.
+- Stored formats, updater headers, the Omni protocol, browser storage keys and the analytics script keep their old names, as listed in `docs/rebranding.md`.
+
 ## 0.1.183 — 2026-10-23 — Menu items shown to chosen roles
 - **Menus:** an item can be shown only to some roles of the site (`roles`, a list of role keys in the menu file; the editor's *Only for roles* ticks). Nothing ticked means everyone. With roles, only a signed-in user of one of them sees the item, so a visitor who is not signed in never does; the super admin sees every item. What is under a hidden item goes with it.
 - The page cache keeps no copy of a page for a signed-in visitor, so a page shown to one role is never sent to another. A role that is later deleted matches nobody.

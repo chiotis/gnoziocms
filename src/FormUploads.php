@@ -502,7 +502,7 @@ final class FormUploads
         if ($files === []) {
             return null;
         }
-        $temporary = tempnam(sys_get_temp_dir(), 'faros-zip-');
+        $temporary = tempnam(sys_get_temp_dir(), 'gnozio-zip-');
         $zip = new \ZipArchive();
         if ($temporary === false || $zip->open($temporary, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
             return null;

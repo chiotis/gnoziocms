@@ -9,7 +9,7 @@
  *   - Markdown mode is the plain textarea with a few buttons. The mode is remembered. If the visual editor cannot start, the textarea
  *     is what is shown, and nothing is lost.
  *
- * Needs: the markup of admin/templates/edit.twig (data-editor ...). FarosMediaPicker (admin-media-picker.js) is used when it is there.
+ * Needs: the markup of admin/templates/edit.twig (data-editor ...). GnozioMediaPicker (admin-media-picker.js) is used when it is there.
  */
 (function () {
   'use strict';
@@ -31,6 +31,9 @@
   var state = { mode: 'markdown', loaded: false, dirty: false, sources: [], snaps: [], tail: '', verbatim: true, saved: null };
 
   /* ---------------------------------------------------------------- small helpers */
+
+  // The shared picture picker, under its new name or the old one a custom script may still set.
+  function mediaPicker() { return window.GnozioMediaPicker || window.FarosMediaPicker || null; }
 
   function el(tag, attrs, children) {
     var node = document.createElement(tag);
@@ -532,7 +535,7 @@
       return el('label', { class: 'ed-pop-row' }, [el('span', { text: f.label }), inputs[f.name]]);
     });
     var actions = [el('button', { type: 'submit', class: 'ed-pop-ok', text: extra.ok || 'Apply' })];
-    if (extra.library && window.FarosMediaPicker) {
+    if (extra.library && mediaPicker()) {
       actions.push(el('button', { type: 'button', class: 'ed-pop-alt', text: 'Library…', onclick: function () { extra.library(inputs); } }));
     }
     if (extra.remove) {
@@ -610,7 +613,7 @@
     }, {
       ok: 'Insert',
       library: function (inputs) {
-        window.FarosMediaPicker.open(function (url, item) {
+        mediaPicker().open(function (url, item) {
           inputs.url.value = url;
           if (item && item.alt && !inputs.alt.value) { inputs.alt.value = item.alt; }
           inputs.alt.focus();
@@ -681,7 +684,7 @@
       removeLabel: 'Remove picture',
       remove: function () { removePicture(img); },
       library: function (inputs) {
-        window.FarosMediaPicker.open(function (url, item) {
+        mediaPicker().open(function (url, item) {
           inputs.url.value = url;
           if (item && item.alt && !inputs.alt.value) { inputs.alt.value = item.alt; }
           inputs.alt.focus();
@@ -1095,7 +1098,7 @@
         }
         case 'image': {
           var put = function (src, alt) { wrapSelection('![' + (alt || 'image') + '](' + src + ')', ''); };
-          if (window.FarosMediaPicker) { window.FarosMediaPicker.open(function (src, item) { put(src, item && item.alt); }); }
+          if (mediaPicker()) { mediaPicker().open(function (src, item) { put(src, item && item.alt); }); }
           else { var u = window.prompt('Address of the image'); if (u) { put(u, window.prompt('Description of the image') || ''); } }
           break;
         }

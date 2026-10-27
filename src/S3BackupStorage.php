@@ -81,7 +81,7 @@ final class S3BackupStorage
             return $validation;
         }
 
-        $key = $this->objectKey('.faroscms-connection-test-' . date('YmdHis') . '.txt');
+        $key = $this->objectKey('.gnoziocms-connection-test-' . date('YmdHis') . '.txt');
         $response = $this->request('PUT', $key, 'GnozioCMS backup connection test ' . date('c') . "\n", [
             'content-type' => 'text/plain; charset=utf-8',
         ]);
