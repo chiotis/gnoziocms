@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.187 — 2026-11-02 — MCP server for AI assistants
+- **Admin > MCP** (super admin, `mcp.manage`): an MCP server for Claude, ChatGPT and their scheduled jobs, off until turned on. It shows the address to give the assistant, checks that the discovery documents answer, lists the connections (account, scopes, last use, end) with Pause, Resume and Remove, and makes tokens by hand for clients that send their own header (shown once, at most a year).
+- **`POST /mcp`:** Streamable HTTP without a session, one JSON-RPC message per request, protocols `2025-06-18` and `2025-03-26`. For now one tool, `site_info` (languages, time zone, content types and their fields, taxonomies, the connection); the tools that write come next.
+- **OAuth 2.1:** discovery under `/.well-known/`, registration of public clients (`/_mcp/register`), consent in the admin (`/admin/mcp-authorize`: the account the connection acts as, yourself or an automation account, and the scopes), S256 PKCE, codes once for 5 minutes, access tokens of an hour, refresh tokens of 90 days that rotate with a 60-second grace (`/_mcp/token`). Only hashes are stored.
+- Rate limits per address and token, a foreign `Origin` refused, and every call and change in the activity log (`mcp.*`). The account must be active and the connection not paused on every call.
+- `public/.htaccess` passes the `Authorization` header to PHP on Apache.
+- `docs/mcp.md`, `docs/security.md` (*MCP*), `docs/varnish.md`. Step 3 of `docs/mcp-plan.md`. Tests: `tests/unit/mcp.php`, `tests/http/mcp_oauth_test.py`.
+
 ## 0.1.186 — 2026-11-02 — Automation accounts
 - **Users > Add automation account:** an account that a connection (MCP) will write as. It has a role like anyone, and its name is in the history and the logs; it has no password, email or Google link, and nobody signs in with it (the password form, Google sign-in and an existing session all refuse it).
 - Only someone who manages users makes one. It can never be the super admin, a person never becomes one or the other way round, and making it inactive stops whatever uses it. The list of users marks it *Automation*.
