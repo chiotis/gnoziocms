@@ -33,7 +33,7 @@ final class Auth
             $user = $this->users->findForLogin($username);
             if ($user) {
                 $hash = (string)($user['password_hash'] ?? '');
-                if ($this->users->isActive($user) && $hash !== '' && password_verify($password, $hash)) {
+                if ($this->users->isActive($user) && !UserRepository::isAutomation($user) && $hash !== '' && password_verify($password, $hash)) {
                     $this->users->markLastLogin((int)$user['id']);
                     $sessionUser = $this->users->publicUser($user);
                     $sessionUser['last_login_at'] = gmdate('c');
@@ -73,6 +73,10 @@ final class Auth
 
     public function loginUser(array $user): void
     {
+        // An automation account is never a signed-in person, whatever leads here.
+        if (UserRepository::isAutomation($user)) {
+            return;
+        }
         if ($this->users && isset($user['id'])) {
             $this->users->markLastLogin((int)$user['id']);
             $user = $this->users->publicUser($user);
@@ -107,7 +111,7 @@ final class Auth
             return false;
         }
         $fresh = $this->users->find($id);
-        if (!$fresh || !$this->users->isActive($fresh)) {
+        if (!$fresh || !$this->users->isActive($fresh) || UserRepository::isAutomation($fresh)) {
             $this->logout();
             return false;
         }

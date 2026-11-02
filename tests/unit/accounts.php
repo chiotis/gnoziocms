@@ -138,6 +138,7 @@ check('nobody changes their own role or status', [$users->find($bobId)['role'], 
 $limited = ['id' => $bobId, 'role' => 'user'];
 $ua->save($bobId, $users->find($bobId), $limited, ['role' => 'superadmin', 'google_sub' => 'hack', 'google_email' => 'h@x.test', 'password' => '', 'password_confirm' => ''] + $new);
 check('a person who may not manage users cannot change access or the Google link', [$users->find($bobId)['role'], $users->find($bobId)['google_sub'] ?? ''], ['editor', '']);
+
 $ua->save($bobId, $users->find($bobId), $actorAdmin, ['google_sub' => 'gsub', 'google_email' => 'g@x.test', 'password' => '', 'password_confirm' => ''] + $new);
 check('one who may can link a Google account', $users->find($bobId)['google_sub'], 'gsub');
 
@@ -184,6 +185,38 @@ check('a role not on the form keeps what it has', (new PermissionService($meta->
 $screen = $roles->screen(new PermissionService($meta->getJson('role_permissions'), $meta->getJson('custom_roles')));
 check('the screen has a column per built-in role with its people', [array_keys($screen['columns']), $screen['columns']['admin']['users'], $screen['can_add_role'], $screen['custom_roles']], [['admin', 'editor', 'user'], 2, true, []]);
 check('permissions are grouped, and the super admin has all', [count($screen['groups']) > 1, count($screen['super_caps']) > 10], [true, true]);
+
+// ---- automation accounts: a role, no way to sign in
+$bot = ['username' => 'newsroom', 'display_name' => 'Newsroom', 'email' => 'bot@x.test', 'role' => 'superadmin', 'status' => 'active', 'password' => 'Sturdy-pass-99', 'password_confirm' => 'Other', 'google_sub' => 'g9', 'google_email' => 'bot@x.test', 'kind' => 'automation'];
+check('a blank automation account knows what it is', [UserRepository::isAutomation(UserAdmin::blank(true)), UserRepository::isAutomation(UserAdmin::blank())], [true, false]);
+$r = $ua->save(0, null, $actorAdmin, $bot);
+$botRow = $users->findByUsername('newsroom');
+check('an automation account is made without a password', [$r['ok'], $r['error'], UserRepository::isAutomation($botRow ?? []), (string)$botRow['password_hash']], [true, '', true, '']);
+check('with no email and no Google link', [(string)$botRow['email'], (string)($botRow['google_sub'] ?? ''), (string)($botRow['google_email'] ?? '')], ['', '', '']);
+check('and never as the super admin', $botRow['role'], 'editor');
+check('the log says what was made', [end($log)[0], $log[array_key_last($log)][1]], ['users.create', (string)$botRow['id']]);
+$r = $ua->save(0, null, $limited, ['username' => 'sneaky'] + $bot);
+check('only someone who manages users makes one; anyone else makes a person, who needs a password', [$r['ok'], $r['error']], [false, 'Password confirmation does not match.']);
+$r = $ua->save((int)$botRow['id'], $botRow, $actorAdmin, ['role' => 'admin', 'password' => 'Sturdy-pass-99', 'password_confirm' => 'Sturdy-pass-99', 'kind' => ''] + $bot);
+$botRow = $users->find((int)$botRow['id']);
+check('changing it keeps it one, takes a role, and never a password', [UserRepository::isAutomation($botRow), $botRow['role'], (string)$botRow['password_hash'], $r['password_changed']], [true, 'admin', '', false]);
+$bobHash = $users->find($bobId)['password_hash'];
+$r = $ua->save($bobId, $users->find($bobId), $actorAdmin, ['kind' => 'automation', 'password' => '', 'password_confirm' => ''] + $new);
+check('a person never becomes one', [UserRepository::isAutomation($users->find($bobId)), $users->find($bobId)['password_hash'] === $bobHash], [false, true]);
+$_SESSION = [];
+check('it cannot sign in with a password, even an empty one', [$auth->attempt('newsroom', ''), $auth->attempt('newsroom', 'Sturdy-pass-99'), isset($_SESSION['user'])], [false, false, false]);
+$auth->loginUser($botRow);
+check('nor be signed in by any other way', isset($_SESSION['user']), false);
+$_SESSION['user'] = $users->publicUser($botRow);
+check('a session of it ends at the next look', [$auth->refresh(), isset($_SESSION['user'])], [false, false]);
+mkdir("$dir/storage2/db", 0775, true);
+$db2 = new SystemDatabase("$dir/storage2");
+$db2->initialize();
+$users2 = new UserRepository($db2, "$dir/none.yaml");
+$users2->create(['username' => 'bot', 'role' => 'admin', 'source' => UserRepository::AUTOMATION]);
+$users2->create(['username' => 'person', 'role' => 'editor', 'password_hash' => 'x']);
+$users2->ensureSuperadminExists();
+check('with no super admin left, a person is made one, never an automation account', [$users2->findByUsername('person')['role'], $users2->findByUsername('bot')['role']], ['superadmin', 'admin']);
 
 exec('rm -rf ' . escapeshellarg($dir));
 echo $fail === 0 ? "\nALL PASSED\n" : "\n$fail FAILED\n";

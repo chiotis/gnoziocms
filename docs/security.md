@@ -44,6 +44,10 @@ After adding or changing an admin action, run `php scripts/check-permissions.php
 
 **Raw HTML.** Raw HTML in Markdown can carry script, and an editor must not be able to script the public site. When someone without the `content.raw_html` capability saves, any HTML they type in the text or in a block's Markdown fields is shown as plain text and the editor is told so. HTML that is already in that content (put there by an administrator, for example an embed) is left alone, so an editor's edit never breaks it. `[text](javascript:…)` style links are neutralised for everybody. Uploads are checked separately (SVG files with scripts are refused).
 
+### Automation accounts
+
+An account that a connection (MCP, `docs/mcp-plan.md`) writes as, made by someone who manages users with **Add automation account** (`users.source = 'automation'`). It has a role like anyone and its name is in the history and the logs, but it has no password, no email and no Google link, so it never signs in: the password form, Google sign-in (which matches by email) and `Auth::loginUser` refuse it, and a session that somehow names it ends at the next look. It can never be the super admin, the fallback that makes a super admin when none is left skips it, and a person never becomes one (or the other way round). Making it inactive stops every connection that uses it. Tests: `tests/unit/accounts.php`, `tests/http/automation_accounts_test.py`.
+
 ### Storage limit
 
 The super admin sets how much space the site may use (Settings > Limits, `limits.manage`, held only by the super admin and never grantable, stored as `limits.storage_mb` in the site settings, default 1024, 0 for none). A value sent by anyone else is ignored. Use is content, the system database and its backups, and uploads. Only new uploads are refused at the limit, so a full site can still be edited, saved, and backed up; the message everyone sees from 90% names the super admin's address as a `mailto:` link and nothing else leaves the server.

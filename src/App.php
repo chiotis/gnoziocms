@@ -1964,9 +1964,12 @@ final class App
             $user = array_merge($user ?: [], $result['payload'], ['id' => $id]);
         }
 
+        $edited = $user ?: UserAdmin::blank($canManageUsers && (string)($_GET['kind'] ?? $_POST['kind'] ?? '') === UserRepository::AUTOMATION);
+        $automation = UserRepository::isAutomation($edited);
         $this->render('@admin/user-edit.twig', [
-            'title' => $canManageUsers ? ($id === 0 ? 'Add user' : 'Edit user') : 'Your profile',
-            'edited_user' => $user ?: UserAdmin::blank(),
+            'title' => $canManageUsers ? ($id === 0 ? ($automation ? 'Add automation account' : 'Add user') : ($automation ? 'Edit automation account' : 'Edit user')) : 'Your profile',
+            'edited_user' => $edited,
+            'is_automation' => $automation,
             'roles' => $this->permissions->allRoles(),
             'is_new' => $id === 0,
             'error' => $error,
