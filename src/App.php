@@ -17,6 +17,8 @@ final class App
 {
     /** How long a cache in front of the site may keep a public page (see sendPublicCacheHeaders). */
     private const PUBLIC_CACHE_SECONDS = 60;
+    /** When the scheduled entries were last looked at (a Unix time in the system meta). */
+    private const SCHEDULE_CHECKED_KEY = 'schedule_checked_at';
     private bool $updateCheck = false;
 
     private string $basePath;
@@ -92,6 +94,7 @@ final class App
     private ?SiteLimits $siteLimitsService = null;
     private ?SystemStatus $systemStatusService = null;
     private ?OmniClient $omniClientService = null;
+    private ?ScheduledPublishing $scheduledPublishingService = null;
     private ?DashboardData $dashboardDataService = null;
     private ?FormsAdmin $formsAdminService = null;
     private ?FormTranslationMigration $formTranslationMigrationService = null;
@@ -272,7 +275,8 @@ final class App
     {
         try {
             $backupDue = $this->backupManager()->isRunDue();
-            if (!$backupDue && !$this->omniClient()->isDue()) {
+            $releaseDue = $this->scheduleCheckIsDue();
+            if (!$backupDue && !$releaseDue && !$this->omniClient()->isDue()) {
                 return;
             }
             $finish = CronStatus::finishFunction();
@@ -287,6 +291,10 @@ final class App
             }
             if (function_exists('set_time_limit')) {
                 @set_time_limit(0);
+            }
+            // Before the backup, so what it keeps is the site as it is now.
+            if ($releaseDue) {
+                $this->releaseScheduled(false);
             }
             if ($backupDue) {
                 $this->backupManager()->runIfDue();
@@ -320,6 +328,54 @@ final class App
         } catch (\Throwable) {
             // What went wrong is kept with the connection and shown on Admin > Omni.
         }
+    }
+
+    /**
+     * Publishes the scheduled entries whose time has come (src/ScheduledPublishing.php) and says how many. With `$throttle`
+     * at most once a minute, for the places that call it often (the admin, visits).
+     */
+    public function releaseScheduled(bool $throttle = true): int
+    {
+        if ($throttle && !$this->scheduleCheckIsDue()) {
+            return 0;
+        }
+        $this->systemMeta->set(self::SCHEDULE_CHECKED_KEY, (string)time());
+        try {
+            return count($this->scheduledPublishing()->release());
+        } catch (\Throwable) {
+            // The next check tries again; an entry that cannot be written stays scheduled and visible as such in the admin.
+            return 0;
+        }
+    }
+
+    private function scheduleCheckIsDue(): bool
+    {
+        return (int)$this->systemMeta->get(self::SCHEDULE_CHECKED_KEY) < time() - 60;
+    }
+
+    private function scheduledPublishing(): ScheduledPublishing
+    {
+        return $this->scheduledPublishingService ??= new ScheduledPublishing(
+            $this->content,
+            $this->contentIndex,
+            $this->revisions,
+            SiteSettings::timeZone($this->settings),
+            function (array $released): void {
+                // What visitors see changed: the same as a save in the admin.
+                $this->content->forget();
+                $this->frontCache()->purgeAll();
+                $this->contentIndex->bump();
+                foreach ($released as $entry) {
+                    $this->logActivity('content.scheduled_publish', 'info', $entry['type'], $entry['slug'] . '.' . $entry['lang'], 'Published on schedule: ' . $entry['title'] . '.', $entry);
+                }
+                $this->notifications->create([
+                    'type' => 'content',
+                    'title' => count($released) === 1 ? 'Published on schedule: ' . $released[0]['title'] : count($released) . ' entries published on schedule',
+                    'body' => implode(', ', array_map(static fn(array $entry): string => $entry['title'], $released)),
+                    'target_url' => '/admin/edit?' . http_build_query(['type' => $released[0]['type'], 'slug' => $released[0]['slug'], 'lang' => $released[0]['lang']]),
+                ]);
+            }
+        );
     }
 
     /** For the command line (src/cron-backup.php): the scheduled backup when it is due, and what became of it. */
@@ -1213,6 +1269,7 @@ final class App
         }
 
         if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
+            $this->releaseScheduled();
             $this->backupManager()->runIfDue();
             register_shutdown_function(fn() => $this->sendOmniReportAfterResponse());
         }

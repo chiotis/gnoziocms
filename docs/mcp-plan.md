@@ -41,10 +41,12 @@ Changed or added for unattended jobs:
 
 ### 1. Scheduled publishing in the CMS
 
+**The site's time zone first.** Nothing sets one today (no `date_default_timezone_set`, no setting), so "09:00" would mean the server's zone, often UTC. A *Time zone* setting (Settings > Localization, empty = the server's) gives the zone that publishing times are written and read in. MCP accepts ISO 8601 with an offset (`2026-11-03T09:00:00+02:00`) and stores it in the site's zone. The rest of the site's dates stay as they are.
+
 Today an entry is public when `status` is `published` and `visible` is not false (`ContentRepository::filterVisibility`); the date plays no part. Added:
 
-- `status: scheduled` with `date` in the future. A scheduled entry behaves like a draft (signed-in people see it, the public does not) until it is released.
-- **Release**: a step that finds scheduled entries whose date has passed, rewrites them as `status: published` through `ContentEditor` (a revision with the actor *Schedule*), and purges the page cache and the front cache the way a save in the admin does. The file always tells the truth; no list, feed or sitemap has to know about times.
+- `status: scheduled` with `publish_at` (`Y-m-d H:i` in the site's zone; `date` stays a day, as now). A scheduled entry behaves like a draft (signed-in people see it, the public does not) until it is released.
+- **Release**: a step that finds scheduled entries whose time has passed, rewrites them as `status: published` with `date` set to that day and `publish_at` removed (a revision with the actor *Schedule*), and purges the page cache and the front cache the way a save in the admin does. The file always tells the truth; no list, feed or sitemap has to know about times.
 - The release runs from the cron script (`src/cron-backup.php`, which becomes the site's one cron entry; its name stays so older cron jobs keep working), after a public response where the response can be finished first (as the scheduled backup does, `App::runScheduledAfterResponse`), and when the admin is opened. The System screen recommends a cron job every 5 minutes for sites that schedule.
 - The editor gets a *Scheduled* choice next to Draft and Published, with the date and time, and the content list shows the time.
 
@@ -53,6 +55,9 @@ This is useful without MCP too, and it lets a job write a week of posts in one r
 ### 2. Automation accounts
 
 - A user can be an **automation account**: it has a role like anyone, but no password and no sign-in (the sign-in form and Google sign-in refuse it). Users shows it with its own chip. Whether it counts against the site's user limit is open (below).
+- Each connection has a **byline** (for example "Newsroom") written as `author` unless the job gives one, so the account's name never shows on the public site, and writes `generated_by` (the connection) into the front matter, shown only in the admin, where the content list can filter by it.
+- A connection can be **paused**: its calls are refused with "paused" and it stays connected, so a job that goes wrong is stopped without setting it up again in Claude.
+- Every publication by a connection is a notice in the admin's notifications, not only a line in the logs.
 - On the consent screen the person approving chooses whom the connection acts as: themself, or an automation account whose role is not above their own. The revision history and the logs then show the account and the connection name ("Automation: Daily news (Claude)").
 - Raw HTML is never allowed through MCP, whatever the role (`canRawHtml` is always false; `HtmlGuard` applies).
 
@@ -95,7 +100,7 @@ All writes go through `ContentEditor::save`, so slugs, translations, relations, 
 
 ### 6. Pictures from a URL
 
-`add_image_from_url` fetches only `http`/`https` on ports 80 and 443, resolves the host and refuses private, loopback, link-local and reserved addresses (also after each redirect, at most 3), sends no cookies, stops at 10 MB and 15 seconds, and keeps the file only if its bytes are JPEG, PNG, WebP, GIF or AVIF. It goes in through `MediaLibrary::import` with alt text and the uploader "Automation: …". The same file fetched twice (same hash) returns the existing id. `WordPressHttp` is not reused for this: it is for the importer on the command line and has none of these checks.
+`add_image_from_url` fetches only `http`/`https` on ports 80 and 443, resolves the host and refuses private, loopback, link-local and reserved addresses (also after each redirect, at most 3), sends no cookies, stops at 10 MB and 15 seconds, and keeps the file only if its bytes are JPEG, PNG, WebP, GIF or AVIF. It goes in through `MediaLibrary::import` with alt text and the uploader "Automation: …". It returns the id and the picture's address, so the job can place it in the body as well as make it the main image. The same file fetched twice (same hash) returns the existing id. `WordPressHttp` is not reused for this: it is for the importer on the command line and has none of these checks.
 
 ### 7. Admin: Settings > MCP / AI
 
@@ -124,7 +129,9 @@ One screen, in the condensed style of the other settings screens: the switch and
 
 ## Later phases
 
-- **Phase 2**: a *Review* status a job may choose like the other three, with a notice and an email to the editors (Publish / Reject from the email's link); a log of each connection's publications on its row; an alert when a connection is refused often.
+- **Phase 2**: a *Review* status a job may choose like the other three, with an email to the editors (Publish / Reject from the email's link); a log of each connection's publications on its row; an alert when a connection is refused often.
+
+Before step 3 can be tried with a real connector: a public HTTPS test site (claude.ai cannot reach localhost), the MCP paths passed by Varnish or Cloudflare where the site has them, and a cron job every 5 minutes.
 - **Phase 3**: reading for summaries: `latest(since)` with the text as Markdown (`HtmlToMarkdown`), a public read-only MCP for published entries with no sign-in, and `llms.txt`; ready-made job prompts in the skill.
 
 ## Open questions

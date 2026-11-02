@@ -21,6 +21,7 @@ final class RevisionAdmin
         'import' => 'Imported',
         'restore' => 'Restored',
         'links' => 'Links updated',
+        'schedule' => 'Published on schedule',
         'delete' => 'Deleted',
         'external' => 'Changed outside the editor',
         'baseline' => 'Earlier version',

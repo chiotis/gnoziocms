@@ -72,6 +72,7 @@ final class EntryForm
             'status' => 'published',
             'visible' => true,
             'date' => '',
+            'publish_at' => '',
             'author' => '',
             'seo_title' => '',
             'seo_description' => '',
@@ -160,6 +161,8 @@ final class EntryForm
             $metaForm['visible'] = (bool)($meta['visible'] ?? true);
             $rawDate = $meta['date'] ?? '';
             $metaForm['date'] = $this->adminDate($rawDate);
+            // For the editor's date-and-time box (Y-m-dTH:i), in the site's time zone.
+            $metaForm['publish_at'] = ScheduledPublishing::moment($meta['publish_at'] ?? null, SiteSettings::timeZone($settings))?->format('Y-m-d\\TH:i') ?? '';
             $metaForm['author'] = (string)($meta['author'] ?? '');
             $metaForm['template'] = (string)($meta['template'] ?? '');
             $metaForm['hero_layout'] = (string)($meta['hero_layout'] ?? '');
@@ -277,6 +280,7 @@ final class EntryForm
             'body' => $body,
             'main_image' => $mainImage,
             'meta_form' => $metaForm,
+            'time_zone' => SiteSettings::timeZone($settings)->getName(),
             'type_definition' => $this->types->definition($type, 'en', $defaultLang),
             'type_fields' => $type === 'forms' ? [] : $this->withLabels($this->types->editableFields($type, 'en', $defaultLang), $typeValues, $lang),
             'type_values' => $typeValues,

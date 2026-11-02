@@ -61,7 +61,8 @@
         <span aria-hidden="true">/</span>
         <strong>{{ meta_form.title ?: title_from_slug }}</strong>
         <span class="en-chip">{{ lang }}</span>
-        <span class="en-chip {{ meta_form.status == 'draft' ? 'is-draft' : 'is-live' }}" data-status-pill>{{ meta_form.status == 'draft' ? 'Draft' : 'Published' }}</span>
+        {% set status_chip = {'draft': ['is-draft', 'Draft'], 'scheduled': ['is-scheduled', 'Scheduled']}[meta_form.status] ?? ['is-live', 'Published'] %}
+        <span class="en-chip {{ status_chip[0] }}" data-status-pill>{{ status_chip[1] }}</span>
         <span data-nonindex-pill class="en-chip is-noindex{% if not meta_form.seo_noindex %} hidden{% endif %}">Non-indexed</span>
       </p>
       <button type="button" class="ep-toggle" data-entry-preview-toggle aria-expanded="false" aria-controls="entry-preview" title="Show the page as you are writing it">
@@ -191,8 +192,15 @@
               <select name="status" class="lc-input lc-select" data-status-select>
                 <option value="published" {% if meta_form.status == 'published' %}selected{% endif %}>Published</option>
                 <option value="draft" {% if meta_form.status == 'draft' %}selected{% endif %}>Draft</option>
+                {% if type != 'forms' %}<option value="scheduled" {% if meta_form.status == 'scheduled' %}selected{% endif %}>Scheduled</option>{% endif %}
               </select>
             </label>
+            {% if type != 'forms' %}
+              <label class="en-field is-wide{% if meta_form.status != 'scheduled' %} hidden{% endif %}" data-publish-at><span>Publish at</span>
+                <input type="datetime-local" name="publish_at" value="{{ meta_form.publish_at }}" class="lc-input" {% if meta_form.status == 'scheduled' %}required{% endif %}>
+                <small>{{ time_zone }} time. The entry stays hidden like a draft until then, and is published within minutes of it.</small>
+              </label>
+            {% endif %}
             <label class="en-field"><span>Language</span>
               <select name="lang" class="lc-input lc-select">
                 {% for l in languages %}<option value="{{ l }}" {% if l == lang %}selected{% endif %}>{{ l }}</option>{% endfor %}

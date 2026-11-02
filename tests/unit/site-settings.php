@@ -77,6 +77,14 @@ check('the prefix loses its slashes', $d['backup']['remote']['prefix'], 'site');
 check('the allowed domain is lower case', $d['auth']['google']['allowed_domain'], 'example.com');
 check('update repository falls back', [$d['updates']['repository'], $d['updates']['branch']], ['chiotis/gnoziocms', 'main']);
 check('the smtp password was stored', $d['forms']['notifications']['smtp']['password'], 'secret1');
+check('a form without the time zone box leaves it unset', array_key_exists('timezone', $d) ? $d['timezone'] : '', '');
+$s->save($s->raw('site_settings', $s->defaults()), ['timezone' => 'Europe/Athens'] + $base);
+check('a time zone is kept', $s->load()['timezone'] ?? null, 'Europe/Athens');
+check('and the form shows it', $s->formValues($s->load())['timezone'], 'Europe/Athens');
+$s->save($s->raw('site_settings', $s->defaults()), $base);
+check('a form without the box keeps the zone', $s->load()['timezone'] ?? null, 'Europe/Athens');
+$s->save($s->raw('site_settings', $s->defaults()), ['timezone' => 'Mars/Olympus'] + $base);
+check('an unknown zone is the server one again', $s->load()['timezone'] ?? '', '');
 
 // ---- secrets: blank keeps, new replaces, clear removes
 $again = $base; $again['smtp_pass'] = '';

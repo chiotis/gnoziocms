@@ -34,11 +34,18 @@
   var status = document.querySelector('[data-status-select]');
   var statusPill = document.querySelector('[data-status-pill]');
   if (status && statusPill) {
+    var publishAt = document.querySelector('[data-publish-at]');
     status.addEventListener('change', function () {
       var draft = status.value === 'draft';
-      statusPill.textContent = draft ? 'Draft' : 'Published';
+      var scheduled = status.value === 'scheduled';
+      statusPill.textContent = draft ? 'Draft' : (scheduled ? 'Scheduled' : 'Published');
       statusPill.classList.toggle('is-draft', draft);
-      statusPill.classList.toggle('is-live', !draft);
+      statusPill.classList.toggle('is-scheduled', scheduled);
+      statusPill.classList.toggle('is-live', !draft && !scheduled);
+      if (publishAt) {
+        publishAt.classList.toggle('hidden', !scheduled);
+        publishAt.querySelector('input').required = scheduled;
+      }
     });
   }
 

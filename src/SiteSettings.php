@@ -67,6 +67,16 @@ final class SiteSettings
         return $defaults;
     }
 
+    /** The site's time zone (Settings > Localization), or the server's when none was chosen or the name is unknown. */
+    public static function timeZone(array $settings): \DateTimeZone
+    {
+        $name = (string)($settings['timezone'] ?? '');
+        if ($name !== '' && in_array($name, \DateTimeZone::listIdentifiers(), true)) {
+            return new \DateTimeZone($name);
+        }
+        return new \DateTimeZone(date_default_timezone_get());
+    }
+
     public function defaults(): array
     {
         return [
@@ -76,6 +86,8 @@ final class SiteSettings
             'theme' => 'default',
             'home_page' => 'index',
             'date_format' => 'd/m/Y',
+            // The zone times of day are written and read in (publishing times); empty is the server's own.
+            'timezone' => '',
             // What the site may use: set by the super admin only (Settings > Limits). 0 means no limit.
             'limits' => [
                 'storage_mb' => 1024,
@@ -230,6 +242,7 @@ final class SiteSettings
             'theme' => (string)($merged['theme'] ?? ''),
             'home_page' => (string)($merged['home_page'] ?? ''),
             'date_format' => (string)($merged['date_format'] ?? ''),
+            'timezone' => (string)($merged['timezone'] ?? ''),
             'storage_limit_mb' => max(0, (int)($merged['limits']['storage_mb'] ?? 1024)),
             'robots_disallow' => implode("\n", RobotsTxt::rules(is_array($merged['seo']['robots_disallow'] ?? null) ? $merged['seo']['robots_disallow'] : [])),
             'upload_limit_mb' => max(0, (int)($merged['limits']['upload_mb'] ?? $merged['media']['max_upload_mb'] ?? 20)),
@@ -293,6 +306,7 @@ final class SiteSettings
             'theme' => (string)($post['theme'] ?? ''),
             'home_page' => (string)($post['home_page'] ?? ''),
             'date_format' => (string)($post['date_format'] ?? ''),
+            'timezone' => isset($post['timezone']) ? (string)$post['timezone'] : null,
             // Only when the box was on the form that was sent, so a form without it does not clear the rules.
             'robots_disallow' => isset($post['robots_disallow']) ? implode("\n", RobotsTxt::rules((string)$post['robots_disallow'])) : null,
             'languages_default' => (string)($post['languages_default'] ?? ''),
@@ -461,6 +475,7 @@ final class SiteSettings
         // Kept apart: a box left out of the form (null) is not the same as a box that was emptied.
         $robotsSubmitted = array_key_exists('robots_disallow', $form) && $form['robots_disallow'] !== null;
         $robotsText = (string)($form['robots_disallow'] ?? '');
+        $timezoneSubmitted = array_key_exists('timezone', $form) && $form['timezone'] !== null;
         $hoursSubmitted = array_key_exists('youtube_cache_hours', $form) && $form['youtube_cache_hours'] !== null;
         $mapsSubmitted = array_key_exists('maps_load', $form) && $form['maps_load'] !== null;
         foreach ($form as $key => $value) {
@@ -482,6 +497,13 @@ final class SiteSettings
         $data['theme'] = $form['theme'] !== '' ? $form['theme'] : ($data['theme'] ?? 'default');
         $data['home_page'] = $form['home_page'] !== '' ? $form['home_page'] : ($data['home_page'] ?? 'index');
         $data['date_format'] = $form['date_format'] !== '' ? $form['date_format'] : ($data['date_format'] ?? 'd/m/Y');
+        if ($timezoneSubmitted) {
+            if (in_array($form['timezone'], \DateTimeZone::listIdentifiers(), true)) {
+                $data['timezone'] = $form['timezone'];
+            } else {
+                unset($data['timezone']);
+            }
+        }
         if ($robotsSubmitted) {
             $rules = RobotsTxt::rules($robotsText);
             if ($rules === []) {
