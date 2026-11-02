@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.188 — 2026-11-02 — MCP tools that read and write content
+- **MCP tools:** `list_entries`, `get_entry`, `search_entries`, `list_terms`, `find_by_source`, `validate_entry`, `create_entry` and `update_entry`, so a scheduled job in Claude or ChatGPT can write and publish posts. Every save goes through the admin's editor code (address, translations, index, history); the history names the account and the connection.
+- `create_entry` needs `status` (draft, published, or scheduled with `publish_at`); with `source_key` it returns the entry made before for the same source; with `translation_of` it makes a translation at the same address. `update_entry` changes what is given, keeps the rest (the entry's own fields too) and, with `expected_updated_at`, refuses a change made meanwhile. Published and scheduled entries need the `content:publish` scope.
+- Writes are strict: an unknown argument, type, language, taxonomy, term, field or option, a bad date or a scheduled entry without a time is an error that says what to send, all of them at once. HTML is shown as text and the result says so.
+- **Rules per connection** (Admin > MCP > Rules): the types and languages it may write, publications in 24 hours (10 by default; drafts do not count) and the byline for new entries. `site_info` tells the job its rules and what is left.
+- New entries get `generated_by` (shown as *MCP* in the content list); each publication leaves a notification.
+- `docs/mcp.md`. Step 4 of `docs/mcp-plan.md`. Tests: `tests/http/mcp_tools_test.py`.
+
 ## 0.1.187 — 2026-11-02 — MCP server for AI assistants
 - **Admin > MCP** (super admin, `mcp.manage`): an MCP server for Claude, ChatGPT and their scheduled jobs, off until turned on. It shows the address to give the assistant, checks that the discovery documents answer, lists the connections (account, scopes, last use, end) with Pause, Resume and Remove, and makes tokens by hand for clients that send their own header (shown once, at most a year).
 - **`POST /mcp`:** Streamable HTTP without a session, one JSON-RPC message per request, protocols `2025-06-18` and `2025-03-26`. For now one tool, `site_info` (languages, time zone, content types and their fields, taxonomies, the connection); the tools that write come next.
