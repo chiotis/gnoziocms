@@ -1,6 +1,6 @@
 # MCP and automated publishing: plan
 
-Status: proposal (2026-11-02). Nothing of it is built yet.
+Status: proposal (2026-11-02). Nothing of it is built yet. Decided by the owner: each job's instructions choose draft, published or scheduled; the site does not impose a default.
 
 ## What it is for
 
@@ -29,7 +29,7 @@ Changed or added for unattended jobs:
 
 1. **The connection acts as an automation account**, not as the person who approved it (below).
 2. **Effective rights are scope ∩ role**, checked on every call. A role that loses a permission takes it from its connections at once.
-3. **Publishing is its own scope** (`content:publish`), apart from writing drafts.
+3. **The job decides the status.** Each call says draft, published or scheduled, as the job's instructions tell it. Publishing is still its own scope (`content:publish`), ticked by default on the consent screen, so a connection that must never publish can be given drafts only.
 4. **Repeat runs do not repeat posts**: `source_key` on create (below).
 5. **Refresh tokens last 90 days** (sliding), and the admin warns 7 days before one expires; the previous refresh token stays valid for 60 seconds after a rotation, so two refreshes at once do not break the connection.
 6. **`Origin` is checked**: a request that carries an `Origin` other than the site's own or an allowed client's is refused (`403`).
@@ -72,7 +72,7 @@ This is useful without MCP too, and it lets a job write a week of posts in one r
 | `content:publish` | publish, schedule, edit published entries | `content.manage` |
 | `media:write` | add pictures to the library | `media.manage` |
 
-Each connection also has a policy, set on its row in Settings > MCP / AI: which content types and languages it may write, its default status (draft unless changed), and at most how many entries it may publish or schedule per day (10 by default). A call outside the policy is refused with the reason.
+Each connection also has a policy, set on its row in Settings > MCP / AI: which content types and languages it may write, and at most how many entries it may publish or schedule per day (10 by default, as a safety net against a job that runs away). A call outside the policy is refused with the reason. The policy has no default status: which status an entry gets is the job's decision, so `status` is a required argument of `create_entry` and the job's instructions name it every time.
 
 ### 5. Tools
 
@@ -85,7 +85,7 @@ Each connection also has a policy, set on its row in Settings > MCP / AI: which 
 | `list_terms` | read | terms of a taxonomy, with their slugs |
 | `find_by_source` | read | the entry made earlier for a `source_key`, or none |
 | `validate_entry` | write | the arguments of `create_entry`, checked and not saved (`ContentEditor::save` with `dryRun`) |
-| `create_entry` | write | type, language, title, body (Markdown), excerpt, terms, fields, main image (a library id), SEO texts, `status` (`draft`, `scheduled`, `published`; the last two need `content:publish`), `date`, `source_key`, `translation_of` |
+| `create_entry` | write | type, language, title, body (Markdown), excerpt, terms, fields, main image (a library id), SEO texts, `status` (required: `draft`, `scheduled` or `published`; the last two need `content:publish`), `date` (required for `scheduled`), `source_key`, `translation_of` |
 | `update_entry` | write / publish | the same fields, with `expected_updated_at`; changing a published entry needs `content:publish` |
 | `add_image_from_url` | media | fetches a picture into the library (below) and returns its id |
 
@@ -103,7 +103,7 @@ One screen, in the condensed style of the other settings screens: the switch and
 
 ### 8. Documentation
 
-- `docs/mcp.md`: endpoint, scopes, tools with examples, setting up Claude (Settings > Connectors, then **Always allow** for the write tools, or a scheduled run stops at the first write waiting for approval) and ChatGPT (Developer mode). One sample prompt for a daily news job: read the sources, `find_by_source` for each, write in the site's language, `validate_entry`, then `create_entry` as draft or scheduled.
+- `docs/mcp.md`: endpoint, scopes, tools with examples, setting up Claude (Settings > Connectors, then **Always allow** for the write tools, or a scheduled run stops at the first write waiting for approval) and ChatGPT (Developer mode). One sample prompt for a daily news job: read the sources, `find_by_source` for each, write in the site's language, `validate_entry`, then `create_entry` with the status the instructions give (draft, published, or scheduled for a time).
 - `docs/security.md`: the endpoint, tokens, SSRF rules, what MCP can never do.
 - `README.md` and the `gnoziocms` skill: a short section each.
 
@@ -124,12 +124,11 @@ One screen, in the condensed style of the other settings screens: the switch and
 
 ## Later phases
 
-- **Phase 2**: a *Review* status with a notice and an email to the editors (Publish / Reject from the email's link), as the default for new connections during their first weeks; a log of each connection's publications on its row; an alert when a connection is refused often.
+- **Phase 2**: a *Review* status a job may choose like the other three, with a notice and an email to the editors (Publish / Reject from the email's link); a log of each connection's publications on its row; an alert when a connection is refused often.
 - **Phase 3**: reading for summaries: `latest(since)` with the text as Markdown (`HtmlToMarkdown`), a public read-only MCP for published entries with no sign-in, and `llms.txt`; ready-made job prompts in the skill.
 
 ## Open questions
 
-- Default for a new connection: drafts only, or publish within the daily limit?
 - Do automation accounts count against the site's user limit (`SiteLimits`)?
 - The first site to try it on.
 - Whether ChatGPT's scheduled tasks can call a custom MCP connector without a person present; to be tried before it is promised to a client.
