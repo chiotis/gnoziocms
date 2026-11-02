@@ -50,6 +50,7 @@ final class PermissionService
             'backups.restore',
             'updates.manage',
             'omni.manage',
+            'mcp.manage',
         ],
         'admin' => [
             'admin.access',
@@ -229,6 +230,7 @@ final class PermissionService
             'users.manage' => $c('System', 'Users', 'Creates users and sets their roles. Super admin only.', 'critical', false),
             'roles.manage' => $c('System', 'Roles and permissions', 'Changes what each role can do. Super admin only.', 'critical', false),
             'limits.manage' => $c('System', 'Site limits', 'Sets how much storage the site may use. Super admin only.', 'critical', false),
+            'mcp.manage' => $c('System', 'MCP (AI assistants)', 'Lets AI assistants such as Claude or ChatGPT read and write content as an account of the site, and removes those connections. Super admin only.', 'critical', false),
             'omni.manage' => $c('System', 'Omni', 'Connects the site to an Omni, which then sees its health, storage, backups and updates. Super admin only.', 'critical', false),
         ];
     }
@@ -356,6 +358,7 @@ final class PermissionService
             'backups' => 'backups.manage',
             'updates' => 'updates.manage',
             'omni' => 'omni.manage',
+            'mcp', 'mcp-authorize' => 'mcp.manage',
             'users', 'users-delete' => 'users.manage',
             'roles' => 'roles.manage',
             'redirects' => 'redirects.manage',

@@ -65,6 +65,8 @@ This is useful without MCP too, and it lets a job write a week of posts in one r
 
 ### 3. Endpoint, routing, caching
 
+*Built in 0.1.187 (`docs/mcp.md`): the endpoint, OAuth with the consent in the admin (`/admin/mcp-authorize`; the OAuth endpoints are under `/_mcp/` so they never take a page's address), tokens made by hand, rate limits, the log, Admin > MCP (a page of its own, like Omni, for the super admin), and `site_info`. The connection policy, the byline and the daily limit come with the write tools.*
+
 - `mcp`, `token`, `authorize`, `register` and `.well-known/oauth-*` are handled in `App::handle` before the page cache, like `_omni/command`. `mcp`, `token` and `register` start no session; `authorize` uses the admin session (the person signs in to approve).
 - None of them is ever kept by the page cache, Varnish or a CDN (`no-store`); `docs/varnish.md` gets the paths to pass.
 - MCP is off until it is switched on in **Settings > MCP / AI**, after the screen's check that the public metadata URLs answer.

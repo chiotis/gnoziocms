@@ -175,6 +175,12 @@
             Omni
           </a>
         {% endif %}
+        {% if can('mcp.manage') %}
+          <a href="{{ url('admin/mcp') }}" class="{{ nav_base }} {{ section == 'mcp' ? nav_active : nav_idle }}"{% if section == 'mcp' %} aria-current="page"{% endif %}>
+            <svg class="h-4 w-4 {{ section == 'mcp' ? 'text-white/80' : 'text-slate-400 group-hover:text-slate-600' }}" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 3v3M15 3v3M9 18v3M15 18v3M3 9h3M3 15h3M18 9h3M18 15h3M7 6h10a1 1 0 011 1v10a1 1 0 01-1 1H7a1 1 0 01-1-1V7a1 1 0 011-1zM10 10h4v4h-4z"/></svg>
+            MCP
+          </a>
+        {% endif %}
         {% if can('settings.manage') %}
           <a href="{{ url('admin/settings') }}" class="{{ nav_base }} {{ section == 'settings' ? nav_active : nav_idle }}"{% if section == 'settings' %} aria-current="page"{% endif %}>
             <svg class="h-4 w-4 {{ section == 'settings' ? 'text-white/80' : 'text-slate-400 group-hover:text-slate-600' }}" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15a3 3 0 100-6 3 3 0 000 6z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-2.82 1.17V21a2 2 0 11-4 0v-.09A1.65 1.65 0 007 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 14a1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 7.51l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6h.09A1.65 1.65 0 0011 3.09V3a2 2 0 114 0v.09a1.65 1.65 0 002.51 1.51h.09a1.65 1.65 0 011.82.33l.06.06a2 2 0 11-2.83 2.83"/></svg>

@@ -12,6 +12,9 @@ namespace GnozioCMS;
  */
 final class LoginController
 {
+    /** The session key of an address to return to after signing in (only the MCP consent, `/admin/mcp-authorize?…`). */
+    public const AFTER_SIGN_IN = 'after_sign_in';
+
     private ?SignIn $signIn = null;
     private ?GoogleSignIn $google = null;
     private ?FirstAdmin $firstAdmin = null;
@@ -115,7 +118,7 @@ final class LoginController
                 $_SESSION['security_default_password'] = true;
                 $this->notifyDefaultPassword($outcome['username']);
             }
-            ($this->redirect)('/admin');
+            ($this->redirect)($this->afterSignIn());
             return;
         }
         $this->renderLogin($outcome['message']);
@@ -225,7 +228,15 @@ final class LoginController
             'method' => 'google',
             'email' => $email,
         ], null);
-        ($this->redirect)('/admin');
+        ($this->redirect)($this->afterSignIn());
+    }
+
+    /** Where to go once signed in: back to an MCP consent that sent the person here, else the dashboard. */
+    private function afterSignIn(): string
+    {
+        $back = (string)($_SESSION[self::AFTER_SIGN_IN] ?? '');
+        unset($_SESSION[self::AFTER_SIGN_IN]);
+        return str_starts_with($back, '/admin/mcp-authorize?') ? $back : '/admin';
     }
 
     private function signIn(): SignIn

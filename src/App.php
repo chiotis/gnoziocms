@@ -17,6 +17,8 @@ final class App
 {
     /** How long a cache in front of the site may keep a public page (see sendPublicCacheHeaders). */
     private const PUBLIC_CACHE_SECONDS = 60;
+    /** The addresses of the MCP server and its OAuth (docs/mcp.md); answered only while MCP is on. */
+    private const MCP_PATHS = ['mcp', '_mcp/token', '_mcp/register', '.well-known/oauth-protected-resource', '.well-known/oauth-protected-resource/mcp', '.well-known/oauth-authorization-server'];
     /** When the scheduled entries were last looked at (a Unix time in the system meta). */
     private const SCHEDULE_CHECKED_KEY = 'schedule_checked_at';
     private bool $updateCheck = false;
@@ -95,6 +97,9 @@ final class App
     private ?SystemStatus $systemStatusService = null;
     private ?OmniClient $omniClientService = null;
     private ?ScheduledPublishing $scheduledPublishingService = null;
+    private ?McpStore $mcpStoreService = null;
+    private ?McpOAuth $mcpOAuthService = null;
+    private ?McpAdmin $mcpAdminService = null;
     private ?DashboardData $dashboardDataService = null;
     private ?FormsAdmin $formsAdminService = null;
     private ?FormTranslationMigration $formTranslationMigrationService = null;
@@ -243,6 +248,12 @@ final class App
         // A command from the Omni this site is connected to, signed with the site's secret (docs/omni-protocol.md).
         if ($path === '_omni/command') {
             $this->handleOmniCommand();
+            return;
+        }
+
+        // The MCP server and its OAuth, for AI assistants (docs/mcp.md). Off: the addresses are ordinary ones, a page may use them.
+        if (in_array($path, self::MCP_PATHS, true) && $this->mcpAdmin()->isEnabled()) {
+            $this->handleMcp($path);
             return;
         }
 
@@ -722,7 +733,7 @@ final class App
             return true;
         }
         // The analytics script reports each visit with a POST; it must not hand every visitor a cookie.
-        return !in_array($_SERVER['REQUEST_METHOD'] ?? 'GET', ['GET', 'HEAD'], true) && !in_array($path, ['_a/collect', '_omni/command'], true);
+        return !in_array($_SERVER['REQUEST_METHOD'] ?? 'GET', ['GET', 'HEAD'], true) && !in_array($path, ['_a/collect', '_omni/command', ...self::MCP_PATHS], true);
     }
 
     /**
@@ -1164,6 +1175,8 @@ final class App
         'backups' => 'handleBackups',
         'updates' => 'handleUpdates',
         'omni' => 'handleOmni',
+        'mcp' => 'handleMcpAdmin',
+        'mcp-authorize' => 'handleMcpAuthorize',
         'notification-read' => 'handleNotificationRead',
         'notifications-read-all' => 'handleNotificationsReadAll',
         'menus' => 'handleMenusList',
@@ -1200,7 +1213,7 @@ final class App
     ];
 
     /** Admin addresses whose POST only reads, previews or exports, so the cache in front of the site stays as it is. */
-    private const ADMIN_POSTS_THAT_CHANGE_NOTHING = ['search', 'markdown-visual', 'media-picker', 'block-presets', 'notification-read', 'notifications-read-all', 'forms-export', 'form-file', 'form-files-zip', 'export', 'omni', 'activity-logs', 'email-logs'];
+    private const ADMIN_POSTS_THAT_CHANGE_NOTHING = ['search', 'markdown-visual', 'media-picker', 'block-presets', 'notification-read', 'notifications-read-all', 'forms-export', 'form-file', 'form-files-zip', 'export', 'omni', 'mcp', 'mcp-authorize', 'activity-logs', 'email-logs'];
 
     private function frontCache(): FrontCache
     {
@@ -1256,6 +1269,10 @@ final class App
         }
 
         if (!$this->auth->check() || !$this->auth->refresh()) {
+            // An AI assistant sent the person here to approve a connection: back to it after signing in.
+            if ($action === 'mcp-authorize' && ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
+                $_SESSION[LoginController::AFTER_SIGN_IN] = (string)($_SERVER['REQUEST_URI'] ?? '');
+            }
             $this->redirect('/admin/login');
             return;
         }
@@ -3286,6 +3303,222 @@ final class App
             'admin_section' => 'omni',
             'current_type' => 'pages',
         ]);
+    }
+
+    // ---- MCP (docs/mcp.md)
+
+    private function mcpStore(): McpStore
+    {
+        return $this->mcpStoreService ??= new McpStore($this->systemDatabase);
+    }
+
+    private function mcpOAuth(): McpOAuth
+    {
+        return $this->mcpOAuthService ??= new McpOAuth($this->mcpStore(), rtrim($this->getBaseUrl(), '/'), fn(string $action, string $level, ?string $type, ?string $id, string $message, array $context) => $this->logActivity($action, $level, $type, $id, $message, $context));
+    }
+
+    private function mcpAdmin(): McpAdmin
+    {
+        return $this->mcpAdminService ??= new McpAdmin($this->mcpStore(), $this->mcpOAuth(), $this->systemMeta, $this->users, fn(string $action, string $level, ?string $type, ?string $id, string $message, array $context) => $this->logActivity($action, $level, $type, $id, $message, $context));
+    }
+
+    private function mcpServer(): McpServer
+    {
+        return new McpServer(
+            $this->mcpStore(),
+            $this->mcpOAuth(),
+            trim((string)@file_get_contents($this->basePath . '/VERSION')) ?: 'dev',
+            fn(array $account, string $permission): bool => $this->permissions->can(['role' => (string)$account['role'], 'status' => (string)$account['user_status']], $permission),
+            fn(array $connection): array => $this->mcpSiteInfo($connection),
+            fn(string $action, string $level, ?string $type, ?string $id, string $message, array $context) => $this->logActivity($action, $level, $type, $id, $message, $context)
+        );
+    }
+
+    /** The addresses of MCP_PATHS, while MCP is on: discovery, client registration, tokens, and the endpoint itself. */
+    private function handleMcp(string $path): void
+    {
+        FrontCache::doNotKeep();
+        $method = (string)($_SERVER['REQUEST_METHOD'] ?? 'GET');
+        $ip = $this->clientIpAddress();
+        $oauth = $this->mcpOAuth();
+        try {
+            if (str_starts_with($path, '.well-known/')) {
+                $this->sendMcp(['status' => 200, 'headers' => [], 'json' => str_contains($path, 'authorization-server') ? $oauth->authorizationServer() : $oauth->protectedResource()]);
+                return;
+            }
+            if ($path === 'mcp') {
+                $headers = [];
+                foreach ($_SERVER as $key => $value) {
+                    if (str_starts_with($key, 'HTTP_')) {
+                        $headers[strtolower(str_replace('_', '-', substr($key, 5)))] = (string)$value;
+                    }
+                }
+                $headers['content-type'] = (string)($_SERVER['CONTENT_TYPE'] ?? '');
+                $headers['authorization'] ??= (string)($_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '');
+                $this->sendMcp($this->mcpServer()->handle($method, $headers, (string)file_get_contents('php://input', false, null, 0, McpServer::MAX_BODY_BYTES + 1), $ip));
+                return;
+            }
+            if ($method !== 'POST') {
+                $this->sendMcp(McpOAuth::error('invalid_request', 'Use POST.', 405));
+                return;
+            }
+            $register = $path === '_mcp/register';
+            $hit = $this->mcpStore()->hit($register ? 'oauth-register' : 'oauth-token', $ip, $register ? 20 : 60, $register ? 3600 : 600);
+            if (!$hit['allowed']) {
+                $this->sendMcp(['status' => 429, 'headers' => ['Retry-After' => (string)$hit['retry_after']], 'json' => ['error' => 'rate_limited', 'error_description' => 'Too many requests. Try again later.']]);
+                return;
+            }
+            if ($register) {
+                $this->sendMcp($oauth->register(json_decode((string)file_get_contents('php://input', false, null, 0, 65536), true)));
+                return;
+            }
+            $this->sendMcp($oauth->token($_POST, function (int $id): bool {
+                $account = $this->users->find($id);
+                return $account !== null && $this->users->isActive($account);
+            }));
+        } catch (\Throwable $e) {
+            error_log('GnozioCMS MCP: ' . $e->getMessage());
+            $this->sendMcp(McpOAuth::error('server_error', 'The request could not be completed.', 500));
+        }
+    }
+
+    /** @param array{status: int, headers: array<string, string>, json?: array<string, mixed>, body?: ?string} $answer */
+    private function sendMcp(array $answer): void
+    {
+        http_response_code($answer['status']);
+        header('Cache-Control: no-store');
+        header('X-Content-Type-Options: nosniff');
+        foreach ($answer['headers'] as $name => $value) {
+            header($name . ': ' . $value);
+        }
+        if (array_key_exists('json', $answer)) {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode($answer['json'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        } elseif (($answer['body'] ?? null) !== null) {
+            echo $answer['body'];
+        }
+    }
+
+    /** What `site_info` tells a connection. @param array<string, mixed> $connection @return array<string, mixed> */
+    private function mcpSiteInfo(array $connection): array
+    {
+        $languages = $this->settings['languages'] ?? [];
+        $default = (string)($languages['default'] ?? 'en');
+        $types = [];
+        foreach ($this->content->getTypes() as $type) {
+            if ($type === 'forms') {
+                continue;
+            }
+            $definition = $this->contentTypes()->definition($type, 'en', $default);
+            $fields = [];
+            foreach ($this->contentTypes()->editableFields($type, 'en', $default) as $name => $field) {
+                $fields[$name] = array_intersect_key($field, array_flip(['type', 'label', 'help', 'options', 'required', 'multiple', 'min', 'max']));
+            }
+            $types[] = [
+                'type' => $type,
+                'label' => (string)($definition['label'] ?? Slug::title($type)),
+                'taxonomies' => $this->taxonomies()->names($type),
+                'fields' => $fields,
+            ];
+        }
+        $taxonomies = [];
+        foreach ($this->taxonomies()->names() as $name) {
+            $taxonomy = $this->taxonomies()->load($name);
+            $taxonomies[] = ['name' => $name, 'title' => $taxonomy['title'], 'hierarchical' => $taxonomy['hierarchical'], 'terms' => count($taxonomy['terms'])];
+        }
+        return [
+            'site' => [
+                'title' => (string)($this->settings['title'] ?? ''),
+                'address' => $this->buildAbsoluteUrl('/'),
+                'languages' => array_values(array_map('strval', (array)($languages['available'] ?? [$default]))),
+                'default_language' => $default,
+                'time_zone' => SiteSettings::timeZone($this->settings)->getName(),
+                'now' => (new \DateTimeImmutable('now', SiteSettings::timeZone($this->settings)))->format(DATE_ATOM),
+            ],
+            'content_types' => $types,
+            'taxonomies' => $taxonomies,
+            'connection' => [
+                'name' => (string)$connection['name'],
+                'account' => (string)(($connection['display_name'] ?? '') ?: $connection['username']),
+                'automation_account' => ($connection['source'] ?? '') === UserRepository::AUTOMATION,
+                'scopes' => preg_split('/\s+/', (string)$connection['scope'], -1, PREG_SPLIT_NO_EMPTY) ?: [],
+                'paused' => $connection['paused_at'] !== null,
+            ],
+        ];
+    }
+
+    /** Admin > MCP. */
+    private function handleMcpAdmin(): void
+    {
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
+            $result = $this->mcpAdmin()->act($_POST, $this->auth->user());
+            if ($result['token'] !== '') {
+                // Shown once, on the next page, and never kept anywhere else.
+                $_SESSION['mcp_new_token'] = $result['token'];
+            }
+            $this->redirect('/admin/mcp?' . http_build_query(['done' => $result['ok'] ? 'ok' : 'fail', 'msg' => $result['message']]));
+            return;
+        }
+        $token = (string)($_SESSION['mcp_new_token'] ?? '');
+        unset($_SESSION['mcp_new_token']);
+        $this->render('@admin/mcp.twig', $this->mcpAdmin()->screen($_GET, $this->auth->user(), $token) + [
+            'title' => 'MCP',
+            'types' => $this->content->getTypes(),
+            'user' => $this->auth->user(),
+            'admin_section' => 'mcp',
+            'current_type' => 'pages',
+        ]);
+    }
+
+    /** The consent an AI assistant sends the person to (OAuth authorization endpoint). */
+    private function handleMcpAuthorize(): void
+    {
+        $oauth = $this->mcpOAuth();
+        $screen = fn(string $problem, array $request = []): null => $this->render('@admin/mcp-authorize.twig', [
+            'title' => 'Connect an AI assistant',
+            'problem' => $problem,
+            'request' => $request,
+            'scopes' => McpOAuth::scopes(),
+            'accounts' => $this->mcpAdmin()->accounts($this->auth->user()),
+            'types' => $this->content->getTypes(),
+            'user' => $this->auth->user(),
+            'admin_section' => 'mcp',
+            'current_type' => 'pages',
+        ]);
+        if (!$this->mcpAdmin()->isEnabled()) {
+            $screen('MCP is off on this site. Turn it on in Admin > MCP first, then connect again.');
+            return;
+        }
+        $isPost = ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST';
+        $input = $isPost ? ($_SESSION['mcp_consent'] ?? null) : $_GET;
+        if (!is_array($input)) {
+            $screen('This request has expired. Start the connection again from the AI assistant.');
+            return;
+        }
+        $checked = $oauth->authorizationRequest($input);
+        if (!$checked['ok']) {
+            unset($_SESSION['mcp_consent']);
+            if ($checked['redirect']) {
+                $this->redirect($oauth->errorRedirect($checked['request'], $checked['problem']));
+                return;
+            }
+            $screen($checked['problem']);
+            return;
+        }
+        if (!$isPost) {
+            $_SESSION['mcp_consent'] = array_intersect_key($input, array_flip(['client_id', 'redirect_uri', 'response_type', 'scope', 'state', 'code_challenge', 'code_challenge_method', 'resource']));
+            $screen('', $checked['request']);
+            return;
+        }
+        unset($_SESSION['mcp_consent']);
+        $actor = $this->auth->user();
+        $actsAs = (int)($_POST['account'] ?? 0);
+        $approve = (string)($_POST['decision'] ?? '') === 'approve';
+        if ($approve && !in_array($actsAs, array_column($this->mcpAdmin()->accounts($actor), 'id'), true)) {
+            $screen('Choose an account the connection acts as.');
+            return;
+        }
+        $this->redirect($oauth->decide($checked['request'], $approve, $actsAs, (int)($actor['id'] ?? 0), is_array($_POST['scopes'] ?? null) ? array_map('strval', $_POST['scopes']) : []));
     }
 
     private function omniClient(): OmniClient

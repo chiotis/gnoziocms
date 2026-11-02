@@ -1,0 +1,44 @@
+{% extends '@admin/base.twig' %}
+{% set page_heading = 'Connect an AI assistant' %}
+
+{% block content %}
+  {% set btn = 'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium shadow-sm' %}
+  {% set input_class = 'block w-full rounded-md border border-slate-300 px-2.5 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500' %}
+
+  <div class="mx-auto max-w-xl">
+    {% if problem %}
+      <div class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800" data-mcp-problem>{{ problem }}</div>
+    {% else %}
+      {% set asked = request.scope|split(' ') %}
+      <form method="post" action="{{ url('admin/mcp-authorize') }}" class="rounded-lg border border-slate-200 bg-white" data-mcp-consent>
+        {{ csrf_field() }}
+        <div class="border-b border-slate-200 px-4 py-3">
+          <h2 class="text-sm font-semibold text-slate-900"><span data-mcp-client>{{ request.client_name }}</span> asks to use this site</h2>
+          <p class="mt-1 text-xs text-slate-500">After you approve, you go back to {{ request.redirect_uri|split('/')[2]|default(request.redirect_uri) }}. The connection works until you pause or remove it in Admin > MCP.</p>
+        </div>
+        <div class="space-y-3 px-4 py-3">
+          <label class="block"><span class="mb-1 block text-xs font-medium text-slate-700">It acts as</span>
+            <select name="account" class="{{ input_class }}" data-mcp-account>
+              {% for a in accounts %}<option value="{{ a.id }}"{% if loop.first %} selected{% endif %}>{{ a.label }}{{ a.automation ? ' · automation account' : '' }} ({{ a.role }})</option>{% endfor %}
+            </select>
+            <span class="mt-1 block text-xs text-slate-500">What it writes is in the history under this name, and it can do only what this account's role allows. An automation account (Users > Add automation account) keeps your own name out of it.</span>
+          </label>
+          <fieldset>
+            <legend class="mb-1 text-xs font-medium text-slate-700">It may</legend>
+            <div class="space-y-1.5">
+              {% for key, text in scopes %}
+                {% if key in asked %}
+                  <label class="flex items-start gap-2 text-sm text-slate-700"><input type="checkbox" name="scopes[]" value="{{ key }}" checked class="mt-0.5 h-4 w-4 rounded border-slate-300">{{ text }}</label>
+                {% endif %}
+              {% endfor %}
+            </div>
+          </fieldset>
+        </div>
+        <div class="flex items-center justify-end gap-2 border-t border-slate-100 px-4 py-3">
+          <button type="submit" name="decision" value="deny" class="{{ btn }} border border-slate-300 bg-white text-slate-700 hover:bg-slate-50">Refuse</button>
+          <button type="submit" name="decision" value="approve" class="{{ btn }} bg-blue-600 text-white hover:bg-blue-700">Approve</button>
+        </div>
+      </form>
+    {% endif %}
+  </div>
+{% endblock %}

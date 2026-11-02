@@ -105,6 +105,7 @@ final class SystemDatabase
         $this->applyMigration($pdo, '202610190001_content_relations', fn(PDO $db) => $this->createContentRelations($db));
         $this->applyMigration($pdo, '202610190002_content_title_key', fn(PDO $db) => $this->addContentTitleKey($db));
         $this->applyMigration($pdo, '202610200001_archive_query', fn(PDO $db) => $this->createArchiveQuery($db));
+        $this->applyMigration($pdo, '202611020001_mcp', fn(PDO $db) => $this->createMcpTables($db));
     }
 
     /**
@@ -177,6 +178,78 @@ final class SystemDatabase
             ) WITHOUT ROWID'
         );
         $pdo->exec('CREATE INDEX IF NOT EXISTS idx_content_values_raw ON content_values (type, lang, field, raw)');
+    }
+
+    /**
+     * The MCP server (src/McpServer.php, docs/mcp.md): the OAuth clients that registered, the codes of a consent, the connections
+     * (an OAuth grant or a token made in the admin, each acting as one account) and their tokens, and the counters of the rate
+     * limits. Only hashes of codes and tokens are kept.
+     */
+    private function createMcpTables(PDO $pdo): void
+    {
+        $pdo->exec(
+            'CREATE TABLE IF NOT EXISTS mcp_clients (
+                client_id TEXT PRIMARY KEY,
+                client_name TEXT NOT NULL,
+                redirect_uris TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                last_used_at TEXT,
+                revoked_at TEXT
+            )'
+        );
+        $pdo->exec(
+            'CREATE TABLE IF NOT EXISTS mcp_codes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                code_hash TEXT NOT NULL UNIQUE,
+                client_id TEXT NOT NULL,
+                user_id INTEGER NOT NULL,
+                approved_by INTEGER NOT NULL,
+                redirect_uri TEXT NOT NULL,
+                scope TEXT NOT NULL,
+                code_challenge TEXT NOT NULL,
+                resource TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                expires_at TEXT NOT NULL,
+                used_at TEXT
+            )'
+        );
+        $pdo->exec(
+            'CREATE TABLE IF NOT EXISTS mcp_connections (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                kind TEXT NOT NULL,
+                name TEXT NOT NULL,
+                client_id TEXT,
+                user_id INTEGER NOT NULL,
+                approved_by INTEGER,
+                scope TEXT NOT NULL,
+                resource TEXT NOT NULL,
+                policy TEXT NOT NULL DEFAULT "{}",
+                created_at TEXT NOT NULL,
+                last_used_at TEXT,
+                paused_at TEXT,
+                revoked_at TEXT
+            )'
+        );
+        $pdo->exec(
+            'CREATE TABLE IF NOT EXISTS mcp_tokens (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                connection_id INTEGER NOT NULL,
+                access_hash TEXT NOT NULL UNIQUE,
+                access_expires_at TEXT NOT NULL,
+                refresh_hash TEXT UNIQUE,
+                refresh_expires_at TEXT,
+                created_at TEXT NOT NULL,
+                replaced_at TEXT
+            )'
+        );
+        $pdo->exec('CREATE INDEX IF NOT EXISTS idx_mcp_tokens_connection ON mcp_tokens (connection_id)');
+        $pdo->exec(
+            'CREATE TABLE IF NOT EXISTS mcp_rate_limits (
+                rate_key TEXT PRIMARY KEY,
+                window_start INTEGER NOT NULL,
+                hits INTEGER NOT NULL DEFAULT 0
+            ) WITHOUT ROWID'
+        );
     }
 
     /** The title in lower case (any alphabet) so a search for a title is not case sensitive in Greek either; SQLite lowers ASCII only. */
