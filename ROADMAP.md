@@ -29,6 +29,7 @@ The client sites accept for now what the work below improves: the importer now w
 
 The owner's priorities, in the order set on 2026-10-19 by what builds on what. Done: general and nested repeaters, the block settings panel, the split of `src/App.php`, the template builder for single and archive templates, and content relationships with the data and index cache (0.1.156–0.1.172; see `CHANGELOG.md`).
 
+- **MCP and automated publishing** (proposal, 2026-11-02): scheduled jobs in Claude or ChatGPT write and publish posts through a remote MCP server modelled on GnozioMCP (OAuth 2.1, automation accounts, scope ∩ role, a daily limit, no repeated posts), with scheduled publishing in the CMS itself as its first step. Plan: `docs/mcp-plan.md`.
 - **A shop, later**: the catalogue can use repeaters, relationships and the template builder; transactions are a separate future scope. It starts with a short design the owner approves before code is written.
 
 Saved working drafts for published pages are not a current priority.
