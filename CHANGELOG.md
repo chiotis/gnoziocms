@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.186 — 2026-11-02 — Automation accounts
+- **Users > Add automation account:** an account that a connection (MCP) will write as. It has a role like anyone, and its name is in the history and the logs; it has no password, email or Google link, and nobody signs in with it (the password form, Google sign-in and an existing session all refuse it).
+- Only someone who manages users makes one. It can never be the super admin, a person never becomes one or the other way round, and making it inactive stops whatever uses it. The list of users marks it *Automation*.
+- When no super admin is left, the account made one is always a person, never an automation account.
+- Step 2 of `docs/mcp-plan.md`; `docs/security.md` (*Automation accounts*). Tests: `tests/unit/accounts.php`, `tests/http/automation_accounts_test.py`.
+
 ## 0.1.185 — 2026-11-02 — Scheduled entries and the site's time zone
 - **Scheduled:** an entry can be saved as *Scheduled* with a *Publish at* time (`status: scheduled`, `publish_at: 'Y-m-d H:i'`). Until then it is seen like a draft; scheduled without a time is saved as a draft.
 - When the time has passed the entry is published: `date` becomes that day, `publish_at` goes, the history keeps a version *Published on schedule* by *Schedule*, the index and the caches are updated, and the admin logs it and shows a notification.
