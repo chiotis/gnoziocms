@@ -3330,7 +3330,31 @@ final class App
             trim((string)@file_get_contents($this->basePath . '/VERSION')) ?: 'dev',
             fn(array $account, string $permission): bool => $this->permissions->can(['role' => (string)$account['role'], 'status' => (string)$account['user_status']], $permission),
             fn(array $connection): array => $this->mcpSiteInfo($connection),
-            fn(string $action, string $level, ?string $type, ?string $id, string $message, array $context) => $this->logActivity($action, $level, $type, $id, $message, $context)
+            fn(string $action, string $level, ?string $type, ?string $id, string $message, array $context) => $this->logActivity($action, $level, $type, $id, $message, $context),
+            fn(): McpContent => new McpContent(
+                $this->content,
+                $this->contentEditor(),
+                $this->contentIndex,
+                $this->contentTypes(),
+                $this->taxonomies(),
+                $this->mcpStore(),
+                $this->settings,
+                $this->basePath . '/public',
+                fn(string $path): string => $this->buildAbsoluteUrl($path),
+                function (array $entry, array $connection, bool $published): void {
+                    // What visitors see may have changed: the same as a save in the admin.
+                    $this->frontCache()->purgeAll();
+                    $this->contentIndex->bump();
+                    if ($published) {
+                        $this->notifications->create([
+                            'type' => 'content',
+                            'title' => ($entry['status'] === ScheduledPublishing::STATUS ? 'Scheduled by ' : 'Published by ') . $connection['name'] . ': ' . $entry['title'],
+                            'body' => $entry['status'] === ScheduledPublishing::STATUS ? 'Goes public at ' . $entry['publish_at'] . '.' : (string)($entry['address'] ?? ''),
+                            'target_url' => '/admin/edit?' . http_build_query(['type' => $entry['type'], 'slug' => $entry['slug'], 'lang' => $entry['lang']]),
+                        ]);
+                    }
+                }
+            )
         );
     }
 
@@ -3443,6 +3467,11 @@ final class App
                 'automation_account' => ($connection['source'] ?? '') === UserRepository::AUTOMATION,
                 'scopes' => preg_split('/\s+/', (string)$connection['scope'], -1, PREG_SPLIT_NO_EMPTY) ?: [],
                 'paused' => $connection['paused_at'] !== null,
+                'may_write_types' => ($policy = McpStore::policy($connection))['types'] ?: 'all',
+                'may_write_languages' => $policy['languages'] ?: 'all',
+                'byline' => $policy['byline'],
+                'publications_per_24h' => $policy['daily_limit'] ?: 'no limit',
+                'publications_left' => $policy['daily_limit'] > 0 ? max(0, $policy['daily_limit'] - $this->mcpStore()->publishedToday((int)$connection['id'])) : null,
             ],
         ];
     }
@@ -3463,6 +3492,8 @@ final class App
         unset($_SESSION['mcp_new_token']);
         $this->render('@admin/mcp.twig', $this->mcpAdmin()->screen($_GET, $this->auth->user(), $token) + [
             'title' => 'MCP',
+            'content_types' => array_values(array_diff($this->content->getTypes(), ['forms'])),
+            'languages' => array_values(array_map('strval', (array)($this->settings['languages']['available'] ?? []))),
             'types' => $this->content->getTypes(),
             'user' => $this->auth->user(),
             'admin_section' => 'mcp',

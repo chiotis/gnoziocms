@@ -68,7 +68,26 @@
                   as {{ c.account }}{% if c.automation %} {{ ui.badge('Automation', 'amber') }}{% endif %} ·
                   {% for s in c.scopes %}<span class="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-600">{{ scope_names[s] ?? s }}</span>{% endfor %}
                   · last used {{ c.last_used_at ? c.last_used_at|date('Y-m-d H:i') : 'never' }}{% if c.ends_at %} · ends {{ c.ends_at|date('Y-m-d') }}{% endif %}
+                  · {{ c.published_today }}{{ c.policy.daily_limit ? '/' ~ c.policy.daily_limit : '' }} published in 24 h
                 </p>
+                <details class="mt-1.5" data-mcp-policy>
+                  <summary class="cursor-pointer text-xs font-medium text-blue-700">Rules{% if c.policy.types or c.policy.languages or c.policy.byline %}: {{ (c.policy.types ?: ['all types'])|join(', ') }} · {{ (c.policy.languages ?: ['all languages'])|join(', ') }}{% if c.policy.byline %} · by {{ c.policy.byline }}{% endif %}{% endif %}</summary>
+                  <form method="post" action="{{ url('admin/mcp') }}" class="mt-2 space-y-2 rounded-md border border-slate-100 bg-slate-50/60 p-3">
+                    {{ csrf_field() }}
+                    <input type="hidden" name="connection" value="{{ c.id }}">
+                    <input type="hidden" name="mcp_action" value="policy">
+                    <fieldset class="flex flex-wrap items-center gap-1.5 text-xs"><legend class="mb-1 font-medium text-slate-700">May write (none ticked: all)</legend>
+                      {% for t in content_types %}<label class="inline-flex items-center gap-1 rounded border border-slate-200 bg-white px-1.5 py-0.5"><input type="checkbox" name="types[]" value="{{ t }}"{% if t in c.policy.types %} checked{% endif %} class="h-3.5 w-3.5">{{ t }}</label>{% endfor %}
+                      <span class="mx-1 text-slate-300">|</span>
+                      {% for l in languages %}<label class="inline-flex items-center gap-1 rounded border border-slate-200 bg-white px-1.5 py-0.5"><input type="checkbox" name="languages[]" value="{{ l }}"{% if l in c.policy.languages %} checked{% endif %} class="h-3.5 w-3.5">{{ l }}</label>{% endfor %}
+                    </fieldset>
+                    <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                      <label class="block text-xs"><span class="mb-0.5 block font-medium text-slate-700">Publications in 24 h (0: no limit)</span><input type="number" name="daily_limit" value="{{ c.policy.daily_limit }}" min="0" max="500" class="{{ input_class }}"></label>
+                      <label class="block text-xs sm:col-span-2"><span class="mb-0.5 block font-medium text-slate-700">Byline when the job gives none</span><input type="text" name="byline" value="{{ c.policy.byline }}" maxlength="120" placeholder="e.g. Newsroom" class="{{ input_class }}"></label>
+                    </div>
+                    <button type="submit" class="{{ small_btn }}">Save rules</button>
+                  </form>
+                </details>
               </div>
               <div class="flex items-center gap-1.5">
                 <form method="post" action="{{ url('admin/mcp') }}">

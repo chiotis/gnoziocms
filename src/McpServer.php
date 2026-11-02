@@ -18,6 +18,7 @@ final class McpServer
      * @param \Closure(array<string, mixed>, string): bool $can whether an account (a users row) has a permission now
      * @param \Closure(array<string, mixed>): array<string, mixed> $siteInfo what `site_info` tells a connection
      * @param \Closure(string, string, ?string, ?string, string, array<string, mixed>): void $log as App::logActivity
+     * @param (\Closure(): McpContent)|null $content the content tools, made when a call needs them
      */
     public function __construct(
         private McpStore $store,
@@ -26,6 +27,7 @@ final class McpServer
         private \Closure $can,
         private \Closure $siteInfo,
         private \Closure $log,
+        private ?\Closure $content = null,
     ) {
     }
 
@@ -137,9 +139,7 @@ final class McpServer
             if (!$this->mayUse($tool, $connection)) {
                 throw new \InvalidArgumentException('This connection may not use ' . $name . '.');
             }
-            $data = match ($name) {
-                'site_info' => ($this->siteInfo)($connection),
-            };
+            $data = $name === 'site_info' ? ($this->siteInfo)($connection) : ($this->content ?? throw new \InvalidArgumentException('Unknown tool: ' . $name . '.'))()->call($name, $arguments, $connection);
             ($this->log)('mcp.tool_called', 'info', 'mcp_connection', (string)$connection['id'], 'MCP: ' . $name . '.', $context);
             return ['content' => [['type' => 'text', 'text' => json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)]], 'structuredContent' => $data, 'isError' => false];
         } catch (\InvalidArgumentException $e) {
@@ -176,7 +176,7 @@ final class McpServer
                 'inputSchema' => ['type' => 'object', 'properties' => new \stdClass(), 'additionalProperties' => false],
                 'annotations' => ['readOnlyHint' => true, 'destructiveHint' => false, 'openWorldHint' => false],
             ],
-        ];
+        ] + McpContent::definitions();
     }
 
     public static function origin(string $url): string

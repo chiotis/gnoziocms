@@ -106,6 +106,7 @@ final class SystemDatabase
         $this->applyMigration($pdo, '202610190002_content_title_key', fn(PDO $db) => $this->addContentTitleKey($db));
         $this->applyMigration($pdo, '202610200001_archive_query', fn(PDO $db) => $this->createArchiveQuery($db));
         $this->applyMigration($pdo, '202611020001_mcp', fn(PDO $db) => $this->createMcpTables($db));
+        $this->applyMigration($pdo, '202611020002_mcp_sources', fn(PDO $db) => $this->createMcpSources($db));
     }
 
     /**
@@ -250,6 +251,35 @@ final class SystemDatabase
                 hits INTEGER NOT NULL DEFAULT 0
             ) WITHOUT ROWID'
         );
+    }
+
+    /**
+     * What MCP connections wrote: the entry made for each source (a job that runs again finds it instead of writing it twice),
+     * and each publication, for the daily limit of a connection.
+     */
+    private function createMcpSources(PDO $pdo): void
+    {
+        $pdo->exec(
+            'CREATE TABLE IF NOT EXISTS mcp_sources (
+                source_key TEXT PRIMARY KEY,
+                connection_id INTEGER NOT NULL,
+                type TEXT NOT NULL,
+                slug TEXT NOT NULL,
+                lang TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )'
+        );
+        $pdo->exec(
+            'CREATE TABLE IF NOT EXISTS mcp_publications (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                connection_id INTEGER NOT NULL,
+                type TEXT NOT NULL,
+                slug TEXT NOT NULL,
+                lang TEXT NOT NULL,
+                published_at TEXT NOT NULL
+            )'
+        );
+        $pdo->exec('CREATE INDEX IF NOT EXISTS idx_mcp_publications_connection ON mcp_publications (connection_id, published_at)');
     }
 
     /** The title in lower case (any alphabet) so a search for a title is not case sensitive in Greek either; SQLite lowers ASCII only. */

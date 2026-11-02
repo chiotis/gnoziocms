@@ -19,6 +19,7 @@ final class McpStore
     /** How long a refresh token that was just exchanged still works, so two refreshes at once do not end the connection. */
     public const REFRESH_GRACE_SECONDS = 60;
     public const MAX_TOKEN_DAYS = 365;
+    public const DEFAULT_DAILY_LIMIT = 10;
 
     /** @param \Closure(): int|null $clock the time, for tests */
     public function __construct(private SystemDatabase $database, private ?\Closure $clock = null)
@@ -209,6 +210,64 @@ final class McpStore
         return $stmt->rowCount() === 1;
     }
 
+    /**
+     * What a connection may do beyond its scopes, set in Admin > MCP: the content types and languages it may write (none: all),
+     * at most how many entries it publishes or schedules in 24 hours, and the byline written as `author` when the job gives none.
+     *
+     * @param array<string, mixed> $connection
+     * @return array{types: string[], languages: string[], daily_limit: int, byline: string}
+     */
+    public static function policy(array $connection): array
+    {
+        $raw = json_decode((string)($connection['policy'] ?? '{}'), true);
+        $raw = is_array($raw) ? $raw : [];
+        return [
+            'types' => array_values(array_map('strval', is_array($raw['types'] ?? null) ? $raw['types'] : [])),
+            'languages' => array_values(array_map('strval', is_array($raw['languages'] ?? null) ? $raw['languages'] : [])),
+            'daily_limit' => max(0, min(500, (int)($raw['daily_limit'] ?? self::DEFAULT_DAILY_LIMIT))),
+            'byline' => mb_substr(trim((string)($raw['byline'] ?? '')), 0, 120),
+        ];
+    }
+
+    /** @param array{types: string[], languages: string[], daily_limit: int, byline: string} $policy */
+    public function setPolicy(int $id, array $policy): bool
+    {
+        $stmt = $this->pdo()->prepare('UPDATE mcp_connections SET policy = :policy WHERE id = :id AND revoked_at IS NULL');
+        $stmt->execute(['policy' => json_encode(self::policy(['policy' => json_encode($policy)]), JSON_UNESCAPED_UNICODE), 'id' => $id]);
+        return $stmt->rowCount() === 1;
+    }
+
+    // ---- sources and publications
+
+    /** @return array{type: string, slug: string, lang: string, connection_id: int}|null the entry made for a source */
+    public function source(string $key): ?array
+    {
+        $stmt = $this->pdo()->prepare('SELECT type, slug, lang, connection_id FROM mcp_sources WHERE source_key = :key');
+        $stmt->execute(['key' => $key]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return is_array($row) ? ['type' => (string)$row['type'], 'slug' => (string)$row['slug'], 'lang' => (string)$row['lang'], 'connection_id' => (int)$row['connection_id']] : null;
+    }
+
+    public function rememberSource(string $key, int $connectionId, string $type, string $slug, string $lang): void
+    {
+        $this->pdo()->prepare('INSERT OR REPLACE INTO mcp_sources (source_key, connection_id, type, slug, lang, created_at) VALUES (:key, :connection, :type, :slug, :lang, :now)')
+            ->execute(['key' => $key, 'connection' => $connectionId, 'type' => $type, 'slug' => $slug, 'lang' => $lang, 'now' => $this->stamp()]);
+    }
+
+    /** How many entries a connection published or scheduled in the last 24 hours. */
+    public function publishedToday(int $connectionId): int
+    {
+        $stmt = $this->pdo()->prepare('SELECT COUNT(*) FROM mcp_publications WHERE connection_id = :connection AND published_at > :since');
+        $stmt->execute(['connection' => $connectionId, 'since' => $this->stamp(-86400)]);
+        return (int)$stmt->fetchColumn();
+    }
+
+    public function recordPublication(int $connectionId, string $type, string $slug, string $lang): void
+    {
+        $this->pdo()->prepare('INSERT INTO mcp_publications (connection_id, type, slug, lang, published_at) VALUES (:connection, :type, :slug, :lang, :now)')
+            ->execute(['connection' => $connectionId, 'type' => $type, 'slug' => $slug, 'lang' => $lang, 'now' => $this->stamp()]);
+    }
+
     // ---- rate limits
 
     /** A fixed window per bucket and identifier (kept as a hash). @return array{allowed: bool, retry_after: int, first_blocked: bool} */
@@ -247,6 +306,7 @@ final class McpStore
         $this->pdo()->prepare('DELETE FROM mcp_tokens WHERE COALESCE(refresh_expires_at, access_expires_at) < :now OR (replaced_at IS NOT NULL AND replaced_at < :day AND access_expires_at < :now)')
             ->execute(['now' => $this->stamp(), 'day' => $day]);
         $this->pdo()->prepare('DELETE FROM mcp_rate_limits WHERE window_start < :old')->execute(['old' => $this->now() - 86400]);
+        $this->pdo()->prepare('DELETE FROM mcp_publications WHERE published_at < :day')->execute(['day' => $this->stamp(-2 * 86400)]);
     }
 
     private function now(): int
