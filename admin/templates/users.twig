@@ -30,6 +30,7 @@
           <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>
           Add user
         </a>
+        <a href="{{ url('admin/users-edit?kind=automation') }}" class="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50" title="An account a connection (MCP) writes as; nobody signs in with it">Add automation account</a>
       {% endif %}
     </div>
   </header>
@@ -105,7 +106,7 @@
                     <span class="flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-[11px] font-semibold text-white">{{ initials ?: 'U' }}</span>
                     <a href="{{ url('admin/users-edit?id=' ~ account.id) }}" class="font-medium text-slate-900 hover:text-blue-600">{{ label }}</a>
                   </div>
-                  <div class="mt-0.5 text-xs text-slate-400">{{ account.username }}</div>
+                  <div class="mt-0.5 flex items-center gap-1.5 text-xs text-slate-400">{{ account.username }}{% if account.source|default('') == 'automation' %} {{ ui.badge('Automation', 'amber') }}{% endif %}</div>
                 </td>
                 <td class="px-4 py-2.5 text-slate-600">{{ account.email ?: '—' }}</td>
                 <td class="px-4 py-2.5">
@@ -114,7 +115,7 @@
                 <td class="px-4 py-2.5">
                   {{ ui.status_badge(account.status) }}
                 </td>
-                <td class="px-4 py-2.5 text-slate-400" data-sort-value="{{ account.last_login_at ?: '0' }}">{{ account.last_login_at ? account.last_login_at|date('Y-m-d H:i') : 'Never' }}</td>
+                <td class="px-4 py-2.5 text-slate-400" data-sort-value="{{ account.last_login_at ?: '0' }}">{{ account.source|default('') == 'automation' ? '—' : (account.last_login_at ? account.last_login_at|date('Y-m-d H:i') : 'Never') }}</td>
                 <td class="px-4 py-2.5">
                   <div class="flex items-center justify-end gap-0.5">
                     <a class="{{ icon_button }}" href="{{ url('admin/users-edit?id=' ~ account.id) }}" title="Edit {{ label }}" aria-label="Edit {{ label }}">

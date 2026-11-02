@@ -17,10 +17,10 @@ final class UserAdmin
     {
     }
 
-    /** What a new user starts with. @return array<string, mixed> */
-    public static function blank(): array
+    /** What a new user starts with: a person, or an automation account (`$automation`). @return array<string, mixed> */
+    public static function blank(bool $automation = false): array
     {
-        return ['id' => 0, 'username' => '', 'email' => '', 'display_name' => '', 'role' => 'editor', 'status' => 'active', 'google_sub' => '', 'google_email' => '', 'created_at' => '', 'updated_at' => '', 'last_login_at' => ''];
+        return ['id' => 0, 'username' => '', 'email' => '', 'display_name' => '', 'role' => 'editor', 'status' => 'active', 'source' => $automation ? UserRepository::AUTOMATION : 'sqlite', 'google_sub' => '', 'google_email' => '', 'created_at' => '', 'updated_at' => '', 'last_login_at' => ''];
     }
 
     /**
@@ -51,8 +51,20 @@ final class UserAdmin
             $payload['google_email'] = (string)($existing['google_email'] ?? '');
         }
 
+        // An automation account stays one, and a person stays a person; only someone who manages users makes a new one.
+        $automation = $id > 0 ? UserRepository::isAutomation($existing ?? []) : (string)($post['kind'] ?? '') === UserRepository::AUTOMATION && $this->permissions->can($actor, 'users.manage');
         $password = (string)($post['password'] ?? '');
-        $error = $this->passwordProblem($id, $payload['username'], $password, (string)($post['password_confirm'] ?? ''));
+        if ($automation) {
+            // Nothing to sign in with: no password, no email (which Google sign-in matches), no Google link; and never the super admin.
+            $password = '';
+            $payload = ['email' => '', 'google_sub' => '', 'google_email' => ''] + $payload;
+            if ($payload['role'] === 'superadmin') {
+                $kept = (string)($existing['role'] ?? '');
+                $payload['role'] = $kept !== '' && $kept !== 'superadmin' ? $kept : 'editor';
+            }
+        }
+        $payload['source'] = $automation ? UserRepository::AUTOMATION : (string)($existing['source'] ?? 'sqlite');
+        $error = $automation ? ($payload['username'] === '' ? 'Username is required.' : '') : $this->passwordProblem($id, $payload['username'], $password, (string)($post['password_confirm'] ?? ''));
         $result = ['ok' => false, 'id' => $id, 'error' => $error, 'payload' => $payload, 'password_changed' => false];
         if ($error !== '') {
             return $result;
@@ -68,7 +80,7 @@ final class UserAdmin
                 $this->log('users.update', 'info', 'user', (string)$id, 'User updated.', ['username' => $payload['username'], 'role' => $payload['role'], 'status' => $payload['status']]);
             } else {
                 $id = $this->users->create($toStore);
-                $this->log('users.create', 'info', 'user', (string)$id, 'User created.', ['username' => $payload['username'], 'role' => $payload['role'], 'status' => $payload['status']]);
+                $this->log('users.create', 'info', 'user', (string)$id, $automation ? 'Automation account created.' : 'User created.', ['username' => $payload['username'], 'role' => $payload['role'], 'status' => $payload['status'], 'automation' => $automation]);
             }
         } catch (\Throwable) {
             $result['error'] = 'User could not be saved. Check for duplicate usernames or invalid values.';

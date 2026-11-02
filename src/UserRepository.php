@@ -9,6 +9,12 @@ use Symfony\Component\Yaml\Yaml;
 
 final class UserRepository
 {
+    /**
+     * The `source` of an account that a connection (MCP, docs/mcp-plan.md) acts as: it has a role like anyone, but no password,
+     * no email and no Google link, and it never signs in.
+     */
+    public const AUTOMATION = 'automation';
+
     /** @var array<string, string> */
     private array $roles = ['superadmin' => 'superadmin', 'admin' => 'admin', 'editor' => 'editor', 'user' => 'user'];
     /** @var string[] Roles the super admin made, which a person can also have. */
@@ -82,7 +88,8 @@ final class UserRepository
             return;
         }
 
-        $candidate = $this->pdo()->query('SELECT id FROM users WHERE status = "active" ORDER BY role = "admin" DESC, id ASC LIMIT 1');
+        // A person, never an automation account, which nobody can sign in with.
+        $candidate = $this->pdo()->query('SELECT id FROM users WHERE status = "active" AND source != "' . self::AUTOMATION . '" ORDER BY role = "admin" DESC, id ASC LIMIT 1');
         $id = (int)$candidate->fetchColumn();
         if ($id <= 0) {
             return;
@@ -256,6 +263,11 @@ final class UserRepository
     {
         unset($user['password_hash']);
         return $user;
+    }
+
+    public static function isAutomation(array $user): bool
+    {
+        return ($user['source'] ?? '') === self::AUTOMATION;
     }
 
     public function isActive(array $user): bool

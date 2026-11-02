@@ -213,7 +213,7 @@ final class LoginController
 
         $email = $accepted['email'];
         $user = $this->users->findByEmail($email);
-        if (!$user || !$this->users->isActive($user)) {
+        if (!$user || !$this->users->isActive($user) || UserRepository::isAutomation($user)) {
             $this->renderLogin('No active GnozioCMS user matches this Google account.');
             return;
         }
