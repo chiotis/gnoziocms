@@ -816,6 +816,8 @@ final class ContentEditor
             'visible',
             'date',
             'publish_at',
+            // The MCP connection that made the entry (docs/mcp.md); shown in the admin only.
+            'generated_by',
             'author',
             'tags',
             'categories',

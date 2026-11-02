@@ -31,9 +31,25 @@ A tool needs one of its scopes and, on every call, the permission it asks of the
 
 | Tool | Scope | What it does |
 |---|---|---|
-| `site_info` | any | the site's name, address, languages, time zone and current time, its content types with their fields, its taxonomies, and the connection itself (name, account, scopes, paused) |
+| `site_info` | any | the site's name, address, languages, time zone and current time, its content types with their fields, its taxonomies, and the connection itself (name, account, scopes, paused, its rules and publications left) |
+| `list_entries` | read | entries of a type, newest first, drafts and scheduled included; by language, status, changed since; paged |
+| `get_entry` | read | one entry: text in Markdown, status, dates, terms, fields, translations, `updated_at` |
+| `search_entries` | read | the words in title, address or text |
+| `list_terms` | read | the terms of a taxonomy, with ids and labels |
+| `find_by_source` | read | the entry made earlier for a `source_key` |
+| `validate_entry` | write | the arguments of `create_entry`, checked, nothing saved |
+| `create_entry` | write | a new entry; `status` (draft, published, scheduled with `publish_at`) is required; `source_key` returns the entry made before for the same source; `translation_of` makes it a translation |
+| `update_entry` | write | changes what is given and keeps the rest; `expected_updated_at` refuses a change made meanwhile |
 
-The tools to read and write entries and add pictures come next (`docs/mcp-plan.md`, step 4).
+The read tools need `content.manage` on the account (they show drafts). Writing needs `content.manage`; published and scheduled entries, and changing them, need `content:publish` too. Pictures from an address come next (`docs/mcp-plan.md`, step 5); for now `main_image` takes a picture already in the library.
+
+**Strict writes.** The job cannot see the page, so nothing it sends is quietly fixed: an unknown argument, type, language, taxonomy, term or field, a value a field does not take (a select's other options are named), a date that is not `YYYY-MM-DD` and a scheduled entry without `publish_at` are errors, all of them at once, in sentences that say what to send instead. Text is Markdown; HTML is shown as text and the result says so. Fields that are lists, relations or galleries cannot be written yet. New terms are added by a person.
+
+**What is written.** Every save goes through the admin's own editor code (address from the title, translations, index, history, redirects). A new entry gets `generated_by: <connection>` (shown in the admin, marked *MCP* in the content list) and the connection's byline as `author` unless the job gives one. The history names the account and the connection. Each publication or scheduling leaves a notification in the admin, and the caches are emptied as after a save.
+
+## Rules of a connection
+
+Each connection in Admin > MCP has **Rules**: the content types and languages it may write (none ticked: all), how many entries it may publish or schedule in 24 hours (10 by default, 0 for no limit) and the byline for new entries. A draft is never counted. `site_info` tells the job its rules and what is left of today's limit.
 
 ## The protocol
 
@@ -48,8 +64,8 @@ The tools to read and write entries and add pictures come next (`docs/mcp-plan.m
 
 ## What is kept
 
-Tables of the system database (`SystemDatabase::createMcpTables`): `mcp_clients`, `mcp_codes`, `mcp_connections` (the account it acts as, who approved it, scopes, paused, removed), `mcp_tokens` (hashes only), `mcp_rate_limits`. Old codes, tokens and counters are cleaned as new tokens are made. Every call, refusal and change is in the activity log as `mcp.*`.
+Tables of the system database (`SystemDatabase::createMcpTables`): `mcp_clients`, `mcp_codes`, `mcp_connections` (the account it acts as, who approved it, scopes, paused, removed), `mcp_tokens` (hashes only), `mcp_rate_limits`, `mcp_sources` (the entry made for each `source_key`) and `mcp_publications` (for the daily limit). Old codes, tokens and counters are cleaned as new tokens are made. Every call, refusal and change is in the activity log as `mcp.*`.
 
 ## Code and tests
 
-`src/McpStore.php` (tables), `src/McpOAuth.php` (OAuth), `src/McpServer.php` (the endpoint and its tools), `src/McpAdmin.php` (the screen), `App::handleMcp`, `App::handleMcpAuthorize`, `admin/templates/mcp.twig`, `admin/templates/mcp-authorize.twig`. Tests: `tests/unit/mcp.php`, `tests/http/mcp_oauth_test.py`. Security notes: `docs/security.md` (*MCP*).
+`src/McpStore.php` (tables), `src/McpOAuth.php` (OAuth), `src/McpServer.php` (the endpoint, `site_info`), `src/McpContent.php` (the content tools), `src/McpAdmin.php` (the screen), `App::handleMcp`, `App::handleMcpAuthorize`, `admin/templates/mcp.twig`, `admin/templates/mcp-authorize.twig`. Tests: `tests/unit/mcp.php`, `tests/http/mcp_oauth_test.py`, `tests/http/mcp_tools_test.py`. Security notes: `docs/security.md` (*MCP*).

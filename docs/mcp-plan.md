@@ -74,6 +74,8 @@ This is useful without MCP too, and it lets a job write a week of posts in one r
 
 ### 4. Scopes and connection policy
 
+*Built in 0.1.188 with the tools of section 5 (`docs/mcp.md`). Writing `status` is required, as decided; the rules are set per connection under Admin > MCP.*
+
 | Scope | Allows | Needs the permission |
 |---|---|---|
 | `content:read` | read and search entries, terms, site facts | — (any active account) |

@@ -151,6 +151,7 @@
                   </a>
                   <div class="mt-0.5 flex items-center gap-2 text-xs text-slate-400">
                     <span>/{{ item.slug }}</span>
+                    {% if item.meta.generated_by|default('') %}<span title="Written through MCP by {{ item.meta.generated_by }}">{{ ui.badge('MCP', 'amber') }}</span>{% endif %}
                     {% if current_type != 'pages' and item.meta.main_image %}
                       <span class="meta-icon relative inline-flex h-5 w-5 cursor-pointer items-center justify-center rounded border border-slate-200 bg-white text-slate-400" title="Has main image">
                         <svg viewBox="0 0 24 24" aria-hidden="true" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16v12H4zM8 11a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM4 16l5-5 4 4 3-3 4 4"/></svg>

@@ -50,6 +50,8 @@ final class McpAdmin
             'ends_at' => (string)($row['ends_at'] ?? ''),
             'ends_soon' => ($row['ends_at'] ?? '') !== '' && (string)$row['ends_at'] < gmdate('Y-m-d H:i:s', time() + 7 * 86400),
             'paused' => $row['paused_at'] !== null,
+            'policy' => McpStore::policy($row),
+            'published_today' => $this->store->publishedToday((int)$row['id']),
         ], $this->store->isAvailable() ? $this->store->connections() : []);
         return [
             'enabled' => $this->isEnabled(),
@@ -104,6 +106,13 @@ final class McpAdmin
         $connection = $id > 0 ? $this->store->connection($id) : null;
         if ($connection === null) {
             return $done(false, 'That connection no longer exists.');
+        }
+        if ($action === 'policy') {
+            $list = static fn(string $key): array => array_values(array_filter(array_map(static fn(mixed $v): string => Slug::plain((string)$v), is_array($post[$key] ?? null) ? $post[$key] : [])));
+            $policy = ['types' => $list('types'), 'languages' => $list('languages'), 'daily_limit' => (int)($post['daily_limit'] ?? McpStore::DEFAULT_DAILY_LIMIT), 'byline' => (string)($post['byline'] ?? '')];
+            $this->store->setPolicy($id, $policy);
+            ($this->log)('mcp.connection_policy', 'info', 'mcp_connection', (string)$id, 'MCP connection rules changed: ' . $connection['name'] . '.', McpStore::policy(['policy' => json_encode($policy)]));
+            return $done(true, 'Rules of ' . $connection['name'] . ' saved.');
         }
         $result = match ($action) {
             'pause' => $this->store->setPaused($id, true) ? 'Paused: its calls are refused until it is resumed.' : '',
