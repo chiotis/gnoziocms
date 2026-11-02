@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.185 — 2026-11-02 — Scheduled entries and the site's time zone
+- **Scheduled:** an entry can be saved as *Scheduled* with a *Publish at* time (`status: scheduled`, `publish_at: 'Y-m-d H:i'`). Until then it is seen like a draft; scheduled without a time is saved as a draft.
+- When the time has passed the entry is published: `date` becomes that day, `publish_at` goes, the history keeps a version *Published on schedule* by *Schedule*, the index and the caches are updated, and the admin logs it and shows a notification.
+- It runs from the cron script (`src/cron-backup.php`, every 5 minutes on a site that schedules), after a public page where the server can finish the response first, and when the admin is opened; at most once a minute from the last two.
+- **Settings > Localization > Time zone:** the zone publishing times are written and read in; empty is the server's. Times with an offset (ISO 8601) are turned into it. Other dates of the site are unchanged.
+- The content list filters by *scheduled*; bulk *Publish* and *Move to draft* drop a waiting time; the dashboard no longer counts scheduled entries as published.
+- First step of the MCP plan (`docs/mcp-plan.md`). Tests: `tests/unit/scheduled-publishing.php`, `tests/http/scheduled_test.py`.
+
 ## 0.1.184 — 2026-10-27 — Old product name left in comments and internal names
 - The admin scripts call the shared picture picker by its new name, `GnozioMediaPicker`. They fall back to `FarosMediaPicker` when only a custom script sets that one.
 - The icon picker is also `GnozioIconPicker`. `FarosIconPicker` stays the same object.
