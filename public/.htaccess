@@ -1,4 +1,7 @@
 RewriteEngine On
+# Apache with PHP as CGI/FastCGI drops the Authorization header; the MCP server (docs/mcp.md) needs it.
+RewriteCond %{HTTP:Authorization} .
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^ index.php [L]

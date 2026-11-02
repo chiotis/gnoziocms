@@ -1,0 +1,128 @@
+{% extends '@admin/base.twig' %}
+{% set page_heading = 'MCP' %}
+{% import '@admin/partials/ui.twig' as ui %}
+
+{% block content %}
+  {% set btn = 'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium shadow-sm' %}
+  {% set small_btn = 'rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50' %}
+  {% set input_class = 'block w-full rounded-md border border-slate-300 px-2.5 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500' %}
+  {% set scope_names = {'content:read': 'Read', 'content:write': 'Write drafts', 'content:publish': 'Publish', 'media:write': 'Pictures'} %}
+
+  {{ ui.flash(message, done == 'ok' ? 'success' : 'error') }}
+
+  <header class="mb-4 border-b border-slate-200 pb-4">
+    <p class="text-xs text-slate-400">MCP lets an AI assistant (Claude, ChatGPT, or a job of theirs that runs on a schedule) read and write the site's content as one of its accounts. Each connection is approved here or on the consent screen, can be paused or removed at any time, and every call is in the activity log.</p>
+  </header>
+
+  {% if not available %}
+    <p class="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">The site database is not available, so MCP cannot be used.</p>
+  {% else %}
+  <div class="space-y-4">
+    {% if new_token %}
+      <div class="rounded-lg border border-green-200 bg-green-50 p-4" data-mcp-new-token>
+        <h2 class="text-sm font-semibold text-green-900">The new token</h2>
+        <p class="mt-1 text-xs text-green-800">Copy it now and give it to the client as <code>Authorization: Bearer …</code>. It is not shown again; only a fingerprint of it is kept.</p>
+        <input type="text" readonly value="{{ new_token }}" class="{{ input_class }} mt-2 font-mono" onclick="this.select()">
+      </div>
+    {% endif %}
+
+    <div class="rounded-lg border border-slate-200 bg-white" data-mcp-switch>
+      <div class="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
+        <h2 class="text-sm font-semibold text-slate-900">Server</h2>
+        {{ enabled ? ui.badge('On', 'green') : ui.badge('Off', 'slate') }}
+      </div>
+      <dl class="divide-y divide-slate-50 text-sm">
+        <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5"><dt class="text-slate-600">Address for the AI assistant</dt><dd class="font-mono text-slate-800" data-mcp-endpoint>{{ endpoint }}</dd></div>
+        <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5"><dt class="text-slate-600">Discovery</dt>
+          <dd class="text-right text-xs">
+            <span data-mcp-check="{{ metadata.protected_resource }}" class="text-slate-500">{{ metadata.protected_resource }}</span><br>
+            <span data-mcp-check="{{ metadata.authorization_server }}" class="text-slate-500">{{ metadata.authorization_server }}</span>
+          </dd>
+        </div>
+      </dl>
+      <form method="post" action="{{ url('admin/mcp') }}" class="flex flex-wrap items-center gap-3 border-t border-slate-100 px-4 py-3">
+        {{ csrf_field() }}
+        <p class="text-xs text-slate-500">{{ enabled ? 'In Claude: Settings > Connectors > Add custom connector, with the address above. In ChatGPT: Developer mode, a new app with that address and OAuth.' : 'Off, the addresses above answer as ordinary pages and no connection works. Connections are kept and work again when it is on.' }}</p>
+        <button type="submit" name="mcp_action" value="{{ enabled ? 'disable' : 'enable' }}" class="{{ btn }} ml-auto {{ enabled ? 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50' : 'bg-blue-600 text-white hover:bg-blue-700' }}">{{ enabled ? 'Turn off' : 'Turn on' }}</button>
+      </form>
+    </div>
+
+    <div class="rounded-lg border border-slate-200 bg-white" data-mcp-connections>
+      <div class="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
+        <h2 class="text-sm font-semibold text-slate-900">Connections</h2>
+        <span class="text-xs text-slate-400">{{ connections|length }}</span>
+      </div>
+      {% if connections is empty %}
+        <p class="px-4 py-3 text-sm text-slate-500">None yet. An AI assistant connects with the address above, and you approve it on a screen of this admin.</p>
+      {% else %}
+        <ul class="divide-y divide-slate-50">
+          {% for c in connections %}
+            <li class="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2.5 text-sm" data-mcp-connection="{{ c.id }}">
+              <div class="min-w-0 flex-1">
+                <p class="flex flex-wrap items-center gap-1.5 font-medium text-slate-900">{{ c.name }}
+                  {{ ui.badge(c.kind == 'token' ? 'Token' : 'OAuth', 'slate') }}
+                  {% if c.paused %}{{ ui.badge('Paused', 'amber') }}{% endif %}
+                  {% if c.ends_soon %}{{ ui.badge('Ends soon', 'red') }}{% endif %}
+                </p>
+                <p class="mt-0.5 flex flex-wrap items-center gap-1 text-xs text-slate-500">
+                  as {{ c.account }}{% if c.automation %} {{ ui.badge('Automation', 'amber') }}{% endif %} ·
+                  {% for s in c.scopes %}<span class="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-600">{{ scope_names[s] ?? s }}</span>{% endfor %}
+                  · last used {{ c.last_used_at ? c.last_used_at|date('Y-m-d H:i') : 'never' }}{% if c.ends_at %} · ends {{ c.ends_at|date('Y-m-d') }}{% endif %}
+                </p>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <form method="post" action="{{ url('admin/mcp') }}">
+                  {{ csrf_field() }}
+                  <input type="hidden" name="connection" value="{{ c.id }}">
+                  <button type="submit" name="mcp_action" value="{{ c.paused ? 'resume' : 'pause' }}" class="{{ small_btn }}">{{ c.paused ? 'Resume' : 'Pause' }}</button>
+                </form>
+                <form method="post" action="{{ url('admin/mcp') }}" data-confirm="Remove {{ c.name }}? The AI assistant has to connect again to use the site." data-confirm-button="Remove">
+                  {{ csrf_field() }}
+                  <input type="hidden" name="connection" value="{{ c.id }}">
+                  <button type="submit" name="mcp_action" value="revoke" class="rounded-md border border-red-200 bg-white px-2.5 py-1 text-xs font-medium text-red-600 shadow-sm hover:bg-red-50">Remove</button>
+                </form>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    </div>
+
+    <details class="rounded-lg border border-slate-200 bg-white" data-mcp-token-form>
+      <summary class="cursor-pointer px-4 py-3 text-sm font-semibold text-slate-900">Make a token by hand</summary>
+      <form method="post" action="{{ url('admin/mcp') }}" class="space-y-3 border-t border-slate-100 px-4 py-3">
+        {{ csrf_field() }}
+        <input type="hidden" name="mcp_action" value="token">
+        <p class="text-xs text-slate-500">For a client that sends its own header (Claude Code, the API, n8n). Claude and ChatGPT on the web use OAuth instead and need no token.</p>
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <label class="block"><span class="mb-1 block text-xs font-medium text-slate-700">Name</span><input type="text" name="name" maxlength="80" required placeholder="Daily news" class="{{ input_class }}"></label>
+          <label class="block"><span class="mb-1 block text-xs font-medium text-slate-700">Acts as</span>
+            <select name="account" class="{{ input_class }}">{% for a in accounts %}<option value="{{ a.id }}">{{ a.label }}{{ a.automation ? ' · automation' : '' }}</option>{% endfor %}</select>
+          </label>
+          <label class="block"><span class="mb-1 block text-xs font-medium text-slate-700">Days it works</span><input type="number" name="days" value="90" min="1" max="365" class="{{ input_class }}"></label>
+        </div>
+        <fieldset class="flex flex-wrap gap-2">
+          {% for key, text in scopes %}
+            <label class="inline-flex items-center gap-1.5 rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-700" title="{{ text }}"><input type="checkbox" name="scopes[]" value="{{ key }}" checked class="h-3.5 w-3.5 rounded border-slate-300">{{ scope_names[key] }}</label>
+          {% endfor %}
+        </fieldset>
+        <button type="submit" class="{{ btn }} bg-blue-600 text-white hover:bg-blue-700">Make token</button>
+      </form>
+    </details>
+  </div>
+  {% if enabled %}
+  <script>
+    // The discovery documents are read from the browser: a server that does not pass /.well-known to the site shows it here.
+    document.querySelectorAll('[data-mcp-check]').forEach(function (el) {
+      fetch(new URL(el.getAttribute('data-mcp-check')).pathname, {credentials: 'omit'}).then(function (r) {
+        return r.ok ? r.json() : Promise.reject(r.status);
+      }).then(function () {
+        el.className = 'text-green-700'; el.textContent = '✓ ' + el.textContent;
+      }).catch(function () {
+        el.className = 'text-red-700'; el.textContent = '✗ ' + el.textContent + ' (not answered: the web server must pass this address to the site)';
+      });
+    });
+  </script>
+  {% endif %}
+  {% endif %}
+{% endblock %}

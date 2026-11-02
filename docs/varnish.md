@@ -6,7 +6,10 @@ the change shows at once, however long the cache keeps a page. **System > Page c
 that empties the cache by hand.
 
 Not kept: what an editor sees (they have a session and may see drafts), the maintenance page during an update, the analytics
-beacon and a picture that could not be made.
+beacon and a picture that could not be made. Nor the MCP server and its OAuth (`/mcp`, `/_mcp/token`, `/_mcp/register`,
+`/.well-known/oauth-*`, `docs/mcp.md`): they answer `Cache-Control: no-store` and carry an `Authorization` header or a POST, which
+Varnish passes by default; a cache or CDN that keeps POSTs or ignores `no-store` must be told to pass these paths, and must forward
+the `Authorization` header to the site.
 
 ## CloudPanel
 
