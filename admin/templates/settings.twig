@@ -165,9 +165,9 @@
         <div class="{{ section_class }}">
           <div class="{{ section_header_class }}">
             <h2 class="text-sm font-semibold text-slate-900">Localization</h2>
-            <p class="mt-0.5 text-xs text-slate-400">Default language, available locales and date formatting.</p>
+            <p class="mt-0.5 text-xs text-slate-400">Default language, available locales, date formatting and the time zone of publishing times.</p>
           </div>
-          <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <label class="block">
               <span class="mb-1 block text-sm font-medium text-slate-700">Default language</span>
               <input type="text" name="languages_default" value="{{ settings_form.languages_default }}" placeholder="el" class="{{ input_class }}">
@@ -179,6 +179,13 @@
             <label class="block">
               <span class="mb-1 block text-sm font-medium text-slate-700">Date format</span>
               <input type="text" name="date_format" value="{{ settings_form.date_format }}" placeholder="d/m/Y" class="{{ input_class }}">
+            </label>
+            <label class="block">
+              <span class="mb-1 block text-sm font-medium text-slate-700">Time zone</span>
+              <select name="timezone" class="{{ input_class }}">
+                <option value="">The server's ({{ server_timezone }})</option>
+                {% for zone in timezones %}<option value="{{ zone }}" {% if settings_form.timezone == zone %}selected{% endif %}>{{ zone }}</option>{% endfor %}
+              </select>
             </label>
           </div>
         </div>

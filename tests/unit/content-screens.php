@@ -114,7 +114,7 @@ $r = $admin->listing(['type' => 'forms', 'deleted' => '1'], true);
 check('forms have their own list', $r['location'], '/admin/forms?deleted=1');
 $r = $admin->listing(['type' => 'pages', 'lang' => 'el'], true)['data'];
 check('the list shows every entry of the language, drafts too', [count($r['items']), $r['current_type'], $r['filters_active'], $r['can_redirects']], [3, 'pages', false, true]);
-check('the statuses to filter by', $r['status_options'], ['published', 'draft']);
+check('the statuses to filter by', $r['status_options'], ['published', 'draft', 'scheduled']);
 check('and which other languages each entry exists in', $r['translation_langs']['about|el'] ?? null, ['en']);
 $r = $admin->listing(['type' => 'pages', 'lang' => 'el', 'q' => 'SECRET'], false)['data'];
 check('a search looks at the title and the address, in any case', [array_map(fn($i) => $i->slug, $r['items']), $r['filters_active'], $r['can_redirects']], [['secret'], true, false]);
@@ -284,6 +284,19 @@ $rule = array_values(array_filter($ruled, fn($item) => $item->slug === 'rule-tes
 check('a term of a taxonomy the type cannot be filed under is not saved, the others are', [$filed['slug'] ?? null, $rule?->meta['genre'] ?? 'none', $rule?->meta['tags'] ?? null], ['rule-test', 'none', ['news']]);
 $offered = $taxonomies->names('posts');
 check('the names offered for a post leave out the taxonomy that does not take posts', [in_array('genre', $offered, true), in_array('tags', $offered, true)], [false, true]);
+
+// ---- scheduled entries: the time is kept in the site's zone; without one the entry is a draft, never published by surprise
+$zoned = new ContentEditor("$dir/content", $settings + ['timezone' => 'Europe/Athens'], $content, $index, $types, $theme, $redirects, $guard, fn() => $registry, fn(?string $type = null) => $taxonomies->names($type), $revisions);
+$zoned->save('posts', ['title' => 'Later', 'slug' => 'later', 'status' => 'scheduled', 'publish_at' => '2026-11-03T09:00', 'body' => 'Soon'], null, false, 'tester');
+$later = (string)file_get_contents("$dir/content/posts/later.md");
+check('a scheduled entry keeps its status and time', [str_contains($later, 'status: scheduled'), str_contains($later, "publish_at: '2026-11-03 09:00'")], [true, true]);
+$zoned->save('posts', ['title' => 'Later', 'slug' => 'later', 'original_slug' => 'later', 'original_lang' => 'el', 'status' => 'scheduled', 'publish_at' => '2026-11-03T07:00:00Z', 'body' => 'Soon'], null, false, 'tester');
+check('a time with an offset is kept in the site zone', str_contains((string)file_get_contents("$dir/content/posts/later.md"), "publish_at: '2026-11-03 09:00'"), true);
+$zoned->save('posts', ['title' => 'Later', 'slug' => 'later', 'original_slug' => 'later', 'original_lang' => 'el', 'status' => 'published', 'publish_at' => '2026-11-03T09:00', 'body' => 'Now'], null, false, 'tester');
+$later = (string)file_get_contents("$dir/content/posts/later.md");
+check('published now: the time is dropped', [str_contains($later, 'status: published'), str_contains($later, 'publish_at')], [true, false]);
+$zoned->save('posts', ['title' => 'No time', 'slug' => 'no-time', 'status' => 'scheduled', 'publish_at' => '', 'body' => 'x'], null, false, 'tester');
+check('scheduled without a time is saved as a draft', str_contains((string)file_get_contents("$dir/content/posts/no-time.md"), 'status: draft'), true);
 
 // tidy up
 exec('rm -rf ' . escapeshellarg($dir));

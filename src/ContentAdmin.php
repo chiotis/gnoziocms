@@ -60,7 +60,7 @@ final class ContentAdmin
         }
         $items = $this->content->getItems($type, $lang, true, false);
         $translationLangs = $this->translations->matrix($type, $items);
-        $statusOptions = array_values(array_unique(array_merge(['published', 'draft'], array_map(
+        $statusOptions = array_values(array_unique(array_merge(['published', 'draft', ScheduledPublishing::STATUS], array_map(
             static fn(ContentItem $item): string => (string)($item->meta['status'] ?? 'published'),
             $items
         ))));
@@ -190,6 +190,8 @@ final class ContentAdmin
                 continue;
             }
             $meta['status'] = $action === 'publish' ? 'published' : 'draft';
+            // Published or a draft now: a time it was waiting for no longer applies.
+            unset($meta['publish_at']);
             // Same layout the editor writes: front matter, one blank line, body.
             $body = preg_replace('/\A\R/', '', $body) ?? $body;
             file_put_contents($path, "---\n" . trim(Yaml::dump($meta, 10, 2, Yaml::DUMP_MULTI_LINE_LITERAL_BLOCK)) . "\n---\n\n" . rtrim($body) . "\n");

@@ -130,6 +130,8 @@ final class SettingsAdmin
             'test_status' => (string)($get['test'] ?? ''),
             'admin_section' => 'settings',
             'settings_form' => $this->store->formValues($parsed),
+            'timezones' => \DateTimeZone::listIdentifiers(),
+            'server_timezone' => date_default_timezone_get(),
             'storage' => $seesLimits ? ($this->limits)()->summary() : [],
             'upload_groups' => MediaLibrary::UPLOAD_GROUPS,
             'server_upload_mb' => $serverCap > 0 ? (int)floor($serverCap / 1048576) : 0,

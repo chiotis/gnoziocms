@@ -56,6 +56,7 @@ final class ContentEditor
         $status = trim((string)($post['status'] ?? 'published'));
         $visible = isset($post['visible']) && (string)($post['visible']) === '1';
         $date = trim((string)($post['date'] ?? ''));
+        $publishAt = trim((string)($post['publish_at'] ?? ''));
         $author = trim((string)($post['author'] ?? ''));
         $excerpt = trim((string)($post['excerpt'] ?? ''));
         $seoTitle = trim((string)($post['seo_title'] ?? ''));
@@ -201,6 +202,16 @@ final class ContentEditor
         $data['title'] = $title !== '' ? $title : Slug::title($slug);
         $data['status'] = $status !== '' ? $status : 'published';
         $data['visible'] = $visible;
+        // A scheduled entry needs its time (in the site's zone); without one it is kept as a draft, never published by surprise.
+        unset($data['publish_at']);
+        if ($data['status'] === ScheduledPublishing::STATUS) {
+            $at = ScheduledPublishing::normalize($publishAt, SiteSettings::timeZone($this->settings));
+            if ($at !== null) {
+                $data['publish_at'] = $at;
+            } else {
+                $data['status'] = 'draft';
+            }
+        }
 
         if ($date !== '') {
             $data['date'] = $this->normalizeDate($date);
@@ -804,6 +815,7 @@ final class ContentEditor
             'status',
             'visible',
             'date',
+            'publish_at',
             'author',
             'tags',
             'categories',

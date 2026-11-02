@@ -55,7 +55,7 @@ final class DashboardData
                 $status = (string)($item->meta['status'] ?? 'published');
                 if ($status === 'draft') {
                     $draft++;
-                } else {
+                } elseif ($status === 'published') {
                     $published++;
                 }
                 $row = [
