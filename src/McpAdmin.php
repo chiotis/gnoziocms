@@ -13,7 +13,7 @@ final class McpAdmin
 {
     public const META_ENABLED = 'mcp_enabled';
     private const HTACCESS_MARK = '# GnozioCMS MCP discovery';
-    private const HTACCESS = self::HTACCESS_MARK . " (docs/mcp.md): written and removed with Admin > MCP.\n<FilesMatch \"^oauth-(protected-resource|authorization-server)$\">\n    ForceType application/json\n    <IfModule mod_headers.c>\n        Header set Cache-Control \"no-store\"\n    </IfModule>\n</FilesMatch>\n";
+    private const HTACCESS = self::HTACCESS_MARK . " (docs/mcp.md): written and removed with Admin > MCP.\n<FilesMatch \"^(mcp|oauth-authorization-server)$\">\n    ForceType application/json\n    <IfModule mod_headers.c>\n        Header set Cache-Control \"no-store\"\n    </IfModule>\n</FilesMatch>\n";
 
     /** @param \Closure(string, string, ?string, ?string, string, array<string, mixed>): void $log as App::logActivity */
     public function __construct(
@@ -144,10 +144,14 @@ final class McpAdmin
         $dir = $this->publicDir . '/.well-known';
         $on = $this->isEnabled();
         $files = [
-            basename(McpOAuth::RESOURCE_METADATA_PATH) => fn(): array => $this->oauth->protectedResource(),
-            basename(McpOAuth::SERVER_METADATA_PATH) => fn(): array => $this->oauth->authorizationServer(),
+            substr(McpOAuth::RESOURCE_METADATA_PATH, strlen('/.well-known/')) => fn(): array => $this->oauth->protectedResource(),
+            substr(McpOAuth::SERVER_METADATA_PATH, strlen('/.well-known/')) => fn(): array => $this->oauth->authorizationServer(),
             '.htaccess' => null,
         ];
+        // 0.1.190 kept the protected resource at the form without the path, a file where its folder now goes.
+        if (is_file($dir . '/oauth-protected-resource')) {
+            @unlink($dir . '/oauth-protected-resource');
+        }
         foreach ($files as $name => $document) {
             $path = $dir . '/' . $name;
             $text = $document === null ? self::HTACCESS : json_encode($document(), JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) . "\n";
@@ -158,10 +162,13 @@ final class McpAdmin
             if (!$on) {
                 if (is_file($path)) {
                     @unlink($path);
+                    if (dirname($path) !== $dir) {
+                        @rmdir(dirname($path));
+                    }
                 }
                 continue;
             }
-            if (@file_get_contents($path) !== $text && (is_dir($dir) || @mkdir($dir, 0755, true))) {
+            if (@file_get_contents($path) !== $text && (is_dir(dirname($path)) || @mkdir(dirname($path), 0755, true))) {
                 @file_put_contents($path, $text, LOCK_EX);
             }
         }

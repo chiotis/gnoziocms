@@ -1,4 +1,4 @@
-import json, re, sys
+import json, os, re, sys
 sys.path.insert(0, '.')
 from client import Client, has_field
 
@@ -54,12 +54,12 @@ rowcss = anon.get('/_themes/default/_blocks.css?b=text,_row')[2]
 check('the row styles use a twelve-column grid with exact thirds', 'repeat(12' in rowcss and '.block--w-33' in rowcss and '.block--w-66' in rowcss)
 
 # ---- the styles ride along only where needed
-m = re.search(r'/_themes/default/_blocks\.css\?b=([^&"]*)', h)
-check('a page with a row loads the row styles with its blocks', bool(m) and m.group(1).split(',')[-1] == '_row', m and m.group(1))
+m = re.search(r'/_themes/default/_blocks/[0-9a-f]+\.css', h)
+check('a page with a row loads the row styles with its blocks, from a file in public/', bool(m) and '.block-row' in anon.get(m.group(0))[2] and os.path.isfile('app/public' + m.group(0)), m and m.group(0))
 st, _, css = anon.get('/_themes/default/_blocks.css?b=text,_row')
 check('and the bundle holds them', st == 200 and '.block-row' in css and 'grid-template-columns' in css, st)
-m2 = re.search(r'/_themes/default/_blocks\.css\?b=([^&"]*)', plain)
-check('a page without a row does not load them', bool(m2) and '_row' not in m2.group(1) and '.block-row' not in anon.get(re.search(r'/_themes/default/_blocks\.css\?[^"]*', plain).group(0).replace('&amp;', '&'))[2])
+m2 = re.search(r'/_themes/default/_blocks/[0-9a-f]+\.css', plain)
+check('a page without a row does not load them', bool(m2) and '.block-row' not in anon.get(m2.group(0))[2])
 check('phone and tablet are in the row styles', '@media (max-width: 640px)' in css and '@media (max-width: 960px)' in css)
 
 # ---- the editor knows the setting, writes it and reads it back

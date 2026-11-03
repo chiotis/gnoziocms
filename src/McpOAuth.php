@@ -21,8 +21,11 @@ final class McpOAuth
     public const TOKEN_PATH = '/_mcp/token';
     public const REGISTER_PATH = '/_mcp/register';
     public const ENDPOINT_PATH = '/mcp';
-    /** The discovery documents. Also kept as files under public/ (McpAdmin), for servers that serve `/.well-known/` themselves. */
-    public const RESOURCE_METADATA_PATH = '/.well-known/oauth-protected-resource';
+    /**
+     * The discovery documents. Also kept as files under public/ (McpAdmin), for servers that serve `/.well-known/` themselves.
+     * The protected resource is at the form with the endpoint's path (RFC 9728), the one ChatGPT asks for.
+     */
+    public const RESOURCE_METADATA_PATH = '/.well-known/oauth-protected-resource' . self::ENDPOINT_PATH;
     public const SERVER_METADATA_PATH = '/.well-known/oauth-authorization-server';
 
     /** @param \Closure(string, string, ?string, ?string, string, array<string, mixed>): void $log as App::logActivity */

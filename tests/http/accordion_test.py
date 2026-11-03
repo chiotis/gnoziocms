@@ -24,7 +24,7 @@ def acc(**extra):
     return b
 
 def bundle(html):
-    m = re.search(r'/_themes/default/_blocks\.css\?[^"]*', html)
+    m = re.search(r'/_themes/default/_blocks/[0-9a-f]+\.css', html)
     return anon.get(m.group(0).replace('&amp;', '&'))[2] if m else ''
 
 # ---- all closed by default, several can be open

@@ -7,6 +7,10 @@
 - Once `public/` is the document root, the installer asks the site for `/_themes/default/css/site.css`. When the web server answers 404 for it (a static-file rule with no fall-back to `index.php`, the CloudPanel default), it says so with the `try_files` line to add, and offers to check again or to continue anyway. Before, the site installed and showed its pages without styles.
 - `docs/security.md`: the same rule behind Varnish, where the fall-back goes to Varnish through a named location. Tests: `tests/http/installer_test.py`.
 
+## 0.1.191 — 2026-11-03 — MCP: ChatGPT finds the discovery documents
+- The protected-resource file is now `public/.well-known/oauth-protected-resource/mcp`, the form with the endpoint's path that ChatGPT asks for (0.1.190 wrote the form without it, which only Claude and Codex used, so ChatGPT said it could not discover the OAuth settings on a CloudPanel site). The `401` names this address again. The file of 0.1.190 is replaced on the next visit of Admin > MCP.
+- `docs/mcp.md`. Tests: `tests/http/mcp_oauth_test.py`.
+
 ## 0.1.190 — 2026-11-03 — MCP: discovery documents as files
 - While MCP is on, Admin > MCP writes the two discovery documents as files, `public/.well-known/oauth-protected-resource` and `public/.well-known/oauth-authorization-server` (with a `.htaccess` for their JSON type on Apache), and removes them when it is turned off. A web server that answers `/.well-known/` itself, as CloudPanel's nginx does for certificates, now serves them with no change to its configuration. Each visit of the screen writes them again if the site's address changed.
 - The `401` of `/mcp` names `/.well-known/oauth-protected-resource`, the address that is a file; the form with `/mcp` still answers through the site.

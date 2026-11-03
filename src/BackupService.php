@@ -31,6 +31,9 @@ final class BackupService
         'storage/updates/',
         // Responsive image variants are regenerated on demand.
         'public/uploads/_v/',
+        // Copies of theme and custom/ files, written again by the first page (ThemeAssets::publish).
+        'public/_themes/',
+        'public/_custom/',
     ];
 
     public function __construct(

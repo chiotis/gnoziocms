@@ -319,6 +319,7 @@ final class Theme
 
     public function assetUrl(string $baseUrl, string $path): string
     {
+        ThemeAssets::publish($this->basePath, $this->name);
         $file = self::assetFile($this->path() . '/assets', $path);
         $url = $baseUrl . '/_themes/' . $this->name . '/' . ltrim($path, '/');
         return $file !== null ? $url . '?v=' . self::fileVersion($file) : $url;
@@ -341,6 +342,10 @@ final class Theme
         foreach ($files as $file) {
             $stamp .= $file . ':' . self::fileVersion($file) . ';';
         }
+        $file = ThemeAssets::writeBundle($this->basePath, $this->name, $files, 'css', substr(sha1($stamp), 0, 16));
+        if ($file !== null) {
+            return $baseUrl . '/_themes/' . $this->name . '/' . $file;
+        }
         $names = array_values(array_unique(array_filter($types, static fn(string $type): bool => in_array($type, [self::ROW_STYLES, self::CONTAINER_STYLES], true) || (bool)preg_match('/^[a-z][a-z0-9-]*$/', $type))));
         return $baseUrl . '/_themes/' . $this->name . '/_blocks.css?b=' . implode(',', $names) . '&v=' . substr(sha1($stamp), 0, 10);
     }
@@ -357,6 +362,10 @@ final class Theme
         foreach ($files as $file) {
             $stamp .= $file . ':' . self::fileVersion($file) . ';';
             $names[basename(dirname($file))] = true;
+        }
+        $file = ThemeAssets::writeBundle($this->basePath, $this->name, $files, 'js', substr(sha1($stamp), 0, 16));
+        if ($file !== null) {
+            return $baseUrl . '/_themes/' . $this->name . '/' . $file;
         }
         return $baseUrl . '/_themes/' . $this->name . '/_blocks.js?b=' . implode(',', array_keys($names)) . '&v=' . substr(sha1($stamp), 0, 10);
     }
@@ -455,6 +464,7 @@ final class Theme
     /** URL of a file in custom/assets, or '' when the site has no such file. */
     public function customAssetUrl(string $baseUrl, string $path): string
     {
+        ThemeAssets::publish($this->basePath, $this->name);
         $file = self::assetFile($this->customPath() . '/assets', $path);
         if ($file === null) {
             return '';

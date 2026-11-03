@@ -45,7 +45,7 @@ check('it is decoration for a screen reader and cannot take the focus', 'aria-hi
 check('behind the text, where the cover image would be, with a still image under it', 'hero-cover-media' in b and 'class="hero-video"' in b and re.search(r'<picture|<img', b) is not None and b.index('hero-cover-media') < b.index('hero-inner'))
 check('a pause button is there for everyone: hidden until the script has it', 'data-hero-video-toggle' in b and ' hidden>' in b and 'Pause the background video' in b or 'Παύση του βίντεο φόντου' in b)
 check('the page loads no frame and nothing from another site', '<iframe' not in b and 'youtube' not in b)
-check('the block script is part of the page when a hero is there', 'blocks/hero' in html or '_blocks.js' in html, re.findall(r'<script[^>]*src="[^"]*"', html)[-2:])
+check('the block script is part of the page when a hero is there', 'blocks/hero' in html or '_blocks.js' in html or re.search(r'_blocks/[0-9a-f]+\.js', html) is not None, re.findall(r'<script[^>]*src="[^"]*"', html)[-2:])
 check('the Hero image field is not drawn when there is a video', 'hero-media' not in b)
 
 html = page('hv-webm', 'cover', "    background: video\n    video: https://cdn.example.test/loop.webm\n")
