@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.199 — 2026-11-03 — Blocks of entries: no duplicates on a page
+- Latest content, Cards, Portfolio, Hero and Hero slider (when they show entries) get **Skip the newest** (0 to 50): leaves out that many of the newest entries, in the category or tag if one is chosen.
+- And **Leave out entries shown above** (off to begin with): the entries a block higher on the page already shows, in a column too, and the page's own entry are left out, and the next ones take their place. With both, the newest are skipped first. A block left with no entry is not drawn. Only the hero or slider that opens the page loads its entries before the others; the rest load in the order of the page.
+- Tests: `tests/unit/hero-entries.php`, `tests/unit/latest-content.php`.
+
 ## 0.1.198 — 2026-11-03 — Hero and Hero slider: entries as slides
 - Both blocks have a **Show** choice: the typed text or slides (as before), or a content type. The Hero then shows the newest entry, the Hero slider a slide for each of the newest entries (Number of slides, 3 to begin with, 8 at most; one layout for all). Each shows the entry's title, excerpt (or the start of its text), first category as the eyebrow (a typed eyebrow wins), main image and a button to it (Button text, "Read more" when empty). An optional category or tag narrows the entries. With no entry the block is left out, and the next block opens the page.
 - Tests: `tests/unit/hero-entries.php`, `tests/http/hero_video_test.py`.
