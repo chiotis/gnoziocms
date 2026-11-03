@@ -118,15 +118,18 @@ final class BlockRuntime
             $this->theme,
             fn(string $markdown): string => ($this->markdownToHtml)($markdown, $lang, $path),
             [
-                'items' => function (string $type, string $itemLang, int $limit, string $term = '') use ($includeHidden): array {
+                // The newest entries of a type; `offset` skips the newest few (shown by another block of the page).
+                'items' => function (string $type, string $itemLang, int $limit, string $term = '', int $offset = 0) use ($includeHidden): array {
                     if ($type === 'forms' || !in_array($type, $this->content->getTypes(), true)) {
                         return [];
                     }
                     $term = Slug::plain($term);
-                    $limit = max(1, min(24, $limit));
-                    $indexed = $this->latestFromIndex($type, $itemLang, $includeHidden, $limit, $term);
+                    // A block shows 24 at most; more are asked for to make up for the ones it leaves out (shown above).
+                    $limit = max(1, min(100, $limit));
+                    $offset = max(0, min(BlockRenderer::MAX_OFFSET, $offset));
+                    $indexed = $this->latestFromIndex($type, $itemLang, $includeHidden, $offset + $limit, $term);
                     if ($indexed !== null) {
-                        return $indexed;
+                        return array_slice($indexed, $offset, $limit);
                     }
                     $items = $this->content->getItems($type, $itemLang, $includeHidden, false);
                     if ($term !== '') {
@@ -140,7 +143,7 @@ final class BlockRuntime
                             return false;
                         }));
                     }
-                    return array_slice($items, 0, $limit);
+                    return array_slice($items, $offset, $limit);
                 },
                 'form' => fn(string $slug): string => $slug === '' ? '' : ($this->formEmbed)(Slug::plain($slug), $lang, $path),
                 'youtube' => function (string $playlistId, string $thumbs): array {

@@ -1,7 +1,7 @@
 <?php
 /*
  * The Latest content block answered by the content index is the list reading every entry of the type gives: the same entries in the same
- * order, for a language, a category or a tag, drafts and hidden entries (who may see them), the limit, and entries without a date. It
+ * order, for a language, a category or a tag, drafts and hidden entries (who may see them), the limit, the newest skipped, and entries without a date. It
  * falls back to reading the entries when the index cannot be trusted (the live preview of the editor).
  *   php tests/unit/latest-content.php
  */
@@ -97,9 +97,9 @@ $names = static fn(array $list): array => array_map(static fn($i) => $i->type . 
 
 $scanning = $items($runtime(null));
 $indexed = $items($runtime(fn(): ArchiveQuery => $query));
-$same = static function (string $label, string $type, string $lang, int $limit, string $term = '') use ($scanning, $indexed, $names): void {
-    $expected = $names($scanning($type, $lang, $limit, $term));
-    check($label, $names($indexed($type, $lang, $limit, $term)), $expected);
+$same = static function (string $label, string $type, string $lang, int $limit, string $term = '', int $offset = 0) use ($scanning, $indexed, $names): void {
+    $expected = $names($scanning($type, $lang, $limit, $term, $offset));
+    check($label, $names($indexed($type, $lang, $limit, $term, $offset)), $expected);
 };
 
 check('the index can answer', $query->ready(), true);
@@ -116,11 +116,15 @@ foreach ([false, true] as $signedIn) {
     $same('a term nothing is filed under' . $who, 'posts', 'el', 8, 'nothing');
     $same('a type with one entry and no date' . $who, 'projects', 'el', 6);
     $same('a language the type has nothing in' . $who, 'projects', 'en', 6);
+    $same('the newest three skipped' . $who, 'posts', 'el', 4, '', 3);
+    $same('skipped in a category' . $who, 'posts', 'el', 4, 'news', 2);
+    $same('skipping more than there are' . $who, 'posts', 'el', 4, '', 45);
 }
 $signedIn = false;
 check('the visitor gets the newest published entries', [count($indexed('posts', 'el', 6, '')), $names($indexed('posts', 'el', 3, ''))[0] === $names($scanning('posts', 'el', 3, ''))[0]], [6, true]);
 $direct = $query->page(['types' => ['posts'], 'term' => ['taxonomy' => ['categories', 'tags'], 'ids' => ['quick']]], 'el', false, [], [], 'date_desc', '', 0, 0, 1, 8);
 check('the index itself answers a term filed as a category or a tag', [$direct !== null, $direct === null ? null : $names($direct['items'])], [true, $names($scanning('posts', 'el', 8, 'quick'))]);
+check('skipping two starts at the third, and a negative or huge skip is kept within bounds', [$names($indexed('posts', 'el', 2, '', 2)), $names($indexed('posts', 'el', 2, '', -5)), count($indexed('posts', 'el', 24, '', 999))], [array_slice($names($indexed('posts', 'el', 4, '')), 2), $names($indexed('posts', 'el', 2, '')), max(0, min(24, count($scanning('posts', 'el', 500, '')) - 50))]);
 check('a type that is not content gives nothing', [$indexed('forms', 'el', 6, ''), $indexed('nothing', 'el', 6, '')], [[], []]);
 
 // The index follows a save and a delete.
