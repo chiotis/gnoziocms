@@ -25,3 +25,4 @@ __pycache__/
 skills/*.zip
 storage/form-translation/
 storage/form-uploads/
+/public/.well-known/

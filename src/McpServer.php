@@ -202,7 +202,7 @@ final class McpServer
     /** @return array{status: int, headers: array<string, string>, body: ?string} */
     private function unauthorized(string $message): array
     {
-        $metadata = $this->oauth->protectedResource()['authorization_servers'][0] . '/.well-known/oauth-protected-resource/mcp';
+        $metadata = $this->oauth->protectedResource()['authorization_servers'][0] . McpOAuth::RESOURCE_METADATA_PATH;
         return $this->httpError(401, 'invalid_token', $message, [
             'WWW-Authenticate' => 'Bearer realm="GnozioCMS", resource_metadata="' . $metadata . '", scope="' . implode(' ', array_keys(McpOAuth::scopes())) . '"',
         ]);

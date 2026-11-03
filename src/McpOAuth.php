@@ -21,6 +21,9 @@ final class McpOAuth
     public const TOKEN_PATH = '/_mcp/token';
     public const REGISTER_PATH = '/_mcp/register';
     public const ENDPOINT_PATH = '/mcp';
+    /** The discovery documents. Also kept as files under public/ (McpAdmin), for servers that serve `/.well-known/` themselves. */
+    public const RESOURCE_METADATA_PATH = '/.well-known/oauth-protected-resource';
+    public const SERVER_METADATA_PATH = '/.well-known/oauth-authorization-server';
 
     /** @param \Closure(string, string, ?string, ?string, string, array<string, mixed>): void $log as App::logActivity */
     public function __construct(private McpStore $store, private string $baseUrl, private \Closure $log)

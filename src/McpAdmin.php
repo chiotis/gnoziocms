@@ -12,6 +12,8 @@ namespace GnozioCMS;
 final class McpAdmin
 {
     public const META_ENABLED = 'mcp_enabled';
+    private const HTACCESS_MARK = '# GnozioCMS MCP discovery';
+    private const HTACCESS = self::HTACCESS_MARK . " (docs/mcp.md): written and removed with Admin > MCP.\n<FilesMatch \"^oauth-(protected-resource|authorization-server)$\">\n    ForceType application/json\n    <IfModule mod_headers.c>\n        Header set Cache-Control \"no-store\"\n    </IfModule>\n</FilesMatch>\n";
 
     /** @param \Closure(string, string, ?string, ?string, string, array<string, mixed>): void $log as App::logActivity */
     public function __construct(
@@ -20,6 +22,7 @@ final class McpAdmin
         private SystemMetaRepository $meta,
         private UserRepository $users,
         private \Closure $log,
+        private string $publicDir = '',
     ) {
     }
 
@@ -36,6 +39,7 @@ final class McpAdmin
      */
     public function screen(array $get, ?array $actor, string $newToken): array
     {
+        $this->syncDiscoveryFiles();
         $accounts = $this->accounts($actor);
         $names = array_column($accounts, 'label', 'id');
         $connections = array_map(fn(array $row): array => [
@@ -58,8 +62,8 @@ final class McpAdmin
             'available' => $this->store->isAvailable(),
             'endpoint' => $this->oauth->resourceUrl(),
             'metadata' => [
-                'protected_resource' => $this->oauth->protectedResource()['authorization_servers'][0] . '/.well-known/oauth-protected-resource/mcp',
-                'authorization_server' => $this->oauth->protectedResource()['authorization_servers'][0] . '/.well-known/oauth-authorization-server',
+                'protected_resource' => $this->oauth->protectedResource()['authorization_servers'][0] . McpOAuth::RESOURCE_METADATA_PATH,
+                'authorization_server' => $this->oauth->protectedResource()['authorization_servers'][0] . McpOAuth::SERVER_METADATA_PATH,
             ],
             'connections' => $connections,
             'accounts' => $accounts,
@@ -86,6 +90,7 @@ final class McpAdmin
         }
         if ($action === 'enable' || $action === 'disable') {
             $this->meta->set(self::META_ENABLED, $action === 'enable' ? '1' : '0');
+            $this->syncDiscoveryFiles();
             ($this->log)('mcp.' . $action . 'd', 'info', 'mcp', null, $action === 'enable' ? 'MCP was turned on.' : 'MCP was turned off.', []);
             return $done(true, $action === 'enable' ? 'MCP is on. Give the address below to the AI assistant.' : 'MCP is off. Connections stay, and work again when it is on.');
         }
@@ -124,6 +129,42 @@ final class McpAdmin
             ($this->log)('mcp.connection_' . $action, $action === 'revoke' ? 'warning' : 'info', 'mcp_connection', (string)$id, 'MCP connection ' . ($action === 'revoke' ? 'removed' : $action . 'd') . ': ' . $connection['name'] . '.', []);
         }
         return $done($result !== '', $result !== '' ? $result : 'Nothing was changed.');
+    }
+
+    /**
+     * The discovery documents as files in public/.well-known/ while MCP is on, removed when it is off. A web server that answers
+     * `/.well-known/` itself (nginx panels keep it for certificates) serves them as they are, without the site; Apache gets their
+     * type from the .htaccess beside them. Written again when the site's address changes (each visit of the screen checks).
+     */
+    public function syncDiscoveryFiles(): void
+    {
+        if ($this->publicDir === '') {
+            return;
+        }
+        $dir = $this->publicDir . '/.well-known';
+        $on = $this->isEnabled();
+        $files = [
+            basename(McpOAuth::RESOURCE_METADATA_PATH) => fn(): array => $this->oauth->protectedResource(),
+            basename(McpOAuth::SERVER_METADATA_PATH) => fn(): array => $this->oauth->authorizationServer(),
+            '.htaccess' => null,
+        ];
+        foreach ($files as $name => $document) {
+            $path = $dir . '/' . $name;
+            $text = $document === null ? self::HTACCESS : json_encode($document(), JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) . "\n";
+            // A .htaccess the site wrote itself is never touched.
+            if ($document === null && is_file($path) && !str_starts_with((string)@file_get_contents($path), self::HTACCESS_MARK)) {
+                continue;
+            }
+            if (!$on) {
+                if (is_file($path)) {
+                    @unlink($path);
+                }
+                continue;
+            }
+            if (@file_get_contents($path) !== $text && (is_dir($dir) || @mkdir($dir, 0755, true))) {
+                @file_put_contents($path, $text, LOCK_EX);
+            }
+        }
     }
 
     /**

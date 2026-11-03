@@ -3319,7 +3319,7 @@ final class App
 
     private function mcpAdmin(): McpAdmin
     {
-        return $this->mcpAdminService ??= new McpAdmin($this->mcpStore(), $this->mcpOAuth(), $this->systemMeta, $this->users, fn(string $action, string $level, ?string $type, ?string $id, string $message, array $context) => $this->logActivity($action, $level, $type, $id, $message, $context));
+        return $this->mcpAdminService ??= new McpAdmin($this->mcpStore(), $this->mcpOAuth(), $this->systemMeta, $this->users, fn(string $action, string $level, ?string $type, ?string $id, string $message, array $context) => $this->logActivity($action, $level, $type, $id, $message, $context), $this->basePath . '/public');
     }
 
     private function mcpServer(): McpServer
