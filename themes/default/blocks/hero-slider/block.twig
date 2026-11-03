@@ -18,16 +18,22 @@
       {% for n in 1..4 %}
         {% set steps = steps|merge([{title: attribute(slide, 'step_' ~ n ~ '_title'), text: attribute(slide, 'step_' ~ n ~ '_text'), link: attribute(slide, 'step_' ~ n ~ '_link'), link_label: attribute(slide, 'step_' ~ n ~ '_link_label')}]) %}
       {% endfor %}
+      {# A slide of an entry (Show: a content type): its excerpt, its category as the eyebrow, and a button to it. #}
+      {% set entry = slide._entry|default(null) %}
+      {% if entry %}
+        {% set summary = entry.meta.excerpt is defined and entry.meta.excerpt is not null ? entry.meta.excerpt|striptags|trim : plain_text(entry.html) %}
+        {% set term = entry.meta.categories is iterable and entry.meta.categories|length ? entry.meta.categories|first : '' %}
+      {% endif %}
       {% set has_picture = (slide.background == 'video' ? slide.video : slide.image) and layout != 'minimal' %}
       <div class="slider-slide"{% if has_picture and layout in ['cover', 'cover-centered', 'steps', 'steps-centered'] %} data-dark{% endif %} role="group" aria-roledescription="{{ t('slider.slide', 'slide') }}" aria-label="{{ loop.index }} / {{ total }}">
         <div class="slide-hero block-hero block--{{ layout }}{% if layout == 'cover-centered' %} block--cover{% elseif layout == 'steps-centered' %} block--steps{% endif %}">
           {{ parts.body({
             variant: layout,
-            eyebrow: slide.eyebrow,
+            eyebrow: entry ? (term ? taxonomy_label('categories', term, lang|default('')) : '') : slide.eyebrow,
             heading: slide.heading,
             heading_tag: heading_tag,
-            text: slide.text,
-            actions: slide.buttons,
+            text: entry ? (summary|length > 240 ? summary|slice(0, 240)|trim ~ '…' : summary) : slide.text,
+            actions: entry ? [{label: block.entry_button ?: t('hero.read_more', 'Read more'), url: url(item_path(entry, prefix)), style: 'primary'}] : slide.buttons,
             highlights: [{text: slide.highlight_1}, {text: slide.highlight_2}, {text: slide.highlight_3}],
             steps: steps,
             image: slide.image,

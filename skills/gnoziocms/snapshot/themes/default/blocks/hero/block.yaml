@@ -1,5 +1,5 @@
 label: Hero
-description: Opening section with a strong heading, supporting text, buttons, and an image or a video behind it. The steps layout adds up to four numbered steps over the image. As the first block of a page it becomes the page title (h1).
+description: Opening section with a strong heading, supporting text, buttons, and an image or a video behind it. The steps layout adds up to four numbered steps over the image. It can show the newest entry of a content type (a post, a project) instead of typed text. As the first block of a page it becomes the page title (h1).
 category: Openers
 variants:
   split: Text and image side by side
@@ -16,22 +16,45 @@ variant_migrations:
   - { when: { variant: cover, align: center }, to: cover-centered, drop: [align] }
   - { when: { variant: steps, align: center }, to: steps-centered, drop: [align] }
 fields:
+  source:
+    type: select
+    label: Show
+    default: manual
+    options: { manual: Text entered here }
+    options_from: content_types
+    help: 'Or the newest entry of a content type: its title, excerpt and main image, with a button to it.'
+  term:
+    type: text
+    searchable: false
+    label: Only this category or tag
+    placeholder: news
+    help: Optional. The slug of a category or tag, as in Taxonomies.
+    when: { source: '!manual' }
+  entry_button:
+    type: text
+    label: Button text
+    placeholder: Read more
+    when: { source: '!manual' }
   eyebrow:
     type: text
     label: Eyebrow
     placeholder: Short label above the heading
+    help: With an entry, its category when this is empty.
   heading:
     type: text
     label: Heading
     required: true
+    when: { source: manual }
   text:
     type: textarea
     label: Text
+    when: { source: manual }
   actions:
     type: repeater
     label: Buttons
     item_label: Button
     max: 2
+    when: { source: manual }
     fields:
       label: { type: text, label: Label }
       url: { type: link, label: Link, help: 'A page ("contact"), a path ("/en/contact"), a full URL, #anchor, mailto: or tel:' }
@@ -61,23 +84,24 @@ fields:
     options:
       image: Image
       video: Video that plays behind the text
+    when: { source: manual }
   image:
     type: image
     label: Image
-    when: { background: image }
+    when: { background: image, source: manual }
   image_alt:
     type: text
     label: Image description
     help: What the image shows, for people who cannot see it. Leave empty if it is purely decorative.
-    when: { background: image }
+    when: { background: image, source: manual }
   video:
     type: video
     label: Video
     placeholder: https://www.youtube.com/watch?v=…
     help: 'Choose a video from the media library (.mp4 or .webm), or paste a YouTube or Vimeo link, or the address of a video file elsewhere. It plays silently, in a loop, with a pause button. A YouTube or Vimeo video is loaded from them when the page opens.'
-    when: { background: video }
+    when: { background: video, source: manual }
   video_poster:
     type: image
     label: Still image
     help: Shown while the video loads, when the visitor has asked their device for less motion, and under a video that is paused. Recommended, and it is the share image of the page when it has none.
-    when: { background: video }
+    when: { background: video, source: manual }

@@ -1,4 +1,4 @@
-# Blocks of this installation (GnozioCMS 0.1.164)
+# Blocks of this installation (GnozioCMS 0.1.197)
 
 ## Fields every block has
 
@@ -405,16 +405,19 @@ A set of images in a grid, a masonry layout, or a scrolling strip. Images open l
 | &nbsp;&nbsp;`images[].caption` | text |  |
 
 ### `hero` — Hero
-Opening section with a strong heading, supporting text, buttons, and an image or a video behind it. The steps layout adds up to four numbered steps over the image. As the first block of a page it becomes the page title (h1).
+Opening section with a strong heading, supporting text, buttons, and an image or a video behind it. The steps layout adds up to four numbered steps over the image. It can show the newest entry of a content type (a post, a project) instead of typed text. As the first block of a page it becomes the page title (h1).
 
 **Layouts** (`variant`): `split` (Text and image side by side), `centered` (Centered text, wide image below), `cover` (Text over a full-width image), `cover-centered` (Centered text over a full-width image), `steps` (Text over a full-width image, with numbered steps), `steps-centered` (Centered text over a full-width image, with numbered steps), `minimal` (Large heading, no image). First is the default.
 
 | field | kind and choices | notes |
 |---|---|---|
-| `eyebrow` | text |  |
-| `heading` | text; required |  |
-| `text` | text (several lines) |  |
-| `actions` | list of rows; at most 2 rows |  |
+| `source` | choice; a content type of the site; default `manual` | Or the newest entry of a content type: its title, excerpt and main image, with a button to it. |
+| `term` | text; only when `source` is `!` or `m` or `a` or `n` or `u` or `a` or `l` | Optional. The slug of a category or tag, as in Taxonomies. |
+| `entry_button` | text; only when `source` is `!` or `m` or `a` or `n` or `u` or `a` or `l` |  |
+| `eyebrow` | text | With an entry, its category when this is empty. |
+| `heading` | text; required; only when `source` is `m` or `a` or `n` or `u` or `a` or `l` |  |
+| `text` | text (several lines); only when `source` is `m` or `a` or `n` or `u` or `a` or `l` |  |
+| `actions` | list of rows; at most 2 rows; only when `source` is `m` or `a` or `n` or `u` or `a` or `l` |  |
 | &nbsp;&nbsp;`actions[].label` | text |  |
 | &nbsp;&nbsp;`actions[].url` | link | A page ("contact"), a path ("/en/contact"), a full URL, #anchor, mailto: or tel: |
 | &nbsp;&nbsp;`actions[].style` | choice; one of `primary`, `secondary`, `text`; default `primary` |  |
@@ -425,22 +428,27 @@ Opening section with a strong heading, supporting text, buttons, and an image or
 | &nbsp;&nbsp;`items[].text` | text (several lines) |  |
 | &nbsp;&nbsp;`items[].link` | link |  |
 | &nbsp;&nbsp;`items[].link_label` | text |  |
-| `background` | choice; one of `image`, `video`; default `image` |  |
-| `image` | image; only when `background` is `i` or `m` or `a` or `g` or `e` |  |
-| `image_alt` | text; only when `background` is `i` or `m` or `a` or `g` or `e` | What the image shows, for people who cannot see it. Leave empty if it is purely decorative. |
-| `video` | video; only when `background` is `v` or `i` or `d` or `e` or `o` | Choose a video from the media library (.mp4 or .webm), or paste a YouTube or Vimeo link, or the address of a video file elsewhere. It plays silently, in a loop, with a pause button. A YouTube or Vimeo video is loaded from them when the page opens. |
-| `video_poster` | image; only when `background` is `v` or `i` or `d` or `e` or `o` | Shown while the video loads, when the visitor has asked their device for less motion, and under a video that is paused. Recommended, and it is the share image of the page when it has none. |
+| `background` | choice; one of `image`, `video`; default `image`; only when `source` is `m` or `a` or `n` or `u` or `a` or `l` |  |
+| `image` | image; only when `background` is `i` or `m` or `a` or `g` or `e` and `source` is `m` or `a` or `n` or `u` or `a` or `l` |  |
+| `image_alt` | text; only when `background` is `i` or `m` or `a` or `g` or `e` and `source` is `m` or `a` or `n` or `u` or `a` or `l` | What the image shows, for people who cannot see it. Leave empty if it is purely decorative. |
+| `video` | video; only when `background` is `v` or `i` or `d` or `e` or `o` and `source` is `m` or `a` or `n` or `u` or `a` or `l` | Choose a video from the media library (.mp4 or .webm), or paste a YouTube or Vimeo link, or the address of a video file elsewhere. It plays silently, in a loop, with a pause button. A YouTube or Vimeo video is loaded from them when the page opens. |
+| `video_poster` | image; only when `background` is `v` or `i` or `d` or `e` or `o` and `source` is `m` or `a` or `n` or `u` or `a` or `l` | Shown while the video loads, when the visitor has asked their device for less motion, and under a video that is paused. Recommended, and it is the share image of the page when it has none. |
 
 ### `hero-slider` — Hero slider
-Slides that each are a Hero. Every slide picks its own Hero layout (including the ones with numbered steps) and has everything a Hero has - heading, text, buttons, highlights, and an image or a video behind the text - styled exactly like it, on a phone too. Previous and next buttons, dots, swiping and the keyboard work; it never moves by itself unless you turn that on.
+Slides that each are a Hero. Every slide picks its own Hero layout (including the ones with numbered steps) and has everything a Hero has - heading, text, buttons, highlights, and an image or a video behind the text - styled exactly like it, on a phone too. Previous and next buttons, dots, swiping and the keyboard work; it never moves by itself unless you turn that on. The slides can also be the newest entries of a content type (posts, projects), each with its title, excerpt, main image and a button to it.
 
 **Layouts** (`variant`): `default` (Default). First is the default.
 
 | field | kind and choices | notes |
 |---|---|---|
+| `source` | choice; a content type of the site; default `manual` | Or the newest entries of a content type: a slide for each, with its title, excerpt and main image, and a button to it. |
+| `term` | text; only when `source` is `!` or `m` or `a` or `n` or `u` or `a` or `l` | Optional. The slug of a category or tag, as in Taxonomies. |
+| `limit` | whole number; 1 to 8; default `3`; only when `source` is `!` or `m` or `a` or `n` or `u` or `a` or `l` |  |
+| `entry_layout` | choice; one of `split`, `centered`, `cover`, `cover-centered`, `minimal`; default `cover`; only when `source` is `!` or `m` or `a` or `n` or `u` or `a` or `l` |  |
+| `entry_button` | text; only when `source` is `!` or `m` or `a` or `n` or `u` or `a` or `l` |  |
 | `navigation` | choice; one of `below`, `inside`; default `below` | Over the slides suits slides that are all full-width pictures. |
 | `autoplay` | choice; one of `off`, `5`, `8`, `12`; default `off` | A pause button is shown, and visitors who prefer reduced motion never get automatic movement. |
-| `items` | list of rows; at most 8 rows |  |
+| `items` | list of rows; at most 8 rows; only when `source` is `m` or `a` or `n` or `u` or `a` or `l` |  |
 | &nbsp;&nbsp;`items[].layout` | choice; one of `split`, `centered`, `cover`, `cover-centered`, `steps`, `steps-centered`, `minimal`; default `split` |  |
 | &nbsp;&nbsp;`items[].eyebrow` | text |  |
 | &nbsp;&nbsp;`items[].heading` | text |  |
@@ -504,7 +512,7 @@ The newest posts, projects, or any content type, shown from a quiet text list to
 | `eyebrow` | text |  |
 | `heading` | text |  |
 | `intro` | text (several lines) |  |
-| `source` | choice; a content type of the site |  |
+| `source` | choice; a content type of the site; default `posts` |  |
 | `term` | text | Optional. The slug of a category or tag, as in Taxonomies. |
 | `limit` | whole number; 1 to 12; default `3` |  |
 | `columns` | choice; one of `2`, `3`, `4`; default `3` |  |

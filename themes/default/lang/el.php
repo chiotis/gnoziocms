@@ -113,6 +113,7 @@ return [
     'gallery.open' => 'Άνοιγμα σε μεγαλύτερο μέγεθος',
     'hero.pause_video' => 'Παύση του βίντεο φόντου',
     'hero.play_video' => 'Αναπαραγωγή του βίντεο φόντου',
+    'hero.read_more' => 'Περισσότερα',
     'video.play' => 'Αναπαραγωγή βίντεο',
     'video.close' => 'Κλείσιμο βίντεο',
     'playlist.views' => 'προβολές',

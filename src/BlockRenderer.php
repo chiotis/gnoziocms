@@ -374,6 +374,17 @@ final class BlockRenderer
     private function prepare(array $rawBlocks, string $bodyHtml, array $context = []): array
     {
         $prepared = $this->prepareList($rawBlocks, '', true, $context['bindings'] ?? null);
+        // A hero or slider of entries gets them now: whether it opens the page (and how the header over it looks) depends on them.
+        // One with no entry to show is not there at all, so the block after it opens the page.
+        foreach ($prepared as $i => [$type, $definition, $values]) {
+            if ($definition !== null) {
+                $prepared[$i][2] = $this->withEntries($type, $definition, $values, (string)($context['lang'] ?? ''));
+                if (($prepared[$i][2]['_entries'] ?? null) === 0) {
+                    unset($prepared[$i]);
+                }
+            }
+        }
+        $prepared = array_values($prepared);
         $hasContent = self::placesContent($prepared);
 
         $content = $this->registry->get('content');
@@ -530,6 +541,7 @@ final class BlockRenderer
      */
     private function withData(string $type, array $definition, array $values, array $context): array
     {
+        $values = $this->withEntries($type, $definition, $values, (string)($context['lang'] ?? ''));
         foreach ($definition['fields'] as $key => $field) {
             if ($field['type'] === 'markdown') {
                 $values[$key . '_html'] = $this->markdownHtml((string)$values[$key]);
@@ -725,6 +737,44 @@ final class BlockRenderer
             ];
         }
         return $items;
+    }
+
+    /**
+     * A Hero or a Hero slider that shows entries of a content type instead of typed text: the Hero takes the newest one, the slider
+     * a slide for each (in the layout chosen for them all). The entry gives the heading and the picture; the template adds its
+     * excerpt, its category and a button to it (`_entry`). No entry: the block is not drawn. Done once, also for a block in a container.
+     *
+     * @param array<string, mixed> $definition
+     * @param array<string, mixed> $values
+     * @return array<string, mixed>
+     */
+    private function withEntries(string $type, array $definition, array $values, string $lang): array
+    {
+        if (!in_array($type, ['hero', 'hero-slider'], true) || ($values['source'] ?? 'manual') === 'manual' || isset($values['_entries'])) {
+            return $values;
+        }
+        $entries = isset($this->providers['items'])
+            ? ($this->providers['items'])((string)$values['source'], $lang, $type === 'hero' ? 1 : (int)$values['limit'], (string)$values['term'])
+            : [];
+        $values['_entries'] = count($entries);
+        $picture = static fn(ContentItem $entry): array => [
+            'heading' => trim((string)($entry->meta['title'] ?? '')),
+            'image' => is_string($entry->meta['main_image'] ?? null) ? $entry->meta['main_image'] : '',
+            'image_alt' => '',
+            'background' => 'image',
+            'video' => '',
+            '_entry' => $entry,
+        ];
+        if ($type === 'hero') {
+            if ($entries === []) {
+                $values['_empty'] = true;
+                return $values;
+            }
+            return $picture($entries[0]) + ['text' => '', 'actions' => []] + $values;
+        }
+        $slide = FieldSchema::resolve($definition['fields']['items']['fields'], ['layout' => (string)$values['entry_layout']]);
+        $values['items'] = array_map(static fn(ContentItem $entry): array => $picture($entry) + $slide, $entries);
+        return $values;
     }
 
     /**

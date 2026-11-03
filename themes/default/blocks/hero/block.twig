@@ -1,12 +1,19 @@
 {% import 'components/hero-content.twig' as parts %}
+{% set prefix = lang_prefix|default('') %}
+{# Drawn from an entry (Show: a content type): its excerpt, its category as the eyebrow unless one is typed, and a button to it. #}
+{% set entry = block._entry|default(null) %}
+{% if entry %}
+  {% set summary = entry.meta.excerpt is defined and entry.meta.excerpt is not null ? entry.meta.excerpt|striptags|trim : plain_text(entry.html) %}
+  {% set term = entry.meta.categories is iterable and entry.meta.categories|length ? entry.meta.categories|first : '' %}
+{% endif %}
 {{ parts.body({
   variant: block.variant,
-  eyebrow: block.eyebrow,
+  eyebrow: entry and not block.eyebrow and term ? taxonomy_label('categories', term, lang|default('')) : block.eyebrow,
   heading: block.heading,
   heading_tag: heading_tag,
   heading_id: block_uid ~ '-title',
-  text: block.text,
-  actions: block.actions,
+  text: entry ? (summary|length > 240 ? summary|slice(0, 240)|trim ~ '…' : summary) : block.text,
+  actions: entry ? [{label: block.entry_button ?: t('hero.read_more', 'Read more'), url: url(item_path(entry, prefix)), style: 'primary'}] : block.actions,
   highlights: block.highlights,
   steps: block.items,
   image: block.image,
@@ -15,5 +22,5 @@
   video_poster: block.video_poster,
   first: block_first,
   item_heading_tag: item_heading_tag,
-  prefix: lang_prefix|default('')
+  prefix: prefix
 }) }}
