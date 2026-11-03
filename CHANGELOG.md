@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.190 — 2026-11-03 — MCP: discovery documents as files
+- While MCP is on, Admin > MCP writes the two discovery documents as files, `public/.well-known/oauth-protected-resource` and `public/.well-known/oauth-authorization-server` (with a `.htaccess` for their JSON type on Apache), and removes them when it is turned off. A web server that answers `/.well-known/` itself, as CloudPanel's nginx does for certificates, now serves them with no change to its configuration. Each visit of the screen writes them again if the site's address changed.
+- The `401` of `/mcp` names `/.well-known/oauth-protected-resource`, the address that is a file; the form with `/mcp` still answers through the site.
+- `docs/mcp.md` (with the nginx block for a site whose `public/` cannot be written). Tests: `tests/http/mcp_oauth_test.py`.
+
 ## 0.1.189 — 2026-11-03 — MCP: pictures from an address
 - **`add_image_from_url`** (scope `media:write`, permission `media.manage`): a job fetches a picture from a public address into the media library, with its alt text (required), and gets its address for `main_image` or the body. The uploader is the account and the connection; it counts against the storage limit.
 - The picture's id is its fingerprint, so the same picture fetched again, from any address, is the one already kept.
