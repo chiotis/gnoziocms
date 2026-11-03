@@ -145,4 +145,19 @@ Admin > History and the editor's History tab need `content.manage`. Restoring or
      ```
 
      Any other static-file location (for example a `\.(css|js|webp)$` caching block) must also end in `try_files $uri /index.php?$query_string;`, because theme assets (`/_themes/…`, `/_custom/…`) are always served by PHP, and image variants are served by PHP until they exist as files.
+
+     Behind Varnish (CloudPanel's PHP site with Varnish: nginx 443 → Varnish → nginx 8080 → PHP) the 443 block has no PHP, so `/index.php` there would reach the site as the address `/index.php` and answer 404. In that block send a missing file to Varnish under its own address with a named location, and keep the `try_files … /index.php` line in the 8080 block:
+
+     ```nginx
+     location ~* ^.+\.(css|js|jpg|jpeg|gif|png|ico|svg|woff2?|ttf|otf|webp|avif)$ {
+         # …CloudPanel's lines…
+         try_files $uri @gnozio;
+     }
+     location @gnozio {
+         # the same proxy_pass and proxy_set_header lines as `location /` of this block
+         proxy_pass http://127.0.0.1:6081;
+     }
+     ```
+
+     The installer checks this before it finishes: when `/_themes/default/css/site.css` does not answer with the stylesheet, it shows the line to add.
 5. If a credential was ever committed to git (for example SMTP credentials in the old `content/settings/site.yaml`), rotate it with the provider. Deleting the file does not remove it from history.
