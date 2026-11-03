@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.196 — 2026-11-03 — Installer: the nginx rule for MCP
+- On nginx, once `public/` is the document root, the installer writes a test file in `public/.well-known/` and asks for it at the site's address. When it does not come back as `application/json` (CloudPanel serves `/.well-known/` itself, without a type for a name with no extension), it shows the block to add before `location ~ /.well-known`, with Check again and Continue anyway: ChatGPT cannot connect over MCP without it, Claude and Codex can. Other web servers are not asked.
+- `docs/mcp.md`. Tests: `tests/http/installer_test.py`.
+
 ## 0.1.195 — 2026-11-03 — MCP: the discovery file where ChatGPT looks
 - The protected-resource file is again `public/.well-known/oauth-protected-resource`, the form without the endpoint's path: ChatGPT asks for that one (its log on a CloudPanel site), and 0.1.193 had made it a folder that nginx answered with 403. The `401` names it again; the form with `/mcp` still answers through the site where the web server passes it on. The folder of 0.1.193 is removed on the next visit of Admin > MCP.
 - `docs/mcp.md`: ChatGPT refuses discovery documents that are not `application/json`, and nginx sends the files as `application/octet-stream`. The nginx block now sets their type (`default_type application/json`); without the vhost, a Cloudflare response-header rule does the same.

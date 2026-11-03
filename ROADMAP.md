@@ -2,7 +2,7 @@
 
 How to read this file: **Now** is what to do before adding more, **Next** is the order of the work worth doing, **Later** is wanted but not urgent, **Not planned** says what was decided against. What has been delivered is in `CHANGELOG.md` (by version) and in the documents under `docs/`; the list under "Where we are" is only the shape of it. Items marked *(proposal)* are a suggested order, not a decision.
 
-## Where we are (0.1.195)
+## Where we are (0.1.196)
 
 - **Theme**: one all-purpose theme (`themes/default`) that grows with blocks and variants; site changes live in `custom/`. Design system (tokens, palettes generated from two colours, Duo pairings, a secondary colour, contrast feedback, own font families, dark mode, shapes and shadows), header (7 layouts), footer (5) with Footer Blocks above it (a set per language), phone menu and bottom bar, page templates (standard, landing, with sidebar), hero layouts, a title area (with parallax) for singles, archives, terms and search, single and archive layouts per content type, branding screen with export and import, custom CSS in Theme settings. Contract: `docs/theming.md`.
 - **Blocks**: 36 block types: openers, text, media (image, gallery, video, YouTube playlist), a hero slider, showcase (cards, portfolio with filters, logos, marquee, team, timeline, features, stats, compare, before/after), conversion (pricing, forms, contact, map, banner, CTA), downloads, checklist, table, quote, divider, tabs, FAQ, accordion. Container rows with columns, blocks side by side, drag and drop and a live preview in the block builder. 18 page layouts and 16 ready-made sections, in Greek and English.
