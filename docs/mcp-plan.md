@@ -106,6 +106,8 @@ All writes go through `ContentEditor::save`, so slugs, translations, relations, 
 
 ### 6. Pictures from a URL
 
+*Built in 0.1.189 (`src/SafeHttp.php`, `docs/mcp.md`). The id of a picture is its fingerprint instead of a separate hash table.*
+
 `add_image_from_url` fetches only `http`/`https` on ports 80 and 443, resolves the host and refuses private, loopback, link-local and reserved addresses (also after each redirect, at most 3), sends no cookies, stops at 10 MB and 15 seconds, and keeps the file only if its bytes are JPEG, PNG, WebP, GIF or AVIF. It goes in through `MediaLibrary::import` with alt text and the uploader "Automation: …". It returns the id and the picture's address, so the job can place it in the body as well as make it the main image. The same file fetched twice (same hash) returns the existing id. `WordPressHttp` is not reused for this: it is for the importer on the command line and has none of these checks.
 
 ### 7. Admin: Settings > MCP / AI

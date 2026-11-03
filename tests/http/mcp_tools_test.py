@@ -125,5 +125,14 @@ root.submit('/admin/mcp', lambda f: ('connection', newsroom) in [tuple(x) for x 
 r = call(full, 'create_entry', {'type': 'posts', 'lang': 'en', 'title': 'Not allowed', 'body': 'x', 'status': 'draft'})
 check('a type the rules leave out is refused', r['isError'] and 'may not write posts' in r['text'], r)
 
+# ---- pictures: only with media:write, and never from the site's own network
+r = call(full, 'add_image_from_url', {'url': 'https://example.org/a.png', 'alt': 'x'})
+check('without media:write the picture tool is not there', r['isError'] and 'may not use' in r['text'], r)
+pictures = make_token('Pictures', ['content:read', 'media:write'])
+r = call(pictures, 'add_image_from_url', {'url': 'http://127.0.0.1/favicon.ico', 'alt': 'The site itself'})
+check('an address on the server itself is refused', r['isError'] and 'private or reserved' in r['text'], r)
+r = call(pictures, 'add_image_from_url', {'url': BASE + '/favicon.ico', 'alt': 'The site itself'})
+check('so is another port', r['isError'] and 'usual ports' in r['text'], r)
+
 print('ALL PASSED' if not fails else f'{len(fails)} FAILED')
 sys.exit(1 if fails else 0)

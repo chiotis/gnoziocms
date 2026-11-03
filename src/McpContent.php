@@ -18,11 +18,14 @@ final class McpContent
     /** Field kinds a job can write; the others (lists, relations, galleries) are kept as they are. */
     private const WRITABLE_FIELDS = ['text', 'textarea', 'markdown', 'number', 'date', 'select', 'toggle', 'url', 'email', 'color'];
     private const MAX_BODY = 200000;
+    public const MAX_IMAGE_BYTES = 10 * 1048576;
 
     /**
      * @param \Closure(string): string $absoluteUrl the full address of a path of the site
      * @param \Closure(array<string, mixed>, array<string, mixed>, bool): void $afterWrite after a save: the entry, the connection, whether it
      *   was published or scheduled by this save (caches, notices)
+     * @param \Closure(int): bool $roomFor whether the site's storage limit leaves room for that many bytes
+     * @param \Closure(int): void $uploadsChanged told when the library grew
      */
     public function __construct(
         private ContentRepository $content,
@@ -35,6 +38,10 @@ final class McpContent
         private string $publicDir,
         private \Closure $absoluteUrl,
         private \Closure $afterWrite,
+        private ?MediaLibrary $media = null,
+        private ?SafeHttp $http = null,
+        private ?\Closure $roomFor = null,
+        private ?\Closure $uploadsChanged = null,
     ) {
     }
 
@@ -112,6 +119,17 @@ final class McpContent
                 'inputSchema' => $schema($create, ['type', 'title', 'body', 'status']),
                 'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'idempotentHint' => true, 'openWorldHint' => true],
             ],
+            'add_image_from_url' => [
+                'scopes' => [McpOAuth::SCOPE_MEDIA], 'permission' => 'media.manage', 'title' => 'Add a picture from an address',
+                'description' => 'Fetches a picture (JPEG, PNG, WebP, GIF or AVIF, up to 10 MB) from a public address into the media library and gives its address, '
+                    . 'for main_image or for the body (![alt](address)). The same picture fetched twice is kept once. Use pictures you may publish.',
+                'inputSchema' => $schema([
+                    'url' => $str('The picture\'s address (http or https).', 2000),
+                    'alt' => $str('What the picture shows, for people who cannot see it.', 300),
+                    'name' => $str('A file name to keep, without the extension.', 80),
+                ], ['url', 'alt']),
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'idempotentHint' => true, 'openWorldHint' => true],
+            ],
             'update_entry' => [
                 'scopes' => $write, 'permission' => 'content.manage', 'title' => 'Change an entry',
                 'description' => 'Changes what is given and keeps the rest. Changing a published or scheduled entry, or publishing one, needs content:publish. Give expected_updated_at from get_entry so a change made meanwhile is not overwritten.',
@@ -137,6 +155,7 @@ final class McpContent
             'validate_entry' => $this->write($args, $connection, null, true),
             'create_entry' => $this->create($args, $connection),
             'update_entry' => $this->update($args, $connection),
+            'add_image_from_url' => $this->addImage($args, $connection),
         };
     }
 
@@ -477,6 +496,57 @@ final class McpContent
         }
         ($this->afterWrite)($this->summary($item), $connection, $published);
         return ['existing' => false, 'entry' => $this->summary($item), 'warnings' => $warnings];
+    }
+
+    // ---- pictures
+
+    /** @param array<string, mixed> $args @param array<string, mixed> $connection @return array<string, mixed> */
+    private function addImage(array $args, array $connection): array
+    {
+        if ($this->media === null || $this->http === null) {
+            throw new \InvalidArgumentException('Pictures cannot be added on this site.');
+        }
+        $url = trim((string)($args['url'] ?? ''));
+        $alt = trim((string)($args['alt'] ?? ''));
+        if ($url === '' || $alt === '') {
+            throw new \InvalidArgumentException('url and alt are both required.');
+        }
+        $tmp = tempnam(sys_get_temp_dir(), 'mcpimg');
+        if ($tmp === false) {
+            throw new \RuntimeException('No temporary file.');
+        }
+        try {
+            $got = $this->http->download($url, $tmp, self::MAX_IMAGE_BYTES);
+            if (!$got['ok']) {
+                throw new \InvalidArgumentException($got['error']);
+            }
+            $kind = SafeHttp::imageKind($tmp);
+            if ($kind === '') {
+                throw new \InvalidArgumentException('That address is not a JPEG, PNG, WebP, GIF or AVIF picture.');
+            }
+            if (!in_array($kind, $this->media->allowedExtensions(), true) && !($kind === 'jpg' && in_array('jpeg', $this->media->allowedExtensions(), true))) {
+                throw new \InvalidArgumentException('This site does not take ' . strtoupper($kind) . ' pictures.');
+            }
+            $bytes = (int)filesize($tmp);
+            // The id is the picture's own fingerprint, so the same picture fetched again is the one already kept.
+            $id = substr((string)hash_file('sha256', $tmp), 0, 16);
+            $existing = $this->media->find($id);
+            if ($existing === null && $this->roomFor !== null && !($this->roomFor)($bytes)) {
+                throw new \InvalidArgumentException('The site\'s storage is full; ask the site owner to make room.');
+            }
+            $base = Slug::fromText(trim((string)($args['name'] ?? '')) ?: pathinfo((string)parse_url($got['url'], PHP_URL_PATH), PATHINFO_FILENAME)) ?: 'picture';
+            $this->media->ensureDirectories();
+            $item = $this->media->import($tmp, mb_substr($base, 0, 80) . '.' . $kind, $id, $alt, (string)$connection['username'] . ' (MCP: ' . $connection['name'] . ')', self::MAX_IMAGE_BYTES);
+            if ($existing === null && $this->uploadsChanged !== null) {
+                ($this->uploadsChanged)($bytes);
+            }
+        } finally {
+            if (is_file($tmp)) {
+                @unlink($tmp);
+            }
+        }
+        $path = (string)$item['direct_url'];
+        return ['existing' => $existing !== null, 'id' => (string)$item['id'], 'path' => $path, 'url' => ($this->absoluteUrl)($path), 'alt' => (string)($item['alt'] ?? $alt)];
     }
 
     // ---- helpers

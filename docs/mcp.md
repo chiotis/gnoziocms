@@ -40,8 +40,11 @@ A tool needs one of its scopes and, on every call, the permission it asks of the
 | `validate_entry` | write | the arguments of `create_entry`, checked, nothing saved |
 | `create_entry` | write | a new entry; `status` (draft, published, scheduled with `publish_at`) is required; `source_key` returns the entry made before for the same source; `translation_of` makes it a translation |
 | `update_entry` | write | changes what is given and keeps the rest; `expected_updated_at` refuses a change made meanwhile |
+| `add_image_from_url` | media | fetches a picture from a public address into the media library, with its alt text, and gives its address for `main_image` or the body |
 
-The read tools need `content.manage` on the account (they show drafts). Writing needs `content.manage`; published and scheduled entries, and changing them, need `content:publish` too. Pictures from an address come next (`docs/mcp-plan.md`, step 5); for now `main_image` takes a picture already in the library.
+The read tools need `content.manage` on the account (they show drafts). Writing needs `content.manage`; published and scheduled entries, and changing them, need `content:publish` too. `add_image_from_url` needs `media:write` and `media.manage`; `main_image` takes a picture of the library (one added this way, or any other).
+
+**Pictures from an address** (`src/SafeHttp.php`). The address is someone else's choice, so it never reaches the site's own network: http or https on ports 80 and 443 only, no name and password in it, every address its host resolves to must be public (private, loopback, link-local, carrier-grade NAT, documentation, multicast and reserved ranges are refused, IPv6 too), the connection goes to the very address that was checked, at most 3 redirects, each checked the same way, no cookies, 10 MB and 15 seconds. What arrives is kept only if its first bytes are a JPEG, PNG, WebP, GIF or AVIF the site takes, and only if the storage limit leaves room. The picture's id is its fingerprint, so the same picture fetched again (from any address) is the one already kept. Alt text is required; the uploader is the account and the connection.
 
 **Strict writes.** The job cannot see the page, so nothing it sends is quietly fixed: an unknown argument, type, language, taxonomy, term or field, a value a field does not take (a select's other options are named), a date that is not `YYYY-MM-DD` and a scheduled entry without `publish_at` are errors, all of them at once, in sentences that say what to send instead. Text is Markdown; HTML is shown as text and the result says so. Fields that are lists, relations or galleries cannot be written yet. New terms are added by a person.
 
@@ -68,4 +71,4 @@ Tables of the system database (`SystemDatabase::createMcpTables`): `mcp_clients`
 
 ## Code and tests
 
-`src/McpStore.php` (tables), `src/McpOAuth.php` (OAuth), `src/McpServer.php` (the endpoint, `site_info`), `src/McpContent.php` (the content tools), `src/McpAdmin.php` (the screen), `App::handleMcp`, `App::handleMcpAuthorize`, `admin/templates/mcp.twig`, `admin/templates/mcp-authorize.twig`. Tests: `tests/unit/mcp.php`, `tests/http/mcp_oauth_test.py`, `tests/http/mcp_tools_test.py`. Security notes: `docs/security.md` (*MCP*).
+`src/McpStore.php` (tables), `src/McpOAuth.php` (OAuth), `src/McpServer.php` (the endpoint, `site_info`), `src/McpContent.php` (the content tools), `src/SafeHttp.php` (fetching pictures), `src/McpAdmin.php` (the screen), `App::handleMcp`, `App::handleMcpAuthorize`, `admin/templates/mcp.twig`, `admin/templates/mcp-authorize.twig`. Tests: `tests/unit/mcp.php`, `tests/unit/mcp-images.php`, `tests/http/mcp_oauth_test.py`, `tests/http/mcp_tools_test.py`. Security notes: `docs/security.md` (*MCP*).
