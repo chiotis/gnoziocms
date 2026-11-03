@@ -131,14 +131,14 @@
   </div>
   {% if enabled %}
   <script>
-    // The discovery documents are read from the browser: a server that does not pass /.well-known to the site shows it here.
+    // The discovery documents are read from the browser: files the site could not write, on a server that does not pass /.well-known to it, show here.
     document.querySelectorAll('[data-mcp-check]').forEach(function (el) {
       fetch(new URL(el.getAttribute('data-mcp-check')).pathname, {credentials: 'omit'}).then(function (r) {
         return r.ok ? r.json() : Promise.reject(r.status);
       }).then(function () {
         el.className = 'text-green-700'; el.textContent = '✓ ' + el.textContent;
       }).catch(function () {
-        el.className = 'text-red-700'; el.textContent = '✗ ' + el.textContent + ' (not answered: the web server must pass this address to the site)';
+        el.className = 'text-red-700'; el.textContent = '✗ ' + el.textContent + ' (not answered: the site could not write it into public/.well-known/, and the web server does not pass this address to the site)';
       });
     });
   </script>
