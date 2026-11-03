@@ -3353,7 +3353,11 @@ final class App
                             'target_url' => '/admin/edit?' . http_build_query(['type' => $entry['type'], 'slug' => $entry['slug'], 'lang' => $entry['lang']]),
                         ]);
                     }
-                }
+                },
+                $this->media,
+                new SafeHttp(),
+                fn(int $bytes): bool => $this->siteLimits()->allows($bytes),
+                fn(int $bytes) => $this->siteLimits()->uploadsChanged($bytes)
             )
         );
     }
