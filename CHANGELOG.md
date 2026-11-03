@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.192 — 2026-11-03 — Installer: the CloudPanel rule for theme files
+- CloudPanel's PHP site passes pages from its block on port 443 to Varnish or to port 8080, with no PHP in that block, so `try_files … /index.php` there reaches the site as `/index.php` and theme files still answer 404. The installer's notice and `docs/security.md` now give the rule for it: `try_files $uri @app;` with a `location @app` that has the lines of `location /`. Before, `docs/security.md` named this for Varnish only.
+
 ## 0.1.191 — 2026-11-03 — Installer: theme stylesheet check
 - Once `public/` is the document root, the installer asks the site for `/_themes/default/css/site.css`. When the web server answers 404 for it (a static-file rule with no fall-back to `index.php`, the CloudPanel default), it says so with the `try_files` line to add, and offers to check again or to continue anyway. Before, the site installed and showed its pages without styles.
 - `docs/security.md`: the same rule behind Varnish, where the fall-back goes to Varnish through a named location. Tests: `tests/http/installer_test.py`.

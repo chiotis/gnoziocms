@@ -146,16 +146,16 @@ Admin > History and the editor's History tab need `content.manage`. Restoring or
 
      Any other static-file location (for example a `\.(css|js|webp)$` caching block) must also end in `try_files $uri /index.php?$query_string;`, because theme assets (`/_themes/…`, `/_custom/…`) are always served by PHP, and image variants are served by PHP until they exist as files.
 
-     Behind Varnish (CloudPanel's PHP site with Varnish: nginx 443 → Varnish → nginx 8080 → PHP) the 443 block has no PHP, so `/index.php` there would reach the site as the address `/index.php` and answer 404. In that block send a missing file to Varnish under its own address with a named location, and keep the `try_files … /index.php` line in the 8080 block:
+     CloudPanel's PHP site, with Varnish on or off, has no PHP in the block on port 443: its `location /` passes pages on (`{{varnish_proxy_pass}}`, to Varnish or straight to the block on port 8080, which runs PHP). There `/index.php` would reach the site as the address `/index.php` and answer 404. In that block send a missing file the same way as a page, under its own address, with a named location:
 
      ```nginx
-     location ~* ^.+\.(css|js|jpg|jpeg|gif|png|ico|svg|woff2?|ttf|otf|webp|avif)$ {
+     location ~* ^.+\.(css|js|jpg|jpeg|gif|png|ico|gz|svg|svgz|ttf|otf|woff|woff2|eot|mp4|ogg|ogv|webm|webp|zip|swf|map|mjs)$ {
          # …CloudPanel's lines…
-         try_files $uri @gnozio;
+         try_files $uri @app;
      }
-     location @gnozio {
-         # the same proxy_pass and proxy_set_header lines as `location /` of this block
-         proxy_pass http://127.0.0.1:6081;
+     location @app {
+         {{varnish_proxy_pass}}
+         # and every proxy_* line of `location /` in this block
      }
      ```
 
