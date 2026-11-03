@@ -33,8 +33,8 @@ def sheet(html):
 plain = page('c-plain', text('One'), text('Two', width=50), text('Three', width=50))
 url, css = sheet(plain)
 check('a page without a container has no container markup', 'bkc' not in plain and 'block-container' not in plain)
-check('and its stylesheet has no container rules', '_container' not in url and '.bkc-row' not in css, url)
-check('narrow blocks still get the row styles (and the row styles now also cover columns)', '_row' in url and '.block-row' in css)
+check('and its stylesheet has no container rules', '.bkc-row' not in css, url)
+check('narrow blocks still get the row styles (and the row styles now also cover columns)', '.block-row' in css)
 
 # ---- one container, three columns
 h = page('c-three', text('Before'), box([[text('Left')], [text('Middle'), {'type': 'cta', 'heading': 'Go', 'label': 'Click', 'url': '/about'}], [{'type': 'image', 'image': '/uploads/x.jpg', 'alt': 'x'}]], gap='l', justify='center'), text('After'))
@@ -44,8 +44,8 @@ check('the blocks are inside the columns, in order, and a block in a column is a
 check('a block in a column takes the room of the column (a third is a narrow block) and its own Width is not used', 'block--w-33' in h)
 check('the page around it is as before: the blocks before and after are plain sections', h.index('Body of Before') < h.index('block-container') < h.index('Body of After'))
 url, css = sheet(h)
-names = re.search(r'b=([^&]*)', url).group(1).split(',')
-check('the stylesheet carries the container rules and the rules of the blocks inside, and only those', '_container' in names and '_row' in names and 'cta' in names and 'text' in names and 'image' in names and 'faq' not in names, names)
+names = re.findall(r'^/\* ([a-z-]+) \*/$', css, re.M)
+check('the stylesheet carries the container rules and the rules of the blocks inside, and only those', '.bkc-row' in css and '.block-row' in css and 'cta' in names and 'text' in names and 'image' in names and 'faq' not in names, names)
 check('the bundle has the row, the columns and every screen', '.bkc-row' in css and '.bkc-col--part' in css and '@media (max-width: 640px)' in css and '@media (min-width: 641px) and (max-width: 960px)' in css and '.bkc-p-one' in css and '.bkc-t-two' in css and '.bkc-d-one' in css)
 check('the columns use the theme\'s spacing steps for gaps and padding, not pixels', 'var(--space-l)' in css and re.search(r'\.bkc-gap-l\s*{\s*--bkc-gap: var\(--space-l\)', css) is not None)
 check('a column\'s share is a custom property, the gap is taken off by the stylesheet', 'style="--bkc-f:0.3333"' in page('c-third', box([{'settings': {'width': '1/3'}, 'blocks': [text('A')]}, {'settings': {'width': '2/3'}, 'blocks': [text('B')]}])) and 'var(--bkc-f)' in css)

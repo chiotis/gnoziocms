@@ -61,7 +61,7 @@ check('a video plays in the viewer, from the privacy-friendly address, and nothi
 check('the length is shown, with a way to read it for those who cannot see it', 'class="video-duration"' in html and '3:05' in html and 'Oldest film (3:05)' in html)
 check('pictures are kept on this site, and each address is signed', re.search(r'src="/_yt/AAAAAAAAAAA\.jpg\?s=[0-9a-f]{16}"', html) is not None and 'i.ytimg.com' not in html)
 check('the views and the date are not shown unless asked', 'pl-meta' not in html)
-check('the stylesheet and script of the video block come with it', re.search(r'_blocks\.css\?b=[^"]*video[^"]*playlist|_blocks\.css\?b=[^"]*playlist[^"]*video', html) is not None and re.search(r'_blocks\.js\?b=[^"]*video', html) is not None, re.findall(r'_blocks\.(?:css|js)\?b=[^&"]*', html))
+check('the stylesheet and script of the video block come with it', re.search(r'_blocks/[0-9a-f]+\.css\?b=[^"]*video[^"]*playlist|_blocks/[0-9a-f]+\.css\?b=[^"]*playlist[^"]*video', html) is not None and re.search(r'_blocks/[0-9a-f]+\.js\?b=[^"]*video', html) is not None, re.findall(r'_blocks/[0-9a-f]+\.(?:css|js)\?b=[^&"]*', html))
 
 # ---- order, number and what is shown
 st, _, html = page('newest', order='newest', limit=2)

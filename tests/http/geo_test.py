@@ -134,7 +134,7 @@ def geo(html): return [json.loads(m) for m in re.findall(r'data-geo-data>(.*?)</
 st, _, html = page('everything', {'type': 'map', 'source': 'all', 'heading': 'Around'})
 d = geo(html)[0]
 check('the Map block can show everything with a place: three kinds, with their counts', st == 200 and {t['id']: t['count'] for t in d['types']} == {'businesses': 17, 'points': 2, 'routes': 2}, d['types'])
-check('and has a bar of filters, a list, and the block\'s assets', 'data-geo-filters' in html and 'geo-list' in html and re.search(r'_blocks\.js\?b=[^"]*map', html) is not None)
+check('and has a bar of filters, a list, and the block\'s assets', 'data-geo-filters' in html and 'geo-list' in html and any('/* map */' in anon.get(u)[2] for u in re.findall(r'/_themes/default/_blocks/[0-9a-f]+\.js', html)))
 st, _, html = page('only-routes', {'type': 'map', 'source': 'routes', 'list': 'none', 'filters': False, 'height': 'tall'})
 d = geo(html)[0]
 check('one kind, with no list and no filters, as tall as asked', [t['id'] for t in d['types']] == ['routes'] and 'geo-list' not in html and 'data-geo-filters' not in html and 'geo-h-tall' in html and 'has-list-none' in html)

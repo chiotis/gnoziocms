@@ -99,11 +99,11 @@ check('the page opens with a hero: the header can be over it, light, as over a p
 
 # ---- the script and the style
 sheet = ''
-m = re.search(r'(?:href)="([^"]*_blocks\.css[^"]*)"', pub.get('/hv-file')[2])
+m = re.search(r'(?:href)="([^"]*_blocks[./][^"]*\.css[^"]*)"', pub.get('/hv-file')[2])
 if m:
     sheet = pub.get(m.group(1))[2]
 check('the style makes the video fill the space and crops a frame to cover it', '.hero-video' in sheet and 'object-fit: cover' in sheet and '177.78cqh' in sheet and '.hero-video-toggle' in sheet, sheet[:80])
-m = re.search(r'src="([^"]*_blocks\.js[^"]*)"', pub.get('/hv-file')[2])
+m = re.search(r'src="([^"]*_blocks[./][^"]*\.js[^"]*)"', pub.get('/hv-file')[2])
 script = pub.get(m.group(1))[2] if m else ''
 check('the script puts the frame in after the page has opened, respects reduced motion and data saving, and has the pause button', 'prefers-reduced-motion' in script and 'saveData' in script and 'data-hero-video-toggle' in script and "createElement('iframe')" in script, script[:60])
 

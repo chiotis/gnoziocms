@@ -45,7 +45,7 @@ check('they sit above the footer on a page', 'block-logos' in inside and 'Our pa
 check('and on every kind of page: the home page, a list, a missing page, in another language',
       all('Our partners' in before_footer(pub.get(p)[2]) for p in ('/', '/posts', '/en/about', '/no-such-page-here')),
       [(p, pub.get(p)[0]) for p in ('/', '/posts', '/en/about', '/no-such-page-here')])
-check('the logos block\'s own style sheet is in the head of a page that has no such block', 'block' in html.split('</head>')[0] and re.search(r'_blocks\.css\?b=[^"]*logos', html.split('</head>')[0]) is not None)
+check('the logos block\'s own style sheet is in the head of a page that has no such block', 'block' in html.split('</head>')[0] and re.search(r'_blocks/[0-9a-f]+\.css\?b=[^"]*logos', html.split('</head>')[0]) is not None)
 check('the editor shows what was saved', '"Our partners"' in root.get('/admin/theme?tab=footer_blocks')[2].replace('\\u0020', ' ') or 'Our partners' in root.get('/admin/theme?tab=footer_blocks')[2])
 
 # Saving another tab without the editor's data keeps the blocks; an empty list removes them.

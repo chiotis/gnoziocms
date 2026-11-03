@@ -146,7 +146,7 @@ check('the fact sheet shows the fields chosen, in that order', page.find('1965',
 check('the hero shows the author as its heading, the publisher above it and the excerpt under it', re.search(r'block-hero.*Chilton.*Frank Herbert.*A desert planet', page, re.S) is not None)
 check('a bound text block shows the publisher in its eyebrow', re.search(r'eyebrow">\s*Chilton</p>\s*<h2[^>]*>Published by', page) is not None, page[page.find('Published by') - 200:page.find('Published by') + 50])
 check('the text of the entry is there once, the entry\'s own block after it', page.count('The long text of the book') == 1 and 'Written in the entry itself.' in page)
-check('the page is a normal page: header, footer, one h1 per title area, the styles of the blocks in the head', page.count('<h1') == 1 and '<footer' in page and re.search(r'_blocks\.css', page.split('</head>')[0]) is not None, page.count('<h1'))
+check('the page is a normal page: header, footer, one h1 per title area, the styles of the blocks in the head', page.count('<h1') == 1 and '<footer' in page and re.search(r'_blocks/[0-9a-f]+\.css', page.split('</head>')[0]) is not None, page.count('<h1'))
 page_plain = pub.get('/books/plain')[2]
 check('an entry with no fields: bound blocks with nothing to show are left out', 'Published by' not in page_plain and 'block-hero' not in page_plain and 'block-fact-sheet' not in page_plain and 'Only a text.' in page_plain, page_plain[-600:])
 check('an entry with its own template: that template draws it', 'block-entry-title' not in pub.get('/books/own')[2] and 'Own template text.' in pub.get('/books/own')[2])

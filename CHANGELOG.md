@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.194 — 2026-11-03 — Theme files and image variants with no web server rule
+- **Theme and site files are copied into `public/`** (`public/_themes/<theme>/`, `public/_custom/`) by the first page after a change, at the same addresses, so the web server serves them itself. A server whose static-file rule answers 404 for a missing `.css`, `.js`, font or image without asking `index.php` (CloudPanel's nginx) now shows the site with its styles and needs no change to its configuration. A changed file is copied again and a deleted one removed; SVG files of `custom/` are still served by `index.php`, with their CSP. Where `public/` cannot be written, `index.php` answers the same addresses as before.
+- **Block bundles are files**: `/_themes/<theme>/_blocks/<hash>.css` and `.js` (the `?b=` after them only names the blocks inside).
+- **Image variants not yet written** are named `/_image/<file>/<width>-<version>`, an address with no extension that every server passes to `index.php`, which writes the variant; from then on pages name the `.webp` file itself.
+- The installer asks for the home page before it checks the stylesheet, and its notice names a `public/` that cannot be written first. Backups leave out the copies. Most of this code went out in 0.1.193 without its note.
+- `docs/theming.md`, `docs/architecture.md`, `docs/security.md`. Tests: `tests/unit/public-assets.php` and the HTTP tests of block bundles and custom fonts.
+
 ## 0.1.193 — 2026-11-03 — MCP: ChatGPT finds the discovery documents
 - The protected-resource file is now `public/.well-known/oauth-protected-resource/mcp`, the form with the endpoint's path that ChatGPT asks for (0.1.190 wrote the form without it, which only Claude and Codex used, so ChatGPT said it could not discover the OAuth settings on a CloudPanel site). The `401` names this address again. The file of 0.1.190 is replaced on the next visit of Admin > MCP.
 - `docs/mcp.md`. Tests: `tests/http/mcp_oauth_test.py`.

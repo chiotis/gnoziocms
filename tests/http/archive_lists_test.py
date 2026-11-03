@@ -118,7 +118,7 @@ blocks = [{'type': 'archive-title'}, {'type': 'filter-bar'}, {'type': 'entry-map
           {'type': 'entry-list', 'variant': 'grid', 'per_page': 4, 'order': 'date_desc'}]
 save_template('walks', 'page', blocks)
 mp = pub.get('/walks')[2]
-check('the Map block draws the map of the list, with the stylesheet and script of the map', 'data-geo' in mp and 'geo-h-medium' in mp and re.search(r'_blocks\.css\?b=[^"]*map', mp) is not None and re.search(r'_blocks\.js\?b=[^"]*map', mp) is not None)
+check('the Map block draws the map of the list, with the stylesheet and script of the map', 'data-geo' in mp and 'geo-h-medium' in mp and re.search(r'_blocks/[0-9a-f]+\.css\?b=[^"]*map', mp) is not None and re.search(r'_blocks/[0-9a-f]+\.js\?b=[^"]*map', mp) is not None)
 data = json.loads(re.search(r'<script type="application/json" data-geo-data>(.*?)</script>', mp, re.S).group(1))
 check('it holds every walk that has a place, not only those of the page (one walk has none)', len(data['items']) == 10 and cards(mp) == 4, [len(data['items']), cards(mp)])
 hard = json.loads(re.search(r'<script type="application/json" data-geo-data>(.*?)</script>', pub.get('/walks?filter[level]=hard')[2], re.S).group(1))

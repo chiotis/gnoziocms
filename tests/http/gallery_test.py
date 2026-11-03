@@ -42,10 +42,10 @@ def strip_links(html, where=None):
 st, _, html = anon.get('/en/routes/gorge')
 check('the strip of the gallery is under the title band, in the order chosen', st == 200 and 'entry-strip--title' in html and strip_links(html, 'title') == [TWO, ONE], (st, strip_links(html)))
 check('it is a Gallery block, Scrolling strip, opening in the viewer', 'block-gallery block--strip' in html and 'data-gallery ' in html)
-check('the gallery\'s style sheet and script come with the map\'s', re.search(r'_blocks\.css\?b=[^"]*gallery', html) is not None and re.search(r'_blocks\.css\?b=[^"]*map', html) is not None and re.search(r'_blocks\.js\?b=[^"]*gallery', html) is not None, re.findall(r'_blocks\.(?:css|js)\?b=[^&"]*', html))
+check('the gallery\'s style sheet and script come with the map\'s', re.search(r'_blocks/[0-9a-f]+\.css\?b=[^"]*gallery', html) is not None and re.search(r'_blocks/[0-9a-f]+\.css\?b=[^"]*map', html) is not None and re.search(r'_blocks/[0-9a-f]+\.js\?b=[^"]*gallery', html) is not None, re.findall(r'_blocks/[0-9a-f]+\.(?:css|js)\?b=[^&"]*', html))
 check('the gallery is not a line of the information card', 'Gallery:' not in html and '/uploads/media/two.png</' not in html)
 st, _, html = anon.get('/en/routes/bare')
-check('a route with no pictures has no strip and no gallery styles', st == 200 and 'entry-strip' not in html and 'block-gallery' not in html and re.search(r'_blocks\.css\?b=[^"]*gallery', html) is None)
+check('a route with no pictures has no strip and no gallery styles', st == 200 and 'entry-strip' not in html and 'block-gallery' not in html and re.search(r'_blocks/[0-9a-f]+\.css\?b=[^"]*gallery', html) is None)
 st, _, html = anon.get('/en/routes/imported')
 check('a gallery at the top of the front matter is shown too', strip_links(html, 'title') == [THREE, ONE], strip_links(html))
 
@@ -83,7 +83,7 @@ html = anon.get('/en/routes/gorge')[2]
 check('in the body: the strip is at the end of the text, not under the title', 'entry-strip--body' in html and strip_links(html, 'body') == [ONE, TWO] and strip_links(html, 'title') == [] and html.index('Walk down the gorge') < html.index('entry-strip--body'), strip_links(html))
 save_card('off')
 html = anon.get('/en/routes/gorge')[2]
-check('off: no strip, no gallery styles', 'entry-strip' not in html and 'block-gallery' not in html and re.search(r'_blocks\.css\?b=[^"]*gallery', html) is None)
+check('off: no strip, no gallery styles', 'entry-strip' not in html and 'block-gallery' not in html and re.search(r'_blocks/[0-9a-f]+\.css\?b=[^"]*gallery', html) is None)
 save_card('title')
 
 # ---- the Gallery block with the entry's gallery as its source

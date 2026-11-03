@@ -64,9 +64,9 @@ $base = site('bundles');
 $theme = new Theme($base, 'plain');
 $css = $theme->blockStylesheetUrl('', ['hero']);
 $js = $theme->blockScriptUrl('', ['hero']);
-check('the block stylesheet of a page is a file with a hash in its name', (bool)preg_match('#^/_themes/plain/_blocks/[0-9a-f]{16}\.css$#', $css), true);
-check('with the blocks\' styles in it', (string)@file_get_contents($base . '/public' . $css), "/* hero */\n.hero{}\n");
-check('and the script too', [(bool)preg_match('#^/_themes/plain/_blocks/[0-9a-f]{16}\.js$#', $js), (string)@file_get_contents($base . '/public' . $js)], [true, "/* hero */\nhero()\n;\n"]);
+check('the block stylesheet of a page is a file with a hash in its name', (bool)preg_match('#^/_themes/plain/_blocks/[0-9a-f]{16}\.css\?b=hero$#', $css), true);
+check('with the blocks\' styles in it', (string)@file_get_contents($base . '/public' . strtok($css, '?')), "/* hero */\n.hero{}\n");
+check('and the script too', [(bool)preg_match('#^/_themes/plain/_blocks/[0-9a-f]{16}\.js\?b=hero$#', $js), (string)@file_get_contents($base . '/public' . strtok($js, '?'))], [true, "/* hero */\nhero()\n;\n"]);
 
 // ---- a public/ that cannot be written: index.php answers the same addresses
 $base = site('readonly');

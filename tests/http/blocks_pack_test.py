@@ -94,7 +94,7 @@ check('a portfolio shows each piece with its categories', s.count('class="portfo
 check('with a button for each category, in the order they first appear, and one for all', re.findall(r'data-filter="([^"]*)"', s) == ['', 'web', 'branding', 'print'], re.findall(r'data-filter="([^"]*)"', s))
 check('each piece says which categories it is in', 'data-categories="web branding"' in s and 'data-categories="print"' in s)
 check('the buttons are hidden until the script shows them', re.search(r'data-portfolio-filters hidden', s) is not None)
-check('the script comes with the block', re.search(r'_blocks\.js\?b=[^"]*portfolio', html) is not None, re.findall(r'_blocks\.js\?b=[^&"]*', html))
+check('the script comes with the block', re.search(r'_blocks/[0-9a-f]+\.js\?b=[^"]*portfolio', html) is not None, re.findall(r'_blocks/[0-9a-f]+\.js\?b=[^&"]*', html))
 check('a title is text, and a piece with a link is one', 'Delta &lt;i&gt;' in s and re.search(r'class="work-link" href="[^"]*/contact">Alpha', s) is not None)
 st, _, html = page('pf2', {'type': 'portfolio', 'items': [{'title': 'One', 'category': 'Web'}, {'title': 'Two', 'category': 'Web'}]}, {'type': 'portfolio', 'filters': False, 'items': [{'title': 'One', 'category': 'Web'}, {'title': 'Two', 'category': 'Print'}]})
 check('one category is nothing to choose, and the buttons can be switched off', 'data-portfolio-filters' not in html)
@@ -128,7 +128,7 @@ check('a marquee has its items twice, and the copy is hidden from screen readers
 check('the speed and the direction are classes, never inline', 'marquee speed-normal dir-left' in s and 'style=' not in s)
 check('the labels of the pause button come with the page', 'data-label-pause="Παύση της κινούμενης ταινίας"' in s)
 check('a marquee with no items leaves no section', html.count('block-marquee') == 1)
-check('its script comes with the block', re.search(r'_blocks\.js\?b=[^"]*marquee', html) is not None)
+check('its script comes with the block', re.search(r'_blocks/[0-9a-f]+\.js\?b=[^"]*marquee', html) is not None)
 
 # ---- Pricing
 plans = [{'name': 'Starter', 'price': '€9', 'period': 'per month', 'yearly_price': '€90', 'yearly_period': 'per year'}, {'name': 'Team', 'price': '€29', 'yearly_price': '€290'}, {'name': 'Custom', 'price': 'Talk'}]
@@ -140,7 +140,7 @@ check('a yearly price with no unit of its own says per year, not per month', re.
 check('a plan with no yearly price is the same either way', s.count('Talk') == 1 and re.search(r'<p class="plan-price"><span class="plan-amount">Talk', s) is not None)
 st, _, html = page('pr2', {'type': 'pricing', 'items': plans})
 check('without the switch it is as it was', 'data-pricing' not in html and 'data-billing-price' not in html)
-check('the script comes with the block', re.search(r'_blocks\.js\?b=[^"]*pricing', page('pr', {'type': 'pricing', 'billing_switch': True, 'items': plans})[2]) is not None)
+check('the script comes with the block', re.search(r'_blocks/[0-9a-f]+\.js\?b=[^"]*pricing', page('pr', {'type': 'pricing', 'billing_switch': True, 'items': plans})[2]) is not None)
 
 # ---- Text with a contents list
 body = 'Intro.\n\n## First part\n\nOne.\n\n## Second part\n\nTwo.\n\n### Detail\n\nThree.'
