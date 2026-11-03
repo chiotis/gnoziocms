@@ -882,7 +882,32 @@ final class GnozioInstaller
             return ['ok' => true, 'changed' => false, 'servedFromPublic' => self::$isPublicCopy, 'docroot' => realpath(self::$base) . '/public'];
         }
         self::done($state, 'docroot');
-        return ['ok' => true, 'changed' => true];
+        return ['ok' => true, 'changed' => true, 'assets' => self::themeAssetsServed()];
+    }
+
+    /**
+     * Whether the theme's stylesheet reaches visitors. It is served by index.php, so a web server whose static-file rule
+     * answers 404 for a file it cannot find (the CloudPanel default) leaves the site without styles. Null when the site
+     * cannot be asked at its own address; then nothing is claimed.
+     */
+    private static function themeAssetsServed()
+    {
+        $origin = self::selfOrigin();
+        if ($origin === '' || !self::isAllowedUrl($origin) || !function_exists('curl_init') && !filter_var(ini_get('allow_url_fopen'), FILTER_VALIDATE_BOOLEAN)) {
+            return null;
+        }
+        $path = tempnam(sys_get_temp_dir(), 'gzc');
+        if ($path === false) {
+            return null;
+        }
+        $status = 0;
+        $failure = self::fetch($origin . '/_themes/default/css/site.css', $path, 0, 0, $status, 4 * 1024 * 1024);
+        $body = $failure === null ? (string)@file_get_contents($path) : '';
+        @unlink($path);
+        if ($status === 0) {
+            return null;
+        }
+        return $failure === null && $body !== '' && stripos($body, '<html') === false;
     }
 
     // ---- 7. finish
@@ -953,6 +978,7 @@ final class GnozioInstaller
                 'docroot_cp' => 'CloudPanel: Sites → your site → Settings → Root Directory. Enter public (the folder inside the site\'s folder) and save.', 'docroot_other' => 'Other panels: find "Document root", "Web root" or "Root directory" for this site, and set it to the path above. In Apache or nginx set root / DocumentRoot to it.',
                 'docroot_same' => 'The address of this page stays the same: the installer has copied itself into public/, so this page keeps working after the change.',
                 'docroot_button' => 'I\'ve changed it — continue', 'docroot_checking' => 'Checking…',
+                'assets_missing' => 'The site answers, but its stylesheet does not: the web server returns 404 for /_themes/default/css/site.css, so pages would show without styles. Theme files are served by index.php. In the nginx block for static files (css, js, fonts, images; in CloudPanel: Vhost) add this line at the end, reload nginx, and check again:', 'assets_again' => 'Check again', 'assets_skip' => 'Continue anyway',
                 'docroot_not_yet' => 'The site is still served from the old folder. Make sure the document root is the path above and saved, wait a moment for the web server to reload, then press the button again.', 'docroot_not_public' => 'This page is still coming from the old location. Change the document root, then press the button again.',
                 'finishing' => 'Removing the installer…', 'finish_ok' => 'Installer removed', 'finish_left' => 'These could not be deleted; please delete them by hand: {left}',
                 'redirecting' => 'GnozioCMS is installed. Opening the admin to create the first administrator…',
@@ -985,6 +1011,7 @@ final class GnozioInstaller
                 'docroot_cp' => 'CloudPanel: Sites → το site σου → Settings → Root Directory. Γράψε public (ο φάκελος μέσα στον φάκελο του site) και αποθήκευσε.', 'docroot_other' => 'Άλλα πάνελ: βρες το «Document root», «Web root» ή «Root directory» του site και βάλε τη διαδρομή παραπάνω. Σε Apache ή nginx όρισε το root / DocumentRoot σε αυτήν.',
                 'docroot_same' => 'Η διεύθυνση αυτής της σελίδας μένει ίδια: ο installer έχει αντιγράψει τον εαυτό του στο public/, οπότε η σελίδα συνεχίζει να δουλεύει μετά την αλλαγή.',
                 'docroot_button' => 'Την άλλαξα — συνέχεια', 'docroot_checking' => 'Έλεγχος…',
+                'assets_missing' => 'Το site απαντά, αλλά όχι το stylesheet του: ο web server επιστρέφει 404 για το /_themes/default/css/site.css, οπότε οι σελίδες θα φαίνονται χωρίς στυλ. Τα αρχεία του θέματος τα σερβίρει το index.php. Στο block του nginx για τα στατικά αρχεία (css, js, γραμματοσειρές, εικόνες· στο CloudPanel: Vhost) πρόσθεσε στο τέλος αυτή τη γραμμή, κάνε reload το nginx και έλεγξε ξανά:', 'assets_again' => 'Έλεγχος ξανά', 'assets_skip' => 'Συνέχεια χωρίς αυτό',
                 'docroot_not_yet' => 'Το site σερβίρεται ακόμη από τον παλιό φάκελο. Βεβαιώσου ότι το document root είναι η διαδρομή παραπάνω και αποθηκεύτηκε, περίμενε λίγο να ξαναφορτώσει ο web server και πάτα ξανά το κουμπί.', 'docroot_not_public' => 'Αυτή η σελίδα έρχεται ακόμη από την παλιά θέση. Άλλαξε το document root και πάτα ξανά το κουμπί.',
                 'finishing' => 'Διαγραφή του installer…', 'finish_ok' => 'Ο installer διαγράφηκε', 'finish_left' => 'Αυτά δεν μπόρεσαν να διαγραφούν· σβήσε τα με το χέρι: {left}',
                 'redirecting' => 'Το GnozioCMS εγκαταστάθηκε. Ανοίγω το admin για να φτιάξεις τον πρώτο διαχειριστή…',
@@ -1204,9 +1231,19 @@ function waitDocroot(root){
     call('docroot').then(function(j){
       if(!j.ok){warn.textContent=msg(j);warn.classList.remove('hide');btn.disabled=false;btn.textContent=t('docroot_button');return;}
       if(!j.changed){warn.textContent=t(j.servedFromPublic?'docroot_not_yet':'docroot_not_public');warn.classList.remove('hide');btn.disabled=false;btn.textContent=t('docroot_button');return;}
+      if(j.assets===false){assetsMissing();return;}
       setStep('docroot','done','');docCard.classList.add('hide');finish();
     }).catch(function(e){if(!e.handled){warn.textContent=msg(e);warn.classList.remove('hide');btn.disabled=false;btn.textContent=t('docroot_button');}});};
   docCard.appendChild(warn);docCard.appendChild(btn);
+}
+function assetsMissing(){
+  docCard.textContent='';docCard.appendChild(el('div','notice',t('assets_missing')));
+  var box=el('div','path');box.appendChild(el('code',null,'try_files $uri /index.php?$query_string;'));docCard.appendChild(box);
+  var again=el('button','btn block',t('assets_again')),skip=el('button','btn block ghost',t('assets_skip'));again.style.marginTop='14px';skip.style.marginTop='8px';
+  again.onclick=function(){again.disabled=true;again.textContent=t('docroot_checking');
+    call('docroot').then(function(j){if(j.ok&&j.changed&&j.assets===false){again.disabled=false;again.textContent=t('assets_again');return;}if(j.ok&&j.changed){skip.onclick();return;}waitDocroot();}).catch(function(e){again.disabled=false;again.textContent=t('assets_again');});};
+  skip.onclick=function(){setStep('docroot','done','');docCard.classList.add('hide');finish();};
+  docCard.appendChild(again);docCard.appendChild(skip);
 }
 function finish(){
   setStep('finish','running',t('finishing'));
