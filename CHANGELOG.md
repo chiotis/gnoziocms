@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.197 — 2026-11-03 — MCP: pictures from the chat
+- `add_image_from_url` takes a `file` in place of `url`: a picture the assistant made or was given in the chat, as `{download_url, file_id, mime_type, file_name}`. `_meta["openai/fileParams"]` tells ChatGPT to fill it with the chat's file; Claude and Codex ignore it. The site fetches `download_url` with the same checks as an address, and names the picture after `file_name`. A file without a `download_url` is refused with a message that says so. Base64 is not taken: a request is at most 1 MB.
+- `docs/mcp.md`. Tests: `tests/unit/mcp-images.php`.
+
 ## 0.1.196 — 2026-11-03 — Installer: the nginx rule for MCP
 - On nginx, once `public/` is the document root, the installer writes a test file in `public/.well-known/` and asks for it at the site's address. When it does not come back as `application/json` (CloudPanel serves `/.well-known/` itself, without a type for a name with no extension), it shows the block to add before `location ~ /.well-known`, with Check again and Continue anyway: ChatGPT cannot connect over MCP without it, Claude and Codex can. Other web servers are not asked.
 - `docs/mcp.md`. Tests: `tests/http/installer_test.py`.
