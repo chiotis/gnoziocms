@@ -105,6 +105,35 @@ check('a hero and a list that skips it: each entry once', [substr_count($page['h
 $page = $draw([['type' => 'hero', 'source' => 'posts', 'offset' => 3], ['type' => 'text', 'heading' => 'After', 'body' => 'x']]);
 check('skipping every entry leaves no hero', [str_contains($page['html'], 'block-hero'), $page['lead']['type'] ?? null], [false, 'text']);
 
+// ---- Leave out entries shown above
+$titles = static fn(string $html, string $class): array => preg_match_all('#<(?:h\d) class="' . $class . '"[^>]*>(?:<a [^>]*>)?([^<]+)#', $html, $m) ? $m[1] : [];
+$blockTypes = ['latest', 'cards', 'portfolio', 'hero', 'hero-slider'];
+check('each block of entries has it, off to begin with', array_map(static fn(string $t): array => [$registry->get($t)['fields']['skip_shown']['type'], $registry->get($t)['fields']['skip_shown']['default']], $blockTypes), array_fill(0, 5, ['toggle', false]));
+check('only for entries, not for typed cards, pieces, heroes and slides', array_map(static fn(string $t): array => $registry->get($t)['fields']['skip_shown']['when'] ?? [], $blockTypes), [[], ['source' => ['!manual']], ['source' => ['!manual']], ['source' => ['!manual']], ['source' => ['!manual']]]);
+$page = $draw([['type' => 'hero', 'source' => 'posts'], ['type' => 'latest', 'variant' => 'list', 'source' => 'posts', 'limit' => 2, 'skip_shown' => true]]);
+check('a list below a hero of the newest post starts at the second, and still shows as many', $titles($page['html'], 'latest-title'), ['Second post', 'Third post']);
+$asked = [];
+$page = $draw([['type' => 'hero', 'source' => 'posts'], ['type' => 'latest', 'variant' => 'list', 'source' => 'posts', 'limit' => 2]]);
+check('switched off, the list shows the newest again', $titles($page['html'], 'latest-title'), ['First post', 'Second post']);
+check('and asks for no more than it shows', array_column($asked, 2), [1, 2]);
+$page = $draw([['type' => 'latest', 'variant' => 'list', 'source' => 'posts', 'limit' => 1], ['type' => 'hero', 'source' => 'posts', 'skip_shown' => true]]);
+check('the order of the page counts: a hero below a list skips what the list shows', [$titles($page['html'], 'latest-title'), $titles($page['html'], 'hero-title')], [['First post'], ['Second post']]);
+$page = $draw([['type' => 'hero-slider', 'source' => 'posts', 'limit' => 2], ['type' => 'cards', 'source' => 'posts', 'limit' => 3, 'skip_shown' => true], ['type' => 'portfolio', 'source' => 'posts', 'limit' => 3, 'skip_shown' => true]]);
+check('cards skip the slides, and the portfolio skips both: nothing left, no portfolio', [substr_count($page['html'], '>First post<'), substr_count($page['html'], '>Third post<'), str_contains($page['html'], 'block-portfolio')], [1, 1, false]);
+$page = $draw([['type' => 'hero', 'source' => 'posts'], ['type' => 'hero-slider', 'source' => 'posts', 'limit' => 3, 'skip_shown' => true]]);
+check('a slider below a hero gets the two that are left', substr_count($page['html'], 'class="slider-slide"'), 2);
+$page = $draw([['type' => 'hero', 'source' => 'posts', 'skip_shown' => true], ['type' => 'hero', 'source' => 'posts', 'skip_shown' => true], ['type' => 'hero', 'source' => 'posts', 'skip_shown' => true], ['type' => 'hero', 'source' => 'posts', 'skip_shown' => true]]);
+check('four heroes that each leave out the ones above: three entries, three heroes', $titles($page['html'], 'hero-title'), ['First post', 'Second post', 'Third post']);
+$page = $renderer->render([['type' => 'latest', 'variant' => 'list', 'source' => 'posts', 'limit' => 2, 'skip_shown' => true]], ['lang' => 'en', 'lang_prefix' => '', 'body_html' => '', 'item' => $posts[0]]);
+check('on a post\'s own page the post itself counts as shown', $titles($page['html'], 'latest-title'), ['Second post', 'Third post']);
+$page = $draw([['type' => 'hero', 'source' => 'posts'], ['type' => 'container', 'columns' => [['blocks' => [['type' => 'latest', 'variant' => 'list', 'source' => 'posts', 'limit' => 1, 'skip_shown' => true]]]]]]);
+check('a block in a column knows what is shown above it too', $titles($page['html'], 'latest-title'), ['Second post']);
+$page = $draw([['type' => 'hero', 'source' => 'posts'], ['type' => 'latest', 'variant' => 'list', 'source' => 'posts', 'limit' => 2, 'skip_shown' => true]]);
+$again = $draw([['type' => 'latest', 'variant' => 'list', 'source' => 'posts', 'limit' => 2, 'skip_shown' => true]]);
+check('a new page starts with nothing shown', $titles($again['html'], 'latest-title'), ['First post', 'Second post']);
+$page = $draw([['type' => 'hero', 'source' => 'posts', 'offset' => 1], ['type' => 'latest', 'variant' => 'list', 'source' => 'posts', 'limit' => 2, 'offset' => 1, 'skip_shown' => true]]);
+check('with Skip the newest as well, the newest are skipped first, then the ones shown', $titles($page['html'], 'latest-title'), ['Third post']);
+
 // ---- in a container: the same entries
 $page = $draw([['type' => 'container', 'columns' => [['blocks' => [['type' => 'hero', 'source' => 'posts']]]]]]);
 check('a hero of entries in a column shows the entry too', str_contains($page['html'], 'First post'), true);

@@ -22,6 +22,9 @@ final class BlockRenderer
     /** The most newest entries a block of entries can skip (its "Skip the newest" field). */
     public const MAX_OFFSET = 50;
 
+    /** @var array<string, true> the entries the blocks drawn so far on this page show (and the page's own entry), as type/slug.lang */
+    private array $shown = [];
+
     /**
      * @param \Closure(string): string $markdown
      * @param array<string, \Closure> $providers dynamic data: 'items' (type, lang, limit, category or tag, how many of the newest to skip), 'form' (slug), 'youtube' (playlist id, picture source), 'file' (a site file's size in bytes), 'term' (a category's name), 'geo' (entries as a map draws them), 'geo_items' (given entries as a map draws them), 'geo_load' (when maps load), 'gallery' (the pictures of an entry's gallery field: entry, field key or '' for its gallery, language) and 'admin' (whether someone is signed in)
@@ -43,6 +46,11 @@ final class BlockRenderer
      */
     public function render(array $rawBlocks, array $context): array
     {
+        // Leave out entries shown above: the page's own entry counts as shown.
+        $this->shown = [];
+        if (($context['item'] ?? null) instanceof ContentItem) {
+            $this->markShown([$context['item']]);
+        }
         $blocks = $this->prepare($rawBlocks, (string)($context['body_html'] ?? ''), $context);
         // A template built with blocks may place the entry's text itself (Entry text); the Entry blocks it draws then do not repeat it.
         if ($context['template_mode'] ?? false) {
@@ -377,17 +385,16 @@ final class BlockRenderer
     private function prepare(array $rawBlocks, string $bodyHtml, array $context = []): array
     {
         $prepared = $this->prepareList($rawBlocks, '', true, $context['bindings'] ?? null);
-        // A hero or slider of entries gets them now: whether it opens the page (and how the header over it looks) depends on them.
-        // One with no entry to show is not there at all, so the block after it opens the page.
-        foreach ($prepared as $i => [$type, $definition, $values]) {
-            if ($definition !== null) {
-                $prepared[$i][2] = $this->withEntries($type, $definition, $values, (string)($context['lang'] ?? ''));
-                if (($prepared[$i][2]['_entries'] ?? null) === 0) {
-                    unset($prepared[$i]);
-                }
+        // A hero or slider of entries that opens the page gets them now: whether it opens the page (and how the header over it looks)
+        // depends on them. One with no entry to show is not there at all, so the block after it opens the page. The others get theirs
+        // as they are drawn, in the order of the page, so each knows the entries shown above it.
+        while ($prepared !== [] && $prepared[0][1] !== null) {
+            $prepared[0][2] = $this->withEntries($prepared[0][0], $prepared[0][1], $prepared[0][2], (string)($context['lang'] ?? ''));
+            if (($prepared[0][2]['_entries'] ?? null) !== 0) {
+                break;
             }
+            array_shift($prepared);
         }
-        $prepared = array_values($prepared);
         $hasContent = self::placesContent($prepared);
 
         $content = $this->registry->get('content');
@@ -575,7 +582,7 @@ final class BlockRenderer
             $values['_empty'] = $values['images'] === [];
         }
         if ($type === 'cards' && ($values['source'] ?? 'manual') !== 'manual' && isset($this->providers['items'])) {
-            $values['entries'] = ($this->providers['items'])((string)$values['source'], (string)($context['lang'] ?? ''), (int)($values['limit'] ?? 3), '', (int)$values['offset']);
+            $values['entries'] = $this->entries($values, (string)($context['lang'] ?? ''), (int)($values['limit'] ?? 3), '');
         }
         if (in_array($type, ['archive-title', 'filter-bar', 'result-count'], true) && is_array($context['archive'] ?? null)) {
             $values = ArchiveBlocks::fill($type, $values, $context['archive']);
@@ -616,9 +623,7 @@ final class BlockRenderer
             }
         }
         if ($type === 'latest') {
-            $values['entries'] = isset($this->providers['items'])
-                ? ($this->providers['items'])((string)$values['source'], (string)($context['lang'] ?? ''), (int)$values['limit'], (string)$values['term'], (int)$values['offset'])
-                : [];
+            $values['entries'] = $this->entries($values, (string)($context['lang'] ?? ''), (int)$values['limit'], (string)$values['term']);
             $values['_empty'] = $values['entries'] === [];
         }
         if ($type === 'video') {
@@ -743,6 +748,43 @@ final class BlockRenderer
     }
 
     /**
+     * The newest entries of the block's content type (`source`) after the ones it skips (`offset`). With "Leave out entries shown
+     * above" (`skip_shown`) the entries an earlier block of the page shows, or the page's own entry, are left out and the next ones
+     * take their place. Whatever the block gets counts as shown for the blocks below it.
+     *
+     * @param array<string, mixed> $values
+     * @return array<int, ContentItem>
+     */
+    private function entries(array $values, string $lang, int $limit, string $term): array
+    {
+        if (!isset($this->providers['items'])) {
+            return [];
+        }
+        $skip = ($values['skip_shown'] ?? false) === true;
+        // Enough more to make up for the ones left out: at most as many as are shown.
+        $found = ($this->providers['items'])((string)$values['source'], $lang, $limit + ($skip ? count($this->shown) : 0), $term, (int)($values['offset'] ?? 0));
+        if ($skip) {
+            $found = array_filter($found, fn(ContentItem $entry): bool => !isset($this->shown[self::shownKey($entry)]));
+        }
+        $found = array_slice(array_values($found), 0, max(1, $limit));
+        $this->markShown($found);
+        return $found;
+    }
+
+    /** @param array<int, ContentItem> $entries */
+    private function markShown(array $entries): void
+    {
+        foreach ($entries as $entry) {
+            $this->shown[self::shownKey($entry)] = true;
+        }
+    }
+
+    private static function shownKey(ContentItem $entry): string
+    {
+        return $entry->type . '/' . $entry->slug . '.' . $entry->lang;
+    }
+
+    /**
      * A Hero or a Hero slider that shows entries of a content type instead of typed text: the Hero takes the newest one, the slider
      * a slide for each (in the layout chosen for them all). The entry gives the heading and the picture; the template adds its
      * excerpt, its category and a button to it (`_entry`). No entry: the block is not drawn. Done once, also for a block in a container.
@@ -756,9 +798,7 @@ final class BlockRenderer
         if (!in_array($type, ['hero', 'hero-slider'], true) || ($values['source'] ?? 'manual') === 'manual' || isset($values['_entries'])) {
             return $values;
         }
-        $entries = isset($this->providers['items'])
-            ? ($this->providers['items'])((string)$values['source'], $lang, $type === 'hero' ? 1 : (int)$values['limit'], (string)$values['term'], (int)$values['offset'])
-            : [];
+        $entries = $this->entries($values, $lang, $type === 'hero' ? 1 : (int)$values['limit'], (string)$values['term']);
         $values['_entries'] = count($entries);
         $picture = static fn(ContentItem $entry): array => [
             'heading' => trim((string)($entry->meta['title'] ?? '')),
@@ -792,7 +832,7 @@ final class BlockRenderer
     {
         $tiles = [];
         if ($values['source'] !== 'manual' && isset($this->providers['items'])) {
-            foreach (($this->providers['items'])((string)$values['source'], $lang, (int)$values['limit'], '', (int)$values['offset']) as $entry) {
+            foreach ($this->entries($values, $lang, (int)$values['limit'], '') as $entry) {
                 $cats = [];
                 foreach (Format::list($entry->meta['categories'] ?? null) as $slug) {
                     $label = isset($this->providers['term']) ? (string)($this->providers['term'])((string)$slug, $lang) : '';

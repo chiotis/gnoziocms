@@ -124,7 +124,8 @@ final class BlockRuntime
                         return [];
                     }
                     $term = Slug::plain($term);
-                    $limit = max(1, min(24, $limit));
+                    // A block shows 24 at most; more are asked for to make up for the ones it leaves out (shown above).
+                    $limit = max(1, min(100, $limit));
                     $offset = max(0, min(BlockRenderer::MAX_OFFSET, $offset));
                     $indexed = $this->latestFromIndex($type, $itemLang, $includeHidden, $offset + $limit, $term);
                     if ($indexed !== null) {

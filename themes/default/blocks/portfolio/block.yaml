@@ -34,6 +34,12 @@ fields:
     max: 50
     help: 'Leaves out this many of the newest entries, for example the ones another block of the page already shows.'
     when: { source: '!manual' }
+  skip_shown:
+    type: toggle
+    label: Leave out entries shown above
+    default: false
+    help: 'Entries that a block higher on the page already shows (or the page itself) are left out, and the next ones take their place.'
+    when: { source: '!manual' }
   columns:
     type: select
     label: Columns
