@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.198 — 2026-11-03 — Hero and Hero slider: entries as slides
+- Both blocks have a **Show** choice: the typed text or slides (as before), or a content type. The Hero then shows the newest entry, the Hero slider a slide for each of the newest entries (Number of slides, 3 to begin with, 8 at most; one layout for all). Each shows the entry's title, excerpt (or the start of its text), first category as the eyebrow (a typed eyebrow wins), main image and a button to it (Button text, "Read more" when empty). An optional category or tag narrows the entries. With no entry the block is left out, and the next block opens the page.
+- Tests: `tests/unit/hero-entries.php`, `tests/http/hero_video_test.py`.
+
 ## 0.1.197 — 2026-11-03 — MCP: pictures from the chat
 - `add_image_from_url` takes a `file` in place of `url`: a picture the assistant made or was given in the chat, as `{download_url, file_id, mime_type, file_name}`. `_meta["openai/fileParams"]` tells ChatGPT to fill it with the chat's file; Claude and Codex ignore it. The site fetches `download_url` with the same checks as an address, and names the picture after `file_name`. A file without a `download_url` is refused with a message that says so. Base64 is not taken: a request is at most 1 MB.
 - `docs/mcp.md`. Tests: `tests/unit/mcp-images.php`.
