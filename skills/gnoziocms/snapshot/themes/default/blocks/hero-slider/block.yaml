@@ -24,6 +24,14 @@ fields:
     min: 1
     max: 8
     when: { source: '!manual' }
+  offset:
+    type: number
+    label: Skip the newest
+    default: 0
+    min: 0
+    max: 50
+    help: 'Leaves out this many of the newest entries, for example the ones another block of the page already shows.'
+    when: { source: '!manual' }
   entry_layout:
     type: select
     label: Layout of the slides
