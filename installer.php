@@ -886,9 +886,10 @@ final class GnozioInstaller
     }
 
     /**
-     * Whether the theme's stylesheet reaches visitors. It is served by index.php, so a web server whose static-file rule
-     * answers 404 for a file it cannot find (the CloudPanel default) leaves the site without styles. Null when the site
-     * cannot be asked at its own address; then nothing is claimed.
+     * Whether the theme's stylesheet reaches visitors. The site copies it into public/ on its first page; where public/
+     * cannot be written it is served by index.php, and a web server whose static-file rule answers 404 for a file it
+     * cannot find (the CloudPanel default) leaves the site without styles. Null when the site cannot be asked at its own
+     * address; then nothing is claimed.
      */
     private static function themeAssetsServed()
     {
@@ -900,6 +901,9 @@ final class GnozioInstaller
         if ($path === false) {
             return null;
         }
+        // The first page copies the theme's files into public/ (ThemeAssets::publish), so it is asked for first.
+        $status = 0;
+        self::fetch($origin . '/', $path, 0, 0, $status, 4 * 1024 * 1024);
         $status = 0;
         $failure = self::fetch($origin . '/_themes/default/css/site.css', $path, 0, 0, $status, 4 * 1024 * 1024);
         $body = $failure === null ? (string)@file_get_contents($path) : '';
@@ -978,7 +982,7 @@ final class GnozioInstaller
                 'docroot_cp' => 'CloudPanel: Sites → your site → Settings → Root Directory. Enter public (the folder inside the site\'s folder) and save.', 'docroot_other' => 'Other panels: find "Document root", "Web root" or "Root directory" for this site, and set it to the path above. In Apache or nginx set root / DocumentRoot to it.',
                 'docroot_same' => 'The address of this page stays the same: the installer has copied itself into public/, so this page keeps working after the change.',
                 'docroot_button' => 'I\'ve changed it — continue', 'docroot_checking' => 'Checking…',
-                'assets_missing' => 'The site answers, but its stylesheet does not: the web server returns 404 for /_themes/default/css/site.css, so pages would show without styles. Theme files are served by index.php. In the nginx block for static files (css, js, fonts, images) add this line at the end, reload nginx, and check again. In CloudPanel (Vhost), whose block on port 443 passes pages on through `location /`, write `try_files $uri @app;` instead and add a `location @app { … }` with the same lines as `location /`.', 'assets_again' => 'Check again', 'assets_skip' => 'Continue anyway',
+                'assets_missing' => 'The site answers, but its stylesheet does not: the web server returns 404 for /_themes/default/css/site.css, so pages would show without styles. GnozioCMS copies the theme\'s files into public/ on the first page, so first make sure PHP can write to public/. Otherwise the web server must hand a file it cannot find to index.php: in the nginx block for static files (css, js, fonts, images) add this line at the end, reload nginx, and check again. In CloudPanel (Vhost), whose block on port 443 passes pages on through `location /`, write `try_files $uri @app;` instead and add a `location @app { … }` with the same lines as `location /`.', 'assets_again' => 'Check again', 'assets_skip' => 'Continue anyway',
                 'docroot_not_yet' => 'The site is still served from the old folder. Make sure the document root is the path above and saved, wait a moment for the web server to reload, then press the button again.', 'docroot_not_public' => 'This page is still coming from the old location. Change the document root, then press the button again.',
                 'finishing' => 'Removing the installer…', 'finish_ok' => 'Installer removed', 'finish_left' => 'These could not be deleted; please delete them by hand: {left}',
                 'redirecting' => 'GnozioCMS is installed. Opening the admin to create the first administrator…',
@@ -1011,7 +1015,7 @@ final class GnozioInstaller
                 'docroot_cp' => 'CloudPanel: Sites → το site σου → Settings → Root Directory. Γράψε public (ο φάκελος μέσα στον φάκελο του site) και αποθήκευσε.', 'docroot_other' => 'Άλλα πάνελ: βρες το «Document root», «Web root» ή «Root directory» του site και βάλε τη διαδρομή παραπάνω. Σε Apache ή nginx όρισε το root / DocumentRoot σε αυτήν.',
                 'docroot_same' => 'Η διεύθυνση αυτής της σελίδας μένει ίδια: ο installer έχει αντιγράψει τον εαυτό του στο public/, οπότε η σελίδα συνεχίζει να δουλεύει μετά την αλλαγή.',
                 'docroot_button' => 'Την άλλαξα — συνέχεια', 'docroot_checking' => 'Έλεγχος…',
-                'assets_missing' => 'Το site απαντά, αλλά όχι το stylesheet του: ο web server επιστρέφει 404 για το /_themes/default/css/site.css, οπότε οι σελίδες θα φαίνονται χωρίς στυλ. Τα αρχεία του θέματος τα σερβίρει το index.php. Στο block του nginx για τα στατικά αρχεία (css, js, γραμματοσειρές, εικόνες) πρόσθεσε στο τέλος αυτή τη γραμμή, κάνε reload το nginx και έλεγξε ξανά. Στο CloudPanel (Vhost), όπου το block της θύρας 443 προωθεί τις σελίδες μέσω του `location /`, γράψε αντί γι\' αυτήν `try_files $uri @app;` και πρόσθεσε ένα `location @app { … }` με τις ίδιες γραμμές με το `location /`.', 'assets_again' => 'Έλεγχος ξανά', 'assets_skip' => 'Συνέχεια χωρίς αυτό',
+                'assets_missing' => 'Το site απαντά, αλλά όχι το stylesheet του: ο web server επιστρέφει 404 για το /_themes/default/css/site.css, οπότε οι σελίδες θα φαίνονται χωρίς στυλ. Το GnozioCMS αντιγράφει τα αρχεία του θέματος στο public/ με την πρώτη σελίδα, οπότε έλεγξε πρώτα ότι η PHP μπορεί να γράψει στο public/. Αλλιώς ο web server πρέπει να δίνει στο index.php όσα αρχεία δεν βρίσκει: στο block του nginx για τα στατικά αρχεία (css, js, γραμματοσειρές, εικόνες) πρόσθεσε στο τέλος αυτή τη γραμμή, κάνε reload το nginx και έλεγξε ξανά. Στο CloudPanel (Vhost), όπου το block της θύρας 443 προωθεί τις σελίδες μέσω του `location /`, γράψε αντί γι\' αυτήν `try_files $uri @app;` και πρόσθεσε ένα `location @app { … }` με τις ίδιες γραμμές με το `location /`.', 'assets_again' => 'Έλεγχος ξανά', 'assets_skip' => 'Συνέχεια χωρίς αυτό',
                 'docroot_not_yet' => 'Το site σερβίρεται ακόμη από τον παλιό φάκελο. Βεβαιώσου ότι το document root είναι η διαδρομή παραπάνω και αποθηκεύτηκε, περίμενε λίγο να ξαναφορτώσει ο web server και πάτα ξανά το κουμπί.', 'docroot_not_public' => 'Αυτή η σελίδα έρχεται ακόμη από την παλιά θέση. Άλλαξε το document root και πάτα ξανά το κουμπί.',
                 'finishing' => 'Διαγραφή του installer…', 'finish_ok' => 'Ο installer διαγράφηκε', 'finish_left' => 'Αυτά δεν μπόρεσαν να διαγραφούν· σβήσε τα με το χέρι: {left}',
                 'redirecting' => 'Το GnozioCMS εγκαταστάθηκε. Ανοίγω το admin για να φτιάξεις τον πρώτο διαχειριστή…',

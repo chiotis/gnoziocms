@@ -144,9 +144,9 @@ Admin > History and the editor's History tab need `content.manage`. Restoring or
      }
      ```
 
-     Any other static-file location (for example a `\.(css|js|webp)$` caching block) must also end in `try_files $uri /index.php?$query_string;`, because theme assets (`/_themes/…`, `/_custom/…`) are always served by PHP, and image variants are served by PHP until they exist as files.
+     Theme and custom files are copied into `public/` and image variants not yet written have addresses with no file extension, so a static-file location (for example a `\.(css|js|webp)$` caching block, as CloudPanel has) needs no change while PHP can write to `public/`. Where it cannot, theme assets (`/_themes/…`, `/_custom/…`) are served by PHP, and such a location must end in `try_files $uri /index.php?$query_string;`.
 
-     CloudPanel's PHP site, with Varnish on or off, has no PHP in the block on port 443: its `location /` passes pages on (`{{varnish_proxy_pass}}`, to Varnish or straight to the block on port 8080, which runs PHP). There `/index.php` would reach the site as the address `/index.php` and answer 404. In that block send a missing file the same way as a page, under its own address, with a named location:
+     For that case: CloudPanel's PHP site, with Varnish on or off, has no PHP in the block on port 443: its `location /` passes pages on (`{{varnish_proxy_pass}}`, to Varnish or straight to the block on port 8080, which runs PHP). There `/index.php` would reach the site as the address `/index.php` and answer 404. In that block send a missing file the same way as a page, under its own address, with a named location:
 
      ```nginx
      location ~* ^.+\.(css|js|jpg|jpeg|gif|png|ico|gz|svg|svgz|ttf|otf|woff|woff2|eot|mp4|ogg|ogv|webm|webp|zip|swf|map|mjs)$ {

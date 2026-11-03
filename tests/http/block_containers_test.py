@@ -26,7 +26,7 @@ def box(columns, **settings):
     return {'type': 'container', 'settings': settings, 'columns': [c if isinstance(c, dict) else {'blocks': c} for c in columns]}
 
 def sheet(html):
-    m = re.search(r'/_themes/default/_blocks\.css\?[^"]*', html)
+    m = re.search(r'/_themes/default/_blocks/[0-9a-f]+\.css', html)
     return (m.group(0).replace('&amp;', '&'), anon.get(m.group(0).replace('&amp;', '&'))[2]) if m else ('', '')
 
 # ---- a page without a container is as it was: no container markup, no container styles

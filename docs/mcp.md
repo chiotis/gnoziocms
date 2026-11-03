@@ -6,7 +6,7 @@ GnozioCMS has an MCP server, so an AI assistant (Claude, ChatGPT) or a job of th
 
 **Admin > MCP** (super admin only, `mcp.manage`). It is off until turned on; off, its addresses answer as ordinary pages and no connection works, and connections are kept for when it is on again. The screen shows the address to give the assistant, checks from the browser that the discovery documents answer (a web server that does not pass `/.well-known/` to the site shows a red cross), lists the connections, and makes tokens by hand.
 
-While MCP is on, the two discovery documents are also written as files, `public/.well-known/oauth-protected-resource` and `public/.well-known/oauth-authorization-server` (with a `.htaccess` that gives them their JSON type on Apache), and they are removed when it is turned off. So a web server that answers `/.well-known/` itself, as nginx panels such as CloudPanel do for certificates, serves them without any change to its configuration. Each visit of the screen writes them again if the site's address changed. If `public/` cannot be written, nginx needs this block before its `location ~ /.well-known`:
+While MCP is on, the two discovery documents are also written as files, `public/.well-known/oauth-protected-resource/mcp` (the form with the endpoint's path, which ChatGPT asks for) and `public/.well-known/oauth-authorization-server` (with a `.htaccess` that gives them their JSON type on Apache), and they are removed when it is turned off. So a web server that answers `/.well-known/` itself, as nginx panels such as CloudPanel do for certificates, serves them without any change to its configuration. Each visit of the screen writes them again if the site's address changed. If `public/` cannot be written, nginx needs this block before its `location ~ /.well-known`:
 
 ```nginx
 location ^~ /.well-known/oauth- {
@@ -65,7 +65,7 @@ Each connection in Admin > MCP has **Rules**: the content types and languages it
 ## The protocol
 
 - `POST /mcp`: Streamable HTTP without a session, one JSON-RPC message per request (no batches), `Content-Type: application/json`, at most 1 MB. Protocol versions `2025-06-18` and `2025-03-26`. A notification gets `202`. `GET` gets `405`.
-- No token or a bad one: `401` with `WWW-Authenticate: Bearer resource_metadata="<site>/.well-known/oauth-protected-resource"`.
+- No token or a bad one: `401` with `WWW-Authenticate: Bearer resource_metadata="<site>/.well-known/oauth-protected-resource/mcp"`.
 - Discovery: `/.well-known/oauth-protected-resource` (also with `/mcp`) and `/.well-known/oauth-authorization-server`.
 - OAuth 2.1: registration `POST /_mcp/register` (public clients, HTTPS redirect addresses, or http on localhost), authorization `/admin/mcp-authorize` (S256 PKCE only, `resource` must be the endpoint), tokens `POST /_mcp/token` (`authorization_code`, `refresh_token`). The OAuth endpoints are under `/_mcp/` so they never take the address of a page.
 - Lifetimes: codes 5 minutes and once; access tokens 1 hour; refresh tokens 90 days, rotated on each use, the replaced one still good for 60 seconds so two refreshes at once do not end the connection. Admin > MCP marks a connection that ends within a week.

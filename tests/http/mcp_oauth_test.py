@@ -37,6 +37,9 @@ st, _, html = root.get('/admin/mcp')
 check('Admin > MCP is there for the super admin, off', st == 200 and 'Turn on' in html and '/mcp</dd>' in html, st)
 st, _, html = root.get('/admin')
 check('and in the menu', 'admin/mcp"' in html)
+# 0.1.190 wrote the protected resource as a file where its folder now goes.
+os.makedirs('app/public/.well-known', exist_ok=True)
+open('app/public/.well-known/oauth-protected-resource', 'w').write('{}')
 root.submit('/admin/mcp', has_field('mcp_action'), button=('mcp_action', 'enable'))
 check('it is turned on', 'Turn off' in root.get('/admin/mcp')[2])
 
@@ -44,22 +47,22 @@ check('it is turned on', 'Turn off' in root.get('/admin/mcp')[2])
 st, h, body = raw('GET', '/.well-known/oauth-protected-resource/mcp')
 meta = json.loads(body) if st == 200 else {}
 check('the protected resource names the endpoint and the server', st == 200 and meta.get('resource', '').endswith('/mcp') and meta.get('authorization_servers'), body[:200])
-check('without a cookie or a cache', 'Set-Cookie' not in h and 'no-store' in h.get('Cache-Control', ''), h)
+check('without a cookie', 'Set-Cookie' not in h, h)
 st, h, body = raw('GET', '/.well-known/oauth-authorization-server')
 asm = json.loads(body) if st == 200 else {}
 check('the authorization server lists its endpoints, S256 only, public clients', st == 200 and asm.get('authorization_endpoint', '').endswith('/admin/mcp-authorize') and asm.get('code_challenge_methods_supported') == ['S256'] and asm.get('token_endpoint_auth_methods_supported') == ['none'], body[:300])
 # Also as files, for a web server that answers /.well-known/ itself (nginx panels keep it for certificates).
 wk = 'app/public/.well-known/'
-files = {n: json.load(open(wk + n)) if os.path.isfile(wk + n) else None for n in ('oauth-protected-resource', 'oauth-authorization-server')}
-check('the discovery documents are written as files while it is on', files['oauth-protected-resource'] == meta and files['oauth-authorization-server'] == asm, files)
+files = {n: json.load(open(wk + n)) if os.path.isfile(wk + n) else None for n in ('oauth-protected-resource/mcp', 'oauth-authorization-server')}
+check('the discovery documents are written as files while it is on, the resource at the form with /mcp', files['oauth-protected-resource/mcp'] == meta and files['oauth-authorization-server'] == asm, files)
 check('with their type for Apache', 'application/json' in open(wk + '.htaccess').read() if os.path.isfile(wk + '.htaccess') else False)
 st, h, body = raw('GET', '/.well-known/oauth-protected-resource')
-check('the address the 401 names answers', st == 200 and json.loads(body) == meta, body[:200])
+check('the form without /mcp answers through the site', st == 200 and json.loads(body) == meta and 'no-store' in h.get('Cache-Control', ''), body[:200])
 resource = meta.get('resource', BASE + '/mcp')
 
 # ---- the endpoint without a token
 st, h, body = post_json('/mcp', {'jsonrpc': '2.0', 'id': 1, 'method': 'initialize'})
-check('no token: 401 with where to find the metadata', st == 401 and 'resource_metadata="' + BASE + '/.well-known/oauth-protected-resource"' in h.get('WWW-Authenticate', ''), (st, h.get('WWW-Authenticate')))
+check('no token: 401 with where to find the metadata', st == 401 and 'resource_metadata="' + BASE + '/.well-known/oauth-protected-resource/mcp"' in h.get('WWW-Authenticate', ''), (st, h.get('WWW-Authenticate')))
 check('GET is not allowed', raw('GET', '/mcp')[0] == 405)
 
 # ---- registration

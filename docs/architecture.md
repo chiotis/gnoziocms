@@ -8,7 +8,7 @@ GnozioCMS is a single-entry PHP application (`public/index.php` → `GnozioCMS\A
 2. `handleAdmin()` checks the CSRF token on every POST, handles sign-in/out, re-reads the signed-in user, checks the route capability (`PermissionService::canAccessAction()`), runs a due scheduled backup, and dispatches to a `handle*()` method.
 3. Handlers render Twig templates from `admin/templates/` (namespace `@admin`) or the frontend theme: `custom/` first, then `themes/default/` (see `theming.md`).
 
-Before the application boots, `public/index.php` hands `/_themes/…` and `/_custom/…` requests to `ThemeAssets` and missing `/uploads/_v/…` image variants to `Images`.
+Before the application boots, `public/index.php` hands `/_themes/…` and `/_custom/…` requests to `ThemeAssets` and image variants not yet written (`/_image/…`, and missing `/uploads/_v/…`) to `Images`. Where `public/` can be written, theme and custom files are also copied there (`ThemeAssets::publish`), so the web server serves them itself.
 
 ## Classes in `src/`
 

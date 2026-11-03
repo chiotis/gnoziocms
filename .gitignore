@@ -26,3 +26,6 @@ skills/*.zip
 storage/form-translation/
 storage/form-uploads/
 /public/.well-known/
+# Copies of theme and custom/ files that the site writes into public/ (ThemeAssets::publish).
+/public/_themes/
+/public/_custom/

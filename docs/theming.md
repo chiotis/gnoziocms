@@ -725,7 +725,7 @@ Theme > Branding > Typography > *Your own fonts* lets a site use its own typefac
 - `loading="lazy"` by default, `priority: true` for above-the-fold images (eager, `fetchpriority=high`);
 - `alt`: the given text, `''` for decorative images, or the media library's alt text when omitted.
 
-Variants are created on first request at `/uploads/_v/<file>/<width>-<version>.webp` and then served as static files. The version comes from the source file's modification time, so replacing a file changes its URLs. Variants are excluded from backups and removed when the media item is deleted. Alt text is edited in Admin > Media.
+Variants are kept at `/uploads/_v/<file>/<width>-<version>.webp` and served as static files. Until one exists the page names it `/_image/<file>/<width>-<version>`, an address with no file extension that every web server passes to `index.php`, which creates the file and serves it. The version comes from the source file's modification time, so replacing a file changes its URLs. Variants are excluded from backups and removed when the media item is deleted. Alt text is edited in Admin > Media.
 
 ## SEO
 
@@ -761,7 +761,11 @@ Theme assets and image variants go through `public/index.php` when no file exist
 
 ## Assets
 
-Theme and custom assets live outside `public/` and are served by `ThemeAssets` from `public/index.php` before the application boots. Only static types are served: css, js, map, json, images, and fonts. URLs carry a `?v=` version from the file's mtime and size, and versioned responses are cached for a year. Block stylesheets of a page are served as one bundle (`/_themes/default/_blocks.css?b=hero,faq`).
+Theme and custom assets live outside `public/`. Only static types are offered: css, js, map, json, images, and fonts. URLs carry a `?v=` version from the file's mtime and size.
+
+When PHP can write to `public/`, the first page after a change copies them to the same addresses under `public/` (`public/_themes/<theme>/`, `public/_custom/`; `ThemeAssets::publish`), and the web server serves them as plain files; no rule in its configuration is needed. SVG files of `custom/` are not copied: `index.php` serves them with a restrictive CSP. The block stylesheets and scripts of a page are one bundle each, written as `/_themes/default/_blocks/<hash>.css` and `.js`.
+
+Where `public/` cannot be written, `ThemeAssets` answers the same addresses from `public/index.php` before the application boots (versioned responses cached for a year, bundles as `/_themes/default/_blocks.css?b=hero,faq`); the web server must then hand files it cannot find to `index.php` (see `docs/security.md`).
 
 In templates:
 

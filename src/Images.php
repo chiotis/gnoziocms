@@ -10,14 +10,18 @@ namespace GnozioCMS;
  * `render()` writes <picture>/<img> markup with intrinsic width/height, WebP srcset, and
  * lazy or high-priority loading. Variants live at
  *   /uploads/_v/<source path>/<width>-<version>.webp
- * and are created on first request: the web server falls through to index.php while the file
- * is missing, `handle()` writes it, and later requests are served as static files.
+ * and are served as static files. While a variant is missing its address is
+ *   /_image/<source path>/<width>-<version>
+ * which has no file extension, so every web server hands it to index.php (CloudPanel's nginx
+ * answers 404 for a missing .webp itself); `handle()` writes the file and serves it.
  * The version is derived from the source mtime, so a replaced source gets new URLs.
  */
 final class Images
 {
     public const WIDTHS = [360, 540, 720, 960, 1280, 1600, 1920, 2400];
     public const VARIANT_DIR = '_v';
+    /** The address of a variant that is not written yet; see the class comment. */
+    public const PENDING_PREFIX = '/_image/';
     private const MAX_PIXELS = 36_000_000;
     private const WEBP_QUALITY = 80;
 
@@ -136,7 +140,11 @@ final class Images
     public function variantUrl(array $info, int $width): string
     {
         $path = implode('/', array_map('rawurlencode', explode('/', $info['relative'])));
-        return '/uploads/' . self::VARIANT_DIR . '/' . $path . '/' . $width . '-' . base_convert((string)$info['mtime'], 10, 36) . '.webp';
+        $name = $width . '-' . base_convert((string)$info['mtime'], 10, 36);
+        if (!is_file($this->publicDir . '/uploads/' . self::VARIANT_DIR . '/' . $info['relative'] . '/' . $name . '.webp')) {
+            return self::PENDING_PREFIX . $path . '/' . $name;
+        }
+        return '/uploads/' . self::VARIANT_DIR . '/' . $path . '/' . $name . '.webp';
     }
 
     /** Removes every variant of a source (called when a media item is deleted). */
@@ -169,6 +177,9 @@ final class Images
     {
         $path = rawurldecode((string)(parse_url($requestUri, PHP_URL_PATH) ?? ''));
         $prefix = '/uploads/' . self::VARIANT_DIR . '/';
+        if (str_starts_with($path, self::PENDING_PREFIX)) {
+            $path = $prefix . substr($path, strlen(self::PENDING_PREFIX)) . '.webp';
+        }
         if (!str_starts_with($path, $prefix)) {
             return false;
         }
