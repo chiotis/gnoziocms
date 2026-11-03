@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.195 — 2026-11-03 — MCP: the discovery file where ChatGPT looks
+- The protected-resource file is again `public/.well-known/oauth-protected-resource`, the form without the endpoint's path: ChatGPT asks for that one (its log on a CloudPanel site), and 0.1.193 had made it a folder that nginx answered with 403. The `401` names it again; the form with `/mcp` still answers through the site where the web server passes it on. The folder of 0.1.193 is removed on the next visit of Admin > MCP.
+- `docs/mcp.md`: ChatGPT refuses discovery documents that are not `application/json`, and nginx sends the files as `application/octet-stream`. The nginx block now sets their type (`default_type application/json`); without the vhost, a Cloudflare response-header rule does the same.
+- Tests: `tests/http/mcp_oauth_test.py`.
+
 ## 0.1.194 — 2026-11-03 — Theme files and image variants with no web server rule
 - **Theme and site files are copied into `public/`** (`public/_themes/<theme>/`, `public/_custom/`) by the first page after a change, at the same addresses, so the web server serves them itself. A server whose static-file rule answers 404 for a missing `.css`, `.js`, font or image without asking `index.php` (CloudPanel's nginx) now shows the site with its styles and needs no change to its configuration. A changed file is copied again and a deleted one removed; SVG files of `custom/` are still served by `index.php`, with their CSP. Where `public/` cannot be written, `index.php` answers the same addresses as before.
 - **Block bundles are files**: `/_themes/<theme>/_blocks/<hash>.css` and `.js` (the `?b=` after them only names the blocks inside).
