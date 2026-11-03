@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.189 — 2026-11-03 — MCP: pictures from an address
+- **`add_image_from_url`** (scope `media:write`, permission `media.manage`): a job fetches a picture from a public address into the media library, with its alt text (required), and gets its address for `main_image` or the body. The uploader is the account and the connection; it counts against the storage limit.
+- The picture's id is its fingerprint, so the same picture fetched again, from any address, is the one already kept.
+- **Fetching is safe** (`src/SafeHttp.php`): http or https on ports 80 and 443, no name and password in the address, every address of the host must be public (private, loopback, link-local and cloud metadata, CGNAT, multicast and reserved ranges refused, IPv6 too), the connection goes to the address that was checked, at most 3 redirects checked the same way, no cookies, 10 MB and 15 seconds. Only JPEG, PNG, WebP, GIF and AVIF, told by their bytes, are kept.
+- `docs/mcp.md`, `docs/security.md`. Step 6 of `docs/mcp-plan.md`: the code of phase 1 is complete. Tests: `tests/unit/mcp-images.php`, `tests/http/mcp_tools_test.py`.
+
 ## 0.1.188 — 2026-11-02 — MCP tools that read and write content
 - **MCP tools:** `list_entries`, `get_entry`, `search_entries`, `list_terms`, `find_by_source`, `validate_entry`, `create_entry` and `update_entry`, so a scheduled job in Claude or ChatGPT can write and publish posts. Every save goes through the admin's editor code (address, translations, index, history); the history names the account and the connection.
 - `create_entry` needs `status` (draft, published, or scheduled with `publish_at`); with `source_key` it returns the entry made before for the same source; with `translation_of` it makes a translation at the same address. `update_entry` changes what is given, keeps the rest (the entry's own fields too) and, with `expected_updated_at`, refuses a change made meanwhile. Published and scheduled entries need the `content:publish` scope.
