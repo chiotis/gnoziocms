@@ -3,7 +3,8 @@
  * Pictures from an address (MCP add_image_from_url), without the network: SafeHttp refuses other schemes and ports, a name and
  * password in the address, a host that resolves to a private or reserved address (also one of several, and after a redirect),
  * too many redirects, an answer that is not 200 and a file over the limit; it connects to the address it checked. The tool keeps
- * only real pictures, the same picture once (by its fingerprint), with its alt text, and gives its address for main_image.
+ * only real pictures, the same picture once (by its fingerprint), with its alt text, and gives its address for main_image. A file
+ * from the chat (ChatGPT's file parameter) is fetched from its download_url with the same checks.
  *   php tests/unit/mcp-images.php
  */
 declare(strict_types=1);
@@ -30,7 +31,7 @@ foreach (['content/posts', 'content/taxonomies', 'storage/db', 'public/uploads/m
 register_shutdown_function(static function () use ($dir): void { @exec('rm -rf ' . escapeshellarg($dir)); });
 
 $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==');
-$dns = ['photos.example' => ['93.184.216.34'], 'inside.example' => ['10.0.0.5'], 'mixed.example' => ['93.184.216.34', '192.168.1.9'], 'hop.example' => ['93.184.216.35']];
+$dns = ['photos.example' => ['93.184.216.34'], 'inside.example' => ['10.0.0.5'], 'mixed.example' => ['93.184.216.34', '192.168.1.9'], 'hop.example' => ['93.184.216.35'], 'files.chat.example' => ['93.184.216.40'], 'inside.chat.example' => ['10.1.1.1']];
 $pages = [];
 $connected = [];
 $http = new SafeHttp(
@@ -123,6 +124,23 @@ $pages['https://photos.example/new.gif'] = ['status' => 200, 'body' => 'GIF89a' 
 try { $add(['url' => 'https://photos.example/new.gif', 'alt' => 'x']); $r = 'saved'; } catch (\InvalidArgumentException $e) { $r = $e->getMessage(); }
 check('a full site takes no new picture', str_contains($r, 'storage is full'), true);
 check('no temporary file is left', glob(sys_get_temp_dir() . '/mcpimg*') === array_values(array_filter(glob(sys_get_temp_dir() . '/mcpimg*'), 'is_dir')), true);
+
+// ---- a file from the chat (ChatGPT's file parameter)
+$definition = McpContent::definitions()['add_image_from_url'];
+check('ChatGPT is told that file takes a file', [$definition['_meta']['openai/fileParams'] ?? null, $definition['inputSchema']['required']], [['file'], ['alt']]);
+$room = true;
+$pages['https://files.chat.example/f/abc?sig=1'] = ['status' => 200, 'body' => 'GIF89a' . str_repeat("\1", 20)];
+$fromChat = $add(['file' => ['download_url' => 'https://files.chat.example/f/abc?sig=1', 'file_id' => 'file_abc', 'mime_type' => 'image/gif', 'file_name' => 'Harbour at dawn.gif'], 'alt' => 'A harbour']);
+check('a file from the chat is added, named after its file name', [$fromChat['existing'], $media->find($fromChat['id'])['original_name']], [false, 'harbour-at-dawn.gif']);
+foreach ([
+    'url and file together' => [['url' => 'https://photos.example/a.png', 'file' => ['download_url' => 'https://files.chat.example/f/abc?sig=1'], 'alt' => 'x'], 'either url or file'],
+    'neither url nor file' => [['alt' => 'x'], 'either url or file'],
+    'a file id alone' => [['file' => 'file_abc', 'alt' => 'x'], 'without a download_url'],
+    'a file with a private address' => [['file' => ['download_url' => 'https://inside.chat.example/f'], 'alt' => 'x'], 'private or reserved'],
+] as $label => [$args, $why]) {
+    try { $add($args); $r = 'saved'; } catch (\InvalidArgumentException $e) { $r = $e->getMessage(); }
+    check('refused: ' . $label, str_contains($r, $why), true);
+}
 
 $entry = $tools->call('create_entry', ['type' => 'posts', 'title' => 'Storm', 'body' => 'Rain. ![Clouds](' . $first['path'] . ')', 'status' => 'draft', 'main_image' => $first['path']], $connection);
 check('the picture can be the main image', str_contains((string)file_get_contents("$dir/content/posts/storm.md"), 'main_image: ' . $first['path']), true);

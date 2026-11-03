@@ -162,7 +162,7 @@ final class McpServer
     /**
      * Every tool: its scopes (any of them), the permission its account must have, and what MCP clients are told.
      *
-     * @return array<string, array{scopes: string[], permission: ?string, title: string, description: string, inputSchema: array<string, mixed>, annotations: array<string, bool>}>
+     * @return array<string, array{scopes: string[], permission: ?string, title: string, description: string, inputSchema: array<string, mixed>, annotations: array<string, bool>, _meta?: array<string, mixed>}>
      */
     public static function definitions(): array
     {
