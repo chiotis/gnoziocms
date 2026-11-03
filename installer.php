@@ -882,7 +882,7 @@ final class GnozioInstaller
             return ['ok' => true, 'changed' => false, 'servedFromPublic' => self::$isPublicCopy, 'docroot' => realpath(self::$base) . '/public'];
         }
         self::done($state, 'docroot');
-        return ['ok' => true, 'changed' => true, 'assets' => self::themeAssetsServed()];
+        return ['ok' => true, 'changed' => true, 'assets' => self::themeAssetsServed(), 'mcp' => self::mcpDiscoveryTyped($state)];
     }
 
     /**
@@ -912,6 +912,37 @@ final class GnozioInstaller
             return null;
         }
         return $failure === null && $body !== '' && stripos($body, '<html') === false;
+    }
+
+    /**
+     * Whether nginx gives the MCP discovery documents (docs/mcp.md) their JSON type. While MCP is on they are files in
+     * public/.well-known/, which panels such as CloudPanel serve themselves, without a type for a name with no extension;
+     * ChatGPT then cannot connect. Asked with a file of the same kind. Null on other web servers, or when the site cannot be
+     * asked at its own address; then nothing is claimed.
+     */
+    private static function mcpDiscoveryTyped($state)
+    {
+        $software = isset($_SERVER['SERVER_SOFTWARE']) ? strtolower((string)$_SERVER['SERVER_SOFTWARE']) : '';
+        $origin = self::selfOrigin();
+        if (strpos($software, 'nginx') === false || $origin === '' || !self::isAllowedUrl($origin) || !function_exists('curl_init')) {
+            return null;
+        }
+        $dir = self::$base . '/public/.well-known';
+        $made = !is_dir($dir) && @mkdir($dir, 0755, true);
+        $file = $dir . '/oauth-installer-' . $state['probe'];
+        if (!is_dir($dir) || @file_put_contents($file, '{}') === false) {
+            return null;
+        }
+        $ch = curl_init($origin . '/.well-known/' . basename($file));
+        curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_CONNECTTIMEOUT => 5, CURLOPT_TIMEOUT => 10]);
+        curl_exec($ch);
+        $status = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        $type = (string)curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+        @unlink($file);
+        if ($made) {
+            @rmdir($dir);
+        }
+        return $status === 200 ? stripos($type, 'application/json') === 0 : null;
     }
 
     // ---- 7. finish
@@ -983,6 +1014,7 @@ final class GnozioInstaller
                 'docroot_same' => 'The address of this page stays the same: the installer has copied itself into public/, so this page keeps working after the change.',
                 'docroot_button' => 'I\'ve changed it — continue', 'docroot_checking' => 'Checking…',
                 'assets_missing' => 'The site answers, but its stylesheet does not: the web server returns 404 for /_themes/default/css/site.css, so pages would show without styles. GnozioCMS copies the theme\'s files into public/ on the first page, so first make sure PHP can write to public/. Otherwise the web server must hand a file it cannot find to index.php: in the nginx block for static files (css, js, fonts, images) add this line at the end, reload nginx, and check again. In CloudPanel (Vhost), whose block on port 443 passes pages on through `location /`, write `try_files $uri @app;` instead and add a `location @app { … }` with the same lines as `location /`.', 'assets_again' => 'Check again', 'assets_skip' => 'Continue anyway',
+                'mcp_untyped' => 'Optional, for MCP (docs/mcp.md), to let AI assistants such as ChatGPT write to the site: nginx serves the files in /.well-known/ itself and sends them without a JSON type, so ChatGPT cannot connect. In the site\'s nginx configuration (CloudPanel: Vhost) add this block before the `location ~ /.well-known` block, reload nginx and check again. Claude and Codex connect without it.',
                 'docroot_not_yet' => 'The site is still served from the old folder. Make sure the document root is the path above and saved, wait a moment for the web server to reload, then press the button again.', 'docroot_not_public' => 'This page is still coming from the old location. Change the document root, then press the button again.',
                 'finishing' => 'Removing the installer…', 'finish_ok' => 'Installer removed', 'finish_left' => 'These could not be deleted; please delete them by hand: {left}',
                 'redirecting' => 'GnozioCMS is installed. Opening the admin to create the first administrator…',
@@ -1016,6 +1048,7 @@ final class GnozioInstaller
                 'docroot_same' => 'Η διεύθυνση αυτής της σελίδας μένει ίδια: ο installer έχει αντιγράψει τον εαυτό του στο public/, οπότε η σελίδα συνεχίζει να δουλεύει μετά την αλλαγή.',
                 'docroot_button' => 'Την άλλαξα — συνέχεια', 'docroot_checking' => 'Έλεγχος…',
                 'assets_missing' => 'Το site απαντά, αλλά όχι το stylesheet του: ο web server επιστρέφει 404 για το /_themes/default/css/site.css, οπότε οι σελίδες θα φαίνονται χωρίς στυλ. Το GnozioCMS αντιγράφει τα αρχεία του θέματος στο public/ με την πρώτη σελίδα, οπότε έλεγξε πρώτα ότι η PHP μπορεί να γράψει στο public/. Αλλιώς ο web server πρέπει να δίνει στο index.php όσα αρχεία δεν βρίσκει: στο block του nginx για τα στατικά αρχεία (css, js, γραμματοσειρές, εικόνες) πρόσθεσε στο τέλος αυτή τη γραμμή, κάνε reload το nginx και έλεγξε ξανά. Στο CloudPanel (Vhost), όπου το block της θύρας 443 προωθεί τις σελίδες μέσω του `location /`, γράψε αντί γι\' αυτήν `try_files $uri @app;` και πρόσθεσε ένα `location @app { … }` με τις ίδιες γραμμές με το `location /`.', 'assets_again' => 'Έλεγχος ξανά', 'assets_skip' => 'Συνέχεια χωρίς αυτό',
+                'mcp_untyped' => 'Προαιρετικό, για το MCP (docs/mcp.md), ώστε βοηθοί AI όπως το ChatGPT να γράφουν στο site: το nginx σερβίρει μόνο του τα αρχεία του /.well-known/ και τα στέλνει χωρίς τύπο JSON, οπότε το ChatGPT δεν μπορεί να συνδεθεί. Στη ρύθμιση nginx του site (CloudPanel: Vhost) πρόσθεσε αυτό το block πριν από το `location ~ /.well-known`, κάνε reload το nginx και έλεγξε ξανά. Το Claude και το Codex συνδέονται και χωρίς αυτό.',
                 'docroot_not_yet' => 'Το site σερβίρεται ακόμη από τον παλιό φάκελο. Βεβαιώσου ότι το document root είναι η διαδρομή παραπάνω και αποθηκεύτηκε, περίμενε λίγο να ξαναφορτώσει ο web server και πάτα ξανά το κουμπί.', 'docroot_not_public' => 'Αυτή η σελίδα έρχεται ακόμη από την παλιά θέση. Άλλαξε το document root και πάτα ξανά το κουμπί.',
                 'finishing' => 'Διαγραφή του installer…', 'finish_ok' => 'Ο installer διαγράφηκε', 'finish_left' => 'Αυτά δεν μπόρεσαν να διαγραφούν· σβήσε τα με το χέρι: {left}',
                 'redirecting' => 'Το GnozioCMS εγκαταστάθηκε. Ανοίγω το admin για να φτιάξεις τον πρώτο διαχειριστή…',
@@ -1236,6 +1269,7 @@ function waitDocroot(root){
       if(!j.ok){warn.textContent=msg(j);warn.classList.remove('hide');btn.disabled=false;btn.textContent=t('docroot_button');return;}
       if(!j.changed){warn.textContent=t(j.servedFromPublic?'docroot_not_yet':'docroot_not_public');warn.classList.remove('hide');btn.disabled=false;btn.textContent=t('docroot_button');return;}
       if(j.assets===false){assetsMissing();return;}
+      if(j.mcp===false){mcpUntyped();return;}
       setStep('docroot','done','');docCard.classList.add('hide');finish();
     }).catch(function(e){if(!e.handled){warn.textContent=msg(e);warn.classList.remove('hide');btn.disabled=false;btn.textContent=t('docroot_button');}});};
   docCard.appendChild(warn);docCard.appendChild(btn);
@@ -1245,7 +1279,16 @@ function assetsMissing(){
   var box=el('div','path');box.appendChild(el('code',null,'try_files $uri /index.php?$query_string;'));docCard.appendChild(box);
   var again=el('button','btn block',t('assets_again')),skip=el('button','btn block ghost',t('assets_skip'));again.style.marginTop='14px';skip.style.marginTop='8px';
   again.onclick=function(){again.disabled=true;again.textContent=t('docroot_checking');
-    call('docroot').then(function(j){if(j.ok&&j.changed&&j.assets===false){again.disabled=false;again.textContent=t('assets_again');return;}if(j.ok&&j.changed){skip.onclick();return;}waitDocroot();}).catch(function(e){again.disabled=false;again.textContent=t('assets_again');});};
+    call('docroot').then(function(j){if(j.ok&&j.changed&&j.assets===false){again.disabled=false;again.textContent=t('assets_again');return;}if(j.ok&&j.changed&&j.mcp===false){mcpUntyped();return;}if(j.ok&&j.changed){skip.onclick();return;}waitDocroot();}).catch(function(e){again.disabled=false;again.textContent=t('assets_again');});};
+  skip.onclick=function(){setStep('docroot','done','');docCard.classList.add('hide');finish();};
+  docCard.appendChild(again);docCard.appendChild(skip);
+}
+function mcpUntyped(){
+  docCard.textContent='';docCard.appendChild(el('div','notice',t('mcp_untyped')));
+  var box=el('div','path'),code=el('code',null,'location ^~ /.well-known/oauth- {\n    default_type application/json;\n    try_files $uri /index.php?$query_string;\n}');code.style.whiteSpace='pre';box.appendChild(code);docCard.appendChild(box);
+  var again=el('button','btn block',t('assets_again')),skip=el('button','btn block ghost',t('assets_skip'));again.style.marginTop='14px';skip.style.marginTop='8px';
+  again.onclick=function(){again.disabled=true;again.textContent=t('docroot_checking');
+    call('docroot').then(function(j){if(j.ok&&j.changed&&j.mcp===false){again.disabled=false;again.textContent=t('assets_again');return;}if(j.ok&&j.changed){skip.onclick();return;}waitDocroot();}).catch(function(e){again.disabled=false;again.textContent=t('assets_again');});};
   skip.onclick=function(){setStep('docroot','done','');docCard.classList.add('hide');finish();};
   docCard.appendChild(again);docCard.appendChild(skip);
 }
