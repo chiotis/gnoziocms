@@ -17,6 +17,8 @@ location ^~ /.well-known/oauth- {
 }
 ```
 
+The installer checks this on nginx once `public/` is the document root and shows the block when it is missing (optional: Continue anyway).
+
 Without access to the vhost, behind Cloudflare: Rules > Transform Rules > Modify Response Header, for `starts_with(http.request.uri.path, "/.well-known/oauth-")`, set `Content-Type` to `application/json`.
 
 The site's address comes from Settings > *Base URL* (`base_url`), or the address of the request when it is empty. It must be the public HTTPS address: tokens are bound to `<address>/mcp`.
