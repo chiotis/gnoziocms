@@ -45,7 +45,7 @@ final class McpContent
     ) {
     }
 
-    /** @return array<string, array{scopes: string[], permission: ?string, title: string, description: string, inputSchema: array<string, mixed>, annotations: array<string, bool>}> */
+    /** @return array<string, array{scopes: string[], permission: ?string, title: string, description: string, inputSchema: array<string, mixed>, annotations: array<string, bool>, _meta?: array<string, mixed>}> */
     public static function definitions(): array
     {
         $read = [McpOAuth::SCOPE_READ, McpOAuth::SCOPE_WRITE, McpOAuth::SCOPE_PUBLISH];
@@ -120,15 +120,23 @@ final class McpContent
                 'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'idempotentHint' => true, 'openWorldHint' => true],
             ],
             'add_image_from_url' => [
-                'scopes' => [McpOAuth::SCOPE_MEDIA], 'permission' => 'media.manage', 'title' => 'Add a picture from an address',
-                'description' => 'Fetches a picture (JPEG, PNG, WebP, GIF or AVIF, up to 10 MB) from a public address into the media library and gives its address, '
-                    . 'for main_image or for the body (![alt](address)). The same picture fetched twice is kept once. Use pictures you may publish.',
+                'scopes' => [McpOAuth::SCOPE_MEDIA], 'permission' => 'media.manage', 'title' => 'Add a picture',
+                'description' => 'Adds a picture (JPEG, PNG, WebP, GIF or AVIF, up to 10 MB) to the media library and gives its address, for main_image or '
+                    . 'for the body (![alt](address)). Give either url, a public address, or file, a picture you made or were given in the chat. '
+                    . 'The same picture added twice is kept once. Use pictures you may publish.',
                 'inputSchema' => $schema([
                     'url' => $str('The picture\'s address (http or https).', 2000),
+                    'file' => [
+                        'type' => 'object', 'description' => 'A picture from the chat, in place of url.',
+                        'properties' => ['download_url' => $str('Where the picture can be fetched.', 4000), 'file_id' => $str('The chat\'s id of the file.', 200), 'mime_type' => $str('Its type.', 100), 'file_name' => $str('Its file name.', 200)],
+                        'required' => ['download_url'],
+                    ],
                     'alt' => $str('What the picture shows, for people who cannot see it.', 300),
                     'name' => $str('A file name to keep, without the extension.', 80),
-                ], ['url', 'alt']),
+                ], ['alt']),
                 'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'idempotentHint' => true, 'openWorldHint' => true],
+                // ChatGPT hands a file from the chat to this argument as {download_url, file_id} (Apps SDK); other clients ignore _meta.
+                '_meta' => ['openai/fileParams' => ['file']],
             ],
             'update_entry' => [
                 'scopes' => $write, 'permission' => 'content.manage', 'title' => 'Change an entry',
@@ -508,8 +516,19 @@ final class McpContent
         }
         $url = trim((string)($args['url'] ?? ''));
         $alt = trim((string)($args['alt'] ?? ''));
-        if ($url === '' || $alt === '') {
-            throw new \InvalidArgumentException('url and alt are both required.');
+        $file = $args['file'] ?? null;
+        if ($alt === '') {
+            throw new \InvalidArgumentException('alt is required.');
+        }
+        if (($url === '') === ($file === null)) {
+            throw new \InvalidArgumentException('Give either url or file.');
+        }
+        if ($file !== null) {
+            $url = is_array($file) ? trim((string)($file['download_url'] ?? '')) : '';
+            if ($url === '') {
+                throw new \InvalidArgumentException('file came without a download_url, so the picture cannot be fetched. Give a url instead.');
+            }
+            $args['name'] = trim((string)($args['name'] ?? '')) ?: pathinfo((string)($file['file_name'] ?? ''), PATHINFO_FILENAME);
         }
         $tmp = tempnam(sys_get_temp_dir(), 'mcpimg');
         if ($tmp === false) {

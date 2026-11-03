@@ -98,7 +98,7 @@ Each connection also has a policy, set on its row in Settings > MCP / AI: which 
 | `validate_entry` | write | the arguments of `create_entry`, checked and not saved (`ContentEditor::save` with `dryRun`) |
 | `create_entry` | write | type, language, title, body (Markdown), excerpt, terms, fields, main image (a library id), SEO texts, `status` (required: `draft`, `scheduled` or `published`; the last two need `content:publish`), `date` (required for `scheduled`), `source_key`, `translation_of` |
 | `update_entry` | write / publish | the same fields, with `expected_updated_at`; changing a published entry needs `content:publish` |
-| `add_image_from_url` | media | fetches a picture into the library (below) and returns its id |
+| `add_image_from_url` | media | fetches a picture, from an address or a file from the chat, into the library (below) and returns its id |
 
 All writes go through `ContentEditor::save`, so slugs, translations, relations, redirects, the content index and revisions behave as in the admin. Writes are **strict**: an unknown field, block, block option, term or language is an error that names it, never silently dropped or replaced by a default, because the job cannot see the page.
 
