@@ -1,8 +1,46 @@
 label: Hero slider
-description: Slides that each are a Hero. Every slide picks its own Hero layout (including the ones with numbered steps) and has everything a Hero has - heading, text, buttons, highlights, and an image or a video behind the text - styled exactly like it, on a phone too. Previous and next buttons, dots, swiping and the keyboard work; it never moves by itself unless you turn that on.
+description: Slides that each are a Hero. Every slide picks its own Hero layout (including the ones with numbered steps) and has everything a Hero has - heading, text, buttons, highlights, and an image or a video behind the text - styled exactly like it, on a phone too. Previous and next buttons, dots, swiping and the keyboard work; it never moves by itself unless you turn that on. The slides can also be the newest entries of a content type (posts, projects), each with its title, excerpt, main image and a button to it.
 category: Openers
 tone: default
 fields:
+  source:
+    type: select
+    label: Show
+    default: manual
+    options: { manual: Slides entered below }
+    options_from: content_types
+    help: 'Or the newest entries of a content type: a slide for each, with its title, excerpt and main image, and a button to it.'
+  term:
+    type: text
+    searchable: false
+    label: Only this category or tag
+    placeholder: news
+    help: Optional. The slug of a category or tag, as in Taxonomies.
+    when: { source: '!manual' }
+  limit:
+    type: number
+    label: Number of slides
+    default: 3
+    min: 1
+    max: 8
+    when: { source: '!manual' }
+  entry_layout:
+    type: select
+    label: Layout of the slides
+    default: cover
+    drawn: hero
+    options:
+      split: 'Text and image side by side'
+      centered: 'Centered text, wide image below'
+      cover: 'Text over a full-width image'
+      cover-centered: 'Centered text over a full-width image'
+      minimal: 'Large heading, no image'
+    when: { source: '!manual' }
+  entry_button:
+    type: text
+    label: Button text
+    placeholder: Read more
+    when: { source: '!manual' }
   navigation:
     type: select
     label: Arrows and dots
@@ -26,6 +64,7 @@ fields:
     label: Slides
     item_label: Slide
     max: 8
+    when: { source: manual }
     fields:
       layout:
         type: select

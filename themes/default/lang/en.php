@@ -113,6 +113,7 @@ return [
     'gallery.open' => 'Open larger image',
     'hero.pause_video' => 'Pause the background video',
     'hero.play_video' => 'Play the background video',
+    'hero.read_more' => 'Read more',
     'video.play' => 'Play video',
     'video.close' => 'Close video',
     'playlist.views' => 'views',
