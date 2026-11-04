@@ -19,7 +19,7 @@ use Twig\Environment as TwigEnvironment;
  */
 final class BlockRenderer
 {
-    /** The most newest entries a block of entries can skip (its "Skip the newest" field). */
+    /** The most entries a block of entries can skip at the start of its order (its "Skip the first" field). */
     public const MAX_OFFSET = 50;
 
     /** @var array<string, true> the entries the blocks drawn so far on this page show (and the page's own entry), as type/slug.lang */
@@ -27,7 +27,7 @@ final class BlockRenderer
 
     /**
      * @param \Closure(string): string $markdown
-     * @param array<string, \Closure> $providers dynamic data: 'items' (type, lang, limit, category or tag, how many of the newest to skip), 'form' (slug), 'youtube' (playlist id, picture source), 'file' (a site file's size in bytes), 'term' (a category's name), 'geo' (entries as a map draws them), 'geo_items' (given entries as a map draws them), 'geo_load' (when maps load), 'gallery' (the pictures of an entry's gallery field: entry, field key or '' for its gallery, language) and 'admin' (whether someone is signed in)
+     * @param array<string, \Closure> $providers dynamic data: 'items' (type, lang, limit, category or tag, how many of the first to skip, order), 'form' (slug), 'youtube' (playlist id, picture source), 'file' (a site file's size in bytes), 'term' (a category's name), 'geo' (entries as a map draws them), 'geo_items' (given entries as a map draws them), 'geo_load' (when maps load), 'gallery' (the pictures of an entry's gallery field: entry, field key or '' for its gallery, language) and 'admin' (whether someone is signed in)
      */
     public function __construct(
         private BlockRegistry $registry,
@@ -748,7 +748,7 @@ final class BlockRenderer
     }
 
     /**
-     * The newest entries of the block's content type (`source`) after the ones it skips (`offset`). With "Leave out entries shown
+     * The entries of the block's content type (`source`) in its order (`order`, newest first by default) after the ones it skips (`offset`). With "Leave out entries shown
      * above" (`skip_shown`) the entries an earlier block of the page shows, or the page's own entry, are left out and the next ones
      * take their place. Whatever the block gets counts as shown for the blocks below it.
      *
@@ -762,7 +762,7 @@ final class BlockRenderer
         }
         $skip = ($values['skip_shown'] ?? false) === true;
         // Enough more to make up for the ones left out: at most as many as are shown.
-        $found = ($this->providers['items'])((string)$values['source'], $lang, $limit + ($skip ? count($this->shown) : 0), $term, (int)($values['offset'] ?? 0));
+        $found = ($this->providers['items'])((string)$values['source'], $lang, $limit + ($skip ? count($this->shown) : 0), $term, (int)($values['offset'] ?? 0), (string)($values['order'] ?? 'date_desc'));
         if ($skip) {
             $found = array_filter($found, fn(ContentItem $entry): bool => !isset($this->shown[self::shownKey($entry)]));
         }

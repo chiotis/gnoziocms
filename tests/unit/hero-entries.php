@@ -40,9 +40,10 @@ $posts = [
 ];
 $asked = [];
 $renderer = new BlockRenderer($registry, $twig, $theme, fn(string $md): string => '<p>' . htmlspecialchars($md, ENT_QUOTES) . '</p>', [
-    'items' => function (string $type, string $lang, int $limit, string $term = '', int $offset = 0) use (&$asked, $posts): array {
-        $asked[] = [$type, $lang, $limit, $term, $offset];
-        return $type === 'posts' ? array_slice($posts, $offset, $limit) : [];
+    'items' => function (string $type, string $lang, int $limit, string $term = '', int $offset = 0, string $order = 'date_desc') use (&$asked, $posts): array {
+        $asked[] = [$type, $lang, $limit, $term, $offset, $order];
+        $list = $order === 'date_asc' ? array_reverse($posts) : $posts;
+        return $type === 'posts' ? array_slice($list, $offset, $limit) : [];
     },
 ], 'https://s.test');
 $draw = static fn(array $blocks): array => $renderer->render($blocks, ['lang' => 'en', 'lang_prefix' => '', 'body_html' => '']);
@@ -58,7 +59,7 @@ check('a slider of entries has three slides, eight at most, over the picture', [
 // ---- the Hero: the newest entry
 $asked = [];
 $page = $draw([['type' => 'hero', 'variant' => 'split', 'source' => 'posts', 'term' => 'news', 'heading' => 'Typed', 'text' => 'Typed text', 'actions' => [['label' => 'Typed', 'url' => '/x']]]]);
-check('the hero asks for one entry of the type, in the category', $asked, [['posts', 'en', 1, 'news', 0]]);
+check('the hero asks for one entry of the type, in the category', $asked, [['posts', 'en', 1, 'news', 0, 'date_desc']]);
 check('it shows the entry\'s title as the page title, its excerpt without markup, and its picture', [str_contains($page['html'], '<h1 class="hero-title" id="block-1-title">First post</h1>'), str_contains($page['html'], '<p class="hero-text">The first excerpt</p>'), str_contains($page['html'], 'one.jpg')], [true, true, true]);
 check('its category is the eyebrow, and the button leads to the entry', [str_contains($page['html'], '<p class="eyebrow">Cat:news</p>'), (bool)preg_match('#<a class="btn btn-primary" href="[^"]*">Read more#', $page['html'])], [true, true]);
 check('the typed text and buttons are not drawn', [str_contains($page['html'], 'Typed'), $page['leads_with_hero'], $page['image']], [false, true, '/uploads/one.jpg']);
@@ -72,7 +73,7 @@ check('a typed hero is as before', [str_contains($page['html'], 'Typed heading')
 // ---- the Hero slider: a slide for each entry
 $asked = [];
 $page = $draw([['type' => 'hero-slider', 'source' => 'posts', 'limit' => 3, 'entry_layout' => 'cover', 'items' => [['heading' => 'Typed slide']]]]);
-check('the slider asks for as many entries as slides', $asked, [['posts', 'en', 3, '', 0]]);
+check('the slider asks for as many entries as slides', $asked, [['posts', 'en', 3, '', 0, 'date_desc']]);
 check('a slide for each entry, in the chosen layout, and no typed slide', [substr_count($page['html'], 'class="slider-slide"'), substr_count($page['html'], 'block--cover'), str_contains($page['html'], 'Typed slide')], [3, 3, false]);
 check('each with its title and a button to it', [str_contains($page['html'], 'First post'), str_contains($page['html'], 'Second post'), str_contains($page['html'], 'Third post'), substr_count($page['html'], '>Read more')], [true, true, true, 3]);
 check('an entry without an excerpt shows the start of its text, shortened', (bool)preg_match('#<p class="hero-text">The second body, (long ){30,}l?o?n?g?…</p>#', $page['html']), true);
@@ -86,7 +87,23 @@ check('with no entry there is no slider', [str_contains($page['html'], 'slider-h
 $page = $draw([['type' => 'hero-slider', 'items' => [['heading' => 'Typed slide']]]]);
 check('typed slides are as before', [substr_count($page['html'], 'class="slider-slide"'), str_contains($page['html'], 'Typed slide')], [1, true]);
 
-// ---- Skip the newest: every block of entries passes it on
+// ---- Order: every block of entries has one, newest first to begin with, and passes it on
+check('each block of entries has an order, newest first to begin with, and an unknown one is newest first', array_map(static fn(string $t): array => [array_keys($registry->get($t)['fields']['order']['options']), $registry->get($t)['fields']['order']['default'], \GnozioCMS\FieldSchema::resolve($registry->get($t)['fields'], ['order' => 'sideways'])['order']], ['latest', 'cards', 'portfolio', 'hero', 'hero-slider']), array_fill(0, 5, [['date_desc', 'date_asc', 'title_asc', 'title_desc', 'random'], 'date_desc', 'date_desc']));
+check('the orders are the ones a list of a content type has', array_keys($registry->get('latest')['fields']['order']['options']), array_keys(\GnozioCMS\ContentTypes::ORDERS));
+check('only for entries, not for typed cards, pieces, heroes and slides', array_map(static fn(string $t): array => $registry->get($t)['fields']['order']['when'] ?? [], ['latest', 'cards', 'portfolio', 'hero', 'hero-slider']), [[], ['source' => ['!manual']], ['source' => ['!manual']], ['source' => ['!manual']], ['source' => ['!manual']]]);
+$asked = [];
+$draw([
+    ['type' => 'hero', 'source' => 'posts', 'order' => 'title_asc'],
+    ['type' => 'hero-slider', 'source' => 'posts', 'order' => 'random'],
+    ['type' => 'latest', 'source' => 'posts', 'order' => 'date_asc'],
+    ['type' => 'cards', 'source' => 'posts', 'order' => 'title_desc'],
+    ['type' => 'portfolio', 'source' => 'posts'],
+]);
+check('the hero, slider, latest, cards and portfolio each ask in their order', array_column($asked, 5), ['title_asc', 'random', 'date_asc', 'title_desc', 'date_desc']);
+$page = $draw([['type' => 'hero', 'source' => 'posts', 'order' => 'date_asc']]);
+check('a hero of the oldest first shows the oldest entry', [str_contains($page['html'], 'Third post'), str_contains($page['html'], 'First post')], [true, false]);
+
+// ---- Skip the first: every block of entries passes it on
 check('each block of entries has it, none skipped to begin with, 50 at most, never below none', array_map(static fn(string $t): array => [$registry->get($t)['fields']['offset']['default'], $registry->get($t)['fields']['offset']['max'], \GnozioCMS\FieldSchema::resolve($registry->get($t)['fields'], ['offset' => -3])['offset']], ['latest', 'cards', 'portfolio', 'hero', 'hero-slider']), array_fill(0, 5, [0, 50, 0]));
 check('for typed cards, pieces, heroes and slides it is not offered', array_map(static fn(string $t): array => $registry->get($t)['fields']['offset']['when'] ?? [], ['latest', 'cards', 'portfolio', 'hero', 'hero-slider']), [[], ['source' => ['!manual']], ['source' => ['!manual']], ['source' => ['!manual']], ['source' => ['!manual']]]);
 $asked = [];
@@ -132,7 +149,7 @@ $page = $draw([['type' => 'hero', 'source' => 'posts'], ['type' => 'latest', 'va
 $again = $draw([['type' => 'latest', 'variant' => 'list', 'source' => 'posts', 'limit' => 2, 'skip_shown' => true]]);
 check('a new page starts with nothing shown', $titles($again['html'], 'latest-title'), ['First post', 'Second post']);
 $page = $draw([['type' => 'hero', 'source' => 'posts', 'offset' => 1], ['type' => 'latest', 'variant' => 'list', 'source' => 'posts', 'limit' => 2, 'offset' => 1, 'skip_shown' => true]]);
-check('with Skip the newest as well, the newest are skipped first, then the ones shown', $titles($page['html'], 'latest-title'), ['Third post']);
+check('with Skip the first as well, the newest are skipped first, then the ones shown', $titles($page['html'], 'latest-title'), ['Third post']);
 
 // ---- in a container: the same entries
 $page = $draw([['type' => 'container', 'columns' => [['blocks' => [['type' => 'hero', 'source' => 'posts']]]]]]);

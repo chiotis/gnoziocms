@@ -94,7 +94,7 @@ final class BlockRuntime
      *
      * @return ContentItem[]|null
      */
-    private function latestFromIndex(string $type, string $lang, bool $includeHidden, int $limit, string $term): ?array
+    private function latestFromIndex(string $type, string $lang, bool $includeHidden, int $limit, string $term, string $order, int $seed): ?array
     {
         if ($this->archiveQuery === null) {
             return null;
@@ -105,7 +105,7 @@ final class BlockRuntime
         }
         // A category or a tag, whichever the entry is filed under.
         $scope = ['types' => [$type], 'term' => $term === '' ? null : ['taxonomy' => ['categories', 'tags'], 'ids' => [$term]]];
-        return $query->page($scope, $lang, $includeHidden, [], [], 'date_desc', '', 0, 0, 1, $limit)['items'] ?? null;
+        return $query->page($scope, $lang, $includeHidden, [], [], $order, '', $seed, 0, 1, $limit)['items'] ?? null;
     }
 
     /** The renderer for the blocks of one page, drawing with the given Twig (which can be replaced during a request). */
@@ -118,8 +118,8 @@ final class BlockRuntime
             $this->theme,
             fn(string $markdown): string => ($this->markdownToHtml)($markdown, $lang, $path),
             [
-                // The newest entries of a type; `offset` skips the newest few (shown by another block of the page).
-                'items' => function (string $type, string $itemLang, int $limit, string $term = '', int $offset = 0) use ($includeHidden): array {
+                // The entries of a type in an order (ContentTypes::ORDERS, newest first by default); `offset` skips the first few.
+                'items' => function (string $type, string $itemLang, int $limit, string $term = '', int $offset = 0, string $order = 'date_desc') use ($includeHidden): array {
                     if ($type === 'forms' || !in_array($type, $this->content->getTypes(), true)) {
                         return [];
                     }
@@ -127,7 +127,10 @@ final class BlockRuntime
                     // A block shows 24 at most; more are asked for to make up for the ones it leaves out (shown above).
                     $limit = max(1, min(100, $limit));
                     $offset = max(0, min(BlockRenderer::MAX_OFFSET, $offset));
-                    $indexed = $this->latestFromIndex($type, $itemLang, $includeHidden, $offset + $limit, $term);
+                    $order = isset(ContentTypes::ORDERS[$order]) ? $order : 'date_desc';
+                    // A random order is new each time the page is made (a cached page keeps it until the cache is renewed).
+                    $seed = $order === 'random' ? random_int(1, 2147483647) : 0;
+                    $indexed = $this->latestFromIndex($type, $itemLang, $includeHidden, $offset + $limit, $term, $order, $seed);
                     if ($indexed !== null) {
                         return array_slice($indexed, $offset, $limit);
                     }
@@ -142,6 +145,15 @@ final class BlockRuntime
                             }
                             return false;
                         }));
+                    }
+                    // The files come newest first; the other orders as an archive puts them (ArchiveBuilder, ArchiveQuery).
+                    $title = static fn(ContentItem $item): string => mb_strtolower((string)($item->meta['title'] ?? $item->slug));
+                    if ($order === 'date_asc') {
+                        $items = array_reverse($items);
+                    } elseif ($order === 'title_asc' || $order === 'title_desc') {
+                        usort($items, static fn(ContentItem $a, ContentItem $b): int => $order === 'title_asc' ? strcmp($title($a), $title($b)) : strcmp($title($b), $title($a)));
+                    } elseif ($order === 'random') {
+                        usort($items, static fn(ContentItem $a, ContentItem $b): int => strcmp(md5($seed . '|' . $a->type . '|' . $a->slug), md5($seed . '|' . $b->type . '|' . $b->slug)));
                     }
                     return array_slice($items, $offset, $limit);
                 },
