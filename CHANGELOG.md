@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.212 — 2026-11-04 — Bylines by name
+- The byline of a post is its **Author** field. A connection or an import could write an account's username there, and the site showed the username ("By unibot"). When the field holds the username of an account, the site now shows that account's **display name**: in the line under the title (the post template and the **Entry title** block), in the structured data, and in a block bound to the author. Any other byline is shown as typed, and the field itself is not changed.
+- A page kept in the page cache shows the new byline once it is drawn again.
+- Tests: `tests/unit/entry-bindings.php`.
+
 ## 0.1.211 — 2026-11-04 — People by name in the admin
 - The history (**History**, one version, the history panel of the editor and of the form editor), the **Activity logs** and the dashboard showed who did something by username. They now show the account's **display name**, or the username when it has none. The username is still what is recorded, so changing a display name changes it on every earlier entry too.
 - The **Actor** filter of the activity logs finds people by display name as well as by username.
