@@ -35,9 +35,29 @@ final class ContentItem
         $this->mtime = $mtime;
     }
 
+    /** @var (\Closure(string): string)|null the name to show for an account's username (its display name), set by the site */
+    private static ?\Closure $accountName = null;
+
+    /** @param (\Closure(string): string)|null $accountName */
+    public static function nameAccountsWith(?\Closure $accountName): void
+    {
+        self::$accountName = $accountName;
+    }
+
     public function get(string $key, mixed $default = null): mixed
     {
         return $this->meta[$key] ?? $default;
+    }
+
+    /**
+     * The byline as visitors see it: the `author` field, except that the username of an account (as a connection or an
+     * import may write it) shows as that account's display name. Any other text is shown as written.
+     */
+    public function authorName(): string
+    {
+        $author = $this->meta['author'] ?? '';
+        $author = is_scalar($author) ? trim((string)$author) : '';
+        return $author !== '' && self::$accountName !== null ? (self::$accountName)($author) : $author;
     }
 
     /** When the entry was made, as a Unix time: its `created`, or for one made before entries had it, its date or else its file's time. */

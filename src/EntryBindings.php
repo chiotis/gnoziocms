@@ -668,7 +668,7 @@ final class EntryBindings
             'title' => $this->text($meta['title'] ?? ''),
             'excerpt' => $this->text($meta['excerpt'] ?? ''),
             'main_image' => $this->text($meta['main_image'] ?? ''),
-            'author' => $this->text($meta['author'] ?? ''),
+            'author' => $this->item->authorName(),
             'date' => $this->date($meta['date'] ?? ''),
             'categories', 'tags' => $this->terms($path, $meta[$path] ?? []),
             default => '',
