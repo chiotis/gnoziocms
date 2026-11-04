@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.202 — 2026-11-04 — Hero slider: lined up with the page
+- With the arrows over the slides, the text of a slide started about 96px further in than every other block: the room for the arrows was added inside a container that already has the page's width. It now moves in only as far as the arrows need (nothing once the page is wider than the container by that much). On a phone, where the arrows are at the bottom, it no longer gets a second gutter.
+
 ## 0.1.201 — 2026-11-04 — Blocks of entries: an Order setting
 - Latest content, Cards, Portfolio, Hero and Hero slider (when they show entries) get **Order**: newest first (the default, as before), oldest first, title A–Z or Z–A, or random (new each time the page is made; a cached page keeps it until the cache is renewed). The same orders as a list of a content type, the same with the content index and without.
 - *Skip the newest* becomes **Skip the first**, counted in that order.
