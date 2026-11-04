@@ -83,10 +83,12 @@ check('a container inside a column is not drawn (one level)', page('c-nest', box
 check('a container opening the page is no hero: the page keeps a title of its own', '<h1' in page('c-open', box([[text('x')]])))
 
 # ---- the page's own text is placed once, also by a content block inside a column
-body = page('c-body', box([[text('A')], [{'type': 'content'}]]), body='The page text appears once.')
+# Counted in the page's body: the head repeats the text in its descriptions.
+in_body = lambda html: html.split('</head>', 1)[-1]
+body = in_body(page('c-body', box([[text('A')], [{'type': 'content'}]]), body='The page text appears once.'))
 check('a content block inside a column places the page text, so it is not shown twice', body.count('The page text appears once.') == 1, body.count('The page text appears once.'))
-body2 = page('c-body2', box([[text('A')]]), body='The page text again.')
-check('without one the page text is still shown, once', body2.count('The page text again.') == 1)
+body2 = in_body(page('c-body2', box([[text('A')]]), body='The page text again.'))
+check('without one the page text is still shown, once', body2.count('The page text again.') == 1, body2.count('The page text again.'))
 
 # ---- the editor knows containers, saves them and reads them back
 st, _, edit = root.get('/admin/edit?type=pages&slug=c-three&lang=el')

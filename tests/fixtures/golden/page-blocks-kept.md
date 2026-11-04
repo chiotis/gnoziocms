@@ -1,4 +1,13 @@
 ---
+title: Υπηρεσίες
+status: published
+visible: true
+created: <time>
+excerpt: 'Από στρατηγική μέχρι υλοποίηση, καλύπτουμε όλο τον κύκλο του έργου.'
+translation_id: <generated>
+seo:
+  title: 'Υπηρεσίες | FarosCMS Demo'
+  description: 'Στρατηγική, design & build και διαχείριση έργου για εταιρικές ιστοσελίδες.'
 blocks:
   -
     type: hero
@@ -119,15 +128,6 @@ blocks:
         label: 'Επικοινωνήστε μαζί μας'
         url: contact
     text: 'Πείτε μας δύο λόγια και θα σας απαντήσουμε σε μία εργάσιμη.'
-title: Υπηρεσίες
-status: published
-visible: true
-created: <time>
-excerpt: 'Από στρατηγική μέχρι υλοποίηση, καλύπτουμε όλο τον κύκλο του έργου.'
-translation_id: <generated>
-seo:
-  title: 'Υπηρεσίες | FarosCMS Demo'
-  description: 'Στρατηγική, design & build και διαχείριση έργου για εταιρικές ιστοσελίδες.'
 ---
 
 
