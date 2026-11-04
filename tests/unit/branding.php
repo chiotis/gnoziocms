@@ -38,6 +38,10 @@ check('and every one of them starts empty or on "theme", so a site that sets non
 ], ['', '', '', 'pairing', 'auto', 'auto', '', false]);
 check('so they add nothing to the page', [Branding::css($defaults), Branding::head($defaults)], ['', '']);
 check('neither does a site with no settings at all', [Branding::css([]), Branding::head([])], ['', '']);
+$iconsBrand = ['brand' => ['favicon' => '/uploads/media/fav.svg', 'touch_icon' => '/uploads/media/app.png', 'theme_color' => '#1E293B'], 'design' => ['body_font' => 'custom', 'font_file' => '/uploads/media/f.woff2']];
+check('the admin gets the icons and browser colour alone, without the font hints of the site', Branding::icons($iconsBrand, '/sub'), "<link rel=\"icon\" href=\"/sub/uploads/media/fav.svg\" type=\"image/svg+xml\">\n<link rel=\"apple-touch-icon\" href=\"/sub/uploads/media/app.png\">\n<meta name=\"theme-color\" content=\"#1e293b\">\n");
+check('and the site\'s head starts with the same tags', str_starts_with(Branding::head($iconsBrand, '/sub'), Branding::icons($iconsBrand, '/sub')), true);
+check('no icons chosen, no tags', Branding::icons([]), '');
 
 // ---- colours
 $css = Branding::css(['design' => ['light_accent' => '#1d4ed8', 'dark_accent' => '#93c5fd']]);

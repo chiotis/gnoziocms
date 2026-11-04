@@ -4,7 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token() }}">
-  <title>Welcome - GnozioCMS</title>
+  <title>Welcome - {{ site.title|default('GnozioCMS') }}</title>
+  {{ branding_icons() }}
   {% include '@admin/partials/theme-init.twig' %}
   <link rel="stylesheet" href="{{ asset('css/admin.build.css') }}">
   <link rel="stylesheet" href="{{ asset('css/app.css') }}">
@@ -16,7 +17,7 @@
     <div class="mb-6 flex items-center justify-center gap-2.5">
       <div class="flex h-9 w-9 items-center justify-center rounded bg-slate-900 text-sm font-bold text-white">GZ</div>
       <div>
-        <div class="text-sm font-semibold tracking-tight text-slate-900">GnozioCMS</div>
+        <div class="text-sm font-semibold tracking-tight text-slate-900">{{ site.title|default('GnozioCMS') }}</div>
         <div class="text-xs font-medium text-slate-400">Administration</div>
       </div>
     </div>

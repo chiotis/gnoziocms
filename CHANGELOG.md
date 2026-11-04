@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.220 — 2026-11-04 — The admin carries the site's name and icons
+- Admin tabs, the sign-in page and the first-run setup page are titled with the **site name** ("Dashboard - Acme Studio") instead of GnozioCMS. The sign-in and setup pages show it as their heading too. Without a site name, they still say GnozioCMS.
+- Admin pages use the site's **favicon**, **app icon** and **browser colour** from **Theme > Branding**, so the admin tab shows the same icon as the site.
+- Tests: `tests/unit/branding.php`, `tests/http/sidebar_brand_test.py`.
+
 ## 0.1.219 — 2026-11-04 — The installer ends with the nginx block for ChatGPT
 - The installer's last screen shows the nginx block that ChatGPT needs to connect over MCP (`location ^~ /.well-known/oauth-`), with a **Copy** button and the Cloudflare alternative. The admin then opens when you click **Open the admin**. Before, the block showed only when the installer could prove the type was wrong. Behind Varnish or cloudflared it usually could not, so sites such as insights.gr were installed without it.
 - The note is left out when the installer saw nginx send the discovery documents as JSON, and on Apache and LiteSpeed, which read the `.htaccess`.

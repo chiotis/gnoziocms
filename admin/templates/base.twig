@@ -6,7 +6,8 @@
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <meta name="media-picker-url" content="{{ url('admin/media-picker') }}">
   <meta name="geo-leaflet" data-js="{{ theme_asset('vendor/leaflet/leaflet.js') }}" data-css="{{ theme_asset('vendor/leaflet/leaflet.css') }}" data-tiles="{{ 'https://tile.openstreetmap.org/{z}/{x}/{y}.png' }}">
-  <title>{{ title|default('Admin') }} - GnozioCMS</title>
+  <title>{{ title|default('Admin') }} - {{ site.title|default('GnozioCMS') }}</title>
+  {{ branding_icons() }}
   {% include '@admin/partials/theme-init.twig' %}
   <link rel="stylesheet" href="{{ asset('css/admin.build.css') }}">
   <link rel="stylesheet" href="{{ asset('css/app.css') }}">

@@ -30,7 +30,9 @@ st, _, html = root.get('/admin/content?type=pages')
 top = head(html)
 check('a new site name shows on every screen', 'Acme Studio' in top, top[:400])
 check('the name has a tooltip for when it is cut off', 'title="Acme Studio"' in top)
-check('the browser tab title is unchanged', '- GnozioCMS</title>' in html)
+check('the browser tab title ends with the site name', '- Acme Studio</title>' in html and '- GnozioCMS</title>' not in html)
+st, _, html = Client().get('/admin/login')
+check('so does the sign-in page, and its heading', 'Sign in - Acme Studio</title>' in html and '>Acme Studio</div>' in html, html[:600])
 
 # ---- Content types, Redirects and Translations are in Manage
 def groups(side):

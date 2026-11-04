@@ -312,8 +312,32 @@ final class Branding
      */
     public static function head(array $settings, string $baseUrl = '', string $language = ''): string
     {
-        $brand = is_array($settings['brand'] ?? null) ? $settings['brand'] : [];
         $design = is_array($settings['design'] ?? null) ? $settings['design'] : [];
+        $html = self::icons($settings, $baseUrl);
+        $font = self::fontFile((string)($design['font_file'] ?? ''), $baseUrl);
+        $stacks = BrandingFonts::stacks($design);
+        $uses = [];
+        foreach (['heading', 'body'] as $role) {
+            if (!isset($stacks[$role])) {
+                $uses[] = (string)($design[$role . '_font'] ?? '');
+            }
+        }
+        if ($font !== null && $font['format'] === 'woff2' && in_array('custom', $uses, true)) {
+            $html .= '<link rel="preload" href="' . self::attr($font['url']) . "\" as=\"font\" type=\"font/woff2\" crossorigin>\n";
+        }
+        $html .= BrandingFonts::preloads($design, $baseUrl, $language);
+        return $html;
+    }
+
+    /**
+     * The icons and colour of the browser alone: the icon of the tab, the icon of a phone's home screen and the colour of the
+     * address bar. The site's pages get them with head(); the admin uses them too, so its tabs carry the site's icon.
+     *
+     * @param array<string, mixed> $settings the resolved theme settings
+     */
+    public static function icons(array $settings, string $baseUrl = ''): string
+    {
+        $brand = is_array($settings['brand'] ?? null) ? $settings['brand'] : [];
         $html = '';
         $favicon = trim((string)($brand['favicon'] ?? ''));
         if ($favicon !== '' && FieldSchema::isSafeUrl($favicon)) {
@@ -329,18 +353,6 @@ final class Branding
         if ($colour !== null) {
             $html .= '<meta name="theme-color" content="' . $colour . "\">\n";
         }
-        $font = self::fontFile((string)($design['font_file'] ?? ''), $baseUrl);
-        $stacks = BrandingFonts::stacks($design);
-        $uses = [];
-        foreach (['heading', 'body'] as $role) {
-            if (!isset($stacks[$role])) {
-                $uses[] = (string)($design[$role . '_font'] ?? '');
-            }
-        }
-        if ($font !== null && $font['format'] === 'woff2' && in_array('custom', $uses, true)) {
-            $html .= '<link rel="preload" href="' . self::attr($font['url']) . "\" as=\"font\" type=\"font/woff2\" crossorigin>\n";
-        }
-        $html .= BrandingFonts::preloads($design, $baseUrl, $language);
         return $html;
     }
 
