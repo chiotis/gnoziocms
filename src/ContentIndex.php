@@ -19,7 +19,7 @@ final class ContentIndex
     private const META_REVISION = 'content_revision';
 
     /** Changes when the way references are read or stored changes, so an index made by older code is built again. */
-    private const REFS_VERSION = '3';
+    private const REFS_VERSION = '4';
 
     /** @var (\Closure(string): array<string, array<string, mixed>>)|null the normalized fields of a content type */
     private ?\Closure $fieldsOf = null;
@@ -375,8 +375,8 @@ final class ContentIndex
             'indexed_at' => gmdate('c'),
             'translation_id' => (string)($meta['translation_id'] ?? ''),
             'title_key' => mb_strtolower((string)($meta['title'] ?? $item->slug)),
-            // The order lists keep entries in (the repository's): the date, or when the file changed when there is none.
-            'sort_date' => strtotime((string)($meta['date'] ?? '')) ?: $item->mtime,
+            // The order lists keep entries in (the repository's): ContentItem::sortTime().
+            'sort_date' => $item->sortTime(),
             'summary' => (string)json_encode([
                 'title' => (string)($meta['title'] ?? $item->slug),
                 'excerpt' => mb_substr(trim((string)($meta['excerpt'] ?? '')), 0, 300),

@@ -180,9 +180,7 @@ final class ContentRepository
 
         $items = array_values($itemsBySlug);
         usort($items, function (ContentItem $a, ContentItem $b): int {
-            $dateA = strtotime((string)($a->meta['date'] ?? '')) ?: $a->mtime;
-            $dateB = strtotime((string)($b->meta['date'] ?? '')) ?: $b->mtime;
-            return $dateB <=> $dateA;
+            return $b->sortTime() <=> $a->sortTime();
         });
 
         $this->cache[$cacheKey] = $items;
