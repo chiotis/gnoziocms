@@ -276,7 +276,9 @@
       icon.setAttribute('data-sort-icon', '');
       icon.setAttribute('aria-hidden', 'true');
       icon.className = 'ml-1 text-[10px] text-slate-300';
-      icon.textContent = '\u2195';
+      // A column the list already comes sorted by (aria-sort in the page) shows its direction from the start.
+      var sorted = th.getAttribute('aria-sort');
+      icon.textContent = sorted === 'ascending' ? '\u2191' : (sorted === 'descending' ? '\u2193' : '\u2195');
       th.appendChild(icon);
     });
   }

@@ -6,7 +6,10 @@
 {% set base_title = meta.title ?? document_title ?? '' %}
 {# The title, the description and the picture of a page come from its own SEO settings first, then from Admin > SEO (the title format, the site's defaults). #}
 {% set page_title = seo_title(meta.seo.title|default(''), base_title, is_home_page, item is defined and item ? item.type : '') %}
-{% set page_description = seo_description(meta.seo.description|default(''), meta.excerpt|default(''), document_description|default(''), is_home_page) %}
+{# An entry without an excerpt is described by the start of its text, before the site's own description. #}
+{% set entry_text = item is defined and item and not meta.excerpt|default('') ? plain_text(item.html|default(''))|trim : '' %}
+{% set entry_summary = meta.excerpt|default('') ?: (entry_text|length > 160 ? entry_text|slice(0, 159)|trim ~ '…' : entry_text) %}
+{% set page_description = seo_description(meta.seo.description|default(''), entry_summary, document_description|default(''), is_home_page) %}
 {% set og_title = meta.seo.og_title ?? meta.seo.title ?? (base_title ?: site.title) %}
 {% set og_description = meta.seo.og_description ?? page_description %}
 {% set brand = theme_settings.brand|default({}) %}

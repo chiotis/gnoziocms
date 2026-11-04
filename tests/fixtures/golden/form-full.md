@@ -2,6 +2,7 @@
 title: 'Φόρμα δοκιμής'
 status: published
 visible: true
+created: <time>
 translation_id: <generated>
 fields:
   -

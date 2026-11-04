@@ -11,6 +11,7 @@ title: 'Editor page'
 status: published
 visible: true
 date: <today>
+created: <time>
 translation_id: <generated>
 ---
 

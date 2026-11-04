@@ -122,6 +122,7 @@ blocks:
 title: Υπηρεσίες
 status: published
 visible: true
+created: <time>
 excerpt: 'Από στρατηγική μέχρι υλοποίηση, καλύπτουμε όλο τον κύκλο του έργου.'
 translation_id: <generated>
 seo:

@@ -279,6 +279,12 @@ final class EntryForm
             'front_matter_error' => $frontMatterError,
             'body' => $body,
             'main_image' => $mainImage,
+            // What a shared link of the entry falls back to after its own image and text (Admin > SEO, then Theme > Branding).
+            'share_defaults' => [
+                'image' => SeoSettings::from($settings)['share_image'] ?: (string)($themeSettings['brand']['share_image'] ?? ''),
+                'description' => SeoSettings::from($settings)['default_description'] ?: (string)($settings['tagline'] ?? ''),
+                'site' => (string)($settings['title'] ?? ''),
+            ],
             'meta_form' => $metaForm,
             'time_zone' => SiteSettings::timeZone($settings)->getName(),
             'type_definition' => $this->types->definition($type, 'en', $defaultLang),
