@@ -4030,7 +4030,18 @@ final class App
         }
 
         $data = array_merge($defaults, $data);
-        echo $this->twig->render($template, $data);
+        $html = $this->twig->render($template, $data);
+        if (!str_starts_with($template, '@admin/') && !headers_sent()) {
+            // How long the page took to make (Server-Timing; a copy from the page cache says "hit" instead), and what the browser,
+            // or a CDN's 103 Early Hints, can start fetching before the page arrives: its stylesheet and its opening picture.
+            header('Server-Timing: app;desc="page made";dur=' . round((microtime(true) - (float)($_SERVER['REQUEST_TIME_FLOAT'] ?? microtime(true))) * 1000, 1));
+            if (http_response_code() === 200) {
+                foreach (EarlyHints::links($html, $this->theme->assetUrl(rtrim((string)($this->settings['base_url'] ?? ''), '/'), 'css/site.css')) as $link) {
+                    header('Link: ' . $link, false);
+                }
+            }
+        }
+        echo $html;
     }
 
     private function renderForbidden(string $message = '', string $title = 'Access denied'): void
