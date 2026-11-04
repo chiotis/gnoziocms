@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.216 — 2026-11-04 — The Google tag can wait for the page
+- **Analytics** has a new setting, **Load the tag**: **Right away** or **After the page has loaded**. After the page has loaded, the Google tag or Tag Manager script no longer slows the page down, which gives a better PageSpeed score. Events sent before it arrives are kept and sent with it. A visitor who leaves within the first second or two may not be counted.
+- Sites that already have a Google tag stay on **Right away** until the setting is changed. A site without a tag starts with **After the page has loaded**.
+- The header's script no longer makes the browser lay the page out again while it loads or scrolls (PageSpeed's "forced reflow"). Sticky, smart and transparent headers work as before.
+- Tests: `tests/unit/analytics.php`, `tests/http/analytics_test.py`.
+
 ## 0.1.215 — 2026-11-04 — Lighter pictures
 - Pictures come in **AVIF** where the server's PHP can write it, with WebP for browsers that cannot show AVIF. WebP is written at a lower quality (72 instead of 80). Together they make pictures about half the size.
 - A new **800 px** size, so a common phone no longer downloads the 960 px picture for a full-width hero.
