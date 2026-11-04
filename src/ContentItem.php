@@ -39,4 +39,17 @@ final class ContentItem
     {
         return $this->meta[$key] ?? $default;
     }
+
+    /** When the entry was made, as a Unix time: its `created`, or for one made before entries had it, its date or else its file's time. */
+    public function createdTime(): int
+    {
+        foreach (['created', 'date'] as $key) {
+            $value = $this->meta[$key] ?? null;
+            $time = is_int($value) ? $value : (is_string($value) && trim($value) !== '' ? strtotime($value) : false);
+            if ($time !== false) {
+                return $time;
+            }
+        }
+        return $this->mtime;
+    }
 }

@@ -59,6 +59,8 @@ final class ContentAdmin
             $type = $types[0] ?? 'pages';
         }
         $items = $this->content->getItems($type, $lang, true, false);
+        // Newest first by when each entry was made, so editing one does not move it (the site keeps its own order, by date).
+        usort($items, static fn(ContentItem $a, ContentItem $b): int => $b->createdTime() <=> $a->createdTime());
         $translationLangs = $this->translations->matrix($type, $items);
         $statusOptions = array_values(array_unique(array_merge(['published', 'draft', ScheduledPublishing::STATUS], array_map(
             static fn(ContentItem $item): string => (string)($item->meta['status'] ?? 'published'),

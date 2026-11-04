@@ -21,6 +21,8 @@ def normalise(text):
     import datetime
     # The id is 16 random hex characters; one that reads as a number (digits with a single e, as 7220e14467316353) is written in quotes.
     text = re.sub(r"translation_id: '?[0-9a-f]{16}'?", 'translation_id: <generated>', text)
+    # When the entry was made: the time of its first save (ISO 8601, with the zone).
+    text = re.sub(r"created: '\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d[+-]\d\d:\d\d'", 'created: <time>', text)
     # A new post or form is dated today by the editor form.
     return text.replace("date: '" + datetime.date.today().isoformat() + "'", "date: <today>")
 

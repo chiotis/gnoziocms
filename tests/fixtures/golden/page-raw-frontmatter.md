@@ -9,6 +9,7 @@ seo:
 title: Σχετικά
 status: published
 visible: true
+created: <time>
 excerpt: 'Γνωρίστε τη φιλοσοφία, τη διαδικασία και την ομάδα μας.'
 translation_id: <generated>
 ---

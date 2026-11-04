@@ -15,6 +15,7 @@ title: 'Πλήρης σελίδα δοκιμής'
 status: draft
 visible: false
 date: '2026-03-15'
+created: <time>
 author: 'Test Author'
 excerpt: 'A short summary'
 template: landing

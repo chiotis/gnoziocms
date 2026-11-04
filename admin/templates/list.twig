@@ -134,6 +134,7 @@
               <th class="px-4 py-2 font-medium" data-sort="text">Title</th>
               <th class="px-4 py-2 font-medium" data-sort="text">Status</th>
               <th class="px-4 py-2 font-medium">Language</th>
+              <th class="px-4 py-2 font-medium" data-sort="number" aria-sort="descending">Created</th>
               <th class="px-4 py-2 font-medium" data-sort="number">Updated</th>
               <th class="px-4 py-2 text-right font-medium">Actions</th>
             </tr>
@@ -182,6 +183,7 @@
                     {% endfor %}
                   </div>
                 </td>
+                <td class="px-4 py-2.5 text-slate-400" data-sort-value="{{ item.createdTime() }}">{{ item.createdTime()|date('Y-m-d H:i') }}</td>
                 <td class="px-4 py-2.5 text-slate-400" data-sort-value="{{ item.mtime }}">{{ item.mtime|date('Y-m-d H:i') }}</td>
                 <td class="px-4 py-2.5">
                   <div class="flex items-center justify-end gap-0.5">

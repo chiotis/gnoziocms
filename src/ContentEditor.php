@@ -218,6 +218,8 @@ final class ContentEditor
         } else {
             unset($data['date']);
         }
+        // When the entry was first made (the admin's list is in this order, newest first): kept from the file, set by the first save.
+        $data['created'] = $this->createdAt($sourceExists ? $oldPath : ($wasExisting ? $path : ''));
 
         if ($author !== '') {
             $data['author'] = $author;
@@ -714,6 +716,32 @@ final class ContentEditor
         return $candidate;
     }
 
+    /**
+     * When the entry stored at `$path` was made, as an ISO 8601 time: the `created` it has, or for a file made before entries had one,
+     * its date (or else the time the file last changed), the nearest there is. A new entry ('' or no file) is made now.
+     */
+    private function createdAt(string $path): string
+    {
+        if ($path === '' || !is_file($path)) {
+            return date('c');
+        }
+        [$front] = FrontMatter::split((string)file_get_contents($path));
+        try {
+            $data = Yaml::parse($front);
+        } catch (\Throwable) {
+            $data = null;
+        }
+        $data = is_array($data) ? $data : [];
+        foreach (['created', 'date'] as $key) {
+            $value = $data[$key] ?? null;
+            $time = is_int($value) ? $value : (is_string($value) && trim($value) !== '' ? strtotime($value) : false);
+            if ($time !== false) {
+                return $key === 'created' && is_string($value) ? $value : date('c', $time);
+            }
+        }
+        return date('c', (int)filemtime($path));
+    }
+
     private function storedStatus(string $path): string
     {
         if (!is_file($path)) {
@@ -816,6 +844,7 @@ final class ContentEditor
             'visible',
             'date',
             'publish_at',
+            'created',
             // The MCP connection that made the entry (docs/mcp.md); shown in the admin only.
             'generated_by',
             'author',

@@ -298,6 +298,30 @@ check('published now: the time is dropped', [str_contains($later, 'status: publi
 $zoned->save('posts', ['title' => 'No time', 'slug' => 'no-time', 'status' => 'scheduled', 'publish_at' => '', 'body' => 'x'], null, false, 'tester');
 check('scheduled without a time is saved as a draft', str_contains((string)file_get_contents("$dir/content/posts/no-time.md"), 'status: draft'), true);
 
+// ---- when an entry was made: kept by every save, and the order of the list, newest first
+$meta = static function (string $file): array { [$front] = \GnozioCMS\FrontMatter::split((string)file_get_contents($file)); return \Symfony\Component\Yaml\Yaml::parse($front); };
+$editor->save('projects', ['title' => 'Made first', 'slug' => 'made-first', 'status' => 'published', 'body' => 'x'], null, false, 'tester');
+$first = $meta("$dir/content/projects/made-first.md")['created'] ?? null;
+check('a new entry gets the time it was made', is_string($first) && abs((int)strtotime($first) - time()) < 5, true);
+// Made a day later (written by hand, as another save would), then the first one is edited.
+file_put_contents("$dir/content/projects/made-second.md", "---\ntitle: Made second\nstatus: published\ncreated: '" . date('c', time() + 86400) . "'\n---\n\nx\n");
+sleep(1);
+$editor->save('projects', ['title' => 'Made first, edited', 'slug' => 'made-first', 'original_slug' => 'made-first', 'original_lang' => 'el', 'status' => 'draft', 'frontmatter' => "created: '1999-01-01'", 'body' => 'changed'], null, false, 'tester');
+check('a save keeps it, even when the extra front matter tries to change it', $meta("$dir/content/projects/made-first.md")['created'] ?? null, $first);
+$moved = $editor->save('projects', ['title' => 'Made first, edited', 'slug' => 'made-first-moved', 'original_slug' => 'made-first', 'original_lang' => 'el', 'status' => 'draft', 'body' => 'changed'], null, false, 'tester');
+check('and so does a move to a new address', $meta("$dir/content/projects/" . $moved['slug'] . '.md')['created'] ?? null, $first);
+file_put_contents("$dir/content/projects/old-dated.md", "---\ntitle: Old dated\nstatus: published\ndate: '2020-05-06'\n---\n\nx\n");
+file_put_contents("$dir/content/projects/old-plain.md", "---\ntitle: Old plain\nstatus: published\n---\n\nx\n");
+touch("$dir/content/projects/old-plain.md", 1500000000);
+$flush();
+$listed = array_map(static fn($item) => $item->slug, array_values(array_filter($admin->listing(['type' => 'projects', 'lang' => 'el'], true)['data']['items'], static fn($item) => in_array($item->slug, ['made-first-moved', 'made-second', 'old-dated', 'old-plain'], true))));
+check('the list is newest made first, an edit does not move an entry up, and older files go by their date or file time', $listed, ['made-second', 'made-first-moved', 'old-dated', 'old-plain']);
+$editor->save('projects', ['title' => 'Old dated', 'slug' => 'old-dated', 'original_slug' => 'old-dated', 'original_lang' => 'el', 'status' => 'published', 'date' => '2020-05-06', 'body' => 'x'], null, false, 'tester');
+$editor->save('projects', ['title' => 'Old plain', 'slug' => 'old-plain', 'original_slug' => 'old-plain', 'original_lang' => 'el', 'status' => 'published', 'body' => 'x'], null, false, 'tester');
+check('an older file saved for the first time gets its date, or its file time, as when it was made', [substr((string)($meta("$dir/content/projects/old-dated.md")['created'] ?? ''), 0, 10), (int)strtotime((string)($meta("$dir/content/projects/old-plain.md")['created'] ?? ''))], ['2020-05-06', 1500000000]);
+$html = (string)file_get_contents(dirname(__DIR__, 2) . '/admin/templates/list.twig');
+check('the list shows when each entry was made, sorted newest first to begin with', str_contains($html, 'aria-sort="descending">Created</th>'), true);
+
 // tidy up
 exec('rm -rf ' . escapeshellarg($dir));
 echo $fail === 0 ? "\nALL PASSED\n" : "\n$fail FAILED\n";
