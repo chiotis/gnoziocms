@@ -15,6 +15,10 @@ use Symfony\Component\Yaml\Yaml;
  */
 final class ContentAdmin
 {
+    /** Entries per page in the list; 0 is every entry on one page. */
+    public const PER_PAGE_OPTIONS = [25, 50, 100, 0];
+    public const PER_PAGE_DEFAULT = 50;
+
     /**
      * @param \Closure(): array<string, mixed> $settings
      * @param \Closure(): Taxonomies $taxonomies
@@ -58,10 +62,88 @@ final class ContentAdmin
         if (!in_array($type, $types, true)) {
             $type = $types[0] ?? 'pages';
         }
+        $matching = $this->matching($type, $lang, $get);
+        $items = $matching['items'];
+        $filters = $matching['filters'];
+        $termFilter = $matching['term_filter'];
+        $total = count($items);
+        $perPage = self::perPage($get['per_page'] ?? null);
+        $totalPages = $perPage === 0 ? 1 : max(1, (int)ceil($total / $perPage));
+        $page = min(max(1, (int)($get['page'] ?? 1)), $totalPages);
+        $offset = $perPage === 0 ? 0 : ($page - 1) * $perPage;
+        if ($perPage !== 0) {
+            $items = array_slice($items, $offset, $perPage);
+        }
+        $translationLangs = $this->translations->matrix($type, $items);
+
+        return ['location' => '', 'data' => [
+            'items' => $items,
+            'types' => $types,
+            'current_type' => $type,
+            'lang' => $lang,
+            'languages' => $settings['languages']['available'] ?? [],
+            'admin_section' => 'content',
+            'deleted' => isset($get['deleted']),
+            'translation_langs' => $translationLangs,
+            'filters' => $filters,
+            'filters_active' => $filters['q'] !== '' || $filters['status'] !== '' || $termFilter !== null,
+            'term_filter' => $termFilter,
+            'status_options' => $matching['status_options'],
+            'total' => $total,
+            'page' => $page,
+            'total_pages' => $totalPages,
+            'per_page' => $perPage,
+            'per_page_options' => self::PER_PAGE_OPTIONS,
+            // The address of this list without the page: the pages, the languages and the page size link with it.
+            'list_query' => self::listQuery($type, $lang, $filters, $perPage),
+            'shown_from' => $total > 0 ? $offset + 1 : 0,
+            'shown_to' => $offset + count($items),
+            'bulk_status' => (string)($get['bulk'] ?? ''),
+            'bulk_message' => trim((string)($get['bulk_msg'] ?? '')),
+            'deleted_from' => trim((string)($get['from'] ?? '')),
+            'deleted_to' => trim((string)($get['to'] ?? '')),
+            'deleted_gone' => trim((string)($get['gone'] ?? '')),
+            'can_redirects' => $canRedirects,
+        ]];
+    }
+
+    /**
+     * The query of the list with these filters and page size: empty filters and the default size are left out.
+     *
+     * @param array<string, string> $filters
+     * @return array<string, string>
+     */
+    public static function listQuery(string $type, string $lang, array $filters, int $perPage): array
+    {
+        $query = ['type' => $type, 'lang' => $lang] + array_filter($filters, static fn(string $value): bool => $value !== '');
+        if ($perPage !== self::PER_PAGE_DEFAULT) {
+            $query['per_page'] = $perPage === 0 ? 'all' : (string)$perPage;
+        }
+        return $query;
+    }
+
+    /** The page size asked for: one of the options, "all" for every entry, else the default. */
+    public static function perPage(mixed $value): int
+    {
+        if ($value === 'all' || $value === '0' || $value === 0) {
+            return 0;
+        }
+        $value = is_numeric($value) ? (int)$value : 0;
+        return $value > 0 && in_array($value, self::PER_PAGE_OPTIONS, true) ? $value : self::PER_PAGE_DEFAULT;
+    }
+
+    /**
+     * The entries of one type and language that the search, the status and the term let through, newest first, with
+     * the filters as they were understood. The list pages through them; "select all" in a bulk action takes all of them.
+     *
+     * @param array<string, mixed> $get
+     * @return array{items: list<ContentItem>, filters: array{q: string, status: string, taxonomy: string, term: string}, term_filter: ?array<string, string>, status_options: list<string>}
+     */
+    private function matching(string $type, string $lang, array $get): array
+    {
         $items = $this->content->getItems($type, $lang, true, false);
         // Newest first by when each entry was made, so editing one does not move it (the site keeps its own order, by date).
         usort($items, static fn(ContentItem $a, ContentItem $b): int => $b->createdTime() <=> $a->createdTime());
-        $translationLangs = $this->translations->matrix($type, $items);
         $statusOptions = array_values(array_unique(array_merge(['published', 'draft', ScheduledPublishing::STATUS], array_map(
             static fn(ContentItem $item): string => (string)($item->meta['status'] ?? 'published'),
             $items
@@ -69,6 +151,8 @@ final class ContentAdmin
         $filters = [
             'q' => trim((string)($get['q'] ?? '')),
             'status' => in_array((string)($get['status'] ?? ''), $statusOptions, true) ? (string)$get['status'] : '',
+            'taxonomy' => '',
+            'term' => '',
         ];
         if ($filters['q'] !== '') {
             $needle = mb_strtolower($filters['q']);
@@ -78,8 +162,6 @@ final class ContentAdmin
             $items = array_values(array_filter($items, static fn(ContentItem $item): bool => (string)($item->meta['status'] ?? 'published') === $filters['status']));
         }
         // Filed under a term: the link from Taxonomies. Anything that is not a term of a taxonomy is ignored.
-        $filters['taxonomy'] = '';
-        $filters['term'] = '';
         $termFilter = null;
         $taxonomies = ($this->taxonomies)();
         $filterTaxonomy = Slug::plain((string)($get['taxonomy'] ?? ''));
@@ -97,30 +179,13 @@ final class ContentAdmin
             $items = array_values(array_filter($items, static fn(ContentItem $item): bool => in_array($filterTerm, Format::list($item->meta[$filterTaxonomy] ?? null), true)));
         }
 
-        return ['location' => '', 'data' => [
-            'items' => $items,
-            'types' => $types,
-            'current_type' => $type,
-            'lang' => $lang,
-            'languages' => $settings['languages']['available'] ?? [],
-            'admin_section' => 'content',
-            'deleted' => isset($get['deleted']),
-            'translation_langs' => $translationLangs,
-            'filters' => $filters,
-            'filters_active' => $filters['q'] !== '' || $filters['status'] !== '' || $termFilter !== null,
-            'term_filter' => $termFilter,
-            'status_options' => $statusOptions,
-            'bulk_status' => (string)($get['bulk'] ?? ''),
-            'bulk_message' => trim((string)($get['bulk_msg'] ?? '')),
-            'deleted_from' => trim((string)($get['from'] ?? '')),
-            'deleted_to' => trim((string)($get['to'] ?? '')),
-            'deleted_gone' => trim((string)($get['gone'] ?? '')),
-            'can_redirects' => $canRedirects,
-        ]];
+        return ['items' => $items, 'filters' => $filters, 'term_filter' => $termFilter, 'status_options' => $statusOptions];
     }
 
     /**
-     * Publish, move to draft or delete the entries ticked in the list. Where to go next is returned.
+     * Publish, move to draft or delete the entries ticked in the list, or, with all_matching, every entry the
+     * submitted search, status and term let through (on every page of the list). Where to go next is returned: the
+     * list with the same filters and page.
      *
      * @param array<string, mixed> $post
      */
@@ -137,6 +202,17 @@ final class ContentAdmin
         $back = '/admin/content?type=' . urlencode($type) . '&lang=' . urlencode($lang);
         if (!$isPost || !in_array($type, $this->content->getTypes(), true) || $type === 'forms') {
             return $back;
+        }
+        // Back to the list as it was: same search, status, term, page size and page.
+        $matching = $this->matching($type, $lang, $post);
+        $query = self::listQuery($type, $lang, $matching['filters'], self::perPage($post['per_page'] ?? null));
+        if ((int)($post['page'] ?? 1) > 1) {
+            $query['page'] = (int)$post['page'];
+        }
+        $back = '/admin/content?' . http_build_query($query);
+        // "Select all" on every page: the entries the filters let through, not only the ticked ones on this page.
+        if ((string)($post['all_matching'] ?? '') === '1') {
+            $slugs = array_values(array_unique(array_map(static fn(ContentItem $item): string => $item->slug, $matching['items'])));
         }
         if (!in_array($action, ['publish', 'draft', 'delete'], true) || $slugs === []) {
             return $back . '&' . http_build_query(['bulk' => 'fail', 'bulk_msg' => 'Choose a bulk action and select at least one item.']);

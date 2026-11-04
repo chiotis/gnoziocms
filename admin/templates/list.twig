@@ -49,6 +49,7 @@
       <input type="hidden" name="type" value="{{ current_type }}">
       <input type="hidden" name="lang" value="{{ lang }}">
       {% if term_filter %}<input type="hidden" name="taxonomy" value="{{ term_filter.taxonomy }}"><input type="hidden" name="term" value="{{ term_filter.term }}">{% endif %}
+      {% if list_query.per_page is defined %}<input type="hidden" name="per_page" value="{{ list_query.per_page }}">{% endif %}
       <label class="block sm:col-span-2">
         <span class="mb-1 block text-sm font-medium text-slate-700">Search</span>
         <input type="text" name="q" value="{{ filters.q }}" placeholder="Title or slug" class="{{ input_class }}">
@@ -74,7 +75,7 @@
       Filed under
       <span class="inline-flex items-center gap-1 rounded-full bg-blue-50 py-0.5 pl-2.5 pr-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-200">
         {{ term_filter.taxonomy_title }}: {{ term_filter.label }}
-        <a href="{{ url('admin/content?' ~ {'type': current_type, 'lang': lang}|merge(filters|filter((v, k) => v != '' and k != 'taxonomy' and k != 'term'))|url_encode) }}" class="rounded-full p-0.5 hover:bg-blue-100" aria-label="Remove the {{ term_filter.taxonomy_title }} filter"><svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></svg></a>
+        <a href="{{ url('admin/content?' ~ list_query|filter((v, k) => k != 'taxonomy' and k != 'term')|url_encode) }}" class="rounded-full p-0.5 hover:bg-blue-100" aria-label="Remove the {{ term_filter.taxonomy_title }} filter"><svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></svg></a>
       </span>
       <a href="{{ url('admin/taxonomies?taxonomy=' ~ term_filter.taxonomy) }}" class="text-xs font-medium text-slate-500 underline hover:text-slate-800">Back to {{ term_filter.taxonomy_title }}</a>
     </p>
@@ -84,13 +85,17 @@
     {{ csrf_field() }}
     <input type="hidden" name="type" value="{{ current_type }}">
     <input type="hidden" name="lang" value="{{ lang }}">
+    {# The list to come back to, and what "select all" on every page means: the entries these filters let through. #}
+    {% for name, value in list_query|filter((v, k) => k != 'type' and k != 'lang') %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endfor %}
+    {% if page > 1 %}<input type="hidden" name="page" value="{{ page }}">{% endif %}
+    <input type="hidden" name="all_matching" value="0" data-select-rest-input>
     <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-2.5">
       <div class="flex flex-wrap items-center gap-2 text-sm">
-        <span class="font-medium text-slate-700">{{ items|length }} {{ filters_active ? 'matching' : '' }} entr{{ items|length == 1 ? 'y' : 'ies' }}</span>
+        <span class="font-medium text-slate-700" data-list-count>{% if total == 0 %}0 {{ filters_active ? 'matching' : '' }} entries{% elseif total_pages > 1 %}{{ shown_from }}–{{ shown_to }} of {{ total }} {{ filters_active ? 'matching' : '' }} entries{% else %}{{ total }} {{ filters_active ? 'matching' : '' }} entr{{ total == 1 ? 'y' : 'ies' }}{% endif %}</span>
         <span class="mx-1 h-4 w-px bg-slate-200"></span>
         <nav class="flex items-center gap-1" aria-label="Language">
           {% for l in languages %}
-            <a href="{{ url('admin/content?' ~ {'type': current_type, 'lang': l}|merge(filters|filter(v => v != ''))|url_encode) }}" class="rounded-md px-2.5 py-1 text-xs font-medium {{ l == lang ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}" {% if l == lang %}aria-current="true"{% endif %}>{{ l|upper }}</a>
+            <a href="{{ url('admin/content?' ~ list_query|merge({'lang': l})|url_encode) }}" class="rounded-md px-2.5 py-1 text-xs font-medium {{ l == lang ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}" {% if l == lang %}aria-current="true"{% endif %}>{{ l|upper }}</a>
           {% endfor %}
         </nav>
       </div>
@@ -106,6 +111,14 @@
         </div>
       {% endif %}
     </div>
+
+    {% if total > items|length %}
+      {# Shown once every entry on this page is ticked: the rest of the list can be taken in too. #}
+      <div class="hidden border-b border-blue-100 bg-blue-50 px-4 py-2 text-sm text-blue-900" data-select-rest="selected[]" role="status">
+        <span data-select-rest-page>All {{ items|length }} {{ current_type }} on this page are selected. <button type="button" class="font-semibold underline" data-select-rest-all>Select all {{ total }} {{ filters_active ? 'matching ' : '' }}{{ current_type }}</button></span>
+        <span class="hidden" data-select-rest-done>All {{ total }} {{ filters_active ? 'matching ' : '' }}{{ current_type }} are selected, on every page. <button type="button" class="font-semibold underline" data-select-rest-clear>Clear the selection</button></span>
+      </div>
+    {% endif %}
 
     {% if items is empty %}
       {% if filters_active %}
@@ -130,7 +143,7 @@
         <table class="w-full text-sm" data-sortable>
           <thead>
             <tr class="border-b border-slate-100 bg-slate-50/50 text-left text-xs font-medium text-slate-400">
-              <th class="w-8 px-4 py-2"><input type="checkbox" data-select-all="selected[]" class="h-4 w-4 rounded border-slate-300" aria-label="Select all"></th>
+              <th class="w-8 px-4 py-2"><input type="checkbox" data-select-all="selected[]" class="h-4 w-4 rounded border-slate-300" aria-label="Select all on this page"></th>
               <th class="px-4 py-2 font-medium" data-sort="text">Title</th>
               <th class="px-4 py-2 font-medium" data-sort="text">Status</th>
               <th class="px-4 py-2 font-medium">Language</th>
@@ -210,6 +223,20 @@
             {% endfor %}
           </tbody>
         </table>
+      </div>
+    {% endif %}
+
+    {% if total > min(per_page_options|filter(o => o > 0)) %}
+      <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-2.5">
+        <label class="flex items-center gap-2 text-xs text-slate-500">
+          Per page
+          <select class="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-600" aria-label="Entries per page" onchange="window.location.search = new URLSearchParams(Object.assign({{ list_query|filter((v, k) => k != 'per_page')|json_encode }}, this.value === '{{ constant('GnozioCMS\\ContentAdmin::PER_PAGE_DEFAULT') }}' ? {} : {per_page: this.value})).toString()">
+            {% for option in per_page_options %}
+              <option value="{{ option == 0 ? 'all' : option }}" {% if option == per_page %}selected{% endif %}>{{ option == 0 ? 'All' : option }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        {{ ui.pagination(page, total_pages, list_query) }}
       </div>
     {% endif %}
   </form>

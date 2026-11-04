@@ -336,6 +336,41 @@ $scheduled = new \GnozioCMS\ContentItem('projects', 'later', 'el', ['status' => 
 $published = new \GnozioCMS\ContentItem('projects', 'now', 'el', ['status' => 'published', 'publish_at' => '2030-01-02 09:28'], '', '', '', 0);
 check('a scheduled entry knows when it goes live, read in the site\'s zone; a published one has no such time', [date('Y-m-d H:i', (int)$scheduled->publishAtTime()), $published->publishAtTime()], ['2030-01-02 09:28', null]);
 
+// ---- the list in pages: 50 at a time by default, the filters kept from page to page
+for ($n = 1; $n <= 60; $n++) {
+    $slug = sprintf('paged-%02d', $n);
+    file_put_contents("$dir/content/projects/$slug.md", "---\ntitle: Paged $n\nstatus: " . ($n <= 5 ? 'draft' : 'published') . "\ncreated: '" . date('c', 1600000000 + $n * 60) . "'\n---\n\nx\n");
+}
+$flush();
+$slugsOf = static fn(array $items): array => array_map(static fn($item) => $item->slug, $items);
+$r = $admin->listing(['type' => 'projects', 'lang' => 'el', 'q' => 'paged'], true)['data'];
+check('the first page has 50 of them, newest first, and says which of how many', [count($r['items']), $r['items'][0]->slug, $r['total'], $r['page'], $r['total_pages'], $r['per_page'], $r['shown_from'], $r['shown_to']], [50, 'paged-60', 60, 1, 2, 50, 1, 50]);
+check('the pages link with the search kept, and without the default size', $r['list_query'], ['type' => 'projects', 'lang' => 'el', 'q' => 'paged']);
+$r = $admin->listing(['type' => 'projects', 'lang' => 'el', 'q' => 'paged', 'page' => '2'], true)['data'];
+check('the second page has the rest', [$slugsOf($r['items'])[0], count($r['items']), $r['shown_from'], $r['shown_to']], ['paged-10', 10, 51, 60]);
+$r = $admin->listing(['type' => 'projects', 'lang' => 'el', 'q' => 'paged', 'page' => '99'], true)['data'];
+check('a page past the end shows the last one', [$r['page'], count($r['items'])], [2, 10]);
+$r = $admin->listing(['type' => 'projects', 'lang' => 'el', 'q' => 'paged', 'per_page' => '25', 'page' => '3'], true)['data'];
+check('25 a page', [count($r['items']), $r['total_pages'], $r['shown_from'], $r['list_query']['per_page'] ?? null], [10, 3, 51, '25']);
+$r = $admin->listing(['type' => 'projects', 'lang' => 'el', 'q' => 'paged', 'per_page' => 'all', 'page' => '2'], true)['data'];
+check('all of them on one page', [count($r['items']), $r['page'], $r['total_pages'], $r['per_page'], $r['list_query']['per_page'] ?? null], [60, 1, 1, 0, 'all']);
+$r = $admin->listing(['type' => 'projects', 'lang' => 'el', 'q' => 'paged', 'per_page' => '7'], true)['data'];
+check('a size that is not offered is the default', $r['per_page'], 50);
+$r = $admin->listing(['type' => 'projects', 'lang' => 'el', 'q' => 'paged', 'status' => 'draft', 'page' => '2'], true)['data'];
+check('the status is kept too, and fewer than a page is one page', [count($r['items']), $r['page'], $r['total_pages'], $r['list_query']], [5, 1, 1, ['type' => 'projects', 'lang' => 'el', 'q' => 'paged', 'status' => 'draft']]);
+
+// ---- select all: this page, or every entry the filters let through
+$r = $admin->bulk(['type' => 'projects', 'lang' => 'el', 'q' => 'paged', 'status' => 'published', 'per_page' => '25', 'page' => '2', 'bulk_action' => 'draft', 'selected' => ['paged-40', 'paged-39'], 'all_matching' => '0'], true, true, 'tester');
+check('ticked ones only, and back to the same page of the same list', [$r, str_contains((string)file_get_contents("$dir/content/projects/paged-38.md"), 'status: draft')], ['/admin/content?type=projects&lang=el&q=paged&status=published&per_page=25&page=2&bulk=ok&bulk_msg=2+items+moved+to+draft.', false]);
+$flush();
+$r = $admin->bulk(['type' => 'projects', 'lang' => 'el', 'q' => 'paged', 'status' => 'draft', 'bulk_action' => 'publish', 'selected' => ['paged-01'], 'all_matching' => '1'], true, true, 'tester');
+$flush();
+check('every matching one, on every page', [urldecode($r), count($admin->listing(['type' => 'projects', 'lang' => 'el', 'q' => 'paged', 'status' => 'draft'], true)['data']['items'])], ['/admin/content?type=projects&lang=el&q=paged&status=draft&bulk=ok&bulk_msg=7 items published.', 0]);
+$r = $admin->bulk(['type' => 'projects', 'lang' => 'el', 'q' => 'nothing-like-this', 'bulk_action' => 'publish', 'all_matching' => '1'], true, true, 'tester');
+check('when nothing matches, nothing is selected', str_contains($r, 'bulk=fail'), true);
+$html = (string)file_get_contents(dirname(__DIR__, 2) . '/admin/templates/list.twig');
+check('the list offers the rest once this page is ticked, a page size and the pages', [str_contains($html, 'data-select-rest='), str_contains($html, 'name="all_matching"'), str_contains($html, 'ui.pagination(page, total_pages, list_query)'), str_contains($html, 'shown_from')], [true, true, true, true]);
+
 // tidy up
 exec('rm -rf ' . escapeshellarg($dir));
 echo $fail === 0 ? "\nALL PASSED\n" : "\n$fail FAILED\n";
