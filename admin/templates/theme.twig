@@ -49,6 +49,11 @@
             <div class="tab-panel space-y-4{% if active_tab != key %} hidden{% else %} active{% endif %}" data-panel="{{ key }}" role="tabpanel">
               {% include '@admin/partials/theme-custom-css.twig' %}
             </div>
+          {% elseif key == 'transfer' %}
+            {# The whole theme to and from another site (partials/theme-transfer.twig). #}
+            <div class="tab-panel space-y-4{% if active_tab != key %} hidden{% else %} active{% endif %}" data-panel="{{ key }}" role="tabpanel">
+              {% include '@admin/partials/theme-transfer.twig' %}
+            </div>
           {% elseif key == 'branding' %}
             {# Appearance, Brand and Design together (partials/theme-branding.twig). #}
             <div class="tab-panel space-y-4{% if active_tab != key %} hidden{% else %} active{% endif %}" data-panel="{{ key }}" role="tabpanel">
