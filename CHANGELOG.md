@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.219 — 2026-11-04 — The installer ends with the nginx block for ChatGPT
+- The installer's last screen shows the nginx block that ChatGPT needs to connect over MCP (`location ^~ /.well-known/oauth-`), with a **Copy** button and the Cloudflare alternative. The admin then opens when you click **Open the admin**. Before, the block showed only when the installer could prove the type was wrong. Behind Varnish or cloudflared it usually could not, so sites such as insights.gr were installed without it.
+- The note is left out when the installer saw nginx send the discovery documents as JSON, and on Apache and LiteSpeed, which read the `.htaccess`.
+- Tests: `tests/http/installer_test.py`, `tests/unit/installer.php`.
+
 ## 0.1.218 — 2026-11-04 — Early hints and a speed guide
 - Every public page tells the browser, in its headers, to start fetching its stylesheet and its opening picture straight away. Behind Cloudflare, with **Early Hints** turned on there, these are sent while the server is still making the page.
 - A page's headers say how long it took to make (`Server-Timing`), or that it came from the page cache. Browsers show this in their developer tools.

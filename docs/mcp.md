@@ -17,7 +17,7 @@ location ^~ /.well-known/oauth- {
 }
 ```
 
-The installer checks this on nginx once `public/` is the document root and shows the block when it is missing (optional: Continue anyway).
+The installer checks this on nginx once `public/` is the document root and shows the block when it is missing (optional: Continue anyway). It also ends with the block as its last instruction, before the admin opens, unless it saw nginx send JSON or the server is Apache or LiteSpeed (which read the `.htaccess`). Behind Varnish or a tunnel its own check often cannot reach the site, so the closing note is what reminds you.
 
 Without access to the vhost, behind Cloudflare: Rules > Transform Rules > Modify Response Header, for `starts_with(http.request.uri.path, "/.well-known/oauth-")`, set `Content-Type` to `application/json`.
 

@@ -882,7 +882,19 @@ final class GnozioInstaller
             return ['ok' => true, 'changed' => false, 'servedFromPublic' => self::$isPublicCopy, 'docroot' => realpath(self::$base) . '/public'];
         }
         self::done($state, 'docroot');
-        return ['ok' => true, 'changed' => true, 'assets' => self::themeAssetsServed(), 'mcp' => self::mcpDiscoveryTyped($state)];
+        $mcp = self::mcpDiscoveryTyped($state);
+        return ['ok' => true, 'changed' => true, 'assets' => self::themeAssetsServed(), 'mcp' => $mcp, 'mcpNote' => $mcp !== true && !self::servesHtaccess()];
+    }
+
+    /**
+     * Apache and LiteSpeed read the .htaccess that gives the MCP discovery documents their JSON type (McpAdmin), so they need
+     * no closing note about it. Every other server, or one that does not say what it is, gets the note: a check that could
+     * not ask the site (behind Varnish or a tunnel) proves nothing.
+     */
+    private static function servesHtaccess()
+    {
+        $software = isset($_SERVER['SERVER_SOFTWARE']) ? strtolower((string)$_SERVER['SERVER_SOFTWARE']) : '';
+        return strpos($software, 'apache') !== false || strpos($software, 'litespeed') !== false;
     }
 
     /**
@@ -1018,6 +1030,7 @@ final class GnozioInstaller
                 'docroot_not_yet' => 'The site is still served from the old folder. Make sure the document root is the path above and saved, wait a moment for the web server to reload, then press the button again.', 'docroot_not_public' => 'This page is still coming from the old location. Change the document root, then press the button again.',
                 'finishing' => 'Removing the installer…', 'finish_ok' => 'Installer removed', 'finish_left' => 'These could not be deleted; please delete them by hand: {left}',
                 'redirecting' => 'GnozioCMS is installed. Opening the admin to create the first administrator…',
+                'last_title' => 'One last step, for ChatGPT', 'last_text' => 'GnozioCMS is installed. To let ChatGPT connect to the site over MCP (docs/mcp.md), nginx must send the files in /.well-known/oauth- as JSON. In the site\'s nginx configuration (CloudPanel: Vhost, in the server block on port 443) add this block before the `location ~ /.well-known` block and reload nginx. Claude and Codex connect without it; you can also do it later.', 'last_cf' => 'Without access to the vhost, behind Cloudflare: Rules > Transform Rules > Modify Response Header, for paths starting with /.well-known/oauth-, set Content-Type to application/json.', 'last_open' => 'Open the admin',
                 'e_auth' => 'Your session ended. Reload the page and enter the key again.', 'e_unknown' => 'Unknown step.', 'e_nostate' => 'The installation has not started. Reload the page.', 'e_existing' => 'A GnozioCMS site already exists in this folder; the installer stops here.', 'e_finished' => 'This installation has finished.', 'e_internal' => 'Something unexpected went wrong: {detail}', 'e_manifest' => 'The latest release could not be read from GitHub ({detail}). Try again in a minute.',
                 'e_download' => 'The download failed: {detail}. Try again.', 'e_size' => 'The downloaded file has the wrong size, so it was thrown away. Try again; if it repeats, GitHub or a proxy is altering the download.', 'e_sha' => 'The downloaded package is not the one that was published (its checksum differs), so it was refused and thrown away. Nothing was installed. Try again.',
                 'e_zip_bad' => 'The package is not a valid ZIP file (or the ZIP extension is missing).', 'e_zip_count' => 'The package has an unexpected number of files, so it was refused.', 'e_zip_unsafe' => 'The package holds a file an install may not write ({name}), so it was refused. Nothing was installed.', 'e_zip_link' => 'The package holds a link ({name}), so it was refused. Nothing was installed.', 'e_zip_large' => 'The package is larger than expected once unpacked, so it was refused.', 'e_zip_incomplete' => 'The package is incomplete ({name} is missing).', 'e_zip_version' => 'The package is not version {version}.',
@@ -1052,6 +1065,7 @@ final class GnozioInstaller
                 'docroot_not_yet' => 'Το site σερβίρεται ακόμη από τον παλιό φάκελο. Βεβαιώσου ότι το document root είναι η διαδρομή παραπάνω και αποθηκεύτηκε, περίμενε λίγο να ξαναφορτώσει ο web server και πάτα ξανά το κουμπί.', 'docroot_not_public' => 'Αυτή η σελίδα έρχεται ακόμη από την παλιά θέση. Άλλαξε το document root και πάτα ξανά το κουμπί.',
                 'finishing' => 'Διαγραφή του installer…', 'finish_ok' => 'Ο installer διαγράφηκε', 'finish_left' => 'Αυτά δεν μπόρεσαν να διαγραφούν· σβήσε τα με το χέρι: {left}',
                 'redirecting' => 'Το GnozioCMS εγκαταστάθηκε. Ανοίγω το admin για να φτιάξεις τον πρώτο διαχειριστή…',
+                'last_title' => 'Ένα τελευταίο βήμα, για το ChatGPT', 'last_text' => 'Το GnozioCMS εγκαταστάθηκε. Για να συνδέεται το ChatGPT στο site μέσω MCP (docs/mcp.md), το nginx πρέπει να στέλνει τα αρχεία του /.well-known/oauth- ως JSON. Στη ρύθμιση nginx του site (CloudPanel: Vhost, στο server block της θύρας 443) πρόσθεσε αυτό το block πριν από το `location ~ /.well-known` και κάνε reload το nginx. Το Claude και το Codex συνδέονται και χωρίς αυτό· μπορείς να το κάνεις και αργότερα.', 'last_cf' => 'Χωρίς πρόσβαση στο vhost, πίσω από Cloudflare: Rules > Transform Rules > Modify Response Header, για διαδρομές που αρχίζουν από /.well-known/oauth-, όρισε Content-Type σε application/json.', 'last_open' => 'Άνοιγμα του admin',
                 'e_auth' => 'Η συνεδρία έληξε. Φόρτωσε ξανά τη σελίδα και γράψε το κλειδί.', 'e_unknown' => 'Άγνωστο βήμα.', 'e_nostate' => 'Η εγκατάσταση δεν έχει ξεκινήσει. Φόρτωσε ξανά τη σελίδα.', 'e_existing' => 'Υπάρχει ήδη site GnozioCMS σε αυτόν τον φάκελο· ο installer σταματά εδώ.', 'e_finished' => 'Η εγκατάσταση έχει ολοκληρωθεί.', 'e_internal' => 'Κάτι δεν πήγε όπως έπρεπε: {detail}', 'e_manifest' => 'Δεν διαβάστηκε η τελευταία έκδοση από το GitHub ({detail}). Ξαναδοκίμασε σε ένα λεπτό.',
                 'e_download' => 'Η λήψη απέτυχε: {detail}. Ξαναδοκίμασε.', 'e_size' => 'Το αρχείο που κατέβηκε έχει λάθος μέγεθος και πετάχτηκε. Ξαναδοκίμασε· αν επαναληφθεί, το GitHub ή κάποιο proxy αλλοιώνει τη λήψη.', 'e_sha' => 'Το πακέτο που κατέβηκε δεν είναι αυτό που δημοσιεύτηκε (διαφέρει το checksum), οπότε απορρίφθηκε και πετάχτηκε. Δεν εγκαταστάθηκε τίποτα. Ξαναδοκίμασε.',
                 'e_zip_bad' => 'Το πακέτο δεν είναι έγκυρο αρχείο ZIP (ή λείπει η επέκταση ZIP).', 'e_zip_count' => 'Το πακέτο έχει μη αναμενόμενο αριθμό αρχείων και απορρίφθηκε.', 'e_zip_unsafe' => 'Το πακέτο περιέχει αρχείο που μια εγκατάσταση δεν επιτρέπεται να γράψει ({name}) και απορρίφθηκε. Δεν εγκαταστάθηκε τίποτα.', 'e_zip_link' => 'Το πακέτο περιέχει σύνδεσμο (link) ({name}) και απορρίφθηκε. Δεν εγκαταστάθηκε τίποτα.', 'e_zip_large' => 'Το πακέτο είναι μεγαλύτερο από το αναμενόμενο μετά την αποσυμπίεση και απορρίφθηκε.', 'e_zip_incomplete' => 'Το πακέτο είναι ελλιπές (λείπει το {name}).', 'e_zip_version' => 'Το πακέτο δεν είναι η έκδοση {version}.',
@@ -1265,7 +1279,7 @@ function waitDocroot(root){
   docCard.appendChild(el('p','note',t('docroot_cp')));docCard.appendChild(el('p','note',t('docroot_other')));docCard.appendChild(el('p','note',t('docroot_same')));
   var warn=el('div','notice hide'),btn=el('button','btn block',t('docroot_button'));btn.style.marginTop='14px';
   btn.onclick=function(){btn.disabled=true;btn.textContent=t('docroot_checking');warn.classList.add('hide');
-    call('docroot').then(function(j){
+    call('docroot').then(function(j){if(j&&j.changed)mcpNote=!!j.mcpNote;
       if(!j.ok){warn.textContent=msg(j);warn.classList.remove('hide');btn.disabled=false;btn.textContent=t('docroot_button');return;}
       if(!j.changed){warn.textContent=t(j.servedFromPublic?'docroot_not_yet':'docroot_not_public');warn.classList.remove('hide');btn.disabled=false;btn.textContent=t('docroot_button');return;}
       if(j.assets===false){assetsMissing();return;}
@@ -1279,16 +1293,23 @@ function assetsMissing(){
   var box=el('div','path');box.appendChild(el('code',null,'try_files $uri /index.php?$query_string;'));docCard.appendChild(box);
   var again=el('button','btn block',t('assets_again')),skip=el('button','btn block ghost',t('assets_skip'));again.style.marginTop='14px';skip.style.marginTop='8px';
   again.onclick=function(){again.disabled=true;again.textContent=t('docroot_checking');
-    call('docroot').then(function(j){if(j.ok&&j.changed&&j.assets===false){again.disabled=false;again.textContent=t('assets_again');return;}if(j.ok&&j.changed&&j.mcp===false){mcpUntyped();return;}if(j.ok&&j.changed){skip.onclick();return;}waitDocroot();}).catch(function(e){again.disabled=false;again.textContent=t('assets_again');});};
+    call('docroot').then(function(j){if(j&&j.changed)mcpNote=!!j.mcpNote;if(j.ok&&j.changed&&j.assets===false){again.disabled=false;again.textContent=t('assets_again');return;}if(j.ok&&j.changed&&j.mcp===false){mcpUntyped();return;}if(j.ok&&j.changed){skip.onclick();return;}waitDocroot();}).catch(function(e){again.disabled=false;again.textContent=t('assets_again');});};
   skip.onclick=function(){setStep('docroot','done','');docCard.classList.add('hide');finish();};
   docCard.appendChild(again);docCard.appendChild(skip);
 }
+var mcpNote=false,MCP_BLOCK='location ^~ /.well-known/oauth- {\n    default_type application/json;\n    try_files $uri /index.php?$query_string;\n}';
+function mcpBlock(){
+  var box=el('div','path'),code=el('code',null,MCP_BLOCK),cp=el('button','btn small ghost',t('copy'));code.style.whiteSpace='pre';cp.type='button';
+  cp.onclick=function(){var done=function(){cp.textContent=t('copied');setTimeout(function(){cp.textContent=t('copy');},1500);};
+    if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(MCP_BLOCK).then(done);}else{var ta=document.createElement('textarea');ta.value=MCP_BLOCK;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');done();}catch(e){}document.body.removeChild(ta);}};
+  box.appendChild(code);box.appendChild(cp);return box;
+}
 function mcpUntyped(){
   docCard.textContent='';docCard.appendChild(el('div','notice',t('mcp_untyped')));
-  var box=el('div','path'),code=el('code',null,'location ^~ /.well-known/oauth- {\n    default_type application/json;\n    try_files $uri /index.php?$query_string;\n}');code.style.whiteSpace='pre';box.appendChild(code);docCard.appendChild(box);
+  docCard.appendChild(mcpBlock());
   var again=el('button','btn block',t('assets_again')),skip=el('button','btn block ghost',t('assets_skip'));again.style.marginTop='14px';skip.style.marginTop='8px';
   again.onclick=function(){again.disabled=true;again.textContent=t('docroot_checking');
-    call('docroot').then(function(j){if(j.ok&&j.changed&&j.mcp===false){again.disabled=false;again.textContent=t('assets_again');return;}if(j.ok&&j.changed){skip.onclick();return;}waitDocroot();}).catch(function(e){again.disabled=false;again.textContent=t('assets_again');});};
+    call('docroot').then(function(j){if(j&&j.changed)mcpNote=!!j.mcpNote;if(j.ok&&j.changed&&j.mcp===false){again.disabled=false;again.textContent=t('assets_again');return;}if(j.ok&&j.changed){skip.onclick();return;}waitDocroot();}).catch(function(e){again.disabled=false;again.textContent=t('assets_again');});};
   skip.onclick=function(){setStep('docroot','done','');docCard.classList.add('hide');finish();};
   docCard.appendChild(again);docCard.appendChild(skip);
 }
@@ -1296,7 +1317,15 @@ function finish(){
   setStep('finish','running',t('finishing'));
   call('finish').then(function(j){
     if(!j.ok){showError('finish',j);return;}
-    setStep('finish','done',t('finish_ok'));var m=el('section','card');m.appendChild(el('p',null,t('redirecting')));m.firstChild.style.margin='0';
+    setStep('finish','done',t('finish_ok'));var m=el('section','card');
+    // The last instruction: unless nginx was seen to send the discovery documents as JSON (or Apache reads its .htaccess), the block ChatGPT needs, and the admin opens on a click.
+    if(mcpNote){
+      m.appendChild(el('h2',null,t('last_title')));m.appendChild(el('p',null,t('last_text')));m.appendChild(mcpBlock());m.appendChild(el('p','note',t('last_cf')));
+      if(j.left&&j.left.length){m.appendChild(el('div','notice',t('finish_left',{left:j.left.join(', ')})));}
+      var open=el('button','btn block',t('last_open'));open.style.marginTop='14px';open.onclick=function(){location.href=j.redirect;};m.appendChild(open);
+      app.appendChild(m);return;
+    }
+    m.appendChild(el('p',null,t('redirecting')));m.firstChild.style.margin='0';
     if(j.left&&j.left.length){m.appendChild(el('div','notice',t('finish_left',{left:j.left.join(', ')})));}
     app.appendChild(m);setTimeout(function(){location.href=j.redirect;},j.left&&j.left.length?6000:1200);
   }).catch(function(e){if(!e.handled)showError('finish',e);});
