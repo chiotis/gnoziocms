@@ -255,9 +255,10 @@
   padding-bottom: 0;
 }
 
-/* Arrows over the slides: the text keeps clear of them, and of the dots along the bottom edge. */
+/* Arrows over the slides: the text lines up with the rest of the page (the width of .container) and moves in only as far as it
+   must to keep clear of the arrows, which happens when the page is not much wider than the container. Clear of the dots too. */
 .slider-hero.nav-inside .hero-inner {
-  padding-inline: max(var(--gutter), var(--nav-room));
+  padding-inline: max(0px, var(--nav-room) - (100% - min(100% - 2 * var(--gutter), var(--container))) / 2);
   padding-bottom: 3.75rem;
 }
 
@@ -291,7 +292,7 @@
 /* On a phone the arrows go along the bottom edge with the dots, and the text has the whole width of the screen. */
 @media (max-width: 620px) {
   .slider-hero.nav-inside .hero-inner {
-    padding-inline: var(--gutter);
+    padding-inline: 0;
     padding-bottom: 4.75rem;
   }
 
