@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.211 — 2026-11-04 — People by name in the admin
+- The history (**History**, one version, the history panel of the editor and of the form editor), the **Activity logs** and the dashboard showed who did something by username. They now show the account's **display name**, or the username when it has none. The username is still what is recorded, so changing a display name changes it on every earlier entry too.
+- The **Actor** filter of the activity logs finds people by display name as well as by username.
+- The public site shows no accounts (the byline of a post is its **Author** field), so nothing changes there.
+- Tests: `tests/unit/accounts.php`, `tests/unit/admin-screens.php`.
+
 ## 0.1.210 — 2026-11-04 — The content lists come in pages
 - The list of every content type in the admin (Pages, Posts and the rest) showed all its entries at once. It now shows **50 a page**, with 25, 50, 100 or **All** to choose from below it, and says which ones it shows: "1–50 of 340 entries".
 - The search, the status, the term and the page size are kept from page to page and when changing language. A bulk action comes back to the same page of the same list.
