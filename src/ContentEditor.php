@@ -220,6 +220,9 @@ final class ContentEditor
         }
         // When the entry was first made (the admin's list is in this order, newest first): kept from the file, set by the first save.
         $data['created'] = $this->createdAt($sourceExists ? $oldPath : ($wasExisting ? $path : ''));
+        if ($type !== 'forms') {
+            $data = self::goingLive($data, $sourceExists ? $this->storedStatus($oldPath) : ($wasExisting ? $this->storedStatus($path) : ''));
+        }
 
         if ($author !== '') {
             $data['author'] = $author;
@@ -740,6 +743,26 @@ final class ContentEditor
             }
         }
         return date('c', (int)filemtime($path));
+    }
+
+    /**
+     * An entry that is published now after being a draft (or scheduled): like a scheduled one when it goes live, it counts
+     * as made now, and it gets today as its date when it has none. A new one, or one published already, is left as it is.
+     *
+     * @param array<string, mixed> $meta
+     * @return array<string, mixed>
+     */
+    public static function goingLive(array $meta, string $previousStatus): array
+    {
+        if (($meta['status'] ?? '') !== 'published' || $previousStatus === 'published' || $previousStatus === '') {
+            return $meta;
+        }
+        $meta['created'] = date('c');
+        $date = $meta['date'] ?? null;
+        if ($date === null || (is_string($date) && trim($date) === '')) {
+            $meta['date'] = date('Y-m-d');
+        }
+        return $meta;
     }
 
     private function storedStatus(string $path): string

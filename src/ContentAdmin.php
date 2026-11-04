@@ -191,7 +191,9 @@ final class ContentAdmin
                 $skipped++;
                 continue;
             }
+            $previousStatus = (string)($meta['status'] ?? 'published');
             $meta['status'] = $action === 'publish' ? 'published' : 'draft';
+            $meta = ContentEditor::goingLive($meta, $previousStatus);
             // Published or a draft now: a time it was waiting for no longer applies.
             unset($meta['publish_at']);
             // Same layout the editor writes: front matter, one blank line, body.

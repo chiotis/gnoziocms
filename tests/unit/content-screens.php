@@ -319,6 +319,17 @@ check('the list is newest made first, an edit does not move an entry up, and old
 $editor->save('projects', ['title' => 'Old dated', 'slug' => 'old-dated', 'original_slug' => 'old-dated', 'original_lang' => 'el', 'status' => 'published', 'date' => '2020-05-06', 'body' => 'x'], null, false, 'tester');
 $editor->save('projects', ['title' => 'Old plain', 'slug' => 'old-plain', 'original_slug' => 'old-plain', 'original_lang' => 'el', 'status' => 'published', 'body' => 'x'], null, false, 'tester');
 check('an older file saved for the first time gets its date, or its file time, as when it was made', [substr((string)($meta("$dir/content/projects/old-dated.md")['created'] ?? ''), 0, 10), (int)strtotime((string)($meta("$dir/content/projects/old-plain.md")['created'] ?? ''))], ['2020-05-06', 1500000000]);
+// A draft published: it gets today as its date when it has none, and counts as made now; a published one keeps both.
+file_put_contents("$dir/content/projects/was-draft.md", "---\ntitle: Was draft\nstatus: draft\ncreated: '2020-01-01T08:00:00+00:00'\n---\n\nx\n");
+$editor->save('projects', ['title' => 'Was draft', 'slug' => 'was-draft', 'original_slug' => 'was-draft', 'original_lang' => 'el', 'status' => 'published', 'date' => '', 'body' => 'x'], null, false, 'tester');
+$m = $meta("$dir/content/projects/was-draft.md");
+check('a draft published in the editor gets today as its date and is made now', [$m['date'] ?? null, abs((int)strtotime((string)($m['created'] ?? '')) - time()) < 5], [date('Y-m-d'), true]);
+file_put_contents("$dir/content/projects/bulk-draft.md", "---\ntitle: Bulk draft\nstatus: draft\ncreated: '2020-01-01T08:00:00+00:00'\n---\n\nx\n");
+file_put_contents("$dir/content/projects/already-live.md", "---\ntitle: Already live\nstatus: published\ncreated: '2020-01-01T08:00:00+00:00'\n---\n\nx\n");
+$admin->bulk(['type' => 'projects', 'lang' => 'el', 'bulk_action' => 'publish', 'selected' => ['bulk-draft', 'already-live']], true, true, 'tester');
+$b = $meta("$dir/content/projects/bulk-draft.md");
+$l = $meta("$dir/content/projects/already-live.md");
+check('and so does one published from the list, while one published already is left as it was', [$b['date'] ?? null, abs((int)strtotime((string)($b['created'] ?? '')) - time()) < 5, $l['date'] ?? null, $l['created'] ?? null], [date('Y-m-d'), true, null, '2020-01-01T08:00:00+00:00']);
 $html = (string)file_get_contents(dirname(__DIR__, 2) . '/admin/templates/list.twig');
 check('the list shows only when each entry was updated, and a scheduled entry its time', [str_contains($html, '>Created</th>'), str_contains($html, '>Updated</th>'), str_contains($html, 'item.publishAtTime()')], [false, true, true]);
 $scheduled = new \GnozioCMS\ContentItem('projects', 'later', 'el', ['status' => 'scheduled', 'publish_at' => '2030-01-02 09:28'], '', '', '', 0);
