@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.204 — 2026-11-04 — Times in the site's time zone
+- The time zone chosen in **Settings > Localization** was used only for scheduled publishing; every other time was shown in the server's zone (UTC on most hosts), so a post saved at 9:28 in Athens showed 7:28 in the admin. The site's zone now applies everywhere: the lists of entries, the dashboard, media, backups, users, the System screen and the dates on the site. Stored times are unchanged (they carry their offset or are UTC).
+- The "server's" choice in Settings and the Timezone line on the System screen still name the server's own zone (System shows both when they differ).
+
 ## 0.1.203 — 2026-11-04 — Hero and Hero slider: the measure of an entry's title
 - The heading of a Hero, and of every slide of a Hero slider, could be 17ch wide and its text 38rem, so a long heading broke into many short lines. They now take the measure of the title area of an entry's page: 22ch for the heading and 62ch for the text (56ch in the centred layouts).
 
