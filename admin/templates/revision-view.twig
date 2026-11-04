@@ -8,7 +8,7 @@
   <header class="mb-4 flex flex-col gap-3 border-b border-slate-200 pb-4">
     <div class="min-w-0">
       <p class="text-xs text-slate-400">
-        {{ revision.action_label }} {{ revision.when }}{% if revision.actor %} by {{ revision.actor }}{% endif %}
+        {{ revision.action_label }} {{ revision.when }}{% if revision.actor %} by {{ user_name(revision.actor) }}{% endif %}
         · <code>{{ revision.type }}/{{ revision.slug }}</code> · {{ revision.lang|upper }}
       </p>
     </div>

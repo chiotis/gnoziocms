@@ -144,6 +144,22 @@ final class UserRepository
         return $stmt->fetchAll();
     }
 
+    /**
+     * The name to show for each account, by username: its display name, or the username when it has none. The history
+     * and the logs keep the username of who did something; the screens show this name instead.
+     *
+     * @return array<string, string>
+     */
+    public function displayNames(): array
+    {
+        $names = [];
+        foreach ($this->pdo()->query('SELECT username, display_name FROM users')->fetchAll() as $row) {
+            $username = (string)$row['username'];
+            $names[$username] = trim((string)($row['display_name'] ?? '')) ?: $username;
+        }
+        return $names;
+    }
+
     public function find(int $id): ?array
     {
         $stmt = $this->pdo()->prepare('SELECT * FROM users WHERE id = :id LIMIT 1');

@@ -136,6 +136,8 @@ check('the page size is one of the options', [$logs->activity(['per_page' => '25
 $a = $logs->activity(['level' => 'warning', 'action' => 'auth.login']);
 check('filters narrow it, and come back cleaned', [$a['total_logs'], $a['filters']['level'], $a['filters']['q']], [10, 'warning', '']);
 check('the search reads the message', $logs->activity(['q' => ' Entry 59 '])['total_logs'], 1);
+(new \GnozioCMS\UserRepository($db, '/nonexistent/users.yaml'))->create(['username' => 'ada', 'email' => 'ada@x.test', 'display_name' => 'Ada Lovelace', 'password_hash' => 'x', 'role' => 'admin']);
+check('the actor is found by username or by display name, which the screens show', [$logs->activity(['actor' => 'ada'])['total_logs'], $logs->activity(['actor' => 'Lovelace'])['total_logs'], $logs->activity(['actor' => 'Babbage'])['total_logs']], [60, 60, 0]);
 $m = $logs->email(['status' => 'failed']);
 check('the email log, filtered', [$m['total_logs'], $m['logs'][0]['recipient'], $m['providers'], $m['cleared'], $m['admin_section']], [1, 'b@x.test', ['mail', 'smtp'], null, 'email_logs']);
 check('what was cleared is shown', $logs->email(['cleared' => '2'])['cleared'], 2);

@@ -64,7 +64,7 @@
         <span class="mb-1 block text-xs font-medium text-slate-500">By</span>
         <select name="actor" class="{{ input_soft }}">
           <option value="">Anyone</option>
-          {% for a in actors %}<option value="{{ a }}" {{ filters.actor == a ? 'selected' : '' }}>{{ a }}</option>{% endfor %}
+          {% for a in actors %}<option value="{{ a }}" {{ filters.actor == a ? 'selected' : '' }}>{{ user_name(a) }}</option>{% endfor %}
         </select>
       </label>
       <button type="submit" class="{{ btn_secondary }}">Filter</button>
@@ -95,7 +95,7 @@
                 </td>
               {% endif %}
               <td class="px-3 py-2.5 align-top"><span class="rounded px-1.5 py-0.5 text-[11px] font-semibold {{ badge_class[r.action]|default('bg-slate-100 text-slate-600') }}">{{ r.action_label }}</span>{% if view == 'item' and r.title %}<div class="mt-0.5 text-xs text-slate-400">{{ r.title }}{% if r.status and r.status != 'published' %} · {{ r.status }}{% endif %}</div>{% endif %}</td>
-              <td class="px-3 py-2.5 align-top text-slate-600">{{ r.actor ?: '—' }}</td>
+              <td class="px-3 py-2.5 align-top text-slate-600">{{ r.actor ? user_name(r.actor) : '—' }}</td>
               <td class="whitespace-nowrap px-3 py-2.5 align-top text-slate-500">{{ (r.size / 1024)|round(1) }} KB</td>
               <td class="whitespace-nowrap px-3 py-2.5 text-right align-top">
                 <a class="{{ btn_small }} text-blue-600 hover:bg-blue-50" href="{{ url('admin/revisions?id=' ~ r.id) }}">View changes</a>

@@ -3937,7 +3937,25 @@ final class App
 
     private function initTwig(): TwigEnvironment
     {
-        return $this->siteTwig()->create();
+        $twig = $this->siteTwig()->create();
+        // The name to show for whoever did something (the history, the logs): the display name of the account, else
+        // what was recorded (a username, "system", an account that is gone). Looked up once a request, when first asked.
+        $names = null;
+        $twig->addFunction(new \Twig\TwigFunction('user_name', function (mixed $username) use (&$names): string {
+            $username = (string)$username;
+            if ($username === '') {
+                return '';
+            }
+            if ($names === null) {
+                try {
+                    $names = $this->users->displayNames();
+                } catch (\Throwable) {
+                    $names = [];
+                }
+            }
+            return $names[$username] ?? $username;
+        }));
+        return $twig;
     }
 
     private function siteTwig(): SiteTwig
