@@ -102,6 +102,18 @@ $item = $course([
 ], ['excerpt' => 'Short words', 'main_image' => '/uploads/main.jpg', 'date' => '2026-02-01', 'author' => 'Ada', 'categories' => ['a', 'b'], 'tags' => ['t']]);
 $b = $bind($item);
 check('title, excerpt, main image, author', [$b->value('title', 'text'), $b->value('excerpt', 'textarea'), $b->value('main_image', 'image'), $b->value('author', 'text')], ['Intro course', 'Short words', '/uploads/main.jpg', 'Ada']);
+
+// ---- a byline that is the username of an account shows that account's display name; any other byline as written
+\GnozioCMS\ContentItem::nameAccountsWith(static fn(string $name): string => ['unibot' => 'Uni Bot'][$name] ?? $name);
+$byline = static fn(mixed $author): \GnozioCMS\ContentItem => new \GnozioCMS\ContentItem('posts', 'p', 'en', ['title' => 'P', 'author' => $author], '', '', '', 0);
+check('an account\'s username shows as its display name, other text and nothing as they are', [$byline(' unibot ')->authorName(), $byline('Ada')->authorName(), $byline('')->authorName(), $byline(['x'])->authorName()], ['Uni Bot', 'Ada', '', '']);
+check('so does the author a block binds to', $bind($byline('unibot'))->value('author', 'text'), 'Uni Bot');
+$ld = (new \GnozioCMS\StructuredData(fn() => ['title' => 'S', 'base_url' => 'https://s.test', 'languages' => ['default' => 'en', 'available' => ['en']]], fn() => [], fn(string $k, ?string $f = null): string => $f ?? $k, fn(string $p): string => 'https://s.test/' . ltrim($p, '/'), fn(string $l): string => ''))->forItem($byline('unibot'), 'en', 'https://s.test/p', false);
+check('and the author of the structured data', str_contains(json_encode($ld, JSON_UNESCAPED_UNICODE), '"author":{"@type":"Person","name":"Uni Bot"}'), true);
+\GnozioCMS\ContentItem::nameAccountsWith(null);
+check('without the site to name accounts, the byline is as written', $byline('unibot')->authorName(), 'unibot');
+$themeDir = dirname(__DIR__, 2) . '/themes/default';
+check('the theme\'s bylines show the name, not the field', [str_contains((string)file_get_contents("$themeDir/templates/single-post.twig"), 'item.authorName()'), str_contains((string)file_get_contents("$themeDir/blocks/entry-title/block.twig"), 'item.authorName()'), str_contains((string)file_get_contents("$themeDir/templates/single-post.twig") . file_get_contents("$themeDir/blocks/entry-title/block.twig"), '{{ item.meta.author }}')], [true, true, false]);
 check('a date is written as the site writes dates, also a declared one', [$b->value('date', 'text'), $b->value('custom_fields.starts', 'text')], ['D:2026-02-01', 'D:2026-03-04']);
 check('a select gives the label of its option, a number its digits', [$b->value('custom_fields.level', 'text'), $b->value('custom_fields.hours', 'text'), $b->value('custom_fields.ratio', 'text')], ['Advanced level', '12', '2.5']);
 check('terms are their names, in one line', $b->value('categories', 'text'), 'C:a, C:b');

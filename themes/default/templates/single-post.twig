@@ -28,8 +28,8 @@
     {% endfor %}
   {% endset %}
   {% set hero_meta_inline %}
-    {% if item.meta.author is defined and item.meta.author %}
-      <span>{{ t('post.by', 'By') }} {{ item.meta.author }}</span>
+    {% if item.authorName() %}
+      <span>{{ t('post.by', 'By') }} {{ item.authorName() }}</span>
     {% endif %}
     {% if categories is not empty %}
       <span>{{ t('post.in', 'in') }}

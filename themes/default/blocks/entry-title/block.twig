@@ -25,7 +25,7 @@
 {% endset %}
 {% set meta_inline %}
   {% if block.byline %}
-    {% if item.meta.author is defined and item.meta.author %}<span>{{ t('post.by', 'By') }} {{ item.meta.author }}</span>{% endif %}
+    {% if item.authorName() %}<span>{{ t('post.by', 'By') }} {{ item.authorName() }}</span>{% endif %}
     {% if categories is not empty %}<span>{{ t('post.in', 'in') }} {% for category in categories %}<a href="{{ taxonomy_url('categories', category, prefix) }}">{{ taxonomy_label('categories', category) }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</span>{% endif %}
     {% if item.meta.date is defined and item.meta.date %}<span>{{ t('post.on', 'on') }} {{ format_date(item.meta.date) }}</span>{% endif %}
   {% endif %}

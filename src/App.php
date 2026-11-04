@@ -148,6 +148,7 @@ final class App
         $this->users = new UserRepository($this->systemDatabase, $this->contentDir . '/users/users.yaml');
         $this->users->importYamlUsersIfEmpty();
         $this->users->ensureSuperadminExists();
+        ContentItem::nameAccountsWith(fn(string $username): string => $this->accountName($username));
         $this->permissions = new PermissionService($this->systemMeta->getJson('role_permissions'), $this->systemMeta->getJson('custom_roles'));
         $this->users->allowRoles(array_keys($this->permissions->customRoles()));
         $this->redirects = new RedirectRepository($this->systemDatabase);
@@ -3938,24 +3939,31 @@ final class App
     private function initTwig(): TwigEnvironment
     {
         $twig = $this->siteTwig()->create();
-        // The name to show for whoever did something (the history, the logs): the display name of the account, else
-        // what was recorded (a username, "system", an account that is gone). Looked up once a request, when first asked.
-        $names = null;
-        $twig->addFunction(new \Twig\TwigFunction('user_name', function (mixed $username) use (&$names): string {
-            $username = (string)$username;
-            if ($username === '') {
-                return '';
-            }
-            if ($names === null) {
-                try {
-                    $names = $this->users->displayNames();
-                } catch (\Throwable) {
-                    $names = [];
-                }
-            }
-            return $names[$username] ?? $username;
-        }));
+        // The name to show for whoever did something (the history, the logs).
+        $twig->addFunction(new \Twig\TwigFunction('user_name', fn(mixed $username): string => $this->accountName((string)$username)));
         return $twig;
+    }
+
+    /** @var array<string, string>|null the display name of every account by username, looked up once a request when first asked */
+    private ?array $accountNames = null;
+
+    /**
+     * The name to show for an account: its display name, else what was recorded (a username, "system", an account that is
+     * gone, or a byline that is no account at all).
+     */
+    private function accountName(string $username): string
+    {
+        if ($username === '') {
+            return '';
+        }
+        if ($this->accountNames === null) {
+            try {
+                $this->accountNames = $this->users->displayNames();
+            } catch (\Throwable) {
+                $this->accountNames = [];
+            }
+        }
+        return $this->accountNames[$username] ?? $username;
     }
 
     private function siteTwig(): SiteTwig

@@ -155,7 +155,7 @@ final class StructuredData
                 'isPartOf' => ['@id' => $siteUrl . '#website'],
                 'publisher' => $organization,
             ];
-            $author = trim((string)($item->meta['author'] ?? ''));
+            $author = $item->authorName();
             $article['author'] = $author !== '' ? ['@type' => 'Person', 'name' => $author] : $organization;
             $published = $this->time($item->meta['date'] ?? null);
             if ($published !== null) {
