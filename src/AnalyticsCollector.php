@@ -45,7 +45,7 @@ final class AnalyticsCollector
         // What a script sent is text or nothing: a list or an object is nothing.
         $payload = array_map(static fn($value): string => is_scalar($value) ? (string)$value : '', $payload);
         $a = AnalyticsSettings::from(($this->settings)());
-        if ($a['mode'] !== 'platform') {
+        if (!AnalyticsSettings::platform($a)) {
             return 'off';
         }
         if ($signedIn && $a['skip_signed_in']) {

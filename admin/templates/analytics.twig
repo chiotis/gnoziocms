@@ -15,7 +15,7 @@
   {% set card_title = 'px-3 pt-3 text-sm font-semibold text-slate-900' %}
   {% set card_note = 'm-0 px-3 pt-0.5 text-[11px] leading-4 text-slate-500' %}
   {% set link = 'font-medium text-blue-700 hover:underline' %}
-  {% set platform_on = a.mode == 'platform' %}
+  {% set platform_on = a.mode in ['platform', 'both'] %}
 
   <header class="mb-3 flex flex-col gap-2">
     <p class="text-xs text-slate-500">How visits to the site are counted. Use the analytics of GnozioCMS (no cookies, in your admin), or put the tracking code of a service you already use on every page.</p>
@@ -114,7 +114,8 @@
               {% set blurbs = {
                 off: 'Nothing is added to the pages.',
                 custom: 'Google Analytics, Tag Manager, Plausible, Matomo, Meta Pixel… Paste their code.',
-                platform: 'Counted by the site itself: no cookies, no outside service, reports in this admin.'
+                platform: 'Counted by the site itself: no cookies, no outside service, reports in this admin.',
+                both: 'The reports in this admin, and the code of another service (Google Analytics…) on every page too.'
               } %}
               {% for key, label in modes %}
                 <label class="an-mode"><input type="radio" name="mode" value="{{ key }}"{% if a.mode == key %} checked{% endif %}><span><strong>{{ label }}</strong><small>{{ blurbs[key] }}</small></span></label>
@@ -122,7 +123,7 @@
             </div>
           </section>
 
-          <section class="{{ card }} pb-3" data-when-mode="custom" aria-labelledby="an-h-code">
+          <section class="{{ card }} pb-3" data-when-mode="custom both" aria-labelledby="an-h-code">
             <h2 id="an-h-code" class="{{ card_title }}">Tracking code</h2>
             <p class="{{ card_note }}">Added to every public page. It runs in your visitors' browsers: use code from a service you trust.</p>
             <div class="space-y-2.5 p-3 pb-0">
@@ -152,7 +153,7 @@
             </div>
           </section>
 
-          <section class="{{ card }} pb-3" data-when-mode="custom platform" aria-labelledby="an-h-who">
+          <section class="{{ card }} pb-3" data-when-mode="custom platform both" aria-labelledby="an-h-who">
             <h2 id="an-h-who" class="{{ card_title }}">Whose visits</h2>
             <div class="space-y-1 p-3 pb-0">
               {{ f.flag('skip_signed_in', 'Do not count people who are signed in', 'Your own visits while you edit the site would only distort the numbers. A signed-in person gets no tracking code at all.', a.skip_signed_in) }}
@@ -161,7 +162,7 @@
         </div>
 
         <div class="space-y-3">
-          <section class="{{ card }} pb-3" data-when-mode="platform" aria-labelledby="an-h-opt">
+          <section class="{{ card }} pb-3" data-when-mode="platform both" aria-labelledby="an-h-opt">
             <h2 id="an-h-opt" class="{{ card_title }}">GnozioCMS analytics</h2>
             <p class="{{ card_note }}">What is counted, and what is not.</p>
             <div class="space-y-1 p-3 pb-0">
@@ -179,7 +180,7 @@
             </div>
           </section>
 
-          <section class="{{ card }} pb-3" data-when-mode="platform" aria-labelledby="an-h-priv">
+          <section class="{{ card }} pb-3" data-when-mode="platform both" aria-labelledby="an-h-priv">
             <h2 id="an-h-priv" class="{{ card_title }}">How it respects visitors</h2>
             <ul class="m-0 list-none space-y-1.5 p-3 text-xs text-slate-600">
               <li><strong class="font-medium text-slate-800">No cookies,</strong> nothing is stored in the browser.</li>
@@ -190,7 +191,7 @@
             <p class="m-0 px-3 text-[11px] leading-4 text-slate-500">This is built to work without a consent banner, but the rules differ from country to country: check the ones that apply to you.</p>
           </section>
 
-          <section class="{{ card }} pb-3" data-when-mode="platform" aria-labelledby="an-h-data">
+          <section class="{{ card }} pb-3" data-when-mode="platform both" aria-labelledby="an-h-data">
             <h2 id="an-h-data" class="{{ card_title }}">What is kept</h2>
             <p class="{{ card_note }}">{% if not store_ok %}The system database is not available, so nothing can be counted.{% elseif stats.days > 0 %}{{ stats.days }} {{ stats.days == 1 ? 'day' : 'days' }} counted since {{ stats.first }}, and {{ stats.hits }} visits of the last two days not yet summed.{% elseif stats.hits > 0 %}{{ stats.hits }} visits so far.{% else %}Nothing has been counted yet.{% endif %}</p>
             <div class="p-3 pb-0">

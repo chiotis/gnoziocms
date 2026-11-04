@@ -5,7 +5,7 @@
 
 {% block content %}
   {% set tone = {'ok': 'green', 'success': 'green', 'warn': 'amber', 'warning': 'amber', 'danger': 'red', 'error': 'red', 'failed': 'red'} %}
-  {% set modes = {'off': 'Off', 'custom': 'Own tracking code', 'platform': 'GnozioCMS analytics'} %}
+  {% set modes = {'off': 'Off', 'custom': 'Own tracking code', 'platform': 'GnozioCMS analytics', 'both': 'GnozioCMS analytics and own code'} %}
   {% set btn = 'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium shadow-sm' %}
   {% set removed = connection.status|default('') == 'removed' %}
 
