@@ -28,7 +28,7 @@ final class AnalyticsAdmin
     /** The tab of the address: the reports when the platform's analytics are on, otherwise (or when asked) the settings. */
     public function tab(string $tab): string
     {
-        $on = AnalyticsSettings::from(($this->settings)())['mode'] === 'platform';
+        $on = AnalyticsSettings::platform(AnalyticsSettings::from(($this->settings)()));
         return $on && $tab !== 'settings' ? 'reports' : 'settings';
     }
 
@@ -52,7 +52,7 @@ final class AnalyticsAdmin
         }
         ($this->reload)();
         ($this->log)('analytics.update', 'info', 'settings', 'analytics', 'Analytics settings saved: ' . $after['mode'] . '.', ['mode' => $after['mode']]);
-        return '/admin/analytics?tab=' . ($after['mode'] === 'platform' ? 'reports' : 'settings') . '&saved=1';
+        return '/admin/analytics?tab=' . (AnalyticsSettings::platform($after) ? 'reports' : 'settings') . '&saved=1';
     }
 
     /** @return array<string, mixed> */

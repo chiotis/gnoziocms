@@ -1361,7 +1361,7 @@ final class App
         );
         $analytics = null;
         $can = fn(string $capability): bool => $this->permissions->can($this->auth->user(), $capability);
-        if ($can('analytics.manage') && AnalyticsSettings::from($this->settings)['mode'] === 'platform' && $this->analyticsStore()->isAvailable()) {
+        if ($can('analytics.manage') && AnalyticsSettings::platform(AnalyticsSettings::from($this->settings)) && $this->analyticsStore()->isAvailable()) {
             $analytics = $this->analyticsAdmin()->reportsScreen(['range' => '90d']);
         }
         $this->render('@admin/dashboard.twig', [

@@ -5,16 +5,28 @@ declare(strict_types=1);
 namespace GnozioCMS;
 
 /**
- * The choices of Admin > Analytics, kept under `analytics` in the site settings. The site either has no tracking, tracking code
- * of its own (a Google tag, Tag Manager, Plausible, Matomo, a pixel: whatever the owner pastes) or the analytics of the
- * platform, which count visits without cookies. The class reads the choices (each has a default, each is checked), cleans what a
+ * The choices of Admin > Analytics, kept under `analytics` in the site settings. The site has no tracking, tracking code of
+ * its own (a Google tag, Tag Manager, Plausible, Matomo, a pixel: whatever the owner pastes), the analytics of the platform,
+ * which count visits without cookies, or both the platform's analytics and its own code. The class reads the choices (each has a default, each is checked), cleans what a
  * form sent, and builds what goes into the pages for the choice: the code of the owner, or the tag of the platform's script.
  */
 final class AnalyticsSettings
 {
-    public const MODES = ['off' => 'No tracking', 'custom' => 'Your own tracking code', 'platform' => 'GnozioCMS analytics'];
+    public const MODES = ['off' => 'No tracking', 'custom' => 'Your own tracking code', 'platform' => 'GnozioCMS analytics', 'both' => 'GnozioCMS analytics and your own code'];
     public const KEEP = [12 => '1 year', 24 => '2 years', 60 => '5 years', 0 => 'Forever'];
     public const CODE_LIMIT = 20000;
+
+    /** Whether the platform counts visits under these choices (GnozioCMS analytics alone or with the owner's code). @param array<string, mixed> $a */
+    public static function platform(array $a): bool
+    {
+        return in_array($a['mode'] ?? 'off', ['platform', 'both'], true);
+    }
+
+    /** Whether the owner's tracking code goes into the pages under these choices (alone or with the platform's analytics). @param array<string, mixed> $a */
+    public static function custom(array $a): bool
+    {
+        return in_array($a['mode'] ?? 'off', ['custom', 'both'], true);
+    }
 
     /** @return array<string, mixed> */
     public static function defaults(): array
@@ -90,17 +102,20 @@ final class AnalyticsSettings
         return $a;
     }
 
-    /** What goes before `</head>`: the owner's tag and code, or the platform's script. Nothing for a person who is signed in when that is chosen. */
+    /** What goes before `</head>`: the platform's script, the owner's tag and code, or both. Nothing for a person who is signed in when that is chosen. */
     public static function head(array $a, bool $signedIn, string $scriptUrl, string $apiUrl): string
     {
         if ($a['mode'] === 'off' || ($signedIn && $a['skip_signed_in'])) {
             return '';
         }
-        if ($a['mode'] === 'platform') {
-            return '<script defer src="' . htmlspecialchars($scriptUrl, ENT_QUOTES) . '" data-api="' . htmlspecialchars($apiUrl, ENT_QUOTES) . '"'
-                . ($a['track_links'] ? '' : ' data-links="0"') . ($a['respect_dnt'] ? '' : ' data-dnt="0"') . '></script>';
-        }
         $out = '';
+        if (self::platform($a)) {
+            $out .= '<script defer src="' . htmlspecialchars($scriptUrl, ENT_QUOTES) . '" data-api="' . htmlspecialchars($apiUrl, ENT_QUOTES) . '"'
+                . ($a['track_links'] ? '' : ' data-links="0"') . ($a['respect_dnt'] ? '' : ' data-dnt="0"') . "></script>\n";
+        }
+        if (!self::custom($a)) {
+            return rtrim($out);
+        }
         $tag = $a['tag_id'];
         if (str_starts_with($tag, 'GTM-')) {
             $out .= "<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','" . $tag . "');</script>\n";
@@ -114,7 +129,7 @@ final class AnalyticsSettings
     /** What goes after `<body>`: the owner's code for the end of the page, and the noscript part of Tag Manager. */
     public static function body(array $a, bool $signedIn): string
     {
-        if ($a['mode'] !== 'custom' || ($signedIn && $a['skip_signed_in'])) {
+        if (!self::custom($a) || ($signedIn && $a['skip_signed_in'])) {
             return '';
         }
         $out = '';

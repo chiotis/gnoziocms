@@ -117,7 +117,7 @@ final class DashboardAttention
         if ($analytics !== null) {
             if (($analytics['mode'] ?? 'off') === 'off') {
                 $add('info', 'Visits are not being counted', 'Use the analytics of GnozioCMS, or add the tracking code of the service you use.', '/admin/analytics?tab=settings', 'Set up');
-            } elseif (($analytics['mode'] ?? '') === 'custom' && !empty($analytics['empty'])) {
+            } elseif (in_array($analytics['mode'] ?? '', ['custom', 'both'], true) && !empty($analytics['empty'])) {
                 $add('warn', 'Your own tracking code is chosen, but empty', 'Nothing is counted until a tag ID or code is added.', '/admin/analytics?tab=settings', 'Add the code');
             }
         }

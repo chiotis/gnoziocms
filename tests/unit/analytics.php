@@ -36,6 +36,12 @@ $tagHtml = S::head($plat, false, '/assets/js/faros-analytics.js?v=1', '/_a/colle
 check('the platform adds its script with what it needs', [$tagHtml, S::body($plat, false)], ['<script defer src="/assets/js/faros-analytics.js?v=1" data-api="/_a/collect" data-links="0" data-dnt="0"></script>', '']);
 check('and not for a person who is signed in', S::head(S::from(['analytics' => ['mode' => 'platform']]), true, 'a', 'b'), '');
 check('unless the site counts them too', S::head(S::from(['analytics' => ['mode' => 'platform', 'skip_signed_in' => false]]), true, 'a', 'b') !== '', true);
+$both = S::from(['analytics' => ['mode' => 'both', 'tag_id' => 'GTM-ABC123', 'head_code' => '<i>h</i>', 'body_code' => '<b>y</b>']]);
+$bothHead = S::head($both, false, '/s.js', '/_a/collect');
+check('both: the platform script and the own code are in the head', [str_starts_with($bothHead, '<script defer src="/s.js" data-api="/_a/collect"></script>'), str_contains($bothHead, 'gtm.js'), str_ends_with($bothHead, '<i>h</i>')], [true, true, true]);
+check('both: the own code is at the start of the body', str_contains(S::body($both, false), 'ns.html?id=GTM-ABC123') && str_ends_with(S::body($both, false), '<b>y</b>'), true);
+check('both: the platform counts and the code is used', [S::platform($both), S::custom($both), S::platform(S::from(['analytics' => ['mode' => 'custom']])), S::custom(S::from(['analytics' => ['mode' => 'platform']]))], [true, true, false, false]);
+check('both: nothing for a signed-in person', [S::head($both, true, 'a', 'b'), S::body($both, true)], ['', '']);
 
 // ---- what a visit is made into
 check('robots are known', [C::isBot('Googlebot/2.1'), C::isBot(''), C::isBot('curl/8.0'), C::isBot('Mozilla/5.0 (X11; Linux) HeadlessChrome/120'), C::isBot('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36')], [true, true, true, true, false]);
