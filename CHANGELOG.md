@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.201 — 2026-11-04 — Blocks of entries: an Order setting
+- Latest content, Cards, Portfolio, Hero and Hero slider (when they show entries) get **Order**: newest first (the default, as before), oldest first, title A–Z or Z–A, or random (new each time the page is made; a cached page keeps it until the cache is renewed). The same orders as a list of a content type, the same with the content index and without.
+- *Skip the newest* becomes **Skip the first**, counted in that order.
+- Tests: `tests/unit/hero-entries.php`, `tests/unit/latest-content.php`.
+
 ## 0.1.200 — 2026-11-04 — Content list by creation; shared links with a picture and a description
 - The first save of an entry writes `created` (ISO 8601); later saves, moves and the extra front matter keep it, and a file from before takes its date (or else its file time) on its first save. The content list in the admin is sorted by it, newest first, with a *Created* column, so editing an entry no longer moves it up. The site keeps its order by `date`.
 - SEO tab of every content type: *When the link is shared* shows the link as networks draw it, and an empty image or description says what it falls back to (the main image, then the site's; the search description, the excerpt, the start of the text, then the site's).
