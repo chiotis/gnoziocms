@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.217 — 2026-11-04 — Smaller stylesheets, one request fewer
+- The theme's stylesheets and your own (`custom/assets`) are sent **minified**: comments and spacing are removed, nothing else changes. The files you edit stay as they are. The theme's main stylesheet is about 28% smaller once compressed. Its address has a new version, so browsers and caches fetch the new copy.
+- The styles of a page's blocks go **into the page itself** when they are small (up to 32 KB, about 6 KB compressed; a hero, a slider and a list of posts is about 23 KB). The browser then waits for one stylesheet instead of two before it draws the page. Larger ones stay a separate file.
+- Tests: `tests/unit/css-minify.php`, `tests/unit/public-assets.php`.
+
 ## 0.1.216 — 2026-11-04 — The Google tag can wait for the page
 - **Analytics** has a new setting, **Load the tag**: **Right away** or **After the page has loaded**. After the page has loaded, the Google tag or Tag Manager script no longer slows the page down, which gives a better PageSpeed score. Events sent before it arrives are kept and sent with it. A visitor who leaves within the first second or two may not be counted.
 - Sites that already have a Google tag stay on **Right away** until the setting is changed. A site without a tag starts with **After the page has loaded**.
