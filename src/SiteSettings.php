@@ -74,7 +74,14 @@ final class SiteSettings
         if ($name !== '' && in_array($name, \DateTimeZone::listIdentifiers(), true)) {
             return new \DateTimeZone($name);
         }
-        return new \DateTimeZone(date_default_timezone_get());
+        return new \DateTimeZone(self::serverTimeZoneName());
+    }
+
+    /** The server's own time zone, as it was before the site's zone was applied to the request. */
+    public static function serverTimeZoneName(): string
+    {
+        static $name = null;
+        return $name ??= date_default_timezone_get();
     }
 
     public function defaults(): array
