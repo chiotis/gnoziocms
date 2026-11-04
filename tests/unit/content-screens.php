@@ -320,7 +320,10 @@ $editor->save('projects', ['title' => 'Old dated', 'slug' => 'old-dated', 'origi
 $editor->save('projects', ['title' => 'Old plain', 'slug' => 'old-plain', 'original_slug' => 'old-plain', 'original_lang' => 'el', 'status' => 'published', 'body' => 'x'], null, false, 'tester');
 check('an older file saved for the first time gets its date, or its file time, as when it was made', [substr((string)($meta("$dir/content/projects/old-dated.md")['created'] ?? ''), 0, 10), (int)strtotime((string)($meta("$dir/content/projects/old-plain.md")['created'] ?? ''))], ['2020-05-06', 1500000000]);
 $html = (string)file_get_contents(dirname(__DIR__, 2) . '/admin/templates/list.twig');
-check('the list shows when each entry was made, sorted newest first to begin with', str_contains($html, 'aria-sort="descending">Created</th>'), true);
+check('the list shows only when each entry was updated, and a scheduled entry its time', [str_contains($html, '>Created</th>'), str_contains($html, '>Updated</th>'), str_contains($html, 'item.publishAtTime()')], [false, true, true]);
+$scheduled = new \GnozioCMS\ContentItem('projects', 'later', 'el', ['status' => 'scheduled', 'publish_at' => '2030-01-02 09:28'], '', '', '', 0);
+$published = new \GnozioCMS\ContentItem('projects', 'now', 'el', ['status' => 'published', 'publish_at' => '2030-01-02 09:28'], '', '', '', 0);
+check('a scheduled entry knows when it goes live, read in the site\'s zone; a published one has no such time', [date('Y-m-d H:i', (int)$scheduled->publishAtTime()), $published->publishAtTime()], ['2030-01-02 09:28', null]);
 
 // tidy up
 exec('rm -rf ' . escapeshellarg($dir));

@@ -52,4 +52,13 @@ final class ContentItem
         }
         return $this->mtime;
     }
+
+    /** When a scheduled entry goes live, as a Unix time, or null when it is not scheduled or has no time. */
+    public function publishAtTime(): ?int
+    {
+        if (($this->meta['status'] ?? '') !== 'scheduled') {
+            return null;
+        }
+        return ScheduledPublishing::moment($this->meta['publish_at'] ?? null, new \DateTimeZone(date_default_timezone_get()))?->getTimestamp();
+    }
 }
