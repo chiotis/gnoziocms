@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.214 — 2026-11-04 — Both kinds of analytics at once
+- **Analytics** has a fourth choice, **GnozioCMS analytics and your own code**: the site counts visits itself (with the reports in the admin) and also puts your own tracking code on every page, such as a Google Analytics tag or a Tag Manager container.
+- The settings of both show with this choice. **Do not count people who are signed in** applies to both.
+- The dashboard warns when this choice has no tracking code, as it does for **Your own tracking code**. The Omni page names the new choice.
+- Tests: `tests/unit/analytics.php`.
+
 ## 0.1.213 — 2026-11-04 — Hero titles link to the post
 - In a **Hero slider** that shows posts (or another content type), each slide's title now links to its entry, as the **Read more** button does. So does the title of a **Hero** that shows an entry.
 - The linked title looks like the title: its own colour and no underline, on hover too. A keyboard user sees an outline around it.
