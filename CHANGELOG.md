@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.208 — 2026-11-04 — A second save changes nothing
+- A page or post with blocks was written with its blocks above `created` on the first save and below it on the next, so saving without changing anything still changed the file (and its history). The blocks are now always written last. A file saved before keeps its order until it is next saved.
+- Tests: `block_containers` counts the page text in the body only (the head repeats it in its descriptions) and passes again; the recorded files of `save` follow the new order.
+
 ## 0.1.207 — 2026-11-04 — A draft published gets a date
 - A draft without a date (one written through MCP, or with its date cleared) stayed without one when it was published, in the editor or with **Publish** from the list. Now an entry published after being a draft or scheduled gets today as its date when it has none.
 - Like a scheduled entry when it goes live, it also counts as made at the moment it is published, so it comes first in the lists, newest first.
