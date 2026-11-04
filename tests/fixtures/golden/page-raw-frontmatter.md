@@ -1,8 +1,4 @@
 ---
-blocks:
-  -
-    type: text
-    body: hi
 seo:
   title: 'Σχετικά | FarosCMS Demo'
   description: 'Ποιοι είμαστε και πώς συνεργαζόμαστε με επιχειρήσεις.'
@@ -12,6 +8,10 @@ visible: true
 created: <time>
 excerpt: 'Γνωρίστε τη φιλοσοφία, τη διαδικασία και την ομάδα μας.'
 translation_id: <generated>
+blocks:
+  -
+    type: text
+    body: hi
 ---
 
 ## Ποιοι είμαστε

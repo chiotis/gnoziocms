@@ -1,16 +1,4 @@
 ---
-blocks:
-  -
-    type: text
-    heading: Heading
-    body: 'Hello **world** <b>x</b>'
-  -
-    type: cta
-    heading: Go
-    actions:
-      -
-        label: Talk
-        url: contact
 title: 'Πλήρης σελίδα δοκιμής'
 status: draft
 visible: false
@@ -36,6 +24,18 @@ custom_fields:
   k_json:
     a: 1
   k_text: 'plain text'
+blocks:
+  -
+    type: text
+    heading: Heading
+    body: 'Hello **world** <b>x</b>'
+  -
+    type: cta
+    heading: Go
+    actions:
+      -
+        label: Talk
+        url: contact
 ---
 
 # Heading

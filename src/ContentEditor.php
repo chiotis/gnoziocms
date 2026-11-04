@@ -472,6 +472,13 @@ final class ContentEditor
             }
         }
 
+        // The blocks go last, whatever order the front matter came in: the editor's front matter box leaves them out, so
+        // without this a second save would move them below `created` and change a file nothing was changed in.
+        if (array_key_exists('blocks', $data)) {
+            $blocksLast = $data['blocks'];
+            unset($data['blocks']);
+            $data['blocks'] = $blocksLast;
+        }
         $frontmatter = trim(Yaml::dump($data, 10, 2, Yaml::DUMP_MULTI_LINE_LITERAL_BLOCK));
         $payload = "---\n" . $frontmatter . "\n---\n\n" . $body . "\n";
         if ($dryRun) {
