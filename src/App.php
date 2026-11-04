@@ -133,6 +133,10 @@ final class App
         $this->systemDatabase->initialize();
         $this->systemMeta = new SystemMetaRepository($this->systemDatabase);
         $this->settings = $this->siteSettings()->load();
+        // Every time shown, in the admin and on the site, is in the site's time zone (Settings > Localization),
+        // not the server's. Stored times carry their offset or are UTC (gmdate), so they keep their meaning.
+        SiteSettings::serverTimeZoneName();
+        date_default_timezone_set(SiteSettings::timeZone($this->settings)->getName());
         $this->theme = new Theme($this->basePath, (string)($this->settings['theme'] ?? Theme::DEFAULT_NAME));
         $this->themeSettings = $this->loadThemeSettings();
         $this->menus()->ensureDefaults();

@@ -117,7 +117,7 @@ final class SystemStatus
             'Memory limit' => (string)ini_get('memory_limit'),
             'Upload max / post max' => ini_get('upload_max_filesize') . ' / ' . ini_get('post_max_size'),
             'Max execution time' => (string)ini_get('max_execution_time') . 's',
-            'Timezone' => date_default_timezone_get(),
+            'Timezone' => date_default_timezone_get() . (date_default_timezone_get() !== SiteSettings::serverTimeZoneName() ? ' (server: ' . SiteSettings::serverTimeZoneName() . ')' : ''),
             'OPcache' => function_exists('opcache_get_status') && is_array(@opcache_get_status(false)) ? 'enabled' : 'disabled',
             'HTTPS' => $https ? 'yes' : 'no',
         ];
