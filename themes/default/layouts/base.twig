@@ -114,12 +114,15 @@
   {% endif %}
   {% endif %}
   <link rel="stylesheet" href="{{ theme_asset('css/site.css') }}">
+  {# A small block stylesheet goes into the page: one request fewer before the page can be drawn. #}
   {% for href in block_styles|default([]) %}
-  <link rel="stylesheet" href="{{ href }}">
+  {% set inline = inline_style(href) %}
+  {% if inline %}<style data-href="{{ href }}">{{ inline|raw }}</style>{% else %}<link rel="stylesheet" href="{{ href }}">{% endif %}
   {% endfor %}
   {# The blocks above the footer (Theme > Footer Blocks) need their styles on every page. #}
   {% for href in footer_blocks().styles|filter(h => h not in block_styles|default([])) %}
-  <link rel="stylesheet" href="{{ href }}">
+  {% set inline = inline_style(href) %}
+  {% if inline %}<style data-href="{{ href }}">{{ inline|raw }}</style>{% else %}<link rel="stylesheet" href="{{ href }}">{% endif %}
   {% endfor %}
   {# The choices of Theme > Branding (colours, type, spacing, buttons, logo sizes) come after the theme's styles and before the site's own. #}
   {% set branding_style = branding_css() %}

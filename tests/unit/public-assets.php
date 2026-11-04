@@ -65,7 +65,7 @@ $theme = new Theme($base, 'plain');
 $css = $theme->blockStylesheetUrl('', ['hero']);
 $js = $theme->blockScriptUrl('', ['hero']);
 check('the block stylesheet of a page is a file with a hash in its name', (bool)preg_match('#^/_themes/plain/_blocks/[0-9a-f]{16}\.css\?b=hero$#', $css), true);
-check('with the blocks\' styles in it', (string)@file_get_contents($base . '/public' . strtok($css, '?')), "/* hero */\n.hero{}\n");
+check('with the blocks\' styles in it, minified, each after the name of its block', (string)@file_get_contents($base . '/public' . strtok($css, '?')), "/* hero */\n.hero{}\n");
 check('and the script too', [(bool)preg_match('#^/_themes/plain/_blocks/[0-9a-f]{16}\.js\?b=hero$#', $js), (string)@file_get_contents($base . '/public' . strtok($js, '?'))], [true, "/* hero */\nhero()\n;\n"]);
 
 // ---- a public/ that cannot be written: index.php answers the same addresses
@@ -102,7 +102,31 @@ if (Images::webpSupported()) {
     echo "skip writing a variant (no WebP in this PHP)\n";
 }
 
-foreach (['copy', 'change-next', 'bundles', 'readonly', 'images'] as $name) {
+// ---- stylesheets are minified where they are copied and where index.php sends them
+$base = site('minify');
+put($base . '/themes/plain/assets/css/site.css', "/* note */\nbody {\n  color: red;\n}\n");
+put($base . '/custom/assets/css/custom.css', ".c {\n  x: 1;\n}\n");
+$theme = new Theme($base, 'plain');
+$url = $theme->assetUrl('', 'css/site.css');
+check('a copied stylesheet is minified, its source is not', [(string)@file_get_contents($base . '/public/_themes/plain/css/site.css'), str_contains((string)file_get_contents($base . '/themes/plain/assets/css/site.css'), '/* note */')], ['body{color:red}', true]);
+check('so is the site\'s own', (string)@file_get_contents($base . '/public/_custom/css/custom.css'), '.c{x:1}');
+check('its address says how it is written, so a cache does not keep the old copy', [str_ends_with($url, ThemeAssets::CSS_FORMAT), str_ends_with($theme->assetUrl('', 'blocks/hero/block.js'), ThemeAssets::CSS_FORMAT)], [true, false]);
+$_SERVER['REQUEST_METHOD'] = 'GET';
+ob_start();
+@ThemeAssets::handle($base, '/_themes/plain/css/site.css');
+check('and index.php sends it minified when public/ cannot be written', ob_get_clean(), 'body{color:red}');
+
+// ---- a small block bundle goes into the page
+$base = site('inline');
+put($base . '/themes/plain/blocks/quote/block.css', '.q::before { content: "</style>"; }');
+$theme = new Theme($base, 'plain');
+$href = $theme->blockStylesheetUrl('https://s.test', ['quote']);
+check('a small bundle is given to the page as text, and "</" cannot end its <style> early', $theme->inlineStyle($href), "/* quote */\n.q::before{content:\"<\\/style>\"}\n");
+check('an address that is not a bundle of this theme is not read', [$theme->inlineStyle('https://s.test/_themes/plain/css/site.css'), $theme->inlineStyle('https://s.test/_themes/other/_blocks/0123456789abcdef.css'), $theme->inlineStyle('/_themes/plain/_blocks/../../../etc.css')], ['', '', '']);
+put($base . '/themes/plain/blocks/big/block.css', '.b{x:' . str_repeat('y', Theme::INLINE_STYLE_LIMIT) . '}');
+check('a large one stays a link', $theme->inlineStyle($theme->blockStylesheetUrl('', ['big'])), '');
+
+foreach (['copy', 'change-next', 'bundles', 'readonly', 'images', 'minify', 'inline'] as $name) {
     wipe(sys_get_temp_dir() . '/gnozio-public-assets-' . getmypid() . '-' . $name);
 }
 echo $fail === 0 ? "ALL PASSED\n" : "$fail FAILED\n";

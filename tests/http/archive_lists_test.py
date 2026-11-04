@@ -73,9 +73,11 @@ for i in range(3):
 page = pub.get('/walks')[2]
 check('a relation field with filterable: true is a filter naming the entries it points at (a draft guide is not offered)',
       'name="filter[guide]"' in page and '>Ada (' in page and '>Bob (' in page and 'Cy' not in page.split('filter[guide]')[1].split('</select>')[0], page[page.find('filter[guide]') - 100:page.find('filter[guide]') + 400])
+# What the page shows (after its head, where a small block stylesheet names the same classes).
+shown = lambda html: html[html.find('<body'):]
 ada = pub.get('/walks?filter[guide]=aaaaaaaa00000001')[2]
-check('choosing a guide lists their walks, says so, and the page is not indexed (a plain GET address)', ada.count('latest-item') == 3 and 'noindex' in ada and re.search(r'>3 (result|results|αποτελέσματα)<', ada) is not None, ada.count('latest-item'))
-check('a guide nobody may see is ignored', pub.get('/walks?filter[guide]=cccccccc00000003')[2].count('latest-item') == 4)
+check('choosing a guide lists their walks, says so, and the page is not indexed (a plain GET address)', shown(ada).count('latest-item') == 3 and 'noindex' in ada and re.search(r'>3 (result|results|αποτελέσματα)<', ada) is not None, ada.count('latest-item'))
+check('a guide nobody may see is ignored', shown(pub.get('/walks?filter[guide]=cccccccc00000003')[2]).count('latest-item') == 4)
 
 # ---- the type editor keeps "Filter" on a relation
 st, _, html = root.get('/admin/content-types?type=walks')

@@ -32,7 +32,8 @@ def sheet(html):
 # ---- a page without a container is as it was: no container markup, no container styles
 plain = page('c-plain', text('One'), text('Two', width=50), text('Three', width=50))
 url, css = sheet(plain)
-check('a page without a container has no container markup', 'bkc' not in plain and 'block-container' not in plain)
+main = plain[plain.index('<main'):]  # the page itself: a small block stylesheet is written into its head
+check('a page without a container has no container markup', 'bkc' not in main and 'block-container' not in main)
 check('and its stylesheet has no container rules', '.bkc-row' not in css, url)
 check('narrow blocks still get the row styles (and the row styles now also cover columns)', '.block-row' in css)
 
@@ -46,8 +47,9 @@ check('the page around it is as before: the blocks before and after are plain se
 url, css = sheet(h)
 names = re.findall(r'^/\* ([a-z-]+) \*/$', css, re.M)
 check('the stylesheet carries the container rules and the rules of the blocks inside, and only those', '.bkc-row' in css and '.block-row' in css and 'cta' in names and 'text' in names and 'image' in names and 'faq' not in names, names)
-check('the bundle has the row, the columns and every screen', '.bkc-row' in css and '.bkc-col--part' in css and '@media (max-width: 640px)' in css and '@media (min-width: 641px) and (max-width: 960px)' in css and '.bkc-p-one' in css and '.bkc-t-two' in css and '.bkc-d-one' in css)
-check('the columns use the theme\'s spacing steps for gaps and padding, not pixels', 'var(--space-l)' in css and re.search(r'\.bkc-gap-l\s*{\s*--bkc-gap: var\(--space-l\)', css) is not None)
+flat = css.replace(' ', '')  # the bundle is minified
+check('the bundle has the row, the columns and every screen', '.bkc-row' in css and '.bkc-col--part' in css and '@media(max-width:640px)' in flat and '@media(min-width:641px)and(max-width:960px)' in flat and '.bkc-p-one' in css and '.bkc-t-two' in css and '.bkc-d-one' in css)
+check('the columns use the theme\'s spacing steps for gaps and padding, not pixels', 'var(--space-l)' in css and re.search(r'\.bkc-gap-l\s*{\s*--bkc-gap:\s*var\(--space-l\)', css) is not None)
 check('a column\'s share is a custom property, the gap is taken off by the stylesheet', 'style="--bkc-f:0.3333"' in page('c-third', box([{'settings': {'width': '1/3'}, 'blocks': [text('A')]}, {'settings': {'width': '2/3'}, 'blocks': [text('B')]}])) and 'var(--bkc-f)' in css)
 check('no inline style beyond the variables', all(s.startswith('--bkc-') for s in re.findall(r'class="bkc-col[^"]*" style="([^"]*)"', h)) and 'style="' not in re.search(r'<section class="block block-container.*?</section>', h, re.S).group(0).replace(' style="--bkc-', ''), re.findall(r'style="[^"]*"', h)[:5])
 check('no script comes with it', '<script' not in re.search(r'<section class="block block-container.*?</section>\s*<section', h, re.S).group(0))

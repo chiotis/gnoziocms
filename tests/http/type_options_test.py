@@ -86,7 +86,8 @@ m = re.search(r'(?:href)="([^"]*site\.css[^"]*)"', pub.get('/books/dune')[2])
 if m:
     import urllib.parse
     u = urllib.parse.urlparse(m.group(1)); sheet = pub.get(u.path + ('?' + u.query if u.query else ''))[2]
-check('the stylesheet makes room under a transparent header, and has the cover places', '.has-header-overlay .main-shell > .book-hero:first-child' in sheet and '.book-hero.is-cover-right' in sheet and '.book-hero.is-cover-top' in sheet and '.book-cover.is-book' in sheet and 'aspect-ratio: 2 / 3' in sheet)
+flat = lambda s: re.sub(r'\s+', '', s)  # stylesheets are sent minified: compare without white space
+check('the stylesheet makes room under a transparent header, and has the cover places', '.has-header-overlay .main-shell > .book-hero:first-child' in sheet and '.book-hero.is-cover-right' in sheet and '.book-hero.is-cover-top' in sheet and '.book-cover.is-book' in sheet and 'aspect-ratio:2/3' in flat(sheet))
 
 # ---- the entry's own choice of header wins, as for any page
 open('app/content/books/emma.md', 'w', encoding='utf-8').write("---\ntitle: Emma\nstatus: published\nvisible: true\nheader_transparent: on\ncustom_fields:\n  author: Jane Austen\n---\n\nEmma text.\n")

@@ -60,7 +60,8 @@ check('two columns', 'video-grid cols-2' in html)
 check('a video plays in the viewer, from the privacy-friendly address, and nothing is loaded from YouTube until then', 'data-embed="https://www.youtube-nocookie.com/embed/AAAAAAAAAAA?' in html and 'data-mode="lightbox"' in html and '<iframe' not in html.split('<main')[1].split('</main>')[0])
 check('the length is shown, with a way to read it for those who cannot see it', 'class="video-duration"' in html and '3:05' in html and 'Oldest film (3:05)' in html)
 check('pictures are kept on this site, and each address is signed', re.search(r'src="/_yt/AAAAAAAAAAA\.jpg\?s=[0-9a-f]{16}"', html) is not None and 'i.ytimg.com' not in html)
-check('the views and the date are not shown unless asked', 'pl-meta' not in html)
+shown = lambda h: h[h.find('<body'):]  # the page itself: a small block stylesheet in its head names the same classes
+check('the views and the date are not shown unless asked', 'pl-meta' not in shown(html))
 check('the stylesheet and script of the video block come with it', re.search(r'_blocks/[0-9a-f]+\.css\?b=[^"]*video[^"]*playlist|_blocks/[0-9a-f]+\.css\?b=[^"]*playlist[^"]*video', html) is not None and re.search(r'_blocks/[0-9a-f]+\.js\?b=[^"]*video', html) is not None, re.findall(r'_blocks/[0-9a-f]+\.(?:css|js)\?b=[^&"]*', html))
 
 # ---- order, number and what is shown
@@ -72,7 +73,7 @@ st, _, html = page('views', order='views', limit=1)
 check('most viewed first', re.findall(r'data-pl-title>([^<]*)<', html) == ['Middle &lt;script&gt;alert(1)&lt;/script&gt; film'], re.findall(r'data-pl-title>([^<]*)<', html))
 st, _, html = page('shown', show_views=True, show_date=True, show_description=False, show_duration=False)
 check('views and dates can be shown, in the language of the site', 'class="pl-meta"' in html and '9,000' in html.replace('.', ',') and re.search(r'\d{2}/\d{2}/\d{4}', html) is not None, re.findall(r'<span class="pl-meta"[^>]*>[^<]*', html)[:2])
-check('without them there is no caption of description or length', 'video-caption' not in html and 'video-duration' not in html)
+check('without them there is no caption of description or length', 'video-caption' not in shown(html) and 'video-duration' not in shown(html))
 st, _, html = page('direct', thumbs='youtube', limit=1)
 check('pictures can come from YouTube, when that is chosen', 'src="https://i.ytimg.com/vi/AAAAAAAAAAA/hqdefault.jpg"' in html and '/_yt/' not in html)
 st, _, html = page('toyoutube', play='youtube', limit=1)

@@ -322,7 +322,7 @@ final class Theme
         ThemeAssets::publish($this->basePath, $this->name);
         $file = self::assetFile($this->path() . '/assets', $path);
         $url = $baseUrl . '/_themes/' . $this->name . '/' . ltrim($path, '/');
-        return $file !== null ? $url . '?v=' . self::fileVersion($file) : $url;
+        return $file !== null ? $url . '?v=' . self::assetVersion($file) : $url;
     }
 
     /**
@@ -338,7 +338,7 @@ final class Theme
         if ($files === []) {
             return '';
         }
-        $stamp = '';
+        $stamp = ThemeAssets::CSS_FORMAT . ';';
         foreach ($files as $file) {
             $stamp .= $file . ':' . self::fileVersion($file) . ';';
         }
@@ -349,6 +349,34 @@ final class Theme
             return $baseUrl . '/_themes/' . $this->name . '/' . $file . '?b=' . implode(',', $names);
         }
         return $baseUrl . '/_themes/' . $this->name . '/_blocks.css?b=' . implode(',', $names) . '&v=' . substr(sha1($stamp), 0, 10);
+    }
+
+    /**
+     * A block stylesheet up to this size (minified; about 6 KB once compressed) goes into the page itself instead of being one more
+     * request that holds up its drawing. A page of a hero, a slider and a list of posts is about 23 KB.
+     */
+    public const INLINE_STYLE_LIMIT = 32000;
+
+    /**
+     * The text of a block stylesheet for a <style> element, when `$href` is one of this theme's block bundles written as a file
+     * (blockStylesheetUrl()) and it is small (INLINE_STYLE_LIMIT); '' otherwise, and the page links to it as before. The page
+     * is kept by the page cache, so this read happens once per page, not once per visit.
+     */
+    public function inlineStyle(string $href): string
+    {
+        $path = (string)(parse_url($href, PHP_URL_PATH) ?? '');
+        $prefix = '/_themes/' . $this->name . '/' . ThemeAssets::BUNDLES . '/';
+        $at = strpos($path, $prefix);
+        if ($at === false || !preg_match('/^[a-f0-9]{8,40}\.css$/', substr($path, $at + strlen($prefix)))) {
+            return '';
+        }
+        $file = $this->basePath . '/public' . $prefix . substr($path, $at + strlen($prefix));
+        $size = is_file($file) ? (int)filesize($file) : 0;
+        if ($size === 0 || $size > self::INLINE_STYLE_LIMIT) {
+            return '';
+        }
+        // "</" cannot close the element early: in CSS "<\/" is the same text.
+        return str_ireplace('</', '<\/', (string)file_get_contents($file));
     }
 
     /** One script URL for the block types on a page that ship a block.js, or ''. @param string[] $types */
@@ -470,7 +498,7 @@ final class Theme
         if ($file === null) {
             return '';
         }
-        return $baseUrl . '/_custom/' . ltrim($path, '/') . '?v=' . self::fileVersion($file);
+        return $baseUrl . '/_custom/' . ltrim($path, '/') . '?v=' . self::assetVersion($file);
     }
 
     /**
@@ -593,6 +621,12 @@ final class Theme
     }
 
     /** A short stamp that changes when a file does (its date and size), for the end of an asset address. */
+    /** The version in a theme or custom/ file's address: a stylesheet's also says how it is written (ThemeAssets::CSS_FORMAT). */
+    public static function assetVersion(string $file): string
+    {
+        return self::fileVersion($file) . (strtolower(pathinfo($file, PATHINFO_EXTENSION)) === 'css' ? ThemeAssets::CSS_FORMAT : '');
+    }
+
     public static function fileVersion(string $file): string
     {
         // PHP remembers a file's date and size for the rest of the request; a file written in this request must be read afresh.

@@ -58,7 +58,8 @@ check('with a name and help text', 'Phone menu' in html and 'How the menu opens 
 # ---- no empty lists for screen readers to announce
 put('pages/no-cards.md', "title: No cards\nstatus: published\nvisible: true\nblocks:\n  - type: cards\n    source: projects\n    heading: Recent work\n")
 st, html = page('/no-cards')
-check('a cards block with nothing to show leaves out its empty list', st == 200 and 'cards-grid' not in html, st)
+shown = lambda h: h[h.find('<body'):]  # the page itself: a small block stylesheet in its head names the same classes
+check('a cards block with nothing to show leaves out its empty list', st == 200 and 'cards-grid' not in shown(html), st)
 put('pages/some-cards.md', "title: Some cards\nstatus: published\nvisible: true\nblocks:\n  - type: cards\n    source: manual\n    heading: Two\n    items:\n      - {title: One, text: First}\n      - {title: Two, text: Second}\n")
 st, html = page('/some-cards')
 check('and a cards block with items still lists them', st == 200 and html.count('class="content-item"') == 2 and '<ul class="content-grid cards-grid' in html, html.count('class="content-item"'))

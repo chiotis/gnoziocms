@@ -149,7 +149,9 @@ s = section(html, 'text')
 check('text can have a contents list made of its ## headings', 'text-contents-list' in s and re.findall(r'<li><a href="#([^"]+)">([^<]*)</a></li>', s) == [('first-part', 'First part'), ('second-part', 'Second part')], re.findall(r'<li><a href="#([^"]+)">', s))
 check('and the headings have the addresses it links to', '<h2 id="first-part">' in s and '<h3 id="detail">' in s)
 st, _, html = page('toc2', {'type': 'text', 'variant': 'contents', 'body': 'One paragraph.\n\n## Only one'})
-check('with fewer than two headings there is no list', 'text-contents-list' not in html and 'has-no-list' in html)
+# What the page shows (after its head, where a small block stylesheet names the same classes).
+shown = lambda html: html[html.find('<body'):]
+check('with fewer than two headings there is no list', 'text-contents-list' not in shown(html) and 'has-no-list' in shown(html))
 
 # ---- the page layouts
 st, _, edit = root.get('/admin/edit?type=pages&slug=about&lang=en')
@@ -165,7 +167,7 @@ for l in layouts:
     n = len(re.findall(r'<section class="block ', html))
     check('the %s layout is a page that opens, with its blocks' % l, st == 200 and n >= max(1, len(blocks) - 2) and 'Fatal error' not in html and 'Twig\\Error' not in html and 'Uncaught' not in html, (st, n, len(blocks)))
 st, _, html = page('layout-resources', *presets[ids['resources']]['blocks'], client=root)
-check('the resources layout shows the person who is signed in the rows that wait for a file', html.count('is-missing') == 7, html.count('is-missing'))
+check('the resources layout shows the person who is signed in the rows that wait for a file', shown(html).count('is-missing') == 7, shown(html).count('is-missing'))
 st, _, html = page('layout-portfolio', *presets[ids['portfolio']]['blocks'])
 check('the portfolio layout has filters for its categories', re.findall(r'data-filter="([^"]*)"', html) == ['', 'web', 'branding', 'print'], re.findall(r'data-filter="([^"]*)"', html))
 st, _, html = page('layout-legal', *presets[ids['legal']]['blocks'])

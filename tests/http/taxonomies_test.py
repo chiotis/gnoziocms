@@ -89,7 +89,8 @@ st, _, html = pub.get('/en/category/news'); check('category page has the default
 st, hdr, _ = asave(root, 'tags', {'archive[layout]': 'list', 'archive[per_page]': '1', 'archive[order]': 'title_asc', 'archive[title]': 'Articles about {term}', 'archive[subtitle]': 'Everything filed under {term}'})
 check('saving tags succeeds', st == 302 and 'saved=1' in loc(hdr), loc(hdr))
 st, _, html = pub.get('/en/tag/strategy')
-check('tag page uses the chosen layout', 'block--list' in html and 'block--cards' not in html)
+shown = lambda h: h[h.find('<body'):]  # the page itself: a small block stylesheet in its head names the same classes
+check('tag page uses the chosen layout', 'block--list' in shown(html) and 'block--cards' not in shown(html))
 check('tag page uses the chosen title and subtitle', '<h1>Articles about Strategy</h1>' in html and 'Everything filed under Strategy' in html, re.findall(r'<h1>[^<]*</h1>', html))
 check('tag page is paged', 'class="pagination"' in html and 'rel="next"' in html)
 st, _, page2 = pub.get('/en/tag/strategy?page=2')

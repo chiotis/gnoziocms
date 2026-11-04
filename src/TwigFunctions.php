@@ -35,6 +35,7 @@ final class TwigFunctions
         });
         $add('theme_asset', static fn(string $path): string => $theme->assetUrl($baseUrl, $path));
         $add('custom_asset', static fn(string $path): string => $theme->customAssetUrl($baseUrl, $path));
+        $add('inline_style', static fn(string $href): string => $theme->inlineStyle($href), true);
         $add('admin_asset', static fn(string $path): string => $baseUrl . '/admin-assets/' . ltrim($path, '/'));
         $add('url', static fn(string $path = ''): string => $baseUrl . '/' . ltrim($path, '/'));
         $add('image', static fn(string $src, array $options = []): string => $images->render($src, $options), true);

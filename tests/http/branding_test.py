@@ -150,7 +150,8 @@ check('headings in the palette colour', '--heading-color:var(--accent);' in css,
 css = style(page())
 check('headings in colours of their own, light and dark', '--heading-color:#b00020;' in css and ':root.dark[data-theme][data-mode]{--heading-color:#ff8a80}' in css, css[:500])
 sheet = asset('css')
-check('the style sheet gives them to the text, the section titles and the title of a page, and not to a dark panel', '.section-title' in sheet and 'var(--heading-color, inherit)' in sheet and re.search(r'\.tone-contrast,\s*\.tone-accent \{[^}]*--heading-color: initial', sheet) is not None)
+flat = lambda s: re.sub(r'\s+', '', s)  # stylesheets are sent minified: compare without white space
+check('the style sheet gives them to the text, the section titles and the title of a page, and not to a dark panel', '.section-title' in sheet and 'var(--heading-color,inherit)' in flat(sheet) and re.search(r'\.tone-contrast,\.tone-accent\{[^}]*--heading-color:initial', flat(sheet)) is not None)
 (res, hdr, _), _ = post_theme(d(heading_color='text'))
 check('and back to the colour of the text', '--heading-color' not in style(page()))
 
