@@ -97,9 +97,9 @@ $names = static fn(array $list): array => array_map(static fn($i) => $i->type . 
 
 $scanning = $items($runtime(null));
 $indexed = $items($runtime(fn(): ArchiveQuery => $query));
-$same = static function (string $label, string $type, string $lang, int $limit, string $term = '', int $offset = 0) use ($scanning, $indexed, $names): void {
-    $expected = $names($scanning($type, $lang, $limit, $term, $offset));
-    check($label, $names($indexed($type, $lang, $limit, $term, $offset)), $expected);
+$same = static function (string $label, string $type, string $lang, int $limit, string $term = '', int $offset = 0, string $order = 'date_desc') use ($scanning, $indexed, $names): void {
+    $expected = $names($scanning($type, $lang, $limit, $term, $offset, $order));
+    check($label, $names($indexed($type, $lang, $limit, $term, $offset, $order)), $expected);
 };
 
 check('the index can answer', $query->ready(), true);
@@ -119,12 +119,21 @@ foreach ([false, true] as $signedIn) {
     $same('the newest three skipped' . $who, 'posts', 'el', 4, '', 3);
     $same('skipped in a category' . $who, 'posts', 'el', 4, 'news', 2);
     $same('skipping more than there are' . $who, 'posts', 'el', 4, '', 45);
+    $same('oldest first' . $who, 'posts', 'el', 6, '', 0, 'date_asc');
+    $same('oldest first in a tag, two skipped' . $who, 'posts', 'el', 5, 'quick', 2, 'date_asc');
+    $same('by title' . $who, 'posts', 'el', 8, '', 0, 'title_asc');
+    $same('by title backwards, in a category' . $who, 'posts', 'el', 8, 'news', 1, 'title_desc');
+    $same('an order that is not one is newest first' . $who, 'posts', 'el', 6, '', 0, 'sideways');
 }
 $signedIn = false;
 check('the visitor gets the newest published entries', [count($indexed('posts', 'el', 6, '')), $names($indexed('posts', 'el', 3, ''))[0] === $names($scanning('posts', 'el', 3, ''))[0]], [6, true]);
 $direct = $query->page(['types' => ['posts'], 'term' => ['taxonomy' => ['categories', 'tags'], 'ids' => ['quick']]], 'el', false, [], [], 'date_desc', '', 0, 0, 1, 8);
 check('the index itself answers a term filed as a category or a tag', [$direct !== null, $direct === null ? null : $names($direct['items'])], [true, $names($scanning('posts', 'el', 8, 'quick'))]);
 check('skipping two starts at the third, and a negative or huge skip is kept within bounds', [$names($indexed('posts', 'el', 2, '', 2)), $names($indexed('posts', 'el', 2, '', -5)), count($indexed('posts', 'el', 24, '', 999))], [array_slice($names($indexed('posts', 'el', 4, '')), 2), $names($indexed('posts', 'el', 2, '')), max(0, min(24, count($scanning('posts', 'el', 500, '')) - 50))]);
+check('newest first is what a block gets when it names no order', $names($indexed('posts', 'el', 6, '', 0)), $names($indexed('posts', 'el', 6, '', 0, 'date_desc')));
+$all = $names($scanning('posts', 'el', 100, ''));
+$shuffled = [$names($indexed('posts', 'el', 100, '', 0, 'random')), $names($scanning('posts', 'el', 100, '', 0, 'random'))];
+check('a random order picks from every entry (all of them here), in an order of its own', [array_map(static function (array $l): array { sort($l); return $l; }, $shuffled), $shuffled[0] !== $all || $shuffled[1] !== $all], [[(function () use ($all) { $s = $all; sort($s); return $s; })(), (function () use ($all) { $s = $all; sort($s); return $s; })()], true]);
 check('a type that is not content gives nothing', [$indexed('forms', 'el', 6, ''), $indexed('nothing', 'el', 6, '')], [[], []]);
 
 // The index follows a save and a delete.

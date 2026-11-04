@@ -1,4 +1,4 @@
-# Blocks of this installation (GnozioCMS 0.1.198)
+# Blocks of this installation (GnozioCMS 0.1.200)
 
 ## Fields every block has
 
@@ -123,7 +123,8 @@ Latest posts, projects, or any content type, or hand-picked cards with an image,
 | `intro` | text (several lines) |  |
 | `source` | choice; a content type of the site; default `manual` |  |
 | `limit` | whole number; 1 to 12; default `3` |  |
-| `offset` | whole number; 0 to 50; default `0`; only when `source` is `!` or `m` or `a` or `n` or `u` or `a` or `l` | Leaves out this many of the newest entries, for example the ones another block of the page already shows. |
+| `order` | choice; one of `date_desc`, `date_asc`, `title_asc`, `title_desc`, `random`; default `date_desc`; only when `source` is `!` or `m` or `a` or `n` or `u` or `a` or `l` |  |
+| `offset` | whole number; 0 to 50; default `0`; only when `source` is `!` or `m` or `a` or `n` or `u` or `a` or `l` | Leaves out this many of the first entries in the order above (with Newest first, the newest), for example the ones another block of the page already shows. |
 | `skip_shown` | true / false; default `false`; only when `source` is `!` or `m` or `a` or `n` or `u` or `a` or `l` | Entries that a block higher on the page already shows (or the page itself) are left out, and the next ones take their place. |
 | `columns` | choice; one of `2`, `3`, `4`; default `3` |  |
 | `items` | list of rows; at most 12 rows |  |
@@ -415,7 +416,8 @@ Opening section with a strong heading, supporting text, buttons, and an image or
 |---|---|---|
 | `source` | choice; a content type of the site; default `manual` | Or the newest entry of a content type: its title, excerpt and main image, with a button to it. |
 | `term` | text; only when `source` is `!` or `m` or `a` or `n` or `u` or `a` or `l` | Optional. The slug of a category or tag, as in Taxonomies. |
-| `offset` | whole number; 0 to 50; default `0`; only when `source` is `!` or `m` or `a` or `n` or `u` or `a` or `l` | Leaves out this many of the newest entries, for example the ones another block of the page already shows. |
+| `order` | choice; one of `date_desc`, `date_asc`, `title_asc`, `title_desc`, `random`; default `date_desc`; only when `source` is `!` or `m` or `a` or `n` or `u` or `a` or `l` |  |
+| `offset` | whole number; 0 to 50; default `0`; only when `source` is `!` or `m` or `a` or `n` or `u` or `a` or `l` | Leaves out this many of the first entries in the order above (with Newest first, the newest), for example the ones another block of the page already shows. |
 | `skip_shown` | true / false; default `false`; only when `source` is `!` or `m` or `a` or `n` or `u` or `a` or `l` | Entries that a block higher on the page already shows (or the page itself) are left out, and the next ones take their place. |
 | `entry_button` | text; only when `source` is `!` or `m` or `a` or `n` or `u` or `a` or `l` |  |
 | `eyebrow` | text | With an entry, its category when this is empty. |
@@ -448,7 +450,8 @@ Slides that each are a Hero. Every slide picks its own Hero layout (including th
 | `source` | choice; a content type of the site; default `manual` | Or the newest entries of a content type: a slide for each, with its title, excerpt and main image, and a button to it. |
 | `term` | text; only when `source` is `!` or `m` or `a` or `n` or `u` or `a` or `l` | Optional. The slug of a category or tag, as in Taxonomies. |
 | `limit` | whole number; 1 to 8; default `3`; only when `source` is `!` or `m` or `a` or `n` or `u` or `a` or `l` |  |
-| `offset` | whole number; 0 to 50; default `0`; only when `source` is `!` or `m` or `a` or `n` or `u` or `a` or `l` | Leaves out this many of the newest entries, for example the ones another block of the page already shows. |
+| `order` | choice; one of `date_desc`, `date_asc`, `title_asc`, `title_desc`, `random`; default `date_desc`; only when `source` is `!` or `m` or `a` or `n` or `u` or `a` or `l` |  |
+| `offset` | whole number; 0 to 50; default `0`; only when `source` is `!` or `m` or `a` or `n` or `u` or `a` or `l` | Leaves out this many of the first entries in the order above (with Newest first, the newest), for example the ones another block of the page already shows. |
 | `skip_shown` | true / false; default `false`; only when `source` is `!` or `m` or `a` or `n` or `u` or `a` or `l` | Entries that a block higher on the page already shows (or the page itself) are left out, and the next ones take their place. |
 | `entry_layout` | choice; one of `split`, `centered`, `cover`, `cover-centered`, `minimal`; default `cover`; only when `source` is `!` or `m` or `a` or `n` or `u` or `a` or `l` |  |
 | `entry_button` | text; only when `source` is `!` or `m` or `a` or `n` or `u` or `a` or `l` |  |
@@ -521,7 +524,8 @@ The newest posts, projects, or any content type, shown from a quiet text list to
 | `source` | choice; a content type of the site; default `posts` |  |
 | `term` | text | Optional. The slug of a category or tag, as in Taxonomies. |
 | `limit` | whole number; 1 to 12; default `3` |  |
-| `offset` | whole number; 0 to 50; default `0` | Leaves out this many of the newest entries, for example the ones another block of the page already shows. |
+| `order` | choice; one of `date_desc`, `date_asc`, `title_asc`, `title_desc`, `random`; default `date_desc` |  |
+| `offset` | whole number; 0 to 50; default `0` | Leaves out this many of the first entries in the order above (with Newest first, the newest), for example the ones another block of the page already shows. |
 | `skip_shown` | true / false; default `false` | Entries that a block higher on the page already shows (or the page itself) are left out, and the next ones take their place. |
 | `columns` | choice; one of `2`, `3`, `4`; default `3` |  |
 | `show_image` | true / false; default `true` |  |
@@ -622,7 +626,8 @@ A grid of work with filter buttons for the categories. Type the pieces in, or sh
 | `intro` | text (several lines) |  |
 | `source` | choice; a content type of the site; default `manual` |  |
 | `limit` | whole number; 1 to 24; default `12` |  |
-| `offset` | whole number; 0 to 50; default `0`; only when `source` is `!` or `m` or `a` or `n` or `u` or `a` or `l` | Leaves out this many of the newest entries, for example the ones another block of the page already shows. |
+| `order` | choice; one of `date_desc`, `date_asc`, `title_asc`, `title_desc`, `random`; default `date_desc`; only when `source` is `!` or `m` or `a` or `n` or `u` or `a` or `l` |  |
+| `offset` | whole number; 0 to 50; default `0`; only when `source` is `!` or `m` or `a` or `n` or `u` or `a` or `l` | Leaves out this many of the first entries in the order above (with Newest first, the newest), for example the ones another block of the page already shows. |
 | `skip_shown` | true / false; default `false`; only when `source` is `!` or `m` or `a` or `n` or `u` or `a` or `l` | Entries that a block higher on the page already shows (or the page itself) are left out, and the next ones take their place. |
 | `columns` | choice; one of `2`, `3`, `4`; default `3` |  |
 | `ratio` | choice; one of `landscape`, `square`, `portrait`; default `landscape` |  |

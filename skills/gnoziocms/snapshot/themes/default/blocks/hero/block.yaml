@@ -30,13 +30,24 @@ fields:
     placeholder: news
     help: Optional. The slug of a category or tag, as in Taxonomies.
     when: { source: '!manual' }
+  order:
+    type: select
+    label: Order
+    default: date_desc
+    options:
+      date_desc: Newest first
+      date_asc: Oldest first
+      title_asc: 'Title A–Z'
+      title_desc: 'Title Z–A'
+      random: 'Random (new each time the page is made)'
+    when: { source: '!manual' }
   offset:
     type: number
-    label: Skip the newest
+    label: Skip the first
     default: 0
     min: 0
     max: 50
-    help: 'Leaves out this many of the newest entries, for example the ones another block of the page already shows.'
+    help: 'Leaves out this many of the first entries in the order above (with Newest first, the newest), for example the ones another block of the page already shows.'
     when: { source: '!manual' }
   skip_shown:
     type: toggle
