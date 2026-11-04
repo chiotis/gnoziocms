@@ -103,6 +103,9 @@ final class ScheduledPublishing
         }
         $meta['status'] = 'published';
         $meta['date'] = $at->format('Y-m-d');
+        // A scheduled entry is new when it goes live, not when it was written: it takes the time it was scheduled for as
+        // when it was made, so lists put it among the entries of that day in its place (ContentItem::sortTime()).
+        $meta['created'] = $at->format(DATE_ATOM);
         unset($meta['publish_at']);
         // Same layout the editor writes: front matter, one blank line, body.
         $body = preg_replace('/\A\R/', '', $body) ?? $body;

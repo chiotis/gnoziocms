@@ -87,6 +87,7 @@ check('what was released is reported once', count($reported), 1);
 $meta = Yaml::parse(explode('---', (string)file_get_contents($root . '/content/posts/due.md'))[1]);
 check('published', $meta['status'] ?? null, 'published');
 check('the day of the time becomes the date', $meta['date'] ?? null, '2026-11-03');
+check('and the time it was scheduled for becomes when it was made', isset($meta['created']) ? (new \DateTimeImmutable((string)$meta['created']))->setTimezone($athens)->format('Y-m-d H:i') : null, '2026-11-03 09:00');
 check('publish_at is gone', array_key_exists('publish_at', $meta), false);
 check('the body stays', str_contains((string)file_get_contents($root . '/content/posts/due.md'), "\n---\n\nBody of due\n"), true);
 check('the history names the schedule', $revisions->latest('posts', 'due', 'el')['action'] ?? null, 'schedule');
