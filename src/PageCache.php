@@ -31,7 +31,7 @@ final class PageCache
     /** The answers that are pages (not pictures or downloads). */
     private const TYPES = ['text/html', 'application/xml', 'text/xml', 'application/rss+xml', 'application/atom+xml', 'text/plain'];
     /** Headers of the first response that are not kept: the server sets them again for the one it sends. */
-    private const SKIPPED_HEADERS = ['set-cookie', 'x-powered-by', 'content-length', 'transfer-encoding', 'connection', 'date', 'keep-alive', 'x-page-cache'];
+    private const SKIPPED_HEADERS = ['set-cookie', 'x-powered-by', 'content-length', 'transfer-encoding', 'connection', 'date', 'keep-alive', 'x-page-cache', 'server-timing'];
 
     private bool $purgeQueued = false;
     private ?bool $enabled = null;
@@ -100,6 +100,7 @@ final class PageCache
             header($line, false);
         }
         header('X-Page-Cache: hit');
+        header('Server-Timing: cache;desc="page cache hit"');
         echo $body;
         return true;
     }
