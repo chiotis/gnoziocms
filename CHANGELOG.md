@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.209 — 2026-11-04 — Scheduled entries stay off the site, for admins too
+- Someone signed in sees drafts and hidden entries on the site, and so also saw **Scheduled** ones: their page, the lists, the blocks of entries (Hero slider, Latest content, Cards), search and related entries. A scheduled entry is now left out of the site's pages for everyone until it goes live; **Preview** in the editor still shows it.
+- Drafts and hidden entries are still shown to someone signed in, as before. The admin's screens list scheduled entries as before.
+- Tests: `tests/http/scheduled_test.py`.
+
 ## 0.1.208 — 2026-11-04 — A second save changes nothing
 - A page or post with blocks was written with its blocks above `created` on the first save and below it on the next, so saving without changing anything still changed the file (and its history). The blocks are now always written last. A file saved before keeps its order until it is next saved.
 - Tests: `block_containers` counts the page text in the body only (the head repeats it in its descriptions) and passes again; the recorded files of `save` follow the new order.
