@@ -442,14 +442,60 @@
     if (!closest(t, '[data-dropdown]')) closeAllDropdowns(null);
   });
 
+  /* "Select all" ticks this page only. Once every box here is ticked, [data-select-rest] offers the entries on the
+   * other pages too: it sets [data-select-rest-input] to 1, and the server takes every entry the filters let through. */
+  function selectRest(scope, name, state) {
+    var bar = scope.querySelector('[data-select-rest="' + name + '"]');
+    var input = scope.querySelector('[data-select-rest-input]');
+    if (input) input.value = state === 'all' ? '1' : '0';
+    if (!bar) return;
+    bar.classList.toggle('hidden', state === 'none');
+    var pageText = bar.querySelector('[data-select-rest-page]');
+    var doneText = bar.querySelector('[data-select-rest-done]');
+    if (pageText) pageText.classList.toggle('hidden', state === 'all');
+    if (doneText) doneText.classList.toggle('hidden', state !== 'all');
+  }
+
+  function boxesOf(scope, name) {
+    return Array.prototype.filter.call(scope.querySelectorAll('input[type="checkbox"][name="' + name + '"]'), function (box) { return !box.disabled; });
+  }
+
   document.addEventListener('change', function (e) {
     var toggle = closest(e.target, '[data-select-all]');
-    if (!toggle) return;
+    if (!toggle) {
+      var box = e.target;
+      if (!box || box.type !== 'checkbox' || !box.name || !box.form) return;
+      var head = box.form.querySelector('[data-select-all="' + box.name + '"]');
+      if (!head) return;
+      var boxes = boxesOf(box.form, box.name);
+      var ticked = boxes.filter(function (b) { return b.checked; }).length;
+      head.checked = boxes.length > 0 && ticked === boxes.length;
+      head.indeterminate = ticked > 0 && ticked < boxes.length;
+      selectRest(box.form, box.name, head.checked ? 'page' : 'none');
+      return;
+    }
     var scope = toggle.form || document;
     var name = toggle.getAttribute('data-select-all');
-    scope.querySelectorAll('input[type="checkbox"][name="' + name + '"]').forEach(function (box) {
-      if (!box.disabled) box.checked = toggle.checked;
-    });
+    toggle.indeterminate = false;
+    boxesOf(scope, name).forEach(function (box) { box.checked = toggle.checked; });
+    selectRest(scope, name, toggle.checked ? 'page' : 'none');
+  });
+
+  document.addEventListener('click', function (e) {
+    var all = closest(e.target, '[data-select-rest-all]');
+    var clear = closest(e.target, '[data-select-rest-clear]');
+    if (!all && !clear) return;
+    var bar = closest(e.target, '[data-select-rest]');
+    var scope = bar.closest('form') || document;
+    var name = bar.getAttribute('data-select-rest');
+    if (all) {
+      selectRest(scope, name, 'all');
+      return;
+    }
+    boxesOf(scope, name).forEach(function (box) { box.checked = false; });
+    var head = scope.querySelector('[data-select-all="' + name + '"]');
+    if (head) head.checked = false;
+    selectRest(scope, name, 'none');
   });
 
   document.addEventListener('keydown', function (e) {
