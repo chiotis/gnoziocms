@@ -60,7 +60,7 @@ check('a slider of entries has three slides, eight at most, over the picture', [
 $asked = [];
 $page = $draw([['type' => 'hero', 'variant' => 'split', 'source' => 'posts', 'term' => 'news', 'heading' => 'Typed', 'text' => 'Typed text', 'actions' => [['label' => 'Typed', 'url' => '/x']]]]);
 check('the hero asks for one entry of the type, in the category', $asked, [['posts', 'en', 1, 'news', 0, 'date_desc']]);
-check('it shows the entry\'s title as the page title, its excerpt without markup, and its picture', [str_contains($page['html'], '<h1 class="hero-title" id="block-1-title">First post</h1>'), str_contains($page['html'], '<p class="hero-text">The first excerpt</p>'), str_contains($page['html'], 'one.jpg')], [true, true, true]);
+check('it shows the entry\'s title as the page title, its excerpt without markup, and its picture', [(bool)preg_match('#<h1 class="hero-title" id="block-1-title"><a class="hero-title-link" href="[^"]*first[^"]*">First post</a></h1>#', $page['html']), str_contains($page['html'], '<p class="hero-text">The first excerpt</p>'), str_contains($page['html'], 'one.jpg')], [true, true, true]);
 check('its category is the eyebrow, and the button leads to the entry', [str_contains($page['html'], '<p class="eyebrow">Cat:news</p>'), (bool)preg_match('#<a class="btn btn-primary" href="[^"]*">Read more#', $page['html'])], [true, true]);
 check('the typed text and buttons are not drawn', [str_contains($page['html'], 'Typed'), $page['leads_with_hero'], $page['image']], [false, true, '/uploads/one.jpg']);
 $page = $draw([['type' => 'hero', 'source' => 'posts', 'eyebrow' => 'Featured', 'entry_button' => 'Read the story']]);
@@ -76,6 +76,9 @@ $page = $draw([['type' => 'hero-slider', 'source' => 'posts', 'limit' => 3, 'ent
 check('the slider asks for as many entries as slides', $asked, [['posts', 'en', 3, '', 0, 'date_desc']]);
 check('a slide for each entry, in the chosen layout, and no typed slide', [substr_count($page['html'], 'class="slider-slide"'), substr_count($page['html'], 'block--cover'), str_contains($page['html'], 'Typed slide')], [3, 3, false]);
 check('each with its title and a button to it', [str_contains($page['html'], 'First post'), str_contains($page['html'], 'Second post'), str_contains($page['html'], 'Third post'), substr_count($page['html'], '>Read more')], [true, true, true, 3]);
+check('each title links to its entry, and a typed slide\'s title links nowhere', [preg_match_all('#<h2 class="hero-title"><a class="hero-title-link" href="[^"]+">(First|Second|Third) post</a></h2>#', $page['html']), str_contains($draw([['type' => 'hero-slider', 'items' => [['heading' => 'Typed slide']]]])['html'], '<h2 class="hero-title">Typed slide</h2>')], [3, true]);
+$heroCss = (string)file_get_contents(dirname(__DIR__, 2) . '/themes/default/blocks/hero/block.css');
+check('the linked title looks like a title: no link colour and no underline, on hover too', (bool)preg_match('#\.hero-title-link,\s*\.hero-title-link:hover,\s*\.hero-title-link:visited\s*\{\s*color: inherit;\s*text-decoration: none;#', $heroCss), true);
 check('an entry without an excerpt shows the start of its text, shortened', (bool)preg_match('#<p class="hero-text">The second body, (long ){30,}l?o?n?g?…</p>#', $page['html']), true);
 check('it opens the page, light text over the first picture', [$page['opens_with_slider'], $page['opens_with_dark_slide']], [true, true]);
 $page = $draw([['type' => 'hero-slider', 'source' => 'posts', 'limit' => 2, 'entry_layout' => 'evil']]);
