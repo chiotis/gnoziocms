@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.203 — 2026-11-04 — Hero and Hero slider: the measure of an entry's title
+- The heading of a Hero, and of every slide of a Hero slider, could be 17ch wide and its text 38rem, so a long heading broke into many short lines. They now take the measure of the title area of an entry's page: 22ch for the heading and 62ch for the text (56ch in the centred layouts).
+
 ## 0.1.202 — 2026-11-04 — Hero slider: lined up with the page
 - With the arrows over the slides, the text of a slide started about 96px further in than every other block: the room for the arrows was added inside a container that already has the page's width. It now moves in only as far as the arrows need (nothing once the page is wider than the container by that much). On a phone, where the arrows are at the bottom, it no longer gets a second gutter.
 
