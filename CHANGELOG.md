@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.221 — 2026-11-04 — Export and import the whole theme
+- New tab **Theme > Export and import**. **Export theme** downloads one zip with everything the Theme screen sets: Branding and its font files, Header, Footer and the other sections, Single and Archive Layouts (with the search page), the templates built with blocks, Footer Blocks and Custom CSS.
+- **Import…** on another site shows what each part would change and lets you choose the parts. Brand and Social profiles start unticked, since the logo and profiles belong to the other site. Layouts for content types or taxonomies the site does not have are left out with a warning, and pictures under `/uploads/` that the site lacks are named.
+- Every value is checked the way the Theme screen checks it, including the HTML rules for blocks. **Undo the last import** puts the theme back as it was. Template files and blocks of your own in `custom/` are code and are still copied by hand.
+- Tests: `tests/unit/theme-transfer.php`, `tests/http/theme_transfer_test.py`.
+
 ## 0.1.220 — 2026-11-04 — The admin carries the site's name and icons
 - Admin tabs, the sign-in page and the first-run setup page are titled with the **site name** ("Dashboard - Acme Studio") instead of GnozioCMS. The sign-in and setup pages show it as their heading too. Without a site name, they still say GnozioCMS.
 - Admin pages use the site's **favicon**, **app icon** and **browser colour** from **Theme > Branding**, so the admin tab shows the same icon as the site.
