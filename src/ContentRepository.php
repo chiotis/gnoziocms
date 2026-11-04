@@ -39,6 +39,9 @@ final class ContentRepository
     /** The entry the live preview of the editor shows instead of the stored one (this request only). */
     private ?ContentItem $draft = null;
 
+    /** True while the site's pages are drawn (not the admin's screens): a scheduled entry is then left out for everyone. */
+    private bool $siteView = false;
+
     /** @param (\Closure(): string[])|null $catalogue */
     public function __construct(string $contentDir, MarkdownConverter $markdown, array $settings, ?\Closure $catalogue = null)
     {
@@ -285,6 +288,18 @@ final class ContentRepository
      * Shows `$item` in place of the stored entry with the same address (or as one more) until `null` is given: the live preview of
      * the editor draws the page as the unsaved form would make it. It lasts for this request and touches no file.
      */
+    /** The site's pages are drawn now (true) or the admin's screens (false); see hidesScheduled(). */
+    public function viewAsSite(bool $on): void
+    {
+        $this->siteView = $on;
+    }
+
+    /** Whether a scheduled entry is left out even for someone signed in: on the site's pages, where only a preview shows it. */
+    public function hidesScheduled(): bool
+    {
+        return $this->siteView;
+    }
+
     public function showInstead(?ContentItem $item): void
     {
         $this->draft = $item;
@@ -403,7 +418,13 @@ final class ContentRepository
     private function filterVisibility(array $items, bool $includeHidden): array
     {
         if ($includeHidden) {
-            return $items;
+            if (!$this->siteView) {
+                return $items;
+            }
+            // On the site someone signed in also sees drafts and hidden entries, but not a scheduled one: it is not on the
+            // site until its time, and only the editor's preview (the entry shown instead) draws it.
+            return array_values(array_filter($items, fn(ContentItem $item): bool => $item === $this->draft
+                || strtolower((string)($item->meta['status'] ?? 'published')) !== ScheduledPublishing::STATUS));
         }
 
         return array_values(array_filter($items, function (ContentItem $item): bool {

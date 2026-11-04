@@ -257,6 +257,9 @@ final class ArchiveQuery
         $where = 'ci.lang = :lang AND ci.type IN (' . ($marks === [] ? "''" : implode(', ', $marks)) . ')';
         if (!$includeHidden) {
             $where .= " AND lower(ci.status) = 'published' AND ci.visible = 1";
+        } elseif ($this->content->hidesScheduled()) {
+            // Signed in, on the site: drafts and hidden entries too, never a scheduled one (as ContentRepository).
+            $where .= " AND lower(ci.status) <> '" . ScheduledPublishing::STATUS . "'";
         }
         if ($scope['term'] !== null) {
             $ids = [];

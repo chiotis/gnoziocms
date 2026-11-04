@@ -1,4 +1,4 @@
-import re, sqlite3, sys
+import json, re, sqlite3, sys
 sys.path.insert(0, '.')
 from client import Client, has_field
 
@@ -49,6 +49,16 @@ check('a time to come stays scheduled', 'status: scheduled' in text('sched-futur
 st, _, html = root.get('/admin/edit?type=posts&slug=sched-future&lang=en')
 check('the editor shows it as scheduled, with the time', 'data-status-pill>Scheduled<' in html and 'value="2099-01-02T09:00"' in html, re.findall(r'data-status-pill>[^<]*<', html))
 check('the public feed does not list it', 'Scheduled sched-future' not in anon.get('/en/feed')[2])
+
+# ---- someone signed in does not see it on the site either; only the editor's preview draws it
+st, _, html = root.get('/en/sched-future')
+check('a scheduled entry is not on the site for someone signed in', st == 404, st)
+check('nor in the list of its type', 'Scheduled sched-future' not in root.get('/en/posts')[2])
+save('sched-draft', 'draft')
+check('while a draft is still shown to them, as before', root.get('/en/sched-draft')[0] == 200)
+form = next(f for f in root.forms('/admin/edit?type=posts&slug=sched-future&lang=en') if f['attrs'].get('id') == 'entry-form' or any(x[0] == 'blocks_json' for x in f['fields']))
+st, _, body = root.request('/admin/edit?preview=entry', data=list({k: v for k, v in form['fields']}.items()))
+check('the preview of the scheduled entry draws it', st == 200 and 'Text of sched-future' in json.loads(body).get('html', ''), (st, body[:200]))
 
 # ---- no time
 save('sched-none', 'scheduled', '')
