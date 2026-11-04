@@ -688,6 +688,19 @@ All optional, all empty or "Theme" by default (a site that sets none gets exactl
 - **Reset a section** (Colour, Typography, Layout and spacing, Shape and depth, Forms, Buttons): puts that section's `design` settings back to the theme's defaults, saves, and keeps the same backup, so it can be undone. This is separate from the *Reset … overrides* links of each card, which only change the unsaved form. A section owns the keys named in `BrandingTransfer::SECTIONS`.
 - Routes: `GET /admin/theme?branding=export`, `POST /admin/theme?branding=preview|import|undo|reset` (JSON, with the form token).
 
+### Export and import the whole theme
+
+*Theme > Export and import* (`ThemeTransfer`, `src/ThemeTransfer.php`; the same right as the rest of the Theme screen) carries everything the Theme screen sets to another site. Branding's own export above stays for the look alone.
+
+- **Export** downloads `theme-YYYY-MM-DD.zip`: `theme.json` (format `gnoziocms-theme`) with the whole theme settings as resolved (every section, `single_layouts`, `single_templates`, `archive_templates`, `footer_blocks`, `search_page`), `archives` (the `archive` part of the site's definition of each content type, from `custom/content-types/<type>.yaml`, and of each taxonomy's file; an empty one for a list that has none, so importing it puts the theme's defaults back), `custom_css`, and under `assets/` the font files Branding names.
+- **Import** shows a **part** for each area, in the order of the screen: Branding (`appearance` and `design`, with the font files), one for each other section of the settings (Header, Footer, Sidebar card, Brand, Social profiles, …), Single Layouts, Single templates, Archive Layouts (types, taxonomies and the search page), Archive templates, Footer Blocks and Custom CSS. Each lists what would change (now → import) and has a box to tick; Brand and Social profiles (`ThemeTransfer::IDENTITY`) start unticked, since they say who the other site is. Only the ticked parts are applied.
+- A section of the settings, Footer Blocks, the search page and Custom CSS are **replaced** by the file's (missing fields get the theme's defaults). Layouts and templates are replaced **for each content type or taxonomy the file has and this site has too**; this site's others are left as they are, and the file's lists this site does not have are named in a warning (make the type or taxonomy, then import again).
+- Everything is checked as the screen checks it: the settings schema (undeclared keys are listed as skipped), `SingleLayouts::fromInput`, `ContentTypes::archiveSchema` and the known orders and taxonomies for archives, the block registry and the HTML guard for every set of blocks (`BlockSets::clean`, so someone without the right to write HTML cannot bring it in), and the size limit of Custom CSS. Only the file's languages of a set of blocks are kept.
+- The preview names the uploaded pictures (`/uploads/…`) the file refers to that this site has no file for, and says when the file was made with another theme.
+- Template files, block folders, translations and other code in `custom/` never travel: they are code, copied by hand (or restored as *Site customizations* from a backup). Menus are content and are not part of the theme.
+- The state from before (theme settings, the archives of every list, Custom CSS) is kept as one backup (`theme_backup` in the system database); **Undo the last import** puts it back. Imported font files stay.
+- Routes: `GET /admin/theme?transfer=export`, `POST /admin/theme?transfer=preview|import|undo` (JSON, with the form token; `parts[]` names the parts for `import`).
+
 ## Design tokens
 
 `site.css` defines semantic tokens (`--color-bg`, `--color-surface`, `--color-text`, `--color-muted`, `--color-border`, `--accent`, `--accent-soft`, `--accent-contrast`, spacing `--space-*`, type scale `--step-*`, radii `--radius-*`). Theme settings switch them through attributes on `<html>`:

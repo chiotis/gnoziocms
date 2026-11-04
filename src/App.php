@@ -116,6 +116,7 @@ final class App
     private bool $entryPreview = false;
     private ?LayoutsAdmin $layoutsAdminService = null;
     private ?BlockSets $blockSetsService = null;
+    private ?ThemeTransfer $themeTransferService = null;
     private ?SingleTemplateAdmin $singleTemplateAdminService = null;
     private ?ArchivePages $archivePagesService = null;
     private ?ArchiveTemplateAdmin $archiveTemplateAdminService = null;
@@ -2440,6 +2441,11 @@ final class App
             $this->handleBrandingTransfer((string)$_GET['branding']);
             return;
         }
+        // The whole theme carried to another site (Export and import tab).
+        if (isset($_GET['transfer'])) {
+            $this->handleThemeTransfer((string)$_GET['transfer']);
+            return;
+        }
         // The template built with blocks for the page of one content type (Single Layouts > Edit template).
         if (isset($_GET['template'])) {
             $this->handleSingleTemplate((string)$_GET['template']);
@@ -2493,8 +2499,9 @@ final class App
         // The two tabs that gather how pages look come after the header's.
         $at = array_search('header', $tabs, true);
         array_splice($tabs, $at === false ? min(1, count($tabs)) : $at + 1, 0, $single->declared() ? ['single_layouts', 'archive_layouts'] : ['archive_layouts']);
-        // The site's own stylesheet has the last tab.
+        // The site's own stylesheet, then the export and import of the whole theme.
         $tabs[] = 'custom_css';
+        $tabs[] = 'transfer';
         $activeTab = (string)($_GET['tab'] ?? '');
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // The fonts of the Branding screen: a file uploaded, or the old single font file read as a family (nothing is saved yet).
@@ -2555,10 +2562,11 @@ final class App
             'theme_message' => trim((string)($_GET['theme_msg'] ?? '')),
             'theme_schema' => $schema,
             'theme_tabs' => $tabs,
-            'tab_labels' => ['branding' => 'Branding', 'single_layouts' => 'Single Layouts', 'archive_layouts' => 'Archive Layouts', 'footer_blocks' => 'Footer Blocks', 'custom_css' => 'Custom CSS'],
+            'tab_labels' => ['branding' => 'Branding', 'single_layouts' => 'Single Layouts', 'archive_layouts' => 'Archive Layouts', 'footer_blocks' => 'Footer Blocks', 'custom_css' => 'Custom CSS', 'transfer' => 'Export and import'],
             'custom_css' => (new CustomCss($this->theme->customPath()))->read(),
             'footer_blocks_json' => $this->footerBlocksEditorJson($default),
             'branding' => $branding ? $this->brandingScreen() : null,
+            'transfer' => ['parts' => $this->themeTransfer()->parts(), 'backup' => $this->themeTransfer()->backup()],
             'preview_url' => (string)($this->settings['base_url'] ?? '') . '/',
             'theme_values' => $this->themeSettings,
             'theme_info' => [
@@ -2644,6 +2652,88 @@ final class App
             return;
         }
         $answer(['error' => 'Unknown action.'], 404);
+    }
+
+    /** Export, import (preview and apply) and undo of the whole theme (/admin/theme?transfer=…; the route already needs the right to change the theme). */
+    private function handleThemeTransfer(string $action): void
+    {
+        $transfer = $this->themeTransfer();
+        if ($action === 'export' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+            $path = tempnam(sys_get_temp_dir(), 'theme');
+            if ($path === false) {
+                $this->redirect('/admin/theme?theme=fail&tab=transfer&theme_msg=' . urlencode('The export could not be made.'));
+                return;
+            }
+            $transfer->export($path);
+            $this->logActivity('theme.export', 'info', 'settings', $this->theme->name(), 'Theme exported.');
+            header('Content-Type: application/zip');
+            header('Content-Disposition: attachment; filename="theme-' . gmdate('Y-m-d') . '.zip"');
+            header('Content-Length: ' . (string)(filesize($path) ?: 0));
+            header('Cache-Control: no-store');
+            readfile($path);
+            @unlink($path);
+            exit;
+        }
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: no-store');
+        $answer = static function (array $data, int $status = 200): void {
+            http_response_code($status);
+            echo json_encode($data + ['ok' => $status < 400], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG);
+        };
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $answer(['error' => 'Use the buttons of the Export and import tab.'], 405);
+            return;
+        }
+        if ($action === 'preview' || $action === 'import') {
+            $upload = $_FILES['theme_file'] ?? null;
+            $tmp = is_array($upload) && ($upload['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK && is_uploaded_file((string)$upload['tmp_name']) && (int)$upload['size'] <= 40 * 1048576 ? (string)$upload['tmp_name'] : '';
+            $read = $tmp !== '' ? $transfer->read((string)file_get_contents($tmp)) : ['ok' => false, 'error' => 'Choose a theme file (the zip from Export theme).'];
+            if (($read['ok'] ?? false) !== true) {
+                $answer(['error' => (string)($read['error'] ?? 'The file could not be read.')], 422);
+                return;
+            }
+            if ($action === 'preview') {
+                $answer($transfer->preview($read));
+                return;
+            }
+            $parts = array_map('strval', is_array($_POST['parts'] ?? null) ? $_POST['parts'] : []);
+            $result = $transfer->apply($read, $parts);
+            $this->themeSettings = $this->loadThemeSettings();
+            if (($result['ok'] ?? false) === true) {
+                $this->logActivity('theme.import', 'info', 'settings', $this->theme->name(), 'Theme imported.', ['parts' => $parts, 'changed' => $result['changed']]);
+            }
+            $answer($result, ($result['ok'] ?? false) ? 200 : 422);
+            return;
+        }
+        if ($action === 'undo') {
+            $done = $transfer->undo();
+            if ($done) {
+                $this->logActivity('theme.import_undo', 'info', 'settings', $this->theme->name(), 'Theme put back as before the import.');
+            }
+            $answer(['restored' => $done], $done ? 200 : 404);
+            return;
+        }
+        $answer(['error' => 'Unknown action.'], 404);
+    }
+
+    private function themeTransfer(): ThemeTransfer
+    {
+        return $this->themeTransferService ??= new ThemeTransfer(
+            theme: $this->theme,
+            load: fn(): array => $this->loadThemeSettings(),
+            save: function (array $settings): void {
+                $this->setSystemMeta('theme_settings', Yaml::dump($settings, 6, 2));
+            },
+            meta: $this->systemMeta,
+            single: $this->singleLayouts(),
+            types: $this->contentTypes(),
+            taxonomies: $this->taxonomies(),
+            typeNames: fn(): array => $this->content->getTypes(),
+            cleanBlocks: fn(array $posted, mixed $stored): array => $this->blockSets()->clean($posted, $stored),
+            css: new CustomCss($this->theme->customPath()),
+            publicDir: $this->basePath . '/public',
+            version: trim((string)@file_get_contents($this->basePath . '/VERSION')),
+        );
     }
 
     private function brandingTransfer(): BrandingTransfer

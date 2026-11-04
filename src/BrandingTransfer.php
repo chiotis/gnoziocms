@@ -377,6 +377,22 @@ final class BrandingTransfer
         return $found;
     }
 
+    /**
+     * The font files a settings tree points to that exist in custom/assets (also used by the whole-theme export, ThemeTransfer).
+     *
+     * @return array<string, string> path inside custom/assets => path on disk
+     */
+    public function fontFiles(array $tree): array
+    {
+        return $this->referencedFiles($tree);
+    }
+
+    /** Whether a path inside custom/assets is a font file with a safe name. */
+    public function isFontFile(string $relative): bool
+    {
+        return $this->safeFile($relative);
+    }
+
     private function safeFile(string $relative): bool
     {
         return preg_match(self::FILE_PATTERN, $relative) === 1 && !str_contains($relative, '..') && !str_contains($relative, '//');
