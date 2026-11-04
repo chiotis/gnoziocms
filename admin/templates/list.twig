@@ -134,7 +134,6 @@
               <th class="px-4 py-2 font-medium" data-sort="text">Title</th>
               <th class="px-4 py-2 font-medium" data-sort="text">Status</th>
               <th class="px-4 py-2 font-medium">Language</th>
-              <th class="px-4 py-2 font-medium" data-sort="number" aria-sort="descending">Created</th>
               <th class="px-4 py-2 font-medium" data-sort="number">Updated</th>
               <th class="px-4 py-2 text-right font-medium">Actions</th>
             </tr>
@@ -165,6 +164,10 @@
                 </td>
                 <td class="px-4 py-2.5" data-sort-value="{{ status }}">
                   {{ ui.status_badge(status) }}
+                  {% set publish_at = item.publishAtTime() %}
+                  {% if publish_at %}
+                    <span class="mt-0.5 block whitespace-nowrap text-xs text-slate-500" title="Goes live on {{ publish_at|date('l j F Y, H:i') }}">{{ publish_at|date('Y-m-d H:i') }}</span>
+                  {% endif %}
                   {% if current_type == 'pages' and item.slug == site.home_page %}
                     {{ ui.badge('Home', 'blue') }}
                   {% endif %}
@@ -183,7 +186,6 @@
                     {% endfor %}
                   </div>
                 </td>
-                <td class="px-4 py-2.5 text-slate-400" data-sort-value="{{ item.createdTime() }}">{{ item.createdTime()|date('Y-m-d H:i') }}</td>
                 <td class="px-4 py-2.5 text-slate-400" data-sort-value="{{ item.mtime }}">{{ item.mtime|date('Y-m-d H:i') }}</td>
                 <td class="px-4 py-2.5">
                   <div class="flex items-center justify-end gap-0.5">
