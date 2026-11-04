@@ -24,8 +24,9 @@
   gap: clamp(2rem, 1rem + 4vw, 5rem);
 }
 
+/* The same measure as the title area of an entry's page (.single-hero-inner h1, .single-hero-subtitle), so a long heading reads alike. */
 .hero-title {
-  max-width: 17ch;
+  max-width: 22ch;
   margin: 0;
   font-size: var(--step-5);
   line-height: var(--heading-leading, 1.03);
@@ -33,7 +34,7 @@
 }
 
 .hero-text {
-  max-width: 38rem;
+  max-width: 62ch;
   margin: var(--space-m) 0 0;
   color: var(--color-muted);
   font-size: var(--step-1);
@@ -73,10 +74,6 @@
   grid-template-columns: minmax(0, 1fr);
 }
 
-.block-hero.block--split .no-media .hero-title {
-  max-width: 22ch;
-}
-
 .block-hero.block--split .hero-media {
   aspect-ratio: 4 / 5;
   max-height: 44rem;
@@ -105,6 +102,7 @@
 
 .block-hero.block--centered .hero-text,
 .block-hero.block--minimal .hero-text {
+  max-width: 56ch;
   margin-inline: auto;
 }
 
@@ -203,6 +201,7 @@
 }
 
 .block-hero:is(.block--cover, .block--steps) .is-centered .hero-text {
+  max-width: 56ch;
   margin-inline: auto;
 }
 
