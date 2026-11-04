@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.218 — 2026-11-04 — Early hints and a speed guide
+- Every public page tells the browser, in its headers, to start fetching its stylesheet and its opening picture straight away. Behind Cloudflare, with **Early Hints** turned on there, these are sent while the server is still making the page.
+- A page's headers say how long it took to make (`Server-Timing`), or that it came from the page cache. Browsers show this in their developer tools.
+- New guide, `docs/performance.md`: what the CMS does for speed, and what a site should turn on. That means a page cache (**System > Page cache** when there is no Varnish), the cron job for picture sizes, loading the Google tag after the page, and Cloudflare Early Hints and caching.
+- Tests: `tests/unit/early-hints.php`, `tests/http/page_cache_test.py`.
+
 ## 0.1.217 — 2026-11-04 — Smaller stylesheets, one request fewer
 - The theme's stylesheets and your own (`custom/assets`) are sent **minified**: comments and spacing are removed, nothing else changes. The files you edit stay as they are. The theme's main stylesheet is about 28% smaller once compressed. Its address has a new version, so browsers and caches fetch the new copy.
 - The styles of a page's blocks go **into the page itself** when they are small (up to 32 KB, about 6 KB compressed; a hero, a slider and a list of posts is about 23 KB). The browser then waits for one stylesheet instead of two before it draws the page. Larger ones stay a separate file.
