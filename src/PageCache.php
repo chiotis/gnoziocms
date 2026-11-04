@@ -14,7 +14,8 @@ namespace GnozioCMS;
  *   say it must not be kept (FrontCache::doNotKeep());
  * - emptied by the same call that empties the cache in front (FrontCache::purgeAll()): whatever is saved in the admin. The files are
  *   not deleted on the spot: a generation number changes at the end of that request, after what was saved is on disk, and a response
- *   that started under the old number is not kept. A copy also stops being used after TTL seconds, for what changes outside the admin.
+ *   that started under the old number is not kept. A copy also stops being used after TTL seconds, for what changes outside the admin
+ *   (after Images::PENDING_PAGE_TTL when it names a picture that is not written yet).
  *
  * It is off until System > Page cache turns it on; with a cache in front it is not needed.
  */
@@ -159,7 +160,9 @@ final class PageCache
         if (!is_dir($this->directory) && !@mkdir($this->directory, 0775, true) && !is_dir($this->directory)) {
             return false;
         }
-        $head = json_encode(['generation' => $generation, 'expires' => time() + self::TTL, 'length' => strlen($body), 'headers' => $kept], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        // A page that names a picture still to be written is drawn again soon, with the picture's own address (Images).
+        $ttl = Images::namesPending($body) ? min(self::TTL, Images::PENDING_PAGE_TTL) : self::TTL;
+        $head = json_encode(['generation' => $generation, 'expires' => time() + $ttl, 'length' => strlen($body), 'headers' => $kept], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         if ($head === false) {
             return false;
         }

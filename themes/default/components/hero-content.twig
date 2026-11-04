@@ -1,7 +1,8 @@
 {#
   The content of a Hero, shared by the Hero block and by each slide of the Hero slider, so a slide is a hero in every detail.
   macro body(h) takes: variant, eyebrow, heading, heading_tag, heading_id, heading_url (the heading links there: an entry's page), text, actions, highlights, steps, image, image_alt,
-  video (a playable video or null), video_poster, first (opens the page: its picture loads first), item_heading_tag, prefix.
+  video (a playable video or null), video_poster, first (opens the page: its picture loads first), defer (a slide after the first: its picture
+  waits for the slider's script, so the page does not fetch it), item_heading_tag, prefix.
 #}
 {% macro video(video, poster, sizes, priority) %}
   <div class="hero-video" data-hero-video data-provider="{{ video.provider }}"{% if video.provider != 'file' %} data-embed="{{ video.src }}"{% endif %}
@@ -35,7 +36,7 @@
       {% if has_video %}
         {{ hero.video(video, h.video_poster, media_sizes, h.first) }}
       {% else %}
-        {{ image(h.image, {alt: h.image_alt, sizes: media_sizes, priority: h.first}) }}
+        {{ image(h.image, {alt: h.image_alt, sizes: media_sizes, priority: h.first, defer: h.defer|default(false)}) }}
       {% endif %}
     </div>
   {% endif %}
@@ -78,7 +79,7 @@
           {{ hero.video(video, h.video_poster, media_sizes, h.first) }}
           {{ hero.toggle(false) }}
         {% else %}
-          {{ image(h.image, {alt: h.image_alt, sizes: media_sizes, priority: h.first}) }}
+          {{ image(h.image, {alt: h.image_alt, sizes: media_sizes, priority: h.first, defer: h.defer|default(false)}) }}
         {% endif %}
       </div>
     {% endif %}

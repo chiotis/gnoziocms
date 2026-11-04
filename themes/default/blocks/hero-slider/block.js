@@ -1,3 +1,37 @@
+/* Hero slider: the pictures of the slides after the first are not fetched with the page (Images, defer: they carry data-src and
+   data-srcset). They are given their addresses once the page has loaded and the browser is idle, or as soon as the visitor
+   moves the strip, whichever is first. */
+(function () {
+  var sliders = document.querySelectorAll('[data-slider]');
+  if (!sliders.length) return;
+  var revealed = false;
+  var reveal = function () {
+    if (revealed) return;
+    revealed = true;
+    sliders.forEach(function (root) {
+      root.querySelectorAll('source[data-srcset]').forEach(function (source) {
+        source.srcset = source.getAttribute('data-srcset');
+        source.removeAttribute('data-srcset');
+      });
+      root.querySelectorAll('img[data-src]').forEach(function (img) {
+        img.src = img.getAttribute('data-src');
+        img.removeAttribute('data-src');
+      });
+    });
+  };
+  var later = function () {
+    if (window.requestIdleCallback) window.requestIdleCallback(reveal, { timeout: 2000 }); else window.setTimeout(reveal, 200);
+  };
+  if (document.readyState === 'complete') later(); else window.addEventListener('load', later, { once: true });
+  sliders.forEach(function (root) {
+    ['pointerdown', 'touchstart', 'focusin', 'wheel'].forEach(function (name) {
+      root.addEventListener(name, reveal, { once: true, passive: true });
+    });
+    var track = root.querySelector('.slider-track');
+    if (track) track.addEventListener('scroll', reveal, { once: true, passive: true });
+  });
+})();
+
 /* Hero slider: the slides are a plain scroll-snap strip that works by touch, wheel, and keyboard without this
    script. Here we add previous/next buttons, position dots, and optional automatic movement. */
 (function () {

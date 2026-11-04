@@ -7,28 +7,46 @@ namespace GnozioCMS;
 /**
  * Responsive images for files in public/uploads.
  *
- * `render()` writes <picture>/<img> markup with intrinsic width/height, WebP srcset, and
- * lazy or high-priority loading. Variants live at
- *   /uploads/_v/<source path>/<width>-<version>.webp
+ * `render()` writes <picture>/<img> markup with intrinsic width/height, AVIF (where GD has it) and
+ * WebP srcsets, and lazy or high-priority loading. Variants live at
+ *   /uploads/_v/<source path>/<width>-<version>-<format tag>.<webp|avif>
  * and are served as static files. While a variant is missing its address is
- *   /_image/<source path>/<width>-<version>
+ *   /_image/<source path>/<width>-<version>-<format tag>
  * which has no file extension, so every web server hands it to index.php (CloudPanel's nginx
  * answers 404 for a missing .webp itself); `handle()` writes the file and serves it.
- * The version is derived from the source mtime, so a replaced source gets new URLs.
+ * The version is derived from the source mtime, so a replaced source gets new URLs; the format tag
+ * (`w72`: WebP at quality 72, `a50`: AVIF at 50) changes with the encoding, so files of an older
+ * encoding are not reused. Names without a tag (`<width>-<version>`) are the WebP of older releases,
+ * still answered for pages kept from before.
+ *
+ * A page names a missing variant by its pending address. The variants a page asked for are written
+ * after the response (generatePending(), where the server can finish a response first) and by the
+ * cron job (fill()); a kept page that still has pending addresses is kept only PENDING_PAGE_TTL
+ * seconds, so it is drawn again with the files' own addresses.
  */
 final class Images
 {
-    public const WIDTHS = [360, 540, 720, 960, 1280, 1600, 1920, 2400];
+    public const WIDTHS = [360, 540, 720, 800, 960, 1280, 1600, 1920, 2400];
     public const VARIANT_DIR = '_v';
     /** The address of a variant that is not written yet; see the class comment. */
     public const PENDING_PREFIX = '/_image/';
     private const MAX_PIXELS = 36_000_000;
-    private const WEBP_QUALITY = 80;
+    private const WEBP_QUALITY = 72;
+    private const AVIF_QUALITY = 50;
+    private const AVIF_SPEED = 6;
+    /** How long a kept page that still names a pending variant is used (PageCache). */
+    public const PENDING_PAGE_TTL = 60;
+    /** Files of an older encoding are removed by fill() once they are this old (pages kept from before may still name them). */
+    private const STALE_AFTER = 7 * 86400;
+    /** A transparent pixel: the src of a deferred picture until a script gives it its own. */
+    private const PLACEHOLDER = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
     /** @var array<string, array{path: string, relative: string, width: int, height: int, type: int, mtime: int}|null> */
     private array $infoCache = [];
     /** @var array<string, string>|null */
     private ?array $altIndex = null;
+    /** Variants this request named by their pending address. @var array<string, array{relative: string, width: int, format: string}> */
+    private array $pending = [];
 
     public function __construct(private string $publicDir, private string $mediaMetaDir = '')
     {
@@ -37,6 +55,32 @@ final class Images
     public static function webpSupported(): bool
     {
         return function_exists('imagewebp') && function_exists('imagecreatetruecolor');
+    }
+
+    public static function avifSupported(): bool
+    {
+        return function_exists('imageavif') && function_exists('imagecreatetruecolor');
+    }
+
+    /** The formats variants are written in, best first. @return list<string> */
+    public static function formats(): array
+    {
+        if (!self::webpSupported()) {
+            return [];
+        }
+        return self::avifSupported() ? ['avif', 'webp'] : ['webp'];
+    }
+
+    /** The tag of the current encoding of a format, in a variant's name. */
+    private static function tag(string $format): string
+    {
+        return $format === 'avif' ? 'a' . self::AVIF_QUALITY : 'w' . self::WEBP_QUALITY;
+    }
+
+    /** A variant's name without its extension. */
+    private static function variantName(int $width, int $mtime, string $format): string
+    {
+        return $width . '-' . base_convert((string)$mtime, 10, 36) . '-' . self::tag($format);
     }
 
     /**
@@ -80,6 +124,8 @@ final class Images
      *  - priority: true for above-the-fold images (eager + fetchpriority=high)
      *  - loading: lazy (default) | eager
      *  - class, max_width (largest variant to offer), width/height (for non-local images)
+     *  - defer: true writes the addresses as data-src/data-srcset (with a <noscript> copy) for a script to fill in
+     *    later (the slides of a slider after the first), so the browser does not fetch them with the page
      *
      * @param array<string, mixed> $options
      */
@@ -118,33 +164,149 @@ final class Images
             $attributes['fetchpriority'] = 'high';
         }
         $img = '<img' . self::attributes($attributes) . '>';
+        $defer = ($options['defer'] ?? false) === true && !$priority;
 
         if ($info === null || $info['type'] === IMAGETYPE_GIF || !self::webpSupported()) {
-            return $img;
+            return $defer ? self::deferred($img, $attributes) : $img;
         }
         $maxWidth = (int)($options['max_width'] ?? 0);
-        $srcset = [];
+        $widths = [];
         foreach (self::widthsFor($info['width']) as $width) {
-            if ($maxWidth > 0 && $width > $maxWidth && $srcset !== []) {
+            if ($maxWidth > 0 && $width > $maxWidth && $widths !== []) {
                 break;
             }
-            $srcset[] = $this->variantUrl($info, $width) . ' ' . $width . 'w';
+            $widths[] = $width;
         }
-        return '<picture><source type="image/webp"' . self::attributes([
-            'srcset' => implode(', ', $srcset),
-            'sizes' => $sizes,
-        ]) . '>' . $img . '</picture>';
+        $sources = '';
+        foreach (self::formats() as $format) {
+            $srcset = implode(', ', array_map(fn(int $width): string => $this->variantUrl($info, $width, $format) . ' ' . $width . 'w', $widths));
+            $sources .= '<source type="image/' . $format . '"' . self::attributes(['srcset' => $srcset, 'sizes' => $sizes]) . '>';
+        }
+        $picture = '<picture>' . $sources . $img . '</picture>';
+        return $defer ? self::deferred($picture, $attributes) : $picture;
+    }
+
+    /**
+     * The markup of a deferred picture: srcset and src as data attributes, a transparent pixel as src, and the markup itself
+     * in <noscript> for a browser without scripts.
+     *
+     * @param array<string, string> $attributes the attributes of the <img>
+     */
+    private static function deferred(string $markup, array $attributes): string
+    {
+        $noscript = '<noscript>' . $markup . '</noscript>';
+        $markup = str_replace(' srcset="', ' data-srcset="', $markup);
+        $deferredImg = '<img' . self::attributes(['src' => self::PLACEHOLDER, 'data-src' => $attributes['src']] + $attributes) . '>';
+        $markup = str_replace('<img' . self::attributes($attributes) . '>', $deferredImg, $markup);
+        return $markup . $noscript;
     }
 
     /** @param array{relative: string, mtime: int} $info */
-    public function variantUrl(array $info, int $width): string
+    public function variantUrl(array $info, int $width, string $format = 'webp'): string
     {
+        $format = $format === 'avif' ? 'avif' : 'webp';
         $path = implode('/', array_map('rawurlencode', explode('/', $info['relative'])));
-        $name = $width . '-' . base_convert((string)$info['mtime'], 10, 36);
-        if (!is_file($this->publicDir . '/uploads/' . self::VARIANT_DIR . '/' . $info['relative'] . '/' . $name . '.webp')) {
+        $name = self::variantName($width, $info['mtime'], $format);
+        if (!is_file($this->publicDir . '/uploads/' . self::VARIANT_DIR . '/' . $info['relative'] . '/' . $name . '.' . $format)) {
+            $this->pending[$info['relative'] . "\0" . $name] = ['relative' => $info['relative'], 'width' => $width, 'format' => $format];
             return self::PENDING_PREFIX . $path . '/' . $name;
         }
-        return '/uploads/' . self::VARIANT_DIR . '/' . $path . '/' . $name . '.webp';
+        return '/uploads/' . self::VARIANT_DIR . '/' . $path . '/' . $name . '.' . $format;
+    }
+
+    /** How many variants this request named by their pending address. */
+    public function pendingCount(): int
+    {
+        return count($this->pending);
+    }
+
+    /** Whether a page names a variant by its pending address. */
+    public static function namesPending(string $html): bool
+    {
+        return str_contains($html, self::PENDING_PREFIX);
+    }
+
+    /**
+     * Writes the variants this request named by their pending address (after the response), until `$deadline`
+     * (a microtime(true)). How many were written.
+     */
+    public function generatePending(float $deadline): int
+    {
+        $written = 0;
+        foreach ($this->pending as $key => $variant) {
+            if (microtime(true) >= $deadline) {
+                break;
+            }
+            unset($this->pending[$key]);
+            $file = self::sourceFile($this->publicDir . '/uploads', $variant['relative']);
+            $size = $file !== null ? @getimagesize($file) : false;
+            if ($file === null || !is_array($size)) {
+                continue;
+            }
+            $name = self::variantName($variant['width'], (int)filemtime($file), $variant['format']);
+            $target = $this->publicDir . '/uploads/' . self::VARIANT_DIR . '/' . $variant['relative'] . '/' . $name . '.' . $variant['format'];
+            if (!is_file($target) && self::generate($file, (int)$size[2], $variant['width'], $target, $variant['format'])) {
+                $written++;
+            }
+        }
+        return $written;
+    }
+
+    /**
+     * For the cron job: writes the missing variants of every picture under uploads/ (every width and format a page may ask for),
+     * and removes variants of an older encoding or an older version of their source once they are STALE_AFTER old. Stops at
+     * `$deadline` (a microtime(true)); the next run goes on. How many files were written.
+     */
+    public function fill(float $deadline): int
+    {
+        $uploads = $this->publicDir . '/uploads';
+        if (!is_dir($uploads) || self::formats() === []) {
+            return 0;
+        }
+        $written = 0;
+        $items = new \RecursiveIteratorIterator(new \RecursiveCallbackFilterIterator(
+            new \RecursiveDirectoryIterator($uploads, \FilesystemIterator::SKIP_DOTS),
+            static fn(\SplFileInfo $item): bool => !($item->isDir() && $item->getPathname() === $uploads . '/' . self::VARIANT_DIR)
+        ));
+        foreach ($items as $item) {
+            if (microtime(true) >= $deadline) {
+                break;
+            }
+            if (!$item->isFile() || !in_array(strtolower($item->getExtension()), ['jpg', 'jpeg', 'png', 'webp'], true)) {
+                continue;
+            }
+            $relative = str_replace('\\', '/', substr($item->getPathname(), strlen($uploads) + 1));
+            $file = self::sourceFile($uploads, $relative);
+            $size = $file !== null ? @getimagesize($file) : false;
+            if ($file === null || !is_array($size) || !in_array($size[2], [IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_WEBP], true)) {
+                continue;
+            }
+            [$sourceWidth] = self::orientedSize($file, (int)$size[0], (int)$size[1], (int)$size[2]);
+            $mtime = (int)filemtime($file);
+            $dir = $uploads . '/' . self::VARIANT_DIR . '/' . $relative;
+            $current = [];
+            foreach (self::widthsFor($sourceWidth) as $width) {
+                foreach (self::formats() as $format) {
+                    $name = self::variantName($width, $mtime, $format) . '.' . $format;
+                    $current[$name] = true;
+                    if (is_file($dir . '/' . $name)) {
+                        continue;
+                    }
+                    if (microtime(true) >= $deadline) {
+                        return $written;
+                    }
+                    if (self::generate($file, (int)$size[2], $width, $dir . '/' . $name, $format)) {
+                        $written++;
+                    }
+                }
+            }
+            foreach (glob($dir . '/*.{webp,avif}', GLOB_BRACE) ?: [] as $old) {
+                if (!isset($current[basename($old)]) && (int)@filemtime($old) < time() - self::STALE_AFTER) {
+                    @unlink($old);
+                }
+            }
+        }
+        return $written;
     }
 
     /** Removes every variant of a source (called when a media item is deleted). */
@@ -154,7 +316,7 @@ final class Images
             return;
         }
         $dir = $this->publicDir . '/uploads/' . self::VARIANT_DIR . '/' . $relative;
-        foreach (glob($dir . '/*.webp') ?: [] as $file) {
+        foreach (glob($dir . '/*.{webp,avif}', GLOB_BRACE) ?: [] as $file) {
             @unlink($file);
         }
         @rmdir($dir);
@@ -177,15 +339,24 @@ final class Images
     {
         $path = rawurldecode((string)(parse_url($requestUri, PHP_URL_PATH) ?? ''));
         $prefix = '/uploads/' . self::VARIANT_DIR . '/';
-        if (str_starts_with($path, self::PENDING_PREFIX)) {
-            $path = $prefix . substr($path, strlen(self::PENDING_PREFIX)) . '.webp';
+        $pending = str_starts_with($path, self::PENDING_PREFIX);
+        if ($pending) {
+            $path = $prefix . substr($path, strlen(self::PENDING_PREFIX));
         }
         if (!str_starts_with($path, $prefix)) {
             return false;
         }
         $rest = substr($path, strlen($prefix));
         $slash = strrpos($rest, '/');
-        if ($slash === false || !preg_match('/^(\d{2,5})-([a-z0-9]{1,12})\.webp$/', substr($rest, $slash + 1), $m)) {
+        // <width>-<version>[-<tag>], with the extension of its format unless it is a pending address.
+        $pattern = $pending ? '/^(\d{2,5})-([a-z0-9]{1,12})(?:-([wa]\d{1,3}))?$/' : '/^(\d{2,5})-([a-z0-9]{1,12})(?:-([wa]\d{1,3}))?\.(webp|avif)$/';
+        if ($slash === false || !preg_match($pattern, substr($rest, $slash + 1), $m)) {
+            self::notFound();
+            return true;
+        }
+        $tag = (string)($m[3] ?? '');
+        $format = str_starts_with($tag, 'a') ? 'avif' : 'webp';
+        if ((!$pending && $m[4] !== $format) || ($tag !== '' && $tag !== self::tag($format)) || ($format === 'avif' && !self::avifSupported())) {
             self::notFound();
             return true;
         }
@@ -205,8 +376,10 @@ final class Images
             return true;
         }
 
-        $target = $uploads . '/' . self::VARIANT_DIR . '/' . $relative . '/' . $width . '-' . $version . '.webp';
-        if (!is_file($target) && !self::generate($file, (int)$size[2], $width, $target)) {
+        // A name without a tag is the WebP of an older release, still asked for by pages kept from before.
+        $name = $width . '-' . $version . ($tag !== '' ? '-' . $tag : '');
+        $target = $uploads . '/' . self::VARIANT_DIR . '/' . $relative . '/' . $name . '.' . $format;
+        if (!is_file($target) && !self::generate($file, (int)$size[2], $width, $target, $format)) {
             // Never break the page: fall back to the original file.
             header('Location: /uploads/' . implode('/', array_map('rawurlencode', explode('/', $relative))), true, 302);
             header('Cache-Control: no-store');
@@ -214,7 +387,7 @@ final class Images
             return true;
         }
 
-        header('Content-Type: image/webp');
+        header('Content-Type: image/' . $format);
         header('Content-Length: ' . (int)filesize($target));
         header('Cache-Control: public, max-age=31536000, immutable');
         header('X-Content-Type-Options: nosniff');
@@ -247,9 +420,9 @@ final class Images
         return $this->altIndex[(string)(parse_url($src, PHP_URL_PATH) ?? '')] ?? '';
     }
 
-    private static function generate(string $file, int $type, int $width, string $target): bool
+    private static function generate(string $file, int $type, int $width, string $target, string $format = 'webp'): bool
     {
-        if (!self::webpSupported()) {
+        if (!self::webpSupported() || ($format === 'avif' && !self::avifSupported())) {
             return false;
         }
         $size = @getimagesize($file);
@@ -287,8 +460,11 @@ final class Images
             return false;
         }
         $temp = $target . '.' . bin2hex(random_bytes(4)) . '.tmp';
-        $ok = imagewebp($canvas, $temp, self::WEBP_QUALITY);
-        if (!$ok || !@rename($temp, $target)) {
+        $ok = $format === 'avif'
+            ? @imageavif($canvas, $temp, self::AVIF_QUALITY, self::AVIF_SPEED)
+            : imagewebp($canvas, $temp, self::WEBP_QUALITY);
+        clearstatcache(true, $temp);
+        if (!$ok || (int)@filesize($temp) === 0 || !@rename($temp, $target)) {
             @unlink($temp);
             return false;
         }

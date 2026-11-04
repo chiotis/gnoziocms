@@ -42,6 +42,7 @@
             video: slide._video|default(null),
             video_poster: slide.video_poster,
             first: loop.first and block_first,
+            defer: not loop.first,
             item_heading_tag: item_heading_tag,
             prefix: prefix
           }) }}

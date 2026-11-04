@@ -1,7 +1,8 @@
 <?php
 /*
- * Publishes the scheduled entries whose time has come, then takes the scheduled backup when it is due: for a cron job, so
- * neither depends on someone visiting the site.
+ * Publishes the scheduled entries whose time has come, writes the picture sizes pages may ask for that are missing (a few minutes'
+ * worth per run; the next run goes on), then takes the scheduled backup when it is due: for a cron job, so none of it depends on
+ * someone visiting the site.
  * (It lives in src/ because an update replaces that folder; a new file elsewhere would stop the older sites from updating.)
  *   php src/cron-backup.php
  * Run it every 5 minutes on a site that schedules entries, otherwise once a day (the schedule in Settings > Backup decides
@@ -22,6 +23,10 @@ $app = new GnozioCMS\App($root);
 $published = $app->releaseScheduled(false);
 if ($published > 0) {
     echo 'published on schedule: ' . $published . PHP_EOL;
+}
+$pictures = $app->fillImageVariants(120);
+if ($pictures > 0) {
+    echo 'picture sizes written: ' . $pictures . PHP_EOL;
 }
 $result = $app->runScheduledBackup();
 echo $result . PHP_EOL;
