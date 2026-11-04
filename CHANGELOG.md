@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.200 — 2026-11-04 — Content list by creation; shared links with a picture and a description
+- The first save of an entry writes `created` (ISO 8601); later saves, moves and the extra front matter keep it, and a file from before takes its date (or else its file time) on its first save. The content list in the admin is sorted by it, newest first, with a *Created* column, so editing an entry no longer moves it up. The site keeps its order by `date`.
+- SEO tab of every content type: *When the link is shared* shows the link as networks draw it, and an empty image or description says what it falls back to (the main image, then the site's; the search description, the excerpt, the start of the text, then the site's).
+- Pages: an entry without an excerpt is described by the start of its text (about 160 characters), in search and when shared, before the site's description.
+- `docs/editor.md`. Tests: `tests/unit/content-screens.php`, `tests/http/save_test.py`, `tests/http/seo_test.py`.
+
 ## 0.1.199 — 2026-11-03 — Blocks of entries: no duplicates on a page
 - Latest content, Cards, Portfolio, Hero and Hero slider (when they show entries) get **Skip the newest** (0 to 50): leaves out that many of the newest entries, in the category or tag if one is chosen.
 - And **Leave out entries shown above** (off to begin with): the entries a block higher on the page already shows, in a column too, and the page's own entry are left out, and the next ones take their place. With both, the newest are skipped first. A block left with no entry is not drawn. Only the hero or slider that opens the page loads its entries before the others; the rest load in the order of the page.
