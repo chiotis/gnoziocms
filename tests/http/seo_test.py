@@ -68,7 +68,10 @@ check('the search results are kept out', 'noindex' in (meta(head('/search?q=a')[
 save('search', 'title_format', {'separator': '–', 'title_format': '{site} {sep} {title}', 'home_title': 'Home of the studio', 'home_description': 'About the studio home.', 'default_description': 'The site in a line.'})
 st, html = head('/plain'); t = title(html)
 check('the title follows the format and the separator', t.endswith('Plain page') and ' – ' in t and not t.endswith('| GnozioCMS'), t)
-check('a page without a description gets the default', meta(html, 'description') == 'The site in a line.', meta(html, 'description'))
+check('a page without a description or excerpt is described by the start of its text', meta(html, 'description') == 'Body.', meta(html, 'description'))
+open('app/content/pages/no-text.md', 'w', encoding='utf-8').write("---\ntitle: No text\nstatus: published\nvisible: true\n---\n\n")
+st, html = head('/no-text')
+check('one with no text either gets the default', meta(html, 'description') == 'The site in a line.' and meta(html, 'og:description', 'property') == 'The site in a line.', meta(html, 'description'))
 st, html = head('/')
 check('the home page has a title and a description of its own (its SEO tab wins)', title(html) == 'FarosCMS Demo | Digital Studio' and 'Ενδεικτική' in (meta(html, 'description') or ''))
 st, html = head('/about')
@@ -141,6 +144,22 @@ check('and the card is the one chosen', meta(html, 'twitter:card') == 'summary')
 save('social', 'share_image', {'share_image': 'javascript:alert(1)', 'twitter_card': 'auto', 'twitter_site': '', 'facebook_app_id': ''})
 st, html = head('/plain')
 check('an image that is not an address is not kept', 'javascript:' not in html and meta(html, 'og:image', 'property') is None and meta(html, 'twitter:card') == 'summary')
+
+# ---- a shared entry with nothing of its own: its main image, and the start of its text when it has no excerpt
+st, html = head('/with-image')
+check('an entry shared without an image of its own shows its main image', (meta(html, 'og:image', 'property') or '').endswith('/uploads/media/5e6915a67b9ceec5.jpg') and (meta(html, 'twitter:image') or '').endswith('5e6915a67b9ceec5.jpg'), meta(html, 'og:image', 'property'))
+check('and is described by the start of its text, not by the site', meta(html, 'og:description', 'property') == 'Body.' and meta(html, 'description') == 'Body.', [meta(html, 'og:description', 'property'), meta(html, 'description')])
+open('app/content/posts/long-text.md', 'w', encoding='utf-8').write("---\ntitle: Long text\nstatus: published\nvisible: true\n---\n\n## A heading\n\nThe **first** words " + 'and more ' * 40 + "\n")
+st, html = head('/long-text')
+desc = meta(html, 'og:description', 'property') or ''
+check('a long text is cut to about 160 characters, without its marks', desc.startswith('A heading The first words and more') and desc.endswith('…') and len(desc) <= 160 and '**' not in desc, desc)
+open('app/content/posts/with-excerpt.md', 'w', encoding='utf-8').write("---\ntitle: With excerpt\nstatus: published\nvisible: true\nexcerpt: The excerpt says it.\n---\n\nBody text.\n")
+st, html = head('/with-excerpt')
+check('an excerpt still comes before the text', meta(html, 'og:description', 'property') == 'The excerpt says it.', meta(html, 'og:description', 'property'))
+st, _, html = root.get('/admin/edit?type=posts&slug=with-image&lang=el')
+check('the SEO tab of the editor shows the shared link, with what it falls back to', 'data-share-card' in html and 'data-default-image=' in html and 'data-share-description' in html)
+js = root.get('/assets/js/admin-entry.js')[2]
+check('and its script falls back to the main image and the excerpt or the text', 'input[name="main_image"]' in js and "'Defaults to ' + fallbackImage" in js and 'textarea[name="excerpt"]' in js)
 
 # ---- identity and structured data
 n = graph('/')

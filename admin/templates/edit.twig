@@ -408,7 +408,11 @@
 
       <section class="{{ card }}" aria-labelledby="en-h-og">
         <h2 id="en-h-og" class="en-card-title">When the link is shared</h2>
-        <p class="en-help m-0">What shows on social networks and in messages. Each left empty follows the search title, description and the main image.</p>
+        <p class="en-help m-0">What shows on social networks and in messages. Each left empty follows the search title and description (or the excerpt, or the start of the text) and the main image.</p>
+        <div class="seo-share" data-share-card data-default-image="{{ share_defaults.image }}" data-default-description="{{ share_defaults.description }}" aria-hidden="true">
+          <div class="seo-share-img" data-share-image><span>No image: add a main image</span></div>
+          <div class="seo-share-body"><small>{{ site.base_url|default('')|replace({'https://': '', 'http://': ''})|trim('/') }}</small><b data-share-title>{{ meta_form.seo_og_title ?: meta_form.seo_title ?: meta_form.title }}</b><span data-share-description></span></div>
+        </div>
         <div class="en-rows">
           <div class="seo-row"><label class="seo-label" for="en-og-title">Title</label><input id="en-og-title" type="text" name="seo_og_title" value="{{ meta_form.seo_og_title }}" placeholder="Defaults to SEO title" class="lc-input" data-count="30,70,90" data-count-from='#en-seo-title|input[name="title"]' data-count-label="the search title|the title"></div>
           <div class="seo-row"><label class="seo-label" for="en-og-image">Image</label><input id="en-og-image" type="text" name="seo_og_image" value="{{ meta_form.seo_og_image }}" placeholder="{{ main_image ?: '/uploads/your-image.jpg' }}" class="lc-input"></div>

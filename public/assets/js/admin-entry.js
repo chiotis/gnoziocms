@@ -1,6 +1,6 @@
 /*
  * The content editor screen (admin/templates/edit.twig): the tabs, the pills at the top, the custom fields, the main image, and
- * the preview of the search result. The text of the entry is edited by admin-editor.js; the blocks by admin-blocks.js.
+ * the previews of the search result and of a shared link. The text of the entry is edited by admin-editor.js; the blocks by admin-blocks.js.
  */
 (function () {
   'use strict';
@@ -121,5 +121,42 @@
     };
     [title, excerpt, seoTitle, seoDescription].forEach(function (field) { if (field) { field.addEventListener('input', draw); } });
     draw();
+  }
+
+  // ---- the shared link as it will look: an empty field shows (and uses) what it falls back to
+  var share = document.querySelector('[data-share-card]');
+  if (share) {
+    var form = share.closest('form') || document;
+    var pick = function (selector) { return form.querySelector(selector); };
+    var text = function (el) { return el ? el.value.trim() : ''; };
+    var ogTitle = pick('input[name="seo_og_title"]');
+    var ogImage = pick('input[name="seo_og_image"]');
+    var ogDescription = pick('textarea[name="seo_og_description"]');
+    var mainImage = pick('input[name="main_image"]');
+    var body = pick('textarea[name="body"]');
+    var shareImage = share.querySelector('[data-share-image]');
+    var defaultImage = share.getAttribute('data-default-image') || '';
+    var defaultDescription = share.getAttribute('data-default-description') || '';
+    var cutText = function (value, n) { return value.length > n ? value.slice(0, n - 1).trim() + '…' : value; };
+    // The start of the text as the page gives it: the Markdown without its marks.
+    var plain = function (markdown) {
+      return markdown.replace(/!\[[^\]]*\]\([^)]*\)/g, ' ').replace(/\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/<[^>]+>/g, ' ')
+        .replace(/^[#>\-*+\s]+/gm, '').replace(/[*_`~]+/g, '').replace(/\s+/g, ' ').trim();
+    };
+    var drawShare = function () {
+      var t = text(ogTitle) || text(pick('input[name="seo_title"]')) || text(pick('input[name="title"]'));
+      var fallbackImage = text(mainImage) || defaultImage;
+      var src = text(ogImage) || fallbackImage;
+      var fallbackDescription = text(pick('textarea[name="seo_description"]')) || text(pick('textarea[name="excerpt"]')) || cutText(plain(text(body)), 160) || defaultDescription;
+      share.querySelector('[data-share-title]').textContent = cutText(t, 90) || 'Title of the page';
+      share.querySelector('[data-share-description]').textContent = cutText(text(ogDescription) || fallbackDescription, 200);
+      shareImage.style.backgroundImage = src ? 'url("' + src.replace(/["\\]/g, '') + '")' : '';
+      shareImage.classList.toggle('has-image', !!src);
+      if (ogImage) { ogImage.placeholder = fallbackImage ? 'Defaults to ' + fallbackImage : '/uploads/your-image.jpg'; }
+      if (ogDescription) { ogDescription.placeholder = fallbackDescription ? 'Defaults to: ' + cutText(fallbackDescription, 120) : ''; }
+    };
+    form.addEventListener('input', drawShare);
+    form.addEventListener('change', drawShare);
+    drawShare();
   }
 })();
