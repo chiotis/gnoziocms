@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.213 — 2026-11-04 — Hero titles link to the post
+- In a **Hero slider** that shows posts (or another content type), each slide's title now links to its entry, as the **Read more** button does. So does the title of a **Hero** that shows an entry.
+- The linked title looks like the title: its own colour and no underline, on hover too. A keyboard user sees an outline around it.
+- Slides and heroes with typed text are as before.
+- Tests: `tests/unit/hero-entries.php`.
+
 ## 0.1.212 — 2026-11-04 — Bylines by name
 - The byline of a post is its **Author** field. A connection or an import could write an account's username there, and the site showed the username ("By unibot"). When the field holds the username of an account, the site now shows that account's **display name**: in the line under the title (the post template and the **Entry title** block), in the structured data, and in a block bound to the author. Any other byline is shown as typed, and the field itself is not changed.
 - A page kept in the page cache shows the new byline once it is drawn again.
