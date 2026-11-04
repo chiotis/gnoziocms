@@ -161,7 +161,7 @@
               <li>
                 <div class="min-w-0">
                   <p class="db-title is-plain">{{ log.message ?: log.action }}</p>
-                  <p class="db-meta"><code>{{ log.action }}</code> · {{ log.actor_username ?: 'system' }}{% if log.subject_id %} · {{ log.subject_id }}{% endif %}</p>
+                  <p class="db-meta"><code>{{ log.action }}</code> · {{ log.actor_username ? user_name(log.actor_username) : 'system' }}{% if log.subject_id %} · {{ log.subject_id }}{% endif %}</p>
                 </div>
                 <time class="db-time" datetime="{{ log.created_at }}">{{ log.created_at|date('j M, H:i') }}</time>
               </li>

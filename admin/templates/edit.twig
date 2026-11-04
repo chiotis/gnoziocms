@@ -460,7 +460,7 @@
                 <li>
                   <div class="min-w-0">
                     <strong>{{ h.action_label }}</strong>
-                    <small>{{ h.when }}{% if h.actor %} · {{ h.actor }}{% endif %}</small>
+                    <small>{{ h.when }}{% if h.actor %} · {{ user_name(h.actor) }}{% endif %}</small>
                   </div>
                   <a class="en-link" href="{{ url('admin/revisions?id=' ~ h.id) }}">View changes</a>
                 </li>

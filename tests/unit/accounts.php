@@ -69,6 +69,11 @@ check('without a domain rule any verified account is accepted', $g->accept(['ema
 $users = new UserRepository($db, "$dir/content/users/users.yaml");
 $users->importYamlUsersIfEmpty(); // as the app does at start: the shipped account lives in the database from then on
 $users->create(['username' => 'ada', 'email' => 'ada@x.test', 'password_hash' => $users->passwordHash('Correct-horse-1'), 'role' => 'admin']);
+$users->create(['username' => 'grace', 'email' => 'grace@x.test', 'display_name' => ' Grace Hopper ', 'password_hash' => 'x', 'role' => 'editor']);
+$names = $users->displayNames();
+check('each account is shown by its display name, or its username when it has none', [$names['grace'] ?? null, $names['ada'] ?? null], ['Grace Hopper', 'ada']);
+$templates = implode('', array_map('file_get_contents', glob(dirname(__DIR__, 2) . '/admin/templates/{revisions,revision-view,edit,form-edit,activity-logs,dashboard}.twig', GLOB_BRACE)));
+check('the history and the logs show who did it by name, not by username', [substr_count($templates, 'user_name('), preg_match('/\{\{\s*(h|r|revision)\.actor\s*(\}\}|\?:)|by \{\{ revision\.actor|log\.actor_username \?:/', $templates)], [8, 0]);
 $auth = new Auth("$dir/content/users/users.yaml", $users);
 $throttle = new LoginThrottle($db);
 $in = new SignIn($auth, $throttle, $logger);

@@ -118,8 +118,10 @@ final class ActivityLogRepository
 
         $actor = trim((string)($filters['actor'] ?? ''));
         if ($actor !== '') {
-            $where[] = 'actor_username LIKE :actor';
+            // The screens show the display name, so it finds by that too.
+            $where[] = '(actor_username LIKE :actor OR actor_username IN (SELECT username FROM users WHERE display_name LIKE :actor_name))';
             $params['actor'] = '%' . $actor . '%';
+            $params['actor_name'] = '%' . $actor . '%';
         }
 
         $subjectType = $this->normalizeToken((string)($filters['subject_type'] ?? ''));

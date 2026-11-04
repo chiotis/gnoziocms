@@ -113,7 +113,7 @@
                 <td class="px-4 py-2.5">{{ ui.status_badge(log.level) }}</td>
                 <td class="px-4 py-2.5"><code class="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-600">{{ log.action }}</code></td>
                 <td class="px-4 py-2.5">
-                  <div class="font-medium text-slate-700">{{ log.actor_username ?: 'system' }}</div>
+                  <div class="font-medium text-slate-700">{{ log.actor_username ? user_name(log.actor_username) : 'system' }}</div>
                   <div class="text-xs text-slate-400">{{ log.actor_role ?: 'system' }}</div>
                 </td>
                 <td class="px-4 py-2.5 text-slate-600">
@@ -167,7 +167,7 @@
         <div class="space-y-4 p-5 text-sm">
           <dl class="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div><dt class="text-xs font-medium uppercase text-slate-400">Level</dt><dd class="mt-1 text-slate-700">{{ log.level }}</dd></div>
-            <div><dt class="text-xs font-medium uppercase text-slate-400">Actor</dt><dd class="mt-1 text-slate-700">{{ log.actor_username ?: 'system' }}</dd></div>
+            <div><dt class="text-xs font-medium uppercase text-slate-400">Actor</dt><dd class="mt-1 text-slate-700">{{ log.actor_username ? user_name(log.actor_username) : 'system' }}</dd></div>
             <div><dt class="text-xs font-medium uppercase text-slate-400">Role</dt><dd class="mt-1 text-slate-700">{{ log.actor_role ?: 'system' }}</dd></div>
             <div><dt class="text-xs font-medium uppercase text-slate-400">IP</dt><dd class="mt-1 text-slate-700">{{ log.ip_address ?: '—' }}</dd></div>
             <div><dt class="text-xs font-medium uppercase text-slate-400">Subject type</dt><dd class="mt-1 text-slate-700">{{ log.subject_type ?: '—' }}</dd></div>

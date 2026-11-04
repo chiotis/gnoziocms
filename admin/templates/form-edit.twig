@@ -503,7 +503,7 @@
                 <li class="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
                   <div class="min-w-0">
                     <span class="font-medium text-slate-900">{{ h.action_label }}</span>
-                    <span class="text-slate-500">{{ h.when }}{% if h.actor %} · {{ h.actor }}{% endif %}</span>
+                    <span class="text-slate-500">{{ h.when }}{% if h.actor %} · {{ user_name(h.actor) }}{% endif %}</span>
                   </div>
                   <a class="font-medium text-blue-600 hover:text-blue-700" href="{{ url('admin/revisions?id=' ~ h.id) }}">View changes</a>
                 </li>
