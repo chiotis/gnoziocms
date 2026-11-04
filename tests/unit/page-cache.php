@@ -114,6 +114,19 @@ check('turned off, it keeps and sends nothing', [$cache->isEnabled(), $key(), $c
 $cache->setEnabled(true);
 check('and turned on again it starts empty', [$cache->serve($k, $send), $cache->stats()['entries']], [false, 0]);
 
+// ---- a page that names a picture size not written yet is kept for a short time, so it is drawn again with the file's address
+$expires = static function (string $body) use ($cache, $dir): int {
+    $k = sha1($body);
+    $cache->keep($k, $cache->generation(), $body, 200, ['Content-Type: text/html; charset=utf-8']);
+    $raw = (string)@file_get_contents($dir . '/' . $k . '.page');
+    $head = json_decode((string)strstr($raw, "\n", true), true);
+    return (int)($head['expires'] ?? 0) - time();
+};
+$short = $expires('<img srcset="/_image/media/a.png/960-abc-w72 960w">');
+$long = $expires('<img srcset="/uploads/_v/media/a.png/960-abc-w72.webp 960w">');
+check('a page with a pending picture is kept about a minute', $short > 0 && $short <= GnozioCMS\Images::PENDING_PAGE_TTL, true);
+check('a page whose pictures are all written keeps the full time', $long > GnozioCMS\Images::PENDING_PAGE_TTL, true);
+
 // ---- a response that something refused
 FrontCache::doNotKeep();
 check('an answer that said it must not be kept is not kept', $cache->keep($key('refused'), $cache->generation(), 'x', 200, $page), false);

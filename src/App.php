@@ -17,6 +17,8 @@ final class App
 {
     /** How long a cache in front of the site may keep a public page (see sendPublicCacheHeaders). */
     private const PUBLIC_CACHE_SECONDS = 60;
+    /** How long the work after a page may spend writing the picture sizes it named (Images::generatePending()). */
+    private const PICTURES_AFTER_RESPONSE_SECONDS = 20;
     /** The addresses of the MCP server and its OAuth (docs/mcp.md); answered only while MCP is on. */
     private const MCP_PATHS = ['mcp', '_mcp/token', '_mcp/register', '.well-known/oauth-protected-resource', '.well-known/oauth-protected-resource/mcp', '.well-known/oauth-authorization-server'];
     /** When the scheduled entries were last looked at (a Unix time in the system meta). */
@@ -284,7 +286,7 @@ final class App
     }
 
     /**
-     * After a visit to the public site: the scheduled backup, when it is due. Only where the response can be finished before the work
+     * After a visit to the public site: the picture sizes the page named before they existed (Images), and the scheduled backup, when it is due. Only where the response can be finished before the work
      * starts (PHP-FPM, LiteSpeed), so no visitor ever waits for a backup; elsewhere the admin and the cron script (src/cron-backup.php) do it.
      */
     private function runScheduledAfterResponse(): void
@@ -292,7 +294,8 @@ final class App
         try {
             $backupDue = $this->backupManager()->isRunDue();
             $releaseDue = $this->scheduleCheckIsDue();
-            if (!$backupDue && !$releaseDue && !$this->omniClient()->isDue()) {
+            $picturesDue = $this->images->pendingCount() > 0;
+            if (!$backupDue && !$releaseDue && !$picturesDue && !$this->omniClient()->isDue()) {
                 return;
             }
             $finish = CronStatus::finishFunction();
@@ -307,6 +310,10 @@ final class App
             }
             if (function_exists('set_time_limit')) {
                 @set_time_limit(0);
+            }
+            // The picture sizes this page named before they were written, so the next visitor gets files the web server sends itself.
+            if ($picturesDue) {
+                $this->images->generatePending(microtime(true) + self::PICTURES_AFTER_RESPONSE_SECONDS);
             }
             // Before the backup, so what it keeps is the site as it is now.
             if ($releaseDue) {
@@ -350,6 +357,15 @@ final class App
      * Publishes the scheduled entries whose time has come (src/ScheduledPublishing.php) and says how many. With `$throttle`
      * at most once a minute, for the places that call it often (the admin, visits).
      */
+    /** For the command line (src/cron-backup.php): writes missing picture sizes for `$seconds` at most (Images::fill()). How many. */
+    public function fillImageVariants(int $seconds): int
+    {
+        if (function_exists('set_time_limit')) {
+            @set_time_limit($seconds + 30);
+        }
+        return $this->images->fill(microtime(true) + $seconds);
+    }
+
     public function releaseScheduled(bool $throttle = true): int
     {
         if ($throttle && !$this->scheduleCheckIsDue()) {

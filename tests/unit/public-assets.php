@@ -90,14 +90,14 @@ imagejpeg($image, $public . '/uploads/2026/photo one.jpg');
 $images = new Images($public);
 $info = $images->info('/uploads/2026/photo%20one.jpg');
 $version = base_convert((string)filemtime($public . '/uploads/2026/photo one.jpg'), 10, 36);
-check('a variant not yet written is named by an address index.php answers', $images->variantUrl($info, 360), '/_image/2026/photo%20one.jpg/360-' . $version);
+check('a variant not yet written is named by an address index.php answers', $images->variantUrl($info, 360), '/_image/2026/photo%20one.jpg/360-' . $version . '-w72');
 if (Images::webpSupported()) {
     $_SERVER['REQUEST_METHOD'] = 'HEAD';
     ob_start();
-    $handled = @Images::handle($public, '/_image/2026/photo%20one.jpg/360-' . $version);
+    $handled = @Images::handle($public, '/_image/2026/photo%20one.jpg/360-' . $version . '-w72');
     ob_end_clean();
-    check('which writes the file', [$handled, is_file($public . '/uploads/_v/2026/photo one.jpg/360-' . $version . '.webp')], [true, true]);
-    check('and from then on the page names the file itself', $images->variantUrl($info, 360), '/uploads/_v/2026/photo%20one.jpg/360-' . $version . '.webp');
+    check('which writes the file', [$handled, is_file($public . '/uploads/_v/2026/photo one.jpg/360-' . $version . '-w72.webp')], [true, true]);
+    check('and from then on the page names the file itself', $images->variantUrl($info, 360), '/uploads/_v/2026/photo%20one.jpg/360-' . $version . '-w72.webp');
 } else {
     echo "skip writing a variant (no WebP in this PHP)\n";
 }
