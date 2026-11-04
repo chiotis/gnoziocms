@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.210 — 2026-11-04 — The content lists come in pages
+- The list of every content type in the admin (Pages, Posts and the rest) showed all its entries at once. It now shows **50 a page**, with 25, 50, 100 or **All** to choose from below it, and says which ones it shows: "1–50 of 340 entries".
+- The search, the status, the term and the page size are kept from page to page and when changing language. A bulk action comes back to the same page of the same list.
+- **Select all** ticks the entries of this page only. Once they are all ticked, a bar offers **Select all 340 posts** (or all the matching ones, with filters): the bulk action then takes every entry the filters let through, on every page. Unticking one, or **Clear the selection**, goes back to this page.
+- Tests: `tests/unit/content-screens.php`.
+
 ## 0.1.209 — 2026-11-04 — Scheduled entries stay off the site, for admins too
 - Someone signed in sees drafts and hidden entries on the site, and so also saw **Scheduled** ones: their page, the lists, the blocks of entries (Hero slider, Latest content, Cards), search and related entries. A scheduled entry is now left out of the site's pages for everyone until it goes live; **Preview** in the editor still shows it.
 - Drafts and hidden entries are still shown to someone signed in, as before. The admin's screens list scheduled entries as before.
