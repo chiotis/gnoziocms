@@ -83,7 +83,7 @@ final class Relations
         foreach ($ids as $id) {
             $row = $this->pick($byId[$id] ?? [], $lang, $includeHidden);
             $card = $row !== null ? $this->card($row) : null;
-            if ($card !== null && ($includeHidden || !$card['hidden'])) {
+            if ($card !== null && (!$card['hidden'] || ($includeHidden && (!$this->content->hidesScheduled() || strtolower((string)($row['status'] ?? '')) !== ScheduledPublishing::STATUS)))) {
                 $items[] = $card;
             }
         }

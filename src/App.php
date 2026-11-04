@@ -842,6 +842,8 @@ final class App
         $homeSlug = $route['home_slug'];
         $this->setLanguage($lang);
         $includeHidden = $this->auth->check();
+        // A scheduled entry is not on the site before its time, not even for someone signed in (only the editor's preview).
+        $this->content->viewAsSite(true);
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['form_slug']) && ($segments[0] ?? '') !== 'forms') {
             $formSlug = Slug::plain((string)($_POST['form_slug'] ?? ''));
             if ($formSlug !== '') {
@@ -2120,6 +2122,7 @@ final class App
             $html = (string)ob_get_clean();
             $this->entryPreview = false;
             $this->content->showInstead(null);
+            $this->content->viewAsSite(false);
             [$_POST, $_GET, $_SERVER['REQUEST_METHOD']] = $kept;
         }
         http_response_code(200);
