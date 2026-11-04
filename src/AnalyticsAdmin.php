@@ -63,6 +63,7 @@ final class AnalyticsAdmin
             'a' => $a,
             'modes' => AnalyticsSettings::MODES,
             'keep' => AnalyticsSettings::KEEP,
+            'tag_load_options' => AnalyticsSettings::TAG_LOAD,
             'ignore_text' => implode("\n", $a['ignore_paths']),
             'may_write_code' => $mayWriteCode,
             'stats' => $this->data->stats(),

@@ -27,7 +27,17 @@ check('a Google tag is made into its code', [str_contains($head, 'googletagmanag
 check('and the code of the owner goes after it, as written; the body code in the body', [S::body($gtag, false)], ['<b>y</b>']);
 check('a person who is signed in gets no tracking at all', [S::head($gtag, true, '', ''), S::body($gtag, true)], ['', '']);
 $gtm = S::from(['analytics' => ['mode' => 'custom', 'tag_id' => 'GTM-ABC123']]);
-check('Tag Manager has a head part and a noscript part', [str_contains(S::head($gtm, false, '', ''), "'GTM-ABC123'"), str_contains(S::body($gtm, false), 'ns.html?id=GTM-ABC123')], [true, true]);
+check('Tag Manager has a head part and a noscript part', [str_contains(S::head($gtm, false, '', ''), 'gtm.js?id=GTM-ABC123'), str_contains(S::body($gtm, false), 'ns.html?id=GTM-ABC123')], [true, true]);
+// ---- when the Google tag is fetched
+check('a site that set its tag before the choice existed keeps it right away', S::from(['analytics' => ['mode' => 'custom', 'tag_id' => 'G-ABCD1234']])['tag_load'], 'now');
+check('a site without a tag starts with after the page has loaded', S::from([])['tag_load'], 'later');
+check('the choice is saved, an unknown one is not', [S::apply([], ['mode' => 'custom', 'tag_load' => 'later'], false)['tag_load'], isset(S::apply([], ['mode' => 'custom', 'tag_load' => 'whenever'], false)['tag_load'])], ['later', false]);
+$later = S::head(S::from(['analytics' => ['mode' => 'custom', 'tag_id' => 'G-ABCD1234', 'tag_load' => 'later']]), false, '', '');
+check('later: no script tag fetches the tag with the page', str_contains($later, '<script async src='), false);
+check('later: the queue is ready at once and the script is added after load or at the first interaction', [str_contains($later, "gtag('config','G-ABCD1234')"), str_contains($later, "s.src='https://www.googletagmanager.com/gtag/js?id=G-ABCD1234'"), str_contains($later, "addEventListener('load'"), str_contains($later, "'pointerdown'")], [true, true, true, true]);
+$gtmLater = S::head(S::from(['analytics' => ['mode' => 'custom', 'tag_id' => 'GTM-ABC123', 'tag_load' => 'later']]), false, '', '');
+check('later works for Tag Manager too', [str_contains($gtmLater, "event:'gtm.js'"), str_contains($gtmLater, "s.src='https://www.googletagmanager.com/gtm.js?id=GTM-ABC123'"), str_contains($gtmLater, '<script async src=')], [true, true, false]);
+check('right away fetches the script with the page', str_contains(S::head(S::from(['analytics' => ['mode' => 'custom', 'tag_id' => 'GTM-ABC123', 'tag_load' => 'now']]), false, '', ''), '<script async src="https://www.googletagmanager.com/gtm.js?id=GTM-ABC123"></script>'), true);
 check('the code can only be changed by who may write it', [S::apply(['mode' => 'custom', 'head_code' => '<i>old</i>'], ['mode' => 'custom', 'head_code' => '<script>evil()</script>', 'tag_id' => 'G-EVIL1234'], false)['head_code'], isset(S::apply(['mode' => 'custom'], ['tag_id' => 'G-EVIL1234'], false)['tag_id'])], ['<i>old</i>', false]);
 check('but the choice can', S::apply(['mode' => 'custom', 'head_code' => '<i>old</i>'], ['mode' => 'off'], false)['mode'], 'off');
 check('the code is cut to its length', mb_strlen(S::from(['analytics' => ['head_code' => str_repeat('a', 30000)]])['head_code']), S::CODE_LIMIT);

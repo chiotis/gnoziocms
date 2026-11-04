@@ -242,19 +242,38 @@
     const overlays = document.body.classList.contains('has-header-overlay');
     let sticky = false;
 
-    const syncHeaderHeight = () => {
-      root.style.setProperty('--header-height', headerEl.offsetHeight + 'px');
+    // The header's height, its margin included (a floating header has one), as last measured. Measured by a ResizeObserver,
+    // which reports after the browser has laid the page out, so reading it never forces a layout of its own.
+    let headerHeight = 0;
+    let headerOuter = 0;
+    const holdSpace = () => {
+      // An overlaying header takes no space, so nothing needs to be held open.
+      headerSpacer.style.height = sticky && !overlays ? headerOuter + 'px' : '0px';
     };
-
-    // The height the header takes in the page, its margin included (a floating header has one).
-    const outerHeight = () => headerEl.offsetHeight + (parseFloat(getComputedStyle(headerEl).marginTop) || 0);
+    // --header-height and the space held open follow the header at the start and when the window is resized, not while it
+    // shrinks on scroll (as before: what sits under it does not move during that animation).
+    let measuredOnce = false;
+    const applySize = () => {
+      root.style.setProperty('--header-height', headerHeight + 'px');
+      if (sticky) holdSpace();
+    };
+    const measured = (height) => {
+      headerHeight = height;
+      headerOuter = height + (parseFloat(getComputedStyle(headerEl).marginTop) || 0);
+      if (!measuredOnce) {
+        measuredOnce = true;
+        applySize();
+      } else if (sticky) {
+        // A header that changed its size as it began to stick: the space held for it follows.
+        holdSpace();
+      }
+    };
 
     // Smart: the header leaves while the page is read downwards and returns when it is scrolled back up. It stays while
     // something in it has the focus or the phone menu is open.
     const smart = headerEl.hasAttribute('data-smart');
     let lastY = window.scrollY;
-    const syncSmart = () => {
-      const y = window.scrollY;
+    const syncSmart = (y) => {
       const delta = y - lastY;
       lastY = y;
       if (!smart) return;
@@ -265,28 +284,40 @@
       }
     };
 
+    // Everything is read first (the scroll position), then written, so no write is followed by a read that forces a layout.
     const syncScroll = () => {
+      const y = window.scrollY;
       // A transparent header turns solid as soon as the page moves under it.
-      document.body.classList.toggle('header-solid', window.scrollY > 8);
-      syncSmart();
+      document.body.classList.toggle('header-solid', y > 8);
+      syncSmart(y);
       if (stickyMode !== 'on_scroll') return;
-      const shouldStick = window.scrollY > 200;
+      const shouldStick = y > 200;
       if (shouldStick === sticky) return;
       sticky = shouldStick;
       document.body.classList.toggle('header-sticky', sticky);
-      // An overlaying header takes no space, so nothing needs to be held open.
-      headerSpacer.style.height = sticky && !overlays ? outerHeight() + 'px' : '0px';
+      holdSpace();
     };
 
-    syncHeaderHeight();
+    let scrollFrame = 0;
+    const onScroll = () => {
+      if (scrollFrame) return;
+      scrollFrame = window.requestAnimationFrame(() => { scrollFrame = 0; syncScroll(); });
+    };
+
+    if ('ResizeObserver' in window) {
+      new ResizeObserver((entries) => {
+        const entry = entries[entries.length - 1];
+        const box = entry.borderBoxSize && entry.borderBoxSize[0];
+        measured(box ? box.blockSize : headerEl.offsetHeight);
+      }).observe(headerEl);
+      // The observer has measured the header by the time a resize event is handled.
+      window.addEventListener('resize', applySize);
+    } else {
+      measured(headerEl.offsetHeight);
+      window.addEventListener('resize', () => { measured(headerEl.offsetHeight); applySize(); });
+    }
     syncScroll();
 
-    window.addEventListener('scroll', syncScroll, { passive: true });
-    window.addEventListener('resize', () => {
-      syncHeaderHeight();
-      if (sticky && !overlays) {
-        headerSpacer.style.height = outerHeight() + 'px';
-      }
-    });
+    window.addEventListener('scroll', onScroll, { passive: true });
   }
 })();

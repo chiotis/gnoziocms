@@ -15,6 +15,8 @@ final class AnalyticsSettings
     public const MODES = ['off' => 'No tracking', 'custom' => 'Your own tracking code', 'platform' => 'GnozioCMS analytics', 'both' => 'GnozioCMS analytics and your own code'];
     public const KEEP = [12 => '1 year', 24 => '2 years', 60 => '5 years', 0 => 'Forever'];
     public const CODE_LIMIT = 20000;
+    /** When the Google tag (or Tag Manager) script is fetched: with the page, or once the page has loaded. */
+    public const TAG_LOAD = ['now' => 'Right away', 'later' => 'After the page has loaded'];
 
     /** Whether the platform counts visits under these choices (GnozioCMS analytics alone or with the owner's code). @param array<string, mixed> $a */
     public static function platform(array $a): bool
@@ -34,6 +36,7 @@ final class AnalyticsSettings
         return [
             'mode' => 'off',
             'tag_id' => '',
+            'tag_load' => 'later',
             'head_code' => '',
             'body_code' => '',
             'skip_signed_in' => true,
@@ -55,6 +58,9 @@ final class AnalyticsSettings
         $mode = is_scalar($stored['mode'] ?? null) ? (string)$stored['mode'] : '';
         $out['mode'] = array_key_exists($mode, self::MODES) ? $mode : 'off';
         $out['tag_id'] = self::tag($stored['tag_id'] ?? '');
+        // A site that set its tag before this choice existed keeps it as it was (right away); one without a tag starts with later.
+        $load = is_scalar($stored['tag_load'] ?? null) ? (string)$stored['tag_load'] : '';
+        $out['tag_load'] = array_key_exists($load, self::TAG_LOAD) ? $load : ($out['tag_id'] !== '' ? 'now' : 'later');
         $out['head_code'] = self::code($stored['head_code'] ?? '');
         $out['body_code'] = self::code($stored['body_code'] ?? '');
         foreach (['skip_signed_in', 'respect_dnt', 'track_links'] as $key) {
@@ -84,6 +90,10 @@ final class AnalyticsSettings
             $a['tag_id'] = self::tag($post['tag_id'] ?? '');
             $a['head_code'] = self::code($post['head_code'] ?? '');
             $a['body_code'] = self::code($post['body_code'] ?? '');
+        }
+        $load = is_scalar($post['tag_load'] ?? null) ? (string)$post['tag_load'] : '';
+        if (array_key_exists($load, self::TAG_LOAD)) {
+            $a['tag_load'] = $load;
         }
         $a['skip_signed_in'] = $on($post['skip_signed_in'] ?? null);
         $a['respect_dnt'] = $on($post['respect_dnt'] ?? null);
@@ -117,13 +127,32 @@ final class AnalyticsSettings
             return rtrim($out);
         }
         $tag = $a['tag_id'];
-        if (str_starts_with($tag, 'GTM-')) {
-            $out .= "<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','" . $tag . "');</script>\n";
-        } elseif ($tag !== '') {
-            $out .= '<script async src="https://www.googletagmanager.com/gtag/js?id=' . $tag . '"></script>' . "\n"
-                . "<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','" . $tag . "');</script>\n";
+        if ($tag !== '') {
+            $gtm = str_starts_with($tag, 'GTM-');
+            $src = $gtm ? 'https://www.googletagmanager.com/gtm.js?id=' . $tag : 'https://www.googletagmanager.com/gtag/js?id=' . $tag;
+            // The queue is there from the start, so what the page or other code sends before the script arrives is not lost.
+            $queue = $gtm
+                ? "window.dataLayer=window.dataLayer||[];dataLayer.push({'gtm.start':new Date().getTime(),event:'gtm.js'});"
+                : "window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','" . $tag . "');";
+            if (($a['tag_load'] ?? 'now') === 'later') {
+                $out .= '<script>' . $queue . self::later($src) . "</script>\n";
+            } else {
+                $out .= '<script async src="' . $src . '"></script>' . "\n" . '<script>' . $queue . "</script>\n";
+            }
         }
         return rtrim($out . $a['head_code']);
+    }
+
+    /**
+     * A script that fetches `$src` once the page has loaded and the browser is idle, or at the visitor's first scroll, tap or key,
+     * whichever comes first: the tag's script then takes no part in drawing the page.
+     */
+    private static function later(string $src): string
+    {
+        return "(function(w,d){var done=0,go=function(){if(done)return;done=1;var s=d.createElement('script');s.async=true;s.src='" . $src . "';d.head.appendChild(s)};"
+            . "['scroll','pointerdown','keydown','touchstart'].forEach(function(e){w.addEventListener(e,go,{once:true,passive:true})});"
+            . "var idle=function(){w.requestIdleCallback?w.requestIdleCallback(go,{timeout:3000}):setTimeout(go,1)};"
+            . "if(d.readyState==='complete')idle();else w.addEventListener('load',idle,{once:true})})(window,document);";
     }
 
     /** What goes after `<body>`: the owner's code for the end of the page, and the noscript part of Tag Manager. */

@@ -138,6 +138,15 @@
                 </div>
               </div>
               <div class="seo-row">
+                <label class="seo-label" for="an-tag_load">Load the tag</label>
+                <div class="min-w-0">
+                  <select id="an-tag_load" name="tag_load" class="lc-input">
+                    {% for value, label in tag_load_options %}<option value="{{ value }}"{% if a.tag_load == value %} selected{% endif %}>{{ label }}</option>{% endfor %}
+                  </select>
+                  <p class="seo-help">After the page has loaded, the Google script no longer slows the page down (a better PageSpeed score). A visitor who leaves within the first second or two may not be counted.</p>
+                </div>
+              </div>
+              <div class="seo-row">
                 <label class="seo-label" for="an-head_code">In the head</label>
                 <div class="min-w-0">
                   <textarea id="an-head_code" name="head_code" rows="5" spellcheck="false" placeholder="&lt;script defer data-domain=&quot;example.com&quot; src=&quot;https://plausible.io/js/script.js&quot;&gt;&lt;/script&gt;" class="lc-input font-mono text-[11px]"{% if not may_write_code %} disabled{% endif %}>{{ a.head_code }}</textarea>
