@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.205 — 2026-11-04 — Content lists: Updated only, and the scheduled time
+- The lists of posts, pages and every other type no longer have a **Created** column, only **Updated**. They keep their order, newest made first, so editing an entry does not move it.
+- A **Scheduled** entry shows when it goes live (date and time, in the site's time zone) under its status.
+- Tests: `tests/unit/content-screens.php`.
+
 ## 0.1.204 — 2026-11-04 — Times in the site's time zone
 - The time zone chosen in **Settings > Localization** was used only for scheduled publishing; every other time was shown in the server's zone (UTC on most hosts), so a post saved at 9:28 in Athens showed 7:28 in the admin. The site's zone now applies everywhere: the lists of entries, the dashboard, media, backups, users, the System screen and the dates on the site. Stored times are unchanged (they carry their offset or are UTC).
 - The "server's" choice in Settings and the Timezone line on the System screen still name the server's own zone (System shows both when they differ).
