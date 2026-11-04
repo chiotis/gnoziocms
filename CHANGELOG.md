@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.215 — 2026-11-04 — Lighter pictures
+- Pictures come in **AVIF** where the server's PHP can write it, with WebP for browsers that cannot show AVIF. WebP is written at a lower quality (72 instead of 80). Together they make pictures about half the size.
+- A new **800 px** size, so a common phone no longer downloads the 960 px picture for a full-width hero.
+- Pages no longer keep the temporary `/_image/…` address of a picture size that did not exist yet, which made PHP answer every visitor's picture. The sizes a page asks for are written right after the page is sent (on PHP-FPM and LiteSpeed). The cron job (`php src/cron-backup.php`) writes every missing size of every picture, a couple of minutes' worth per run, and removes files of the old quality after a week. The page cache keeps a page that still names a temporary address for one minute, not ten, so it is drawn again with the files' own addresses.
+- In a **Hero slider**, the pictures of the slides after the first are no longer downloaded with the page: they load once the page has loaded, or as soon as the visitor touches the slider.
+- After updating, run the cron job once to write the new sizes.
+- Tests: `tests/unit/image-variants.php`, `tests/unit/page-cache.php`, `tests/unit/public-assets.php`.
+
 ## 0.1.214 — 2026-11-04 — Both kinds of analytics at once
 - **Analytics** has a fourth choice, **GnozioCMS analytics and your own code**: the site counts visits itself (with the reports in the admin) and also puts your own tracking code on every page, such as a Google Analytics tag or a Tag Manager container.
 - The settings of both show with this choice. **Do not count people who are signed in** applies to both.
