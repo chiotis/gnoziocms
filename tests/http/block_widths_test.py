@@ -39,7 +39,9 @@ h = page('w-rows', t('Intro'), t('A', 25), t('B', 25), t('C', 50), t('Full'), t(
 check('25 + 25 + 50 is one row, a 100% block ends it, and the next narrow blocks start another that wraps', rows(h) == [['25', '25', '50'], ['50', '50', '75', '25']], rows(h))
 more = page('w-more', t('A', 50), t('B', 50), t('Full'), t('C', 75), t('D', 25), t('E', 25), t('F', 25), t('G', 25), t('H', 25))
 check('50 + 50, then 75 + 25, then 25 + 25 + 25 + 25 + 25 (the last wraps)', rows(more) == [['50', '50'], ['75', '25', '25', '25', '25', '25']], rows(more))
-check('blocks at 100% stay outside rows, in their place', h.index('Intro') < h.index('block-row') and h.index('Full') > h.index('Body of C') and h.index('Full') < h.index('Body of D') and h.rindex('Last') > h.rindex('block-row'))
+# The page itself, after the head (where a small block stylesheet is written into the page).
+b = h[h.index('<main'):]
+check('blocks at 100% stay outside rows, in their place', b.index('Intro') < b.index('block-row') and b.index('Full') > b.index('Body of C') and b.index('Full') < b.index('Body of D') and b.rindex('Last') > b.rindex('block-row'))
 check('a row keeps the spacing of a section once', h.count('class="block-row space-default block-row--plain"') == 2, re.findall(r'<div class="block-row[^"]*"', h))
 check('a row with a block that has a background is not plain', 'block-row space-default"' in page('w-tone', t('A', 50, tone='muted'), t('B', 50)))
 check('headings stay h2 and each block keeps its label', h.count('<h2 class="section-title"') == 10 and 'aria-labelledby="block-2-title"' in h, h.count('<h2'))
@@ -60,7 +62,8 @@ st, _, css = anon.get('/_themes/default/_blocks.css?b=text,_row')
 check('and the bundle holds them', st == 200 and '.block-row' in css and 'grid-template-columns' in css, st)
 m2 = re.search(r'/_themes/default/_blocks/[0-9a-f]+\.css', plain)
 check('a page without a row does not load them', bool(m2) and '.block-row' not in anon.get(m2.group(0))[2])
-check('phone and tablet are in the row styles', '@media (max-width: 640px)' in css and '@media (max-width: 960px)' in css)
+flat = css.replace(' ', '')  # the bundle is minified
+check('phone and tablet are in the row styles', '@media(max-width:640px)' in flat and '@media(max-width:960px)' in flat)
 
 # ---- the editor knows the setting, writes it and reads it back
 st, _, edit = root.get('/admin/edit?type=pages&slug=about&lang=en')

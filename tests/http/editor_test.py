@@ -150,7 +150,8 @@ st, _, html = pub.get('/beside')
 check('Markdown puts a picture beside the text with {align=left} or {align=right}, and nothing else changes', st == 200 and '<img align="left"' in html and '<img align="right"' in html and html.count('<img') >= 3 and '<img src="/uploads/media/5e6915a67b9ceec5.jpg" alt="Plain"' in html, st)
 css_href = re.search(r'href="([^"]*site\.css[^"]*)"', html).group(1)
 sheet = pub.get(css_href)[2]
-check('the theme floats it, keeps it in a part of the width, and puts it back in the flow on a phone', 'img[align="left"]' in sheet and 'float: right' in sheet and 'max-width: 45%' in sheet and re.search(r'@media \(max-width: 640px\) \{\s*\.prose img\[align="left"\]', sheet) is not None)
+flat = lambda s: re.sub(r'\s+', '', s)  # stylesheets are sent minified: compare without white space
+check('the theme floats it, keeps it in a part of the width, and puts it back in the flow on a phone', 'img[align="left"]' in sheet and 'float:right' in flat(sheet) and 'max-width:45%' in flat(sheet) and re.search(r'@media\(max-width:640px\)\{\.proseimg\[align="left"\]', flat(sheet)) is not None)
 st, _, html = root.get('/admin/edit?type=pages&slug=beside&lang=el')
 check('the visual editor draws it in the same way', st == 200, st)
 check('and the editor\'s style sheet floats it', 'img[align="left"]' in root.get(re.search(r'href="([^"]*app\.css[^"]*)"', html).group(1))[2])

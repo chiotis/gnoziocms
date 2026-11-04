@@ -46,6 +46,12 @@ final class ThemeAssets
         return self::TYPES[$extension] ?? null;
     }
 
+    /**
+     * The way stylesheets are written into public/ and into bundles (CssMinify); a change of it writes them again and gives
+     * their addresses a new version (Theme::assetVersion()).
+     */
+    public const CSS_FORMAT = 'm1';
+
     /** The file that records what was last published into a folder. */
     private const STAMP = '.published';
     /** Block bundles inside public/_themes/<theme>/, kept apart from the mirrored files. */
@@ -96,7 +102,9 @@ final class ThemeAssets
         $out = '';
         foreach ($files as $file) {
             // Each script is its own statement list; a newline plus ';' keeps concatenation safe.
-            $out .= '/* ' . basename(dirname($file)) . ' */' . "\n" . (string)file_get_contents($file) . "\n" . ($kind === 'js' ? ";\n" : '');
+            $content = (string)file_get_contents($file);
+            // Each part says which block it is for; a stylesheet's rules are minified (CssMinify).
+            $out .= '/* ' . basename(dirname($file)) . ' */' . "\n" . ($kind === 'js' ? $content . "\n;\n" : CssMinify::minify($content) . "\n");
         }
         return $out;
     }
@@ -123,17 +131,23 @@ final class ThemeAssets
             }
         }
         ksort($files);
-        $stamp = sha1(json_encode(array_map(static fn(array $file): array => [$file[1], $file[2]], $files)) ?: '');
+        $stamp = sha1(self::CSS_FORMAT . (json_encode(array_map(static fn(array $file): array => [$file[1], $file[2]], $files)) ?: ''));
         if (@file_get_contents($target . '/' . self::STAMP) === $stamp) {
             return true;
         }
         foreach ($files as $relative => [$from, $mtime, $size]) {
             $to = $target . '/' . $relative;
             clearstatcache(true, $to);
-            if (is_file($to) && (int)filemtime($to) === $mtime && (int)filesize($to) === $size) {
+            // A stylesheet is written minified (CssMinify), so its size differs from its source: it is written again whenever
+            // anything changed (a handful of files); every other file only when it changed.
+            $css = strtolower(pathinfo($relative, PATHINFO_EXTENSION)) === 'css';
+            if (!$css && is_file($to) && (int)filemtime($to) === $mtime && (int)filesize($to) === $size) {
                 continue;
             }
             $content = @file_get_contents($from);
+            if ($content !== false && $css) {
+                $content = CssMinify::minify($content);
+            }
             if ($content === false || !self::writeFile($to, $content, $mtime)) {
                 return false;
             }
@@ -251,6 +265,14 @@ final class ThemeAssets
             return;
         }
 
+        if (strtolower(pathinfo($file, PATHINFO_EXTENSION)) === 'css') {
+            $css = CssMinify::minify((string)file_get_contents($file));
+            header('Content-Length: ' . strlen($css));
+            if ($method === 'GET') {
+                echo $css;
+            }
+            return;
+        }
         header('Content-Length: ' . $size);
         if ($method === 'GET') {
             readfile($file);
