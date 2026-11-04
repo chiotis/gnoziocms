@@ -1,6 +1,6 @@
 {#
   The content of a Hero, shared by the Hero block and by each slide of the Hero slider, so a slide is a hero in every detail.
-  macro body(h) takes: variant, eyebrow, heading, heading_tag, heading_id, text, actions, highlights, steps, image, image_alt,
+  macro body(h) takes: variant, eyebrow, heading, heading_tag, heading_id, heading_url (the heading links there: an entry's page), text, actions, highlights, steps, image, image_alt,
   video (a playable video or null), video_poster, first (opens the page: its picture loads first), item_heading_tag, prefix.
 #}
 {% macro video(video, poster, sizes, priority) %}
@@ -42,7 +42,7 @@
   <div class="container hero-inner{% if not has_picture %} no-media{% endif %}{{ centred_cover ? ' is-centered' : '' }}">
     <div class="hero-content">
       {% if h.eyebrow %}<p class="eyebrow">{{ h.eyebrow }}</p>{% endif %}
-      {% if h.heading %}<{{ h.heading_tag }} class="hero-title"{% if h.heading_id %} id="{{ h.heading_id }}"{% endif %}>{{ h.heading }}</{{ h.heading_tag }}>{% endif %}
+      {% if h.heading %}<{{ h.heading_tag }} class="hero-title"{% if h.heading_id %} id="{{ h.heading_id }}"{% endif %}>{% if h.heading_url|default('') %}<a class="hero-title-link" href="{{ h.heading_url }}">{{ h.heading }}</a>{% else %}{{ h.heading }}{% endif %}</{{ h.heading_tag }}>{% endif %}
       {% if h.text %}<p class="hero-text">{{ h.text|nl2br }}</p>{% endif %}
       {{ ui.actions(h.actions, h.prefix) }}
       {% set highlights = h.highlights|default([])|filter(item => item.text) %}

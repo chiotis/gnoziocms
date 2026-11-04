@@ -32,6 +32,7 @@
             eyebrow: entry ? (term ? taxonomy_label('categories', term, lang|default('')) : '') : slide.eyebrow,
             heading: slide.heading,
             heading_tag: heading_tag,
+            heading_url: entry ? url(item_path(entry, prefix)) : '',
             text: entry ? (summary|length > 240 ? summary|slice(0, 240)|trim ~ '…' : summary) : slide.text,
             actions: entry ? [{label: block.entry_button ?: t('hero.read_more', 'Read more'), url: url(item_path(entry, prefix)), style: 'primary'}] : slide.buttons,
             highlights: [{text: slide.highlight_1}, {text: slide.highlight_2}, {text: slide.highlight_3}],

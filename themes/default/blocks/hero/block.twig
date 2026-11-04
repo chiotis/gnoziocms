@@ -12,6 +12,7 @@
   heading: block.heading,
   heading_tag: heading_tag,
   heading_id: block_uid ~ '-title',
+  heading_url: entry ? url(item_path(entry, prefix)) : '',
   text: entry ? (summary|length > 240 ? summary|slice(0, 240)|trim ~ '…' : summary) : block.text,
   actions: entry ? [{label: block.entry_button ?: t('hero.read_more', 'Read more'), url: url(item_path(entry, prefix)), style: 'primary'}] : block.actions,
   highlights: block.highlights,

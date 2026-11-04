@@ -288,6 +288,20 @@
   text-decoration: none;
 }
 
+/* The title of a hero drawn from an entry links to the entry and looks like the title: no link colour, no underline. */
+.hero-title-link,
+.hero-title-link:hover,
+.hero-title-link:visited {
+  color: inherit;
+  text-decoration: none;
+}
+
+.hero-title-link:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 0.12em;
+  border-radius: 0.1em;
+}
+
 .hero-step-title a::after {
   content: "";
   position: absolute;
