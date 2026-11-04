@@ -217,6 +217,15 @@ $content->forget();
 $missing = $freshBuilder->buildIndexed(['types' => ['recipes'], 'term' => null], false, ['per_page' => 0] + $definition['archive'], $definition['fields'], $definition, 'el', []);
 check('a file taken away outside the admin is noticed at once, without waiting', in_array('r002', array_map(fn($i) => $i->slug, $missing['items'] ?? []), true), false);
 
+// Two entries of one day (the editor keeps days only) come in the order they were made, with the index and without.
+file_put_contents($root . '/content/recipes/zz-made-later.md', "---\ntitle: Made later\nstatus: published\ndate: \"2032-03-04\"\ncreated: '2032-03-04T09:28:00+02:00'\ncustom_fields:\n  course: main\n---\n\nx\n");
+file_put_contents($root . '/content/recipes/aa-made-earlier.md', "---\ntitle: Made earlier\nstatus: published\ndate: \"2032-03-04\"\ncreated: '2032-03-04T08:10:00+02:00'\ncustom_fields:\n  course: main\n---\n\nx\n");
+$meta->set('content_index_checked_at', '0');
+$content->forget();
+$sameDay = $freshBuilder->buildIndexed(['types' => ['recipes'], 'term' => null], false, $definition['archive'], $definition['fields'], $definition, 'el', []);
+$scanned = array_slice(array_map(fn($i) => $i->slug, $content->getItems('recipes', 'el')), 0, 2);
+check('entries of one day come newest made first, not by their address', [array_slice(array_map(fn($i) => $i->slug, $sameDay['items']), 0, 2), $scanned], [['zz-made-later', 'aa-made-earlier'], ['zz-made-later', 'aa-made-earlier']]);
+
 // A taxonomy the index was not made for needs the index made again.
 $index->keepTerms(fn(): array => ['tags', 'categories', 'courses']);
 check('a new taxonomy makes the index out of date', $index->isCurrent($content->getTypes()), false);

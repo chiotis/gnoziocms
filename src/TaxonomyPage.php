@@ -92,8 +92,7 @@ final class TaxonomyPage
                 }
             }
             // Entries of several types come newest first, as within a single type.
-            $when = static fn(ContentItem $i): int => strtotime((string)($i->meta['date'] ?? '')) ?: $i->mtime;
-            usort($items, static fn(ContentItem $a, ContentItem $b): int => $when($b) <=> $when($a));
+            usort($items, static fn(ContentItem $a, ContentItem $b): int => $b->sortTime() <=> $a->sortTime());
             $page = ($this->archive)()->build($archive, [], null, $lang, $items, $query);
         }
         if ($page['page'] > 1 && !$page['filtered']) {
