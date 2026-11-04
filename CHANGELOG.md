@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.207 — 2026-11-04 — A draft published gets a date
+- A draft without a date (one written through MCP, or with its date cleared) stayed without one when it was published, in the editor or with **Publish** from the list. Now an entry published after being a draft or scheduled gets today as its date when it has none.
+- Like a scheduled entry when it goes live, it also counts as made at the moment it is published, so it comes first in the lists, newest first.
+- Entries published already, new entries and forms are left as they were.
+- Tests: `tests/unit/content-screens.php`.
+
 ## 0.1.206 — 2026-11-04 — Entries of one day in the order they were made
 - An entry's date keeps the day only, so the entries of one day were tied: with the content index they came by their address (A–Z), without it in the order the files were read. A post added today could show fourth in a blog and third in a Hero slider. Now the time of day the entry was made breaks the tie, so the newest comes first everywhere: lists, blocks of entries, Hero slider, the pages of a term and the feed. Entries older than `created` (made before it was kept) still go by their day.
 - A **Scheduled** entry counts as made when it goes live: on release it takes the time it was scheduled for as its creation time (and its day as its date), so it comes first among that day's entries, not where it was written.
