@@ -162,6 +162,8 @@ return [
     'nav.call' => 'Call',
     'sidebar.label' => 'More on this topic',
     'sidebar.on_this_page' => 'On this page',
+    'sidebar.related_entries' => 'Related',
+    'sidebar.latest' => 'Latest',
     'link.new_tab' => '(opens in a new tab)',
     'downloads.download' => 'Download',
     'checklist.excluded' => 'not included',

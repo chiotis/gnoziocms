@@ -127,6 +127,21 @@
                   {{ c.chip(name ~ '[card]', single_fields.card.label, v.card) }}
                 </dd>
               </div>
+              {% if single_fields.entries is defined %}
+                {# Other entries of the same type, as small rows with a thumbnail. #}
+                <div class="lc-row" data-sidebar-only>
+                  <dt>{{ single_fields.entries.label }}</dt>
+                  <dd class="m-0 flex flex-wrap items-center gap-1.5">
+                    {{ c.seg(name ~ '[entries]', single_fields.entries.options, v.entries, single_fields.entries.label, '', {categories: 'Entries filed under a category of this one, those sharing more first', tags: 'Entries sharing a tag with this one, those sharing more first', latest: 'The newest entries of this type'}) }}
+                    {% if single_fields.entries_max is defined %}
+                      <select name="{{ name }}[entries_max]" aria-label="How many related entries" title="How many related entries" class="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-900">
+                        {% for key, label in single_fields.entries_max.options %}<option value="{{ key }}"{% if key ~ '' == v.entries_max ~ '' %} selected{% endif %}>{{ label }}</option>{% endfor %}
+                      </select>
+                    {% endif %}
+                    {% if single_fields.entries_images is defined %}{{ c.chip(name ~ '[entries_images]', single_fields.entries_images.label, v.entries_images) }}{% endif %}
+                  </dd>
+                </div>
+              {% endif %}
             {% endif %}
             {% if card.options %}{{ c.options(card.options, name ~ '[options]', v.options|default({})) }}{% endif %}
           </dl>

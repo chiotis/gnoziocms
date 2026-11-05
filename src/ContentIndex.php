@@ -474,6 +474,35 @@ final class ContentIndex
     }
 
     /**
+     * Other published entries of a type in a language, as index rows with their small card: the ones filed under one of `$terms` in
+     * `$taxonomy` (those sharing more of them first), or, with no terms, simply the newest. The entry at `$slug` is left out.
+     *
+     * @param string[] $terms
+     * @return array<int, array<string, mixed>>
+     */
+    public function similar(string $type, string $slug, string $lang, string $taxonomy, array $terms, int $limit): array
+    {
+        $terms = array_values(array_unique(array_filter(array_map('strval', $terms), static fn(string $t): bool => $t !== '')));
+        if ($limit < 1 || !$this->isAvailable()) {
+            return [];
+        }
+        $params = [$type, $lang, $slug];
+        $where = "ci.type = ? AND ci.lang = ? AND ci.slug <> ? AND lower(ci.status) = 'published' AND ci.visible = 1";
+        $shared = '0';
+        if ($taxonomy !== '' && $terms !== []) {
+            $marks = implode(',', array_fill(0, count($terms), '?'));
+            $shared = '(SELECT COUNT(*) FROM content_terms t WHERE t.type = ci.type AND t.slug = ci.slug AND t.lang = ci.lang AND t.taxonomy = ? AND t.term_id IN (' . $marks . '))';
+            $params = array_merge([$taxonomy], $terms, $params);
+            $where .= ' AND shared > 0';
+        }
+        $sql = 'SELECT * FROM (SELECT ci.type, ci.slug, ci.lang, ci.title, ci.status, ci.visible, ci.translation_id, ci.summary, ci.sort_date, ci.path, '
+            . $shared . ' AS shared FROM content_index ci) ci WHERE ' . $where . ' ORDER BY shared DESC, ci.sort_date DESC, ci.path ASC LIMIT ' . min(50, $limit);
+        $stmt = $this->pdo()->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll();
+    }
+
+    /**
      * Who points at an entry through a field: the places in `content_refs` for an id, a content type and a field path.
      *
      * @return array<int, array{from_slug: string, from_lang: string, row_path: string, pos: int}>

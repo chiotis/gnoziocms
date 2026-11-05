@@ -155,6 +155,31 @@ final class Relations
         return $items;
     }
 
+    /**
+     * Other entries of the same type for a sidebar or a "read next" list: the ones that share a term of `$by` (a taxonomy such as
+     * `categories` or `tags`) with this one, those sharing more first, then the newest. With `$by` = `latest`, or when the entry is filed
+     * under no term of it, the newest entries of the type. Only published, visible entries in the page's language; never the entry itself.
+     *
+     * @return list<array<string, mixed>> cards as resolve() gives them
+     */
+    public function similar(ContentItem $item, string $by, int $max, string $lang): array
+    {
+        $this->fresh();
+        if (!in_array($item->type, $this->enabledTypes(), true)) {
+            return [];
+        }
+        $taxonomy = $by === 'latest' ? '' : $by;
+        $terms = $taxonomy !== '' ? Format::list($item->meta[$taxonomy] ?? null) : [];
+        $items = [];
+        foreach ($this->index->similar($item->type, $item->slug, $lang, $taxonomy, $terms, max(1, min(12, $max))) as $row) {
+            $card = $this->card($row);
+            if ($card !== null && !$card['hidden']) {
+                $items[] = $card;
+            }
+        }
+        return $items;
+    }
+
     /** The entry a card stands for, read from its file (for a template that shows a field of it); null when it is gone. @param array<string, mixed> $card */
     public function entry(array $card): ?ContentItem
     {

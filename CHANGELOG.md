@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.222 — 2026-11-05 — Related posts in the sidebar
+- New sidebar part **Related entries**, chosen for each content type in **Theme > Single Layouts** (row "Related entries" under "In the sidebar"): **Same category**, **Same tags** or **Latest**, 3 to 6 of them, with or without **Thumbnails**. Off by default.
+- Compact rows: a small square picture, the title and the date. Entries sharing more terms come first, then the newest; an entry filed under no term gets the newest. Never the entry itself, a draft, a hidden entry, another type or another language. Read from the content index, no entry file is opened.
+- Templates can use `related_entries(item, 'categories', 4)` (`'tags'`, any taxonomy, or `'latest'`).
+- Before this, the sidebar's "Related pages" only listed the main-menu branch of the page, so posts outside the menu had nothing there. That part is unchanged.
+- Tests: `tests/unit/related-entries.php`, `tests/unit/single-layouts.php`, `tests/http/layouts_test.py`.
+
 ## 0.1.221 — 2026-11-04 — Export and import the whole theme
 - New tab **Theme > Export and import**. **Export theme** downloads one zip with everything the Theme screen sets: Branding and its font files, Header, Footer and the other sections, Single and Archive Layouts (with the search page), the templates built with blocks, Footer Blocks and Custom CSS.
 - **Import…** on another site shows what each part would change and lets you choose the parts. Brand and Social profiles start unticked, since the logo and profiles belong to the other site. Layouts for content types or taxonomies the site does not have are left out with a warning, and pictures under `/uploads/` that the site lacks are named.

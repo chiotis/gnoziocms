@@ -2559,6 +2559,77 @@ body.has-transparent-header:not(.header-solid) .site-header.is-on-dark[data-stic
   font-weight: 600;
 }
 
+/* Related entries: compact rows, a small square picture beside the title and the date. */
+.sidebar-entry-list {
+  display: grid;
+  gap: 0.15rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sidebar-entry {
+  display: grid;
+  grid-template-columns: 3.5rem minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.4rem 0.6rem;
+  margin-inline: -0.6rem;
+  border-radius: var(--radius-s);
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.sidebar-entry.is-text {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.sidebar-entry:hover {
+  background: var(--color-surface);
+}
+
+.sidebar-entry-media {
+  display: block;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: var(--radius-s);
+  background: var(--color-surface);
+}
+
+.sidebar-entry-media img,
+.sidebar-entry-media picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.sidebar-entry-text {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.sidebar-entry-title {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.sidebar-entry:hover .sidebar-entry-title {
+  color: var(--accent);
+}
+
+.sidebar-entry-date {
+  color: var(--color-muted);
+  font-size: 0.8rem;
+}
+
 .sidebar-cta {
   background: var(--color-surface);
 }

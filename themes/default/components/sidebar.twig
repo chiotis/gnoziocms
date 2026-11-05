@@ -41,6 +41,32 @@
   {% endif %}
 {% endif %}
 
+{% if single.entries|default('none') != 'none' and item is defined %}
+  {# Other entries of this type: sharing a category or a tag (those sharing more first, the newest when the entry has none), or the newest. #}
+  {% set others = related_entries(item, single.entries, single.entries_max|default(4) + 0) %}
+  {% if others is not empty %}
+    {% set heading = single.entries == 'latest' ? t('sidebar.latest', 'Latest') : t('sidebar.related_entries', 'Related') %}
+    <nav class="sidebar-card sidebar-entries" aria-labelledby="sidebar-entries-title">
+      <h2 class="sidebar-title" id="sidebar-entries-title">{{ heading }}</h2>
+      <ul class="sidebar-entry-list">
+        {% for other in others %}
+          <li>
+            <a class="sidebar-entry{% if not single.entries_images|default(true) or not other.main_image %} is-text{% endif %}" href="{{ url(other.url|trim('/', 'left')) }}">
+              {% if single.entries_images|default(true) and other.main_image %}
+                <span class="sidebar-entry-media">{{ image(other.main_image, {alt: '', sizes: '64px', max_width: 160}) }}</span>
+              {% endif %}
+              <span class="sidebar-entry-text">
+                <span class="sidebar-entry-title">{{ other.title }}</span>
+                {% if other.date %}<time class="sidebar-entry-date" datetime="{{ other.date }}">{{ format_date(other.date) }}</time>{% endif %}
+              </span>
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+    </nav>
+  {% endif %}
+{% endif %}
+
 {% set card_href = link_url(sb.card_url|default(''), prefix) %}
 {% set show_contacts = sb.card_contacts|default(true) and (contact.phone|default('') or contact.email|default('')) %}
 {% if single.card and (sb.card_heading|default('') or sb.card_text|default('') or (sb.card_label|default('') and card_href) or show_contacts) %}

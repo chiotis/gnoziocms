@@ -21,14 +21,14 @@ $single = new SingleLayouts($theme);
 
 // ---- what the theme offers
 check('the theme declares single layouts', $single->declared(), true);
-check('with these choices', array_keys($single->fields()), ['title', 'header', 'sidebar', 'image', 'parallax', 'excerpt', 'breadcrumbs', 'byline', 'toc', 'related', 'card']);
+check('with these choices', array_keys($single->fields()), ['title', 'header', 'sidebar', 'image', 'parallax', 'excerpt', 'breadcrumbs', 'byline', 'toc', 'related', 'entries', 'entries_max', 'entries_images', 'card']);
 check('and these page layouts', array_keys($single->templates()), ['default', 'landing', 'sidebar']);
 check('the styles of title area', array_keys($single->titleChoices()), ['default', 'centered', 'split', 'cover', 'minimal']);
 check('and what an entry can ask of the header: not "follow the site"', array_keys($single->headerChoices()), ['on', 'off']);
 
 // ---- a type nobody chose for has the defaults, even one the theme has never heard of
 $none = $single->forType('events', []);
-check('defaults for a new type', $none, ['title' => 'default', 'header' => 'site', 'sidebar' => 'none', 'image' => true, 'parallax' => false, 'excerpt' => true, 'breadcrumbs' => false, 'byline' => true, 'toc' => true, 'related' => true, 'card' => true, 'template' => 'default']);
+check('defaults for a new type', $none, ['title' => 'default', 'header' => 'site', 'sidebar' => 'none', 'image' => true, 'parallax' => false, 'excerpt' => true, 'breadcrumbs' => false, 'byline' => true, 'toc' => true, 'related' => true, 'entries' => 'none', 'entries_max' => '4', 'entries_images' => true, 'card' => true, 'template' => 'default']);
 
 // ---- the older settings are the starting point
 $legacy = [

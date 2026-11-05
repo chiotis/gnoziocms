@@ -151,6 +151,15 @@ final class SiteTwig
             return ($this->relations)()->referencedBy($item, $type, $field, $language());
         }));
 
+        // Other entries of the same type: related_entries(item, 'categories', 4) for the ones sharing a category, 'tags' for a tag,
+        // 'latest' for the newest. Cards as related() gives them; only what a visitor may see, never the entry itself.
+        $twig->addFunction(new TwigFunction('related_entries', function (mixed $item, string $by = 'categories', int $max = 4) use ($language): array {
+            if ($this->relations === null || !$item instanceof ContentItem || preg_match('/^[a-z][a-z0-9_-]*$/', $by) !== 1) {
+                return [];
+            }
+            return ($this->relations)()->similar($item, $by, $max, $language());
+        }));
+
         GeoTwigFunctions::register(
             $twig,
             fn(): GeoView => ($this->blockRuntime)()->geoView(),

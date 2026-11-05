@@ -37,6 +37,7 @@ cards = re.findall(r'<article class="lc-card[^>]*aria-labelledby="single-([a-z0-
 check('the tab has a card for each content type, forms and pages included', st == 200 and set(cards) >= {'pages', 'posts', 'projects', 'forms'}, cards)
 check('the page layout, the title area and the header are chosen on a card', all(('name="single_layouts[posts][%s]"' % k) in html for k in ('template', 'title', 'header', 'sidebar')), '')
 check('the parts are chips', all(('name="single_layouts[posts][%s]"' % k) in html for k in ('image', 'excerpt', 'byline', 'toc', 'related', 'card')), '')
+check('related entries: where they come from, how many, thumbnails', all(('name="single_layouts[posts][%s]"' % k) in html for k in ('entries', 'entries_max', 'entries_images')) and re.search(r'name="single_layouts\[posts\]\[entries\]" value="none" checked', html) is not None, '')
 check('a page has no line above its title to switch', 'name="single_layouts[pages][byline]"' not in html and 'name="single_layouts[posts][byline]"' in html)
 check('a form has no page layout to choose', 'name="single_layouts[forms][template]"' not in html and 'name="single_layouts[forms][title]"' in html)
 check('the old tabs are gone', 'data-tab="hero_layouts"' not in html and 'data-tab="transparent_header"' not in html and 'data-tab="sidebar"' not in html)
@@ -68,6 +69,12 @@ st, hdr, _ = save(root, {'single_layouts[posts][sidebar]': 'right', 'single_layo
 st, _, html = pub.get(post)
 check('a box that is not ticked switches the part off', 'single-hero-subtitle' not in html and 'class="single-hero-meta"' not in html and 'sidebar-toc' not in html, '')
 check('and the sidebar is on the right again', 'class="site-wrap with-sidebar"' in html)
+check('related entries are off until chosen', 'sidebar-entries' not in html)
+st, hdr, _ = save(root, {'single_layouts[posts][sidebar]': 'right', 'single_layouts[posts][entries]': 'latest', 'single_layouts[posts][entries_max]': '3'})
+st, _, html = pub.get(post)
+box = html.split('sidebar-entries', 1)[1].split('</nav>', 1)[0] if 'sidebar-entries' in html else ''
+check('with Latest the sidebar lists other posts, at most three, not this one', len(re.findall(r'class="sidebar-entry[ "]', box)) in (1, 2, 3) and 'Typed post' not in box, box[:400])
+st, hdr, _ = save(root, {'single_layouts[posts][entries]': 'none'})
 # ---- a single entry can still choose
 open('app/content/posts/own.md', 'w', encoding='utf-8').write("---\ntitle: Own layout\nstatus: published\nvisible: true\ndate: '2026-03-01'\ntemplate: standard\nhero_layout: minimal\n---\n\nText.\n")
 st, _, html = pub.get('/own')
