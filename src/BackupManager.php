@@ -130,6 +130,17 @@ final class BackupManager
         return $this->finish($result, $prune, $uploadRemote, $reason);
     }
 
+    /**
+     * The database with content/, custom/ and the form files: what an update's new code may change. Taken before an update.
+     *
+     * @return array{ok: bool, message: string, filename?: string, status?: string}
+     */
+    public function createDataSnapshot(string $reason = 'pre-update'): array
+    {
+        $result = $this->backups->createDataSnapshot($this->siteSlug(), $this->meta($reason));
+        return $this->finish($result, true, true, $reason);
+    }
+
     /** @return array{ok: bool, message: string, filename?: string, status?: string} */
     public function createDatabaseSnapshot(string $reason = 'manual'): array
     {
@@ -243,7 +254,7 @@ final class BackupManager
             $modified = (int)(strtotime((string)$object['modified']) ?: 0);
             $backups[] = [
                 'filename' => $filename,
-                'type' => str_contains($filename, '-database-backup-') ? 'database' : 'full',
+                'type' => BackupService::typeFromFilename($filename),
                 'size' => (int)$object['size'],
                 'size_human' => Format::bytes((int)$object['size']),
                 'modified' => $modified,

@@ -122,6 +122,25 @@ check('a verified backup is made for the update, and says which file', [$made['o
 $st = $admin->preUpdateStatus();
 check('it is remembered with its version, time, and that it verified', [$st['filename'] === $made['filename'], $st['verified'], $st['version'], strtotime($st['created_at']) >= time() - 5], [true, true, '1.2.3', true]);
 check('it is logged', [end($log)[0]], ['updates.pre_backup_success']);
+mkdir("$dir/storage/form-uploads", 0775, true);
+mkdir("$dir/src", 0775, true);
+file_put_contents("$dir/storage/form-uploads/cv.txt", "cv");
+file_put_contents("$dir/custom/site.css", "body{}");
+file_put_contents("$dir/src/Code.php", "<?php");
+$data = $admin->preUpdateBackup('1.2.3');
+$zip = new ZipArchive();
+$zip->open("$dir/storage/backups/" . $data['filename']);
+$names = [];
+for ($i = 0; $i < $zip->numFiles; $i++) { $names[] = (string)$zip->getNameIndex($i); }
+$manifest = json_decode((string)$zip->getFromName(BackupService::MANIFEST_NAME), true);
+$zip->close();
+sort($names);
+check('it holds the database, content, custom/ and the form files, but no code and no uploads', [$names, $manifest['type'], str_contains($data['filename'], '-data-backup-')], [['content/pages/a.md', 'custom/site.css', BackupService::MANIFEST_NAME, 'storage/db/app.sqlite', 'storage/form-uploads/cv.txt'], 'data', true]);
+$listed = array_column($service->list(), 'type', 'filename');
+check('the list calls it a data backup', $listed[$data['filename']], 'data');
+$scopes = array_column($admin->restoreScreen($data['filename'])['scopes'] ?? [], 'available', 'key');
+check('a restore from it offers what it holds, not the uploads', [$scopes['content'] ?? null, $scopes['database'] ?? null, $scopes['uploads'] ?? null], [true, true, false]);
+unlink("$dir/storage/backups/" . $data['filename']);
 unlink("$dir/storage/backups/" . $made['filename']);
 check('once its file is gone there is no such backup', $admin->preUpdateStatus(), null);
 check('with nothing remembered there is none', (new BackupAdmin($service, $manager, $runs, $notes, new SystemMetaRepository(new SystemDatabase('/nonexistent/' . getmypid())), fn() => [], fn($i) => null, fn($o) => null, fn(...$a) => null))->preUpdateStatus(), null);

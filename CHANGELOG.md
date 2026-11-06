@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.229 — 2026-11-06 — A smaller backup before an update
+- The **verified backup** on the Updates screen is now a **data backup**: the system database, `content/`, `custom/` and the form files (`storage/form-uploads/`). This is what the new version can change once it runs, for example when it folds older form copies together on its first visit or changes the database.
+- It leaves out the **code**, which the update keeps itself in `storage/updates/<version>/previous` and which a restore never puts back, and **`public/uploads/`**, which no update changes. The scheduled and manual full backups still hold the uploads. The backup is much smaller and faster on sites with many images.
+- The Backups screen labels these archives **Data**. A restore from one offers only the areas it holds.
+- Tests: `tests/unit/backup-admin.php`.
+
 ## 0.1.228 — 2026-11-06 — Typography is complete: buttons, forms and font details
 - **Theme > Typography > Buttons and forms**: the size, weight, case and new **letter spacing** of button text, the size and weight of labels, and a new **field text size** (never below 16px, so phones do not zoom into a field). They moved from Branding's Buttons and Forms cards, which keep the height, padding, corners and colours. Saved values are unchanged.
 - **Fonts**: an **Interface** font for menus, buttons, labels, eyebrows, dates and breadcrumbs (the text font by default, the heading font, any stack, or your own family), a **Code** font (system monospace or your own family), **Numbers** (same width in tables and dates, or old-style in text) and **Ligatures** (off, or extra where the font has them). Your own fonts can now be used for the interface and for code too.

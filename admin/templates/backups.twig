@@ -97,7 +97,7 @@
                   </td>
                   <td class="px-4 py-2.5">
                     <div class="flex flex-wrap items-center gap-1">
-                      <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset {{ is_database ? 'bg-violet-50 text-violet-700 ring-violet-200' : 'bg-blue-50 text-blue-700 ring-blue-200' }}">{{ is_database ? 'Database' : 'Full' }}</span>
+                      <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset {{ is_database ? 'bg-violet-50 text-violet-700 ring-violet-200' : (snapshot.type == 'data' ? 'bg-emerald-50 text-emerald-700 ring-emerald-200' : 'bg-blue-50 text-blue-700 ring-blue-200') }}"{% if snapshot.type == 'data' %} title="Database, content, custom/ and form files: no code, no uploads"{% endif %}>{{ is_database ? 'Database' : (snapshot.type == 'data' ? 'Data' : 'Full') }}</span>
                       {% if snapshot.reason and snapshot.reason != 'manual' %}
                         <span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">{{ snapshot.reason|replace({'-': ' '})|capitalize }}</span>
                       {% endif %}
@@ -178,7 +178,7 @@
                   <tr class="hover:bg-slate-50">
                     <td class="px-4 py-2.5"><span class="font-mono text-xs text-slate-700">{{ item.filename }}</span></td>
                     <td class="bk-wide px-4 py-2.5">
-                      <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset {{ item.type == 'database' ? 'bg-violet-50 text-violet-700 ring-violet-200' : 'bg-blue-50 text-blue-700 ring-blue-200' }}">{{ item.type == 'database' ? 'Database' : 'Full' }}</span>
+                      <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset {{ item.type == 'database' ? 'bg-violet-50 text-violet-700 ring-violet-200' : (item.type == 'data' ? 'bg-emerald-50 text-emerald-700 ring-emerald-200' : 'bg-blue-50 text-blue-700 ring-blue-200') }}">{{ item.type == 'database' ? 'Database' : (item.type == 'data' ? 'Data' : 'Full') }}</span>
                     </td>
                     <td class="whitespace-nowrap px-4 py-2.5 text-slate-600">{{ item.size_human }}</td>
                     <td class="bk-wide px-4 py-2.5 text-slate-400">{{ item.created_at }}</td>

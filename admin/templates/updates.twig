@@ -194,9 +194,10 @@
           <p class="mt-2 truncate font-mono text-xs text-slate-600" title="{{ pre_update_backup.filename }}">{{ pre_update_backup.filename }}</p>
           <p class="mt-0.5 text-xs text-slate-400">{{ pre_update_backup.created_at|date('Y-m-d H:i') }} · {{ pre_update_backup.verified ? 'checksums verified' : 'not verified' }} · v{{ pre_update_backup.version }}</p>
         {% else %}
-          <p class="mt-2 text-xs text-slate-500">No verified full backup has been taken for an update yet.</p>
+          <p class="mt-2 text-xs text-slate-500">No verified backup has been taken for an update yet.</p>
         {% endif %}
         <p class="mt-2 text-xs text-slate-500">Take one right before updating. It must be verified, less than 24 hours old, and made on the version you are updating from.</p>
+        <p class="mt-1 text-xs text-slate-500">It holds what the new version may change once it runs: the database, content, custom/ and form files. Code is kept by the update itself, and uploads by the full backups.</p>
         {% if can('backups.manage') %}
           <form method="post" action="{{ url('admin/updates') }}" class="mt-3">
             {{ csrf_field() }}

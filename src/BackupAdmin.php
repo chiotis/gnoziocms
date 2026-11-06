@@ -238,7 +238,7 @@ final class BackupAdmin
      */
     public function preUpdateBackup(string $currentVersion): array
     {
-        $result = $this->manager->createSnapshot('pre-update');
+        $result = $this->manager->createDataSnapshot('pre-update');
         $this->manager->recordRun($result);
         $made = ($result['ok'] ?? false) === true;
         $verification = $made ? $this->backups->verify((string)$result['filename']) : ['ok' => false, 'message' => (string)($result['message'] ?? 'Backup failed.')];

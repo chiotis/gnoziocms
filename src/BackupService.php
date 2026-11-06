@@ -20,6 +20,12 @@ final class BackupService
     public const MANIFEST_NAME = 'faroscms-backup.json';
     public const MANIFEST_FORMAT = 1;
     private const DATABASE_ENTRY = 'storage/db/app.sqlite';
+    /**
+     * The folders of a data snapshot, the one taken before an update: what the new code may write once it runs. Code is left out
+     * (the update keeps the old code itself, and a restore never brings code back), and so is public/uploads (nothing changes the
+     * files there; the scheduled full backups keep them).
+     */
+    private const DATA_PREFIXES = ['content/', 'custom/', 'storage/form-uploads/'];
     private const EXCLUDED_PREFIXES = [
         '.git/',
         '.codex/',
@@ -98,6 +104,16 @@ final class BackupService
         return $this->createSnapshot('full', $siteSlug, $meta);
     }
 
+    /**
+     * The system database with content/, custom/ and storage/form-uploads/ (see DATA_PREFIXES).
+     *
+     * @return array{ok: bool, message: string, filename?: string, path?: string}
+     */
+    public function createDataSnapshot(string $siteSlug, array $meta = []): array
+    {
+        return $this->createSnapshot('data', $siteSlug, $meta);
+    }
+
     /** @return array{ok: bool, message: string, filename?: string, path?: string} */
     public function createDatabaseSnapshot(string $siteSlug, array $meta = []): array
     {
@@ -123,7 +139,7 @@ final class BackupService
                 'size_human' => Format::bytes($size),
                 'mtime' => $mtime,
                 'created_at' => date('Y-m-d H:i', $mtime),
-                'type' => (string)($manifest['type'] ?? (str_contains($name, '-database-backup-') ? 'database' : 'full')),
+                'type' => (string)($manifest['type'] ?? self::typeFromFilename($name)),
                 'reason' => (string)($manifest['reason'] ?? ''),
                 'version' => (string)($manifest['version'] ?? ''),
                 'has_manifest' => $manifest !== null,
@@ -131,6 +147,16 @@ final class BackupService
         }
         usort($items, fn(array $a, array $b): int => ((int)$b['mtime']) <=> ((int)$a['mtime']));
         return $items;
+    }
+
+    /** The type an archive's name shows: `database`, `data` or `full`. */
+    public static function typeFromFilename(string $filename): string
+    {
+        return match (true) {
+            str_contains($filename, '-database-backup-') => 'database',
+            str_contains($filename, '-data-backup-') => 'data',
+            default => 'full',
+        };
     }
 
     public function prune(int $keep): void
@@ -419,7 +445,11 @@ final class BackupService
         }
         $this->ensureDirectory();
         $siteSlug = $siteSlug !== '' ? $siteSlug : 'site';
-        $filename = $siteSlug . ($type === 'database' ? '-database-backup-' : '-backup-') . date('Ymd-His') . '-' . bin2hex(random_bytes(3)) . '.zip';
+        $filename = $siteSlug . match ($type) {
+            'database' => '-database-backup-',
+            'data' => '-data-backup-',
+            default => '-backup-',
+        } . date('Ymd-His') . '-' . bin2hex(random_bytes(3)) . '.zip';
         $finalPath = $this->directory() . '/' . $filename;
         // Build under a temporary name so a half-written archive never shows up in the list.
         $partialPath = $this->directory() . '/.' . $filename . '.partial';
@@ -431,10 +461,18 @@ final class BackupService
         }
 
         $files = [];
-        if ($type === 'full') {
-            $prefix = rtrim($this->basePath, '/') . '/';
+        $prefix = rtrim($this->basePath, '/') . '/';
+        $roots = match ($type) {
+            'full' => [$this->basePath],
+            'data' => array_values(array_filter(
+                array_map(fn(string $folder): string => $prefix . rtrim($folder, '/'), self::DATA_PREFIXES),
+                'is_dir'
+            )),
+            default => [],
+        };
+        foreach ($roots as $root) {
             $iterator = new \RecursiveIteratorIterator(
-                new \RecursiveDirectoryIterator($this->basePath, \FilesystemIterator::SKIP_DOTS),
+                new \RecursiveDirectoryIterator($root, \FilesystemIterator::SKIP_DOTS),
                 \RecursiveIteratorIterator::LEAVES_ONLY
             );
             foreach ($iterator as $fileInfo) {
@@ -463,12 +501,12 @@ final class BackupService
                 $zip->addFile($dbCopy, self::DATABASE_ENTRY);
                 $files[self::DATABASE_ENTRY] = ['size' => (int)(filesize($dbCopy) ?: 0), 'sha256' => (string)hash_file('sha256', $dbCopy)];
                 $databaseAdded = true;
-            } elseif ($type === 'database') {
+            } elseif ($type !== 'full') {
                 $zip->close();
                 @unlink($partialPath);
                 return ['ok' => false, 'message' => $copy['message']];
             }
-        } elseif ($type === 'database') {
+        } elseif ($type !== 'full') {
             $zip->close();
             @unlink($partialPath);
             return ['ok' => false, 'message' => 'System database file was not found.'];
@@ -502,7 +540,11 @@ final class BackupService
 
         return [
             'ok' => true,
-            'message' => $type === 'database' ? 'Database backup created.' : 'Snapshot created.',
+            'message' => match ($type) {
+                'database' => 'Database backup created.',
+                'data' => 'Data backup created.',
+                default => 'Snapshot created.',
+            },
             'filename' => $filename,
             'path' => $finalPath,
         ];
