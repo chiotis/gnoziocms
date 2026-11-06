@@ -189,9 +189,14 @@ final class ContentAdmin
      *
      * @param array<string, mixed> $post
      */
-    public function bulk(array $post, bool $isPost, bool $canRedirects, string $actor): string
+    /**
+     * What a bulk form chose: its type, language, action, the entries (the ticked ones, or every entry the filters let through when
+     * "select all" was used), and the address of the list as it was. `valid` is false for a type that cannot be acted on.
+     * @param array<string, mixed> $post
+     * @return array{type: string, lang: string, action: string, slugs: string[], back: string, valid: bool}
+     */
+    public function bulkSelection(array $post): array
     {
-        $settings = ($this->settings)();
         $type = Slug::plain((string)($post['type'] ?? 'pages')) ?: 'pages';
         $lang = Slug::plain((string)($post['lang'] ?? $this->defaultLang()));
         $action = (string)($post['bulk_action'] ?? '');
@@ -200,8 +205,8 @@ final class ContentAdmin
             is_array($post['selected'] ?? null) ? $post['selected'] : []
         ))));
         $back = '/admin/content?type=' . urlencode($type) . '&lang=' . urlencode($lang);
-        if (!$isPost || !in_array($type, $this->content->getTypes(), true) || $type === 'forms') {
-            return $back;
+        if (!in_array($type, $this->content->getTypes(), true) || $type === 'forms') {
+            return ['type' => $type, 'lang' => $lang, 'action' => $action, 'slugs' => [], 'back' => $back, 'valid' => false];
         }
         // Back to the list as it was: same search, status, term, page size and page.
         $matching = $this->matching($type, $lang, $post);
@@ -213,6 +218,17 @@ final class ContentAdmin
         // "Select all" on every page: the entries the filters let through, not only the ticked ones on this page.
         if ((string)($post['all_matching'] ?? '') === '1') {
             $slugs = array_values(array_unique(array_map(static fn(ContentItem $item): string => $item->slug, $matching['items'])));
+        }
+        return ['type' => $type, 'lang' => $lang, 'action' => $action, 'slugs' => $slugs, 'back' => $back, 'valid' => true];
+    }
+
+    public function bulk(array $post, bool $isPost, bool $canRedirects, string $actor): string
+    {
+        $settings = ($this->settings)();
+        $chosen = $this->bulkSelection($post);
+        ['type' => $type, 'lang' => $lang, 'action' => $action, 'slugs' => $slugs, 'back' => $back] = $chosen;
+        if (!$isPost || !$chosen['valid']) {
+            return $back;
         }
         if (!in_array($action, ['publish', 'draft', 'delete'], true) || $slugs === []) {
             return $back . '&' . http_build_query(['bulk' => 'fail', 'bulk_msg' => 'Choose a bulk action and select at least one item.']);
@@ -415,6 +431,40 @@ final class ContentAdmin
             'admin_section' => 'content',
             'current_type' => $type,
         ];
+    }
+
+    /**
+     * Sets an entry's main image from outside the editor (a picture made in the background), the way the editor writes the file:
+     * the history keeps the change, the index follows. Without `$replace` an entry that has a main image by now keeps it.
+     * Returns set, kept (it had one), missing (no such entry) or unreadable (its front matter could not be read).
+     */
+    public function setMainImage(string $type, string $slug, string $lang, string $image, string $actor, bool $replace): string
+    {
+        $path = $this->path($type, $slug, $lang);
+        if (!is_file($path)) {
+            return 'missing';
+        }
+        $raw = (string)file_get_contents($path);
+        [$frontmatter, $body] = FrontMatter::split($raw);
+        try {
+            $meta = $frontmatter !== '' ? (Yaml::parse($frontmatter) ?: []) : [];
+        } catch (\Throwable) {
+            return 'unreadable';
+        }
+        if (!is_array($meta)) {
+            return 'unreadable';
+        }
+        if (!$replace && trim((string)($meta['main_image'] ?? '')) !== '') {
+            return 'kept';
+        }
+        $meta['main_image'] = $image;
+        $body = preg_replace('/\A\R/', '', $body) ?? $body;
+        $this->revisions->baseline($type, $slug, $lang, $path, $actor);
+        $payload = "---\n" . trim(Yaml::dump($meta, 10, 2, Yaml::DUMP_MULTI_LINE_LITERAL_BLOCK)) . "\n---\n\n" . rtrim($body) . "\n";
+        file_put_contents($path, $payload);
+        $this->revisions->capture($type, $slug, $lang, $payload, 'save', $actor);
+        $this->reindex($type, $path);
+        return 'set';
     }
 
     private function path(string $type, string $slug, string $lang): string

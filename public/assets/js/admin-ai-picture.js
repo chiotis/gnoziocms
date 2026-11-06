@@ -174,6 +174,88 @@
     });
   }
 
+  // ---- the content list: Bulk action > Generate main images
+  function initBulkApply(button) {
+    var form = button.closest('form');
+    var select = form.querySelector('select[name="bulk_action"]');
+    var replaceLabel = form.querySelector('[data-ai-bulk-replace]');
+    var replace = replaceLabel ? replaceLabel.querySelector('input') : null;
+    var plain = { text: button.getAttribute('data-confirm'), label: button.getAttribute('data-confirm-button') };
+    var cost = parseFloat(button.getAttribute('data-ai-picture-cost') || '');
+    var total = parseInt(button.getAttribute('data-ai-total') || '0', 10);
+    var blocked = button.getAttribute('data-ai-blocked') || '';
+
+    function chosen() { return select && select.value === 'generate_images'; }
+    function showReplace() {
+      if (!replaceLabel) return;
+      replaceLabel.classList.toggle('hidden', !chosen());
+      replaceLabel.classList.toggle('inline-flex', chosen());
+    }
+    // Set just before the form's own confirmation reads it (a click comes before the submit).
+    function update() {
+      if (!chosen()) {
+        button.setAttribute('data-confirm', plain.text);
+        button.setAttribute('data-confirm-button', plain.label);
+        return;
+      }
+      var all = form.querySelector('[data-select-rest-input]');
+      var everyPage = all && all.value === '1';
+      var ticked = form.querySelectorAll('input[name="selected[]"]:checked');
+      var count = everyPage ? total : ticked.length;
+      var withImage = everyPage ? 0 : form.querySelectorAll('input[name="selected[]"][data-has-image]:checked').length;
+      var making = replace && replace.checked ? count : count - withImage;
+      var text;
+      if (blocked) {
+        text = blocked;
+      } else if (count === 0) {
+        text = 'Select the entries to make pictures for first.';
+      } else {
+        text = 'Make ' + (everyPage && !(replace && replace.checked) ? 'up to ' : '') + making + ' AI main image' + (making === 1 ? '' : 's') + '?';
+        if (withImage && !(replace && replace.checked)) text += ' ' + withImage + ' of the selected already ' + (withImage === 1 ? 'has one and is' : 'have one and are') + ' left as they are (tick "Replace existing images" to make new ones).';
+        if (everyPage && !(replace && replace.checked)) text += ' Entries that have a main image are left as they are.';
+        if (replace && replace.checked) text += ' Existing main images are replaced; the old pictures stay in the Media library and in the history.';
+        text += isNaN(cost) ? ' The cost is shown once a priced picture has been made (Manage > AI publishing > Usage).' : ' About $' + (making * cost).toFixed(2) + ' at the average cost of recent pictures.';
+        text += ' Each picture is made from the entry\'s title and excerpt, one at a time in the background.';
+      }
+      button.setAttribute('data-confirm', text);
+      button.setAttribute('data-confirm-button', 'Generate');
+    }
+    if (select) select.addEventListener('change', showReplace);
+    button.addEventListener('click', update);
+    showReplace();
+  }
+
+  function initBulkProgress(box) {
+    if (parseInt(box.getAttribute('data-ai-live') || '0', 10) === 0) return;
+    var endpoint = box.getAttribute('data-ai-endpoint');
+    var url = endpoint + (endpoint.indexOf('?') === -1 ? '?' : '&') + 'bulk=' + encodeURIComponent(box.getAttribute('data-ai-type')) + '&lang=' + encodeURIComponent(box.getAttribute('data-ai-lang'));
+    var line = box.querySelector('[data-ai-bulk-line]');
+    var started = Date.now();
+    var BULK_DEADLINE_MS = 45 * 60 * 1000;
+    function ask() {
+      if (Date.now() - started > BULK_DEADLINE_MS) {
+        line.textContent = 'Still making AI pictures. Reload this page to see how far it is.';
+        return;
+      }
+      fetch(url, { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+        .then(function (r) { return r.json(); })
+        .then(function (p) {
+          var left = (p.waiting || 0) + (p.working || 0);
+          line.textContent = (left > 0 ? 'Making AI pictures: ' + left + ' left' : 'AI pictures finished') + (p.done ? ' · ' + p.done + ' done' : '') + (p.failed ? ' · ' + p.failed + ' failed' : '');
+          if (left > 0) {
+            setTimeout(ask, POLL_MS);
+          } else {
+            // Every picture is in: the list again, with each row's main image and chip.
+            setTimeout(function () { window.location.reload(); }, 800);
+          }
+        })
+        .catch(function () { setTimeout(ask, POLL_MS * 4); });
+    }
+    ask();
+  }
+
   document.querySelectorAll('[data-ai-picture]').forEach(initEditor);
+  document.querySelectorAll('[data-ai-bulk-apply]').forEach(initBulkApply);
+  document.querySelectorAll('[data-ai-bulk-progress]').forEach(initBulkProgress);
   document.querySelectorAll('[data-ai-watch]').forEach(initWatch);
 })();

@@ -161,6 +161,19 @@ final class AiUsage
         return ['cost' => (float)$row['cost'], 'pictures' => (int)$row['pictures']];
     }
 
+    /** The average estimated cost of one picture over the last 30 days, or null when nothing priced was made. */
+    public function averagePictureCost(): ?float
+    {
+        $pdo = $this->pdo();
+        if ($pdo === null) {
+            return null;
+        }
+        $stmt = $pdo->prepare("SELECT SUM(cost), SUM(pictures) FROM ai_usage WHERE kind = 'picture' AND ok = 1 AND cost IS NOT NULL AND pictures > 0 AND at >= ?");
+        $stmt->execute([$this->now() - 30 * 86400]);
+        [$cost, $pictures] = $stmt->fetch(PDO::FETCH_NUM) ?: [null, null];
+        return $pictures > 0 ? round((float)$cost / (int)$pictures, 6) : null;
+    }
+
     /** What one entry cost to make (all its calls). */
     public function forEntry(string $entry): ?float
     {

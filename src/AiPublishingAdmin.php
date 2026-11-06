@@ -10,7 +10,7 @@ namespace GnozioCMS;
  */
 final class AiPublishingAdmin
 {
-    public const TABS = ['instructions' => 'Instructions', 'settings' => 'Settings', 'usage' => 'Usage'];
+    public const TABS = ['instructions' => 'Instructions', 'runs' => 'Runs', 'settings' => 'Settings', 'usage' => 'Usage'];
 
     /**
      * @param \Closure(string): OpenAiProvider $provider
@@ -61,6 +61,8 @@ final class AiPublishingAdmin
             'tests' => array_slice($tests, 0, 5),
             'watch_job' => (int)($get['job'] ?? 0),
             'usage' => $tab === 'usage' ? $this->usageScreen($month) : null,
+            'runs' => $tab === 'runs' ? $this->runs((string)($get['show'] ?? '')) : null,
+            'show' => in_array($get['show'] ?? '', ['failed', 'live'], true) ? (string)$get['show'] : '',
             'this_month' => $this->usage->month(),
             'done' => (string)($get['done'] ?? ''),
             'message' => trim((string)($get['msg'] ?? '')),
@@ -100,6 +102,19 @@ final class AiPublishingAdmin
                 $this->settings->setPaused(false);
                 ($this->log)('ai.resume', 'info', 'ai', null, 'AI publishing resumed.', []);
                 return $result(true, 'Resumed.', (string)($post['tab'] ?? 'instructions'));
+            case 'retry_job':
+                $ok = $this->runner->retry((int)($post['job'] ?? 0));
+                return $result($ok, $ok ? 'Back in the queue.' : 'This one cannot be tried again (it is waiting already, or another for the same entry is).', 'runs');
+            case 'cancel_job':
+                $ok = $this->runner->cancel((int)($post['job'] ?? 0));
+                return $result($ok, $ok ? 'Cancelled.' : 'It has finished already.', 'runs');
+            case 'cancel_waiting':
+                $n = 0;
+                foreach ($this->runner->list(AiPictures::KIND, [JobRunner::QUEUED], 500) as $job) {
+                    $n += $this->runner->cancel((int)$job['id']) ? 1 : 0;
+                }
+                ($this->log)('ai.cancel_waiting', 'warning', 'ai', null, 'Waiting AI pictures cancelled.', ['count' => $n]);
+                return $result(true, $n . ' waiting picture' . ($n === 1 ? '' : 's') . ' cancelled.', 'runs');
             case 'test_picture':
                 $subject = trim((string)($post['subject'] ?? '')) ?: 'A cup of coffee on a wooden table by a window.';
                 $request = $this->pictures->request($subject, [], 1, 'test', $who);
@@ -147,6 +162,43 @@ final class AiPublishingAdmin
         }
         return $result($notes === [], 'The key works: ' . count($models['pictures']) . ' picture models and ' . count($models['writing']) . ' writing models.'
             . ($notes === [] ? '' : ' But ' . implode(', and ', $notes) . '.'), 'settings');
+    }
+
+    /**
+     * The picture jobs, newest first: what made each (editor, test, bulk), its entry and subject, how it went and what it cost.
+     * @return array<string, mixed>
+     */
+    private function runs(string $show): array
+    {
+        $statuses = match ($show) {
+            'failed' => [JobRunner::FAILED],
+            'live' => [JobRunner::QUEUED, JobRunner::RUNNING],
+            default => [],
+        };
+        $rows = array_map(static function (array $job): array {
+            [$type, $slug, $lang] = array_pad(explode('/', (string)($job['payload']['entry'] ?? ''), 3), 3, '');
+            return [
+                'id' => (int)$job['id'],
+                'source' => (string)($job['payload']['source'] ?? 'editor'),
+                'by' => (string)($job['payload']['by'] ?? ''),
+                'type' => $type, 'slug' => $slug, 'lang' => $lang,
+                'subject' => (string)($job['result']['subject'] ?? ($job['payload']['subject'] ?? '')),
+                'status' => (string)$job['status'],
+                'error' => (string)$job['error'],
+                'attempts' => (int)$job['attempts'],
+                'pictures' => count((array)($job['result']['files'] ?? [])),
+                'outcome' => (string)($job['result']['outcome'] ?? ''),
+                'path' => (string)($job['result']['path'] ?? ''),
+                'cost' => $job['result']['cost'] ?? null,
+                'created' => (int)$job['created_at'],
+                'finished' => (int)$job['finished_at'],
+                'wait' => $job['status'] === JobRunner::QUEUED ? max(0, (int)$job['run_after'] - time()) : 0,
+            ];
+        }, $this->runner->list(AiPictures::KIND, $statuses, 100));
+        return [
+            'rows' => $rows,
+            'waiting' => $this->runner->pending(AiPictures::KIND),
+        ];
     }
 
     /** @return array<string, mixed> */
