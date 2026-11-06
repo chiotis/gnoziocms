@@ -1,4 +1,4 @@
-# Theme settings of this installation (GnozioCMS 0.1.200)
+# Theme settings of this installation (GnozioCMS 0.1.225)
 
 Set with `python3 scripts/site_settings.py set theme section.field=value`. A text marked *translatable* takes a plain text or a map `{default: …, en: …}`.
 
@@ -96,7 +96,7 @@ Set with `python3 scripts/site_settings.py set theme section.field=value`. A tex
 | `font_file` | url | (empty) | Font file. A WOFF2 file (one variable font with all weights is best). Put it in custom/assets/fonts/ and type fonts/name.woff2, or give a full address. |
 | `heading_family` | text | (empty) | Heading font family. The family of your own fonts that headings use when Headings is “Your own font”. |
 | `body_family` | text | (empty) | Text font family. The family of your own fonts that text uses when Text is “Your own font”. |
-| `fonts` | repeater | (empty) | Your own font files. The font files of your own families, each with its weight and style. Managed on the Branding screen (Typography). |
+| `fonts` | repeater | (empty) | Your own font files. The font files of your own families, each with its weight and style. Managed on the Typography tab (Fonts). |
 | `base_size` | number; 13 to 24 | (empty) | Text size. Headings follow it. |
 | `line_height` | decimal | (empty) | Line height of text |
 | `scale` | select; one of `auto`, `1.125`, `1.2`, `1.25`, `1.333`, `1.414`, `1.5`, `1.618` | auto | Heading scale |

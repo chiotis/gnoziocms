@@ -19,7 +19,7 @@ st, _, html = root.get('/admin/theme')
 check('the theme has its own screen', st == 200 and re.search(r'<h1[^>]*>\s*Theme\s*</h1>', html) is not None, st)
 labels = re.findall(r'role="tab"[^>]*data-tab="([a-z_]+)"[^>]*>([^<]+)</button>', html)
 keys = [k for k, _ in labels]
-check('every section the theme declares is a tab: Branding gathers appearance, brand and design; the two that gather how pages look come after the header; Footer Blocks follows the footer, Custom CSS then Export and import are last', keys == ['branding', 'header', 'single_layouts', 'archive_layouts', 'social', 'footer', 'footer_blocks', 'custom_css', 'transfer'], keys)
+check('every section the theme declares is a tab: Branding gathers appearance, brand and design, Typography follows it; the two that gather how pages look come after the header; Footer Blocks follows the footer, Custom CSS then Export and import are last', keys == ['branding', 'typography', 'header', 'single_layouts', 'archive_layouts', 'social', 'footer', 'footer_blocks', 'custom_css', 'transfer'], keys)
 check('with the section names as labels', ('Branding' in [l for _, l in labels]) and ('Appearance' not in [l for _, l in labels]) and ('Brand' not in [l for _, l in labels]) and ('Header' in [l for _, l in labels]) and ('Single Layouts' in [l for _, l in labels]) and ('Archive Layouts' in [l for _, l in labels]) and 'Hero Layouts' not in [l for _, l in labels], labels)
 check('the first tab is open, the others hidden', html.count('data-panel=') == len(keys) and re.search(r'data-panel="%s"' % keys[0], html) is not None and html.count('tab-panel space-y-4 hidden') == len(keys) - 1, (len(keys), html.count('space-y-4 hidden')))
 check('tabs say which is selected', html.count('aria-selected="true"') == 1)

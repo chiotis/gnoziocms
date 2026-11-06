@@ -493,6 +493,9 @@ html.dark .lc-input::placeholder { color: #94a3b8; }
 .lc-colour[data-empty] .lc-colour-x { visibility: hidden; }
 .bp-reset { justify-self: start; padding: 0; border: 0; background: none; color: #475569; font-size: .6875rem; text-decoration: underline; cursor: pointer; }
 .bp-reset:hover { color: #0f172a; }
+.bp-goto { padding: 0; border: 0; background: none; color: #1d4ed8; font: inherit; text-decoration: underline; cursor: pointer; }
+.bp-goto:hover { color: #1e3a8a; }
+.bp-moved { margin: 0; padding: .55rem .75rem; border: 1px dashed #cbd5e1; border-radius: .5rem; color: #475569; font-size: .75rem; }
 .bp-value { display: flex; flex-wrap: wrap; align-items: baseline; gap: .4rem; margin-top: .2rem; color: #5f6f85; font-size: .625rem; line-height: 1rem; }
 .bp-value[data-bp-value="custom"] > span { color: #1d4ed8; }
 .bp-value .bp-reset { font-size: inherit; }

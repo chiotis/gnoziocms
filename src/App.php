@@ -2493,6 +2493,11 @@ final class App
                 $tabs[] = $key;
             }
         }
+        // Fonts and text sizes have a tab of their own, right after Branding (the values stay in the design section).
+        $brandingAt = array_search('branding', $tabs, true);
+        if ($brandingAt !== false) {
+            array_splice($tabs, $brandingAt + 1, 0, ['typography']);
+        }
         // The blocks above the footer have a tab of their own, right after the footer's.
         $footerAt = array_search('footer', $tabs, true);
         array_splice($tabs, $footerAt === false ? count($tabs) : $footerAt + 1, 0, ['footer_blocks']);
@@ -2562,7 +2567,7 @@ final class App
             'theme_message' => trim((string)($_GET['theme_msg'] ?? '')),
             'theme_schema' => $schema,
             'theme_tabs' => $tabs,
-            'tab_labels' => ['branding' => 'Branding', 'single_layouts' => 'Single Layouts', 'archive_layouts' => 'Archive Layouts', 'footer_blocks' => 'Footer Blocks', 'custom_css' => 'Custom CSS', 'transfer' => 'Export and import'],
+            'tab_labels' => ['branding' => 'Branding', 'typography' => 'Typography', 'single_layouts' => 'Single Layouts', 'archive_layouts' => 'Archive Layouts', 'footer_blocks' => 'Footer Blocks', 'custom_css' => 'Custom CSS', 'transfer' => 'Export and import'],
             'custom_css' => (new CustomCss($this->theme->customPath()))->read(),
             'footer_blocks_json' => $this->footerBlocksEditorJson($default),
             'branding' => $branding ? $this->brandingScreen() : null,

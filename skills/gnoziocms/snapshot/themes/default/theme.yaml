@@ -33,7 +33,7 @@ page_templates:
     description: No title header. The page is built from blocks only; start it with a Hero.
   sidebar:
     label: With sidebar
-    description: Text beside a sidebar with the page's contents, related pages, and a contact card. Blocks follow below.
+    description: Text beside a sidebar with the page's contents, related pages or entries, and a contact card. Blocks follow below.
 
 # What a content type's single page can be, offered on a card for each type in Admin > Theme > Single Layouts (the cards
 # follow the content types the site has). The page layout (a template from page_templates) is chosen there too. Values are
@@ -95,6 +95,29 @@ single_layouts:
     related:
       type: toggle
       label: Related pages
+      default: true
+    # Other entries of the same type, as small rows with a thumbnail: those sharing a category or a tag, or the newest.
+    entries:
+      type: select
+      label: Related entries
+      default: none
+      options:
+        none: 'Off'
+        categories: Same category
+        tags: Same tags
+        latest: Latest
+    entries_max:
+      type: select
+      label: How many
+      default: '4'
+      options:
+        '3': '3'
+        '4': '4'
+        '5': '5'
+        '6': '6'
+    entries_images:
+      type: toggle
+      label: Thumbnails
       default: true
     card:
       type: toggle
@@ -551,7 +574,7 @@ settings:
         item_label: Font file
         max: 48
         span: full
-        help: The font files of your own families, each with its weight and style. Managed on the Branding screen (Typography).
+        help: The font files of your own families, each with its weight and style. Managed on the Typography tab (Fonts).
         fields:
           family: {type: text, label: Family, default: ''}
           file: {type: text, label: File in custom/assets, default: ''}

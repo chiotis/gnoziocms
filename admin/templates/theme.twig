@@ -54,6 +54,11 @@
             <div class="tab-panel space-y-4{% if active_tab != key %} hidden{% else %} active{% endif %}" data-panel="{{ key }}" role="tabpanel">
               {% include '@admin/partials/theme-transfer.twig' %}
             </div>
+          {% elseif key == 'typography' %}
+            {# Fonts, text sizes and headings (partials/theme-typography.twig); stored in the design section like Branding. #}
+            <div class="tab-panel space-y-4{% if active_tab != key %} hidden{% else %} active{% endif %}" data-panel="{{ key }}" role="tabpanel">
+              {% include '@admin/partials/theme-typography.twig' with {schema: theme_schema, values: theme_values, info: branding} %}
+            </div>
           {% elseif key == 'branding' %}
             {# Appearance, Brand and Design together (partials/theme-branding.twig). #}
             <div class="tab-panel space-y-4{% if active_tab != key %} hidden{% else %} active{% endif %}" data-panel="{{ key }}" role="tabpanel">
@@ -114,6 +119,13 @@
       const buttons = document.querySelectorAll('.tab-button');
       const panels = document.querySelectorAll('.tab-panel');
       const activeTabInput = document.querySelector('[data-active-tab-input]');
+      // A link inside a tab that opens another one (Branding and Typography point at each other); unsaved choices stay.
+      document.querySelectorAll('[data-goto-tab]').forEach((link) => {
+        link.addEventListener('click', () => {
+          const tab = document.querySelector('.tab-button[data-tab="' + link.getAttribute('data-goto-tab') + '"]');
+          if (tab) { tab.click(); tab.scrollIntoView({block: 'nearest'}); }
+        });
+      });
       buttons.forEach((button) => {
         button.addEventListener('click', () => {
           const target = button.getAttribute('data-tab');

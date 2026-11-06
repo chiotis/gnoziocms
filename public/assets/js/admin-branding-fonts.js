@@ -1,5 +1,5 @@
 /*
- * Theme > Branding > Typography: the person's own font families.
+ * Theme > Typography > Fonts: the person's own font families.
  *
  * The files are uploaded one at a time to the screen's endpoint, which stores each in custom/assets/fonts/ and answers with the
  * entry to keep (family, file, weight, style, unicode-range, scripts covered, fallback measures). The list lives here as `state` and is

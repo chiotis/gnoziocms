@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.225 — 2026-11-06 — Typography has its own tab
+- New tab **Theme > Typography**, right after Branding, with the same live preview (Site and Style samples, computer, tablet, phone, light and dark). Its cards are **Fonts** (font pairing, heading and text fonts, your own font families), **Text** (size, line height, weight, space between paragraphs), **Headings** (scale, weight, letter spacing, line height, capitals, and H1 to H3 each) and **Text elements** (lead paragraph and small text). Each card has its own reset.
+- Branding no longer has the Typography card; a line there leads to the new tab, and the heading colour stays under Branding > Colour.
+- Nothing saved changes: the values keep their place in the theme settings, so Branding's export and import, Theme > Export and import, and the section resets carry them as before.
+- The next steps (sizes for the menus, more text elements, button and label text) are planned in `docs/typography-tab-plan.md`.
+- The gnoziocms skill's snapshot of the theme is up to date again.
+- Tests: `tests/http/branding_test.py`, `tests/http/theme_page_test.py`.
+
 ## 0.1.224 — 2026-11-06 — A wider description in the centered footer
 - In the **Centered** footer, the site description now spans 70% of the footer's width instead of a narrow column, so it reads in fewer lines. On phones it takes the full width.
 - Tests: `tests/http/header_footer_test.py`.

@@ -62,7 +62,7 @@
 
 <div class="bp" data-bp data-bp-defaults="{{ defaults|json_encode }}" data-preview data-mode="css" data-endpoint="{{ url('admin/theme?preview=branding') }}">
   <h2 class="sr-only">Branding</h2>
-  <p class="mb-3 text-xs text-slate-500">Logo, colours, type, spacing, corners and buttons. “Theme value” follows the selected presets, even when a concrete choice is shown. Choosing a value makes it your own; Reset restores the theme value. Group resets keep your preset choices. Nothing changes on the site until you save.</p>
+  <p class="mb-3 text-xs text-slate-500">Logo, colours, spacing, corners and buttons (fonts and text sizes are on the Typography tab). “Theme value” follows the selected presets, even when a concrete choice is shown. Choosing a value makes it your own; Reset restores the theme value. Group resets keep your preset choices. Nothing changes on the site until you save.</p>
 
   <div class="bp-grid">
     <div class="bp-cards">
@@ -130,44 +130,7 @@
         </div>
       </details>
 
-      <details class="bp-card">
-        <summary><span>Typography</span><small>Fonts, sizes, headings</small></summary>
-        <div class="bp-body">
-          <dl class="m-0 space-y-2.5">
-            {% if a.font is defined %}{{ c.choice(a.font, pa ~ 'font]', va.font, 'select', {}) }}{% endif %}
-            {% if d.heading_font is defined %}{{ c.choice(d.heading_font, pd ~ 'heading_font]', vd.heading_font, 'select', {}) }}{% endif %}
-            {% if d.body_font is defined %}{{ c.choice(d.body_font, pd ~ 'body_font]', vd.body_font, 'select', {}) }}{% endif %}
-            {% if d.font_file is defined and vd.font_file|trim != '' %}
-              <div class="lc-row" data-bp-custom-font>
-                <dt><label for="f-font-file">{{ d.font_file.label }} <small>(earlier setting)</small></label></dt>
-                <dd class="m-0">
-                  <input id="f-font-file" type="text" name="{{ pd }}font_file]" value="{{ vd.font_file }}" placeholder="{{ d.font_file.placeholder }}" class="lc-input">
-                  <span class="mt-1 block text-[11px] leading-4 text-slate-500">{{ d.font_file.help }}
-                    {% if info.font_found is same as(true) %}<strong class="font-medium text-emerald-700">The file is there.</strong>{% elseif info.font_found is same as(false) %}<strong class="font-medium text-red-700">There is no such file in custom/assets yet.</strong>{% endif %}
-                  </span>
-                </dd>
-              </div>
-            {% endif %}
-          </dl>
-          {% if d.fonts is defined %}{% include '@admin/partials/theme-fonts.twig' %}{% endif %}
-          <div class="bp-nums">
-            {% if d.base_size is defined %}{{ c.num(d.base_size, pd ~ 'base_size]', vd.base_size, 'px') }}{% endif %}
-            {% if d.line_height is defined %}{{ c.num(d.line_height, pd ~ 'line_height]', vd.line_height, '') }}{% endif %}
-          </div>
-          <dl class="m-0 space-y-2.5">
-            {% if d.scale is defined %}
-              {% set scale = default_theme ? d.scale|merge({options: d.scale.options|map((label, option) => option == 'auto' ? 'Theme scale' : label)}) : d.scale %}
-              {{ c.choice(scale, pd ~ 'scale]', vd.scale, 'select', {}) }}
-            {% endif %}
-            {% for key in ['heading_weight', 'heading_tracking', 'heading_leading', 'heading_case'] %}
-              {% if d[key] is defined %}{{ c.choice(d[key], pd ~ key ~ ']', vd[key], 'seg', short[key]) }}{% endif %}
-            {% endfor %}
-          </dl>
-          {% if default_theme %}<p class="m-0 text-[11px] leading-4 text-slate-500">“By element” keeps the weight, letter spacing and line height designed for each heading. “Theme scale” keeps the theme’s responsive sizes.</p>{% endif %}
-          {% include '@admin/partials/theme-branding-type.twig' %}
-          <button type="button" class="bp-reset" data-bp-reset="type">Reset type overrides</button>
-        </div>
-      </details>
+      <p class="bp-moved">Fonts, text sizes and headings are on the <button type="button" class="bp-goto" data-goto-tab="typography">Typography</button> tab.</p>
 
       <details class="bp-card">
         <summary><span>Layout and spacing</span><small>Widths, margins, rhythm</small></summary>

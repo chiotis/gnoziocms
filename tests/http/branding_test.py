@@ -57,6 +57,13 @@ st, _, html = root.get('/admin/theme')
 labels = re.findall(r'role="tab"[^>]*data-tab="([a-z_]+)"[^>]*>([^<]+)</button>', html)
 check('Branding is the first tab and replaces Appearance and Brand', st == 200 and labels[0] == ('branding', 'Branding') and not any(k in ('appearance', 'brand', 'design') for k, _ in labels), labels)
 check('it is open first', re.search(r'class="[^"]*\bactive\b[^"]*" data-tab="branding"', html) is not None and 'name="active_tab" value="branding"' in html)
+panels = dict(re.findall(r'data-panel="([a-z_]+)" role="tabpanel">(.*?)(?=<div class="tab-panel|<div class="flex flex-col gap-1 rounded-lg)', html, re.S))
+typo, brand = panels.get('typography', ''), panels.get('branding', '')
+check('Typography is the tab after Branding', [k for k, _ in labels][:2] == ['branding', 'typography'] and labels[1][1] == 'Typography', labels[:3])
+check('it holds the fonts, the text, the headings and the elements, which Branding no longer has', all(('name="theme_settings[design][%s]"' % k) in typo and ('name="theme_settings[design][%s]"' % k) not in brand for k in ('heading_font', 'body_font', 'base_size', 'line_height', 'scale', 'heading_weight', 'heading_case', 'h1_step', 'h3_tracking', 'lead_step', 'small_weight', 'body_weight', 'paragraph_space')) and 'name="theme_settings[appearance][font]"' in typo and 'data-bf ' in typo, [k for k in ('heading_font', 'base_size', 'h1_step') if ('name="theme_settings[design][%s]"' % k) not in typo])
+check('the heading colour stays in Branding, and each tab points at the other', 'name="theme_settings[design][heading_color]"' in brand and 'name="theme_settings[design][heading_color]"' not in typo and 'data-goto-tab="typography"' in brand and 'data-goto-tab="branding"' in typo)
+check('Typography has its own live preview, its own reset metadata and resets for each card', 'data-bp-frame' in typo and 'theme?preview=branding' in typo and 'theme_settings[design][base_size]' in unescape(re.search(r'data-bp-defaults="([^"]+)"', typo).group(1)) and all(('data-bp-reset="%s"' % k) in typo for k in ('fonts', 'text', 'headings', 'elements')))
+check('a field appears once on the screen', html.count('name="theme_settings[design][heading_font]"') == 1 and html.count('name="theme_settings[design][h1_step]"') == 1)
 for key in ('heading_font', 'body_font', 'font_file', 'base_size', 'line_height', 'scale', 'heading_weight', 'heading_tracking', 'heading_leading', 'heading_case', 'heading_color',
             'container', 'reading_width', 'gutter', 'section_space', 'header_height', 'spacing', 'radius', 'button_radius', 'shadows', 'button_height', 'button_pad', 'button_size', 'button_weight', 'button_case'):
     if ('name="theme_settings[design][%s]"' % key) not in html:

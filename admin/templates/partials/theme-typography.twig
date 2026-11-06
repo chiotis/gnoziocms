@@ -1,0 +1,146 @@
+{#
+  Theme > Typography: fonts, text, headings and the text elements, with the real site beside the cards as on Branding. The values
+  are stored in the theme's `appearance` and `design` sections, the same keys Branding used, so moving them here changed nothing that
+  is saved. admin-branding.js gives each value its source and its resets (it serves every [data-bp] root), admin-branding-fonts.js runs
+  the font families, and BrandingTypography.php writes the CSS.
+
+  schema   the theme's settings schema      values   what is stored      info   the Branding screen's data (fonts, preview address)
+#}
+{% import '@admin/partials/layout-controls.twig' as c %}
+{% import _self as t %}
+{% set a = schema.appearance.fields %}
+{% set d = schema.design.fields %}
+{% set va = values.appearance %}
+{% set vd = values.design %}
+{% set pa = 'theme_settings[appearance][' %}
+{% set pd = 'theme_settings[design][' %}
+{% set default_theme = theme_info.name|default('') == 'default' and custom_css|default('')|trim == '' %}
+{% set short = {
+  heading_weight: {auto: 'Theme', '400': 'Regular', '500': 'Medium', '600': 'Semi', '700': 'Bold', '800': 'Black'},
+  heading_tracking: {auto: 'Theme', tighter: 'Tighter', tight: 'Tight', normal: 'Normal', wide: 'Wide'},
+  heading_leading: {auto: 'Theme', tight: 'Tight', normal: 'Normal', relaxed: 'Relaxed'},
+  heading_case: {auto: 'As typed', uppercase: 'CAPITALS'}
+} %}
+{% if default_theme %}
+  {% set short = short|merge({
+    heading_weight: short.heading_weight|map((label, option) => option == 'auto' ? 'By element' : label),
+    heading_tracking: short.heading_tracking|merge({auto: 'By element'}),
+    heading_leading: short.heading_leading|merge({auto: 'By element'})
+  }) %}
+{% endif %}
+{% set defaults = {} %}
+{% for section in ['appearance', 'design'] %}
+  {% for key, field in schema[section].fields %}
+    {% set defaults = defaults|merge({('theme_settings[' ~ section ~ '][' ~ key ~ ']'): {value: field.default ?? '', label: field.label, equivalent: null}}) %}
+  {% endfor %}
+{% endfor %}
+{% set columns = [['step', 'Size'], ['weight', 'Weight'], ['leading', 'Line'], ['tracking', 'Spacing']] %}
+
+{# One row for each element: a step of the scale, a weight, a line height and a letter spacing. #}
+{% macro matrix(rows, columns, d, vd, pd, caption) %}
+  <table class="bp-colours bp-matrix">
+    <caption class="sr-only">{{ caption }}</caption>
+    <thead><tr><th scope="col"><span class="sr-only">Element</span></th>{% for col in columns %}<th scope="col">{{ col[1] }}</th>{% endfor %}</tr></thead>
+    <tbody>
+      {% for row in rows %}
+        <tr>
+          <th scope="row">{{ row[1] }}</th>
+          {% for col in columns %}
+            {% set key = row[0] ~ '_' ~ col[0] %}
+            <td>
+              {% if d[key] is defined %}
+                <select name="{{ pd ~ key }}]" class="lc-input lc-select" aria-label="{{ d[key].label }}">
+                  {% for option, text in d[key].options %}<option value="{{ option }}"{% if option ~ '' == vd[key] ~ '' %} selected{% endif %}>{{ option == 'auto' ? 'Theme' : (col[0] == 'step' ? option : text) }}</option>{% endfor %}
+                </select>
+              {% endif %}
+            </td>
+          {% endfor %}
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endmacro %}
+
+<div class="bp" data-bp data-bp-defaults="{{ defaults|json_encode }}" data-preview data-mode="css" data-endpoint="{{ url('admin/theme?preview=branding') }}">
+  <h2 class="sr-only">Typography</h2>
+  <p class="mb-3 text-xs text-slate-500">Fonts, text and headings. “Theme value” follows the font pairing and the theme’s scale. Choosing a value makes it your own; Reset restores the theme value. Nothing changes on the site until you save.</p>
+
+  <div class="bp-grid">
+    <div class="bp-cards">
+
+      <details class="bp-card" open>
+        <summary><span>Fonts</span><small>Pairing, headings, text, your own files</small></summary>
+        <div class="bp-body">
+          <dl class="m-0 space-y-2.5">
+            {% if a.font is defined %}{{ c.choice(a.font, pa ~ 'font]', va.font, 'select', {}) }}{% endif %}
+            {% if d.heading_font is defined %}{{ c.choice(d.heading_font, pd ~ 'heading_font]', vd.heading_font, 'select', {}) }}{% endif %}
+            {% if d.body_font is defined %}{{ c.choice(d.body_font, pd ~ 'body_font]', vd.body_font, 'select', {}) }}{% endif %}
+            {% if d.font_file is defined and vd.font_file|trim != '' %}
+              <div class="lc-row" data-bp-custom-font>
+                <dt><label for="f-font-file">{{ d.font_file.label }} <small>(earlier setting)</small></label></dt>
+                <dd class="m-0">
+                  <input id="f-font-file" type="text" name="{{ pd }}font_file]" value="{{ vd.font_file }}" placeholder="{{ d.font_file.placeholder }}" class="lc-input">
+                  <span class="mt-1 block text-[11px] leading-4 text-slate-500">{{ d.font_file.help }}
+                    {% if info.font_found is same as(true) %}<strong class="font-medium text-emerald-700">The file is there.</strong>{% elseif info.font_found is same as(false) %}<strong class="font-medium text-red-700">There is no such file in custom/assets yet.</strong>{% endif %}
+                  </span>
+                </dd>
+              </div>
+            {% endif %}
+          </dl>
+          {% if d.fonts is defined %}{% include '@admin/partials/theme-fonts.twig' %}{% endif %}
+          <button type="button" class="bp-reset" data-bp-reset="fonts">Reset fonts</button>
+        </div>
+      </details>
+
+      <details class="bp-card" open>
+        <summary><span>Text</span><small>Size, line height, weight, paragraphs</small></summary>
+        <div class="bp-body">
+          <div class="bp-nums">
+            {% if d.base_size is defined %}{{ c.num(d.base_size, pd ~ 'base_size]', vd.base_size, 'px') }}{% endif %}
+            {% if d.line_height is defined %}{{ c.num(d.line_height, pd ~ 'line_height]', vd.line_height, '') }}{% endif %}
+          </div>
+          <dl class="m-0 space-y-2.5">
+            {% for key in ['body_weight', 'paragraph_space'] %}
+              {% if d[key] is defined %}{{ c.choice(d[key], pd ~ key ~ ']', vd[key], 'select', {}) }}{% endif %}
+            {% endfor %}
+          </dl>
+          <button type="button" class="bp-reset" data-bp-reset="text">Reset text</button>
+        </div>
+      </details>
+
+      <details class="bp-card" open>
+        <summary><span>Headings</span><small>Scale, weight, spacing, case, H1 to H3</small></summary>
+        <div class="bp-body">
+          <dl class="m-0 space-y-2.5">
+            {% if d.scale is defined %}
+              {% set scale = default_theme ? d.scale|merge({options: d.scale.options|map((label, option) => option == 'auto' ? 'Theme scale' : label)}) : d.scale %}
+              {{ c.choice(scale, pd ~ 'scale]', vd.scale, 'select', {}) }}
+            {% endif %}
+            {% for key in ['heading_weight', 'heading_tracking', 'heading_leading', 'heading_case'] %}
+              {% if d[key] is defined %}{{ c.choice(d[key], pd ~ key ~ ']', vd[key], 'seg', short[key]) }}{% endif %}
+            {% endfor %}
+          </dl>
+          {% if default_theme %}<p class="m-0 text-[11px] leading-4 text-slate-500">“By element” keeps the weight, letter spacing and line height designed for each heading. “Theme scale” keeps the theme’s responsive sizes.</p>{% endif %}
+          {% if d.h1_step is defined %}
+            {{ t.matrix([['h1', 'H1'], ['h2', 'H2'], ['h3', 'H3']], columns, d, vd, pd, 'Overrides for headings 1 to 3. Theme keeps the design of the theme. The size is a step of the type scale, so it stays fluid.') }}
+            <p class="m-0 text-[11px] leading-4 text-slate-500">Size is a step of the scale (5 largest, 0 the text), so it stays fluid and follows Text size and Heading scale. Headings 4 to 6 follow the scale. The heading colour is set in <button type="button" class="bp-goto" data-goto-tab="branding">Branding, under Colour</button>.</p>
+          {% endif %}
+          <button type="button" class="bp-reset" data-bp-reset="headings">Reset headings</button>
+        </div>
+      </details>
+
+      {% if d.lead_step is defined or d.small_step is defined %}
+        <details class="bp-card" open>
+          <summary><span>Text elements</span><small>Lead paragraph, small text</small></summary>
+          <div class="bp-body">
+            {{ t.matrix([['lead', 'Lead'], ['small', 'Small']], columns, d, vd, pd, 'Overrides for the lead paragraph and small text. Theme keeps the design of the theme.') }}
+            <p class="m-0 text-[11px] leading-4 text-slate-500">The lead is the larger paragraph under a title; small text is used for captions and notes.</p>
+            <button type="button" class="bp-reset" data-bp-reset="elements">Reset text elements</button>
+          </div>
+        </details>
+      {% endif %}
+    </div>
+
+    {% include '@admin/partials/theme-preview.twig' with {preview_key: 'typography', preview_url: info.preview_url, branding_samples_url: url('admin/theme?preview=styles')} %}
+  </div>
+</div>

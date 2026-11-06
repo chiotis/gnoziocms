@@ -626,7 +626,7 @@ A menu is a file in `content/menus/<key>.yaml`, placed in a place of the theme (
 
 - **Identity** (`brand`): the logo, a **logo for dark backgrounds** (shown in dark mode, in a dark or palette footer, in a dark or palette header row, and over a dark opening hero; without it the logo is used everywhere), the site name beside the logo, heights of the logo (computer, phone, footer) and the size of the name, the **favicon**, the **app icon** (`apple-touch-icon`), the **browser colour** (`theme-color`) and the default share image.
 - **Colour**: one row of chips (the seven ready-made palettes, the site palettes, and **+ Custom**) and the **mode** (`appearance.mode`, which is not part of a palette). The palette is the single place where colours are set, see "Site palettes" below; the heading colour sits under it. The hover and soft shades of the accent, the second shade of the surface and the border, and a readable text colour on the accent (white or the theme's near-black) are worked out from the colours of the palette.
-- **Typography**: the font pairing (`appearance`), a family for headings and one for text (thirteen system stacks, so nothing is downloaded, or **your own font families**, see [Your own font families](#your-own-font-families)), text size, line height, a **heading scale** (a ratio from 1.125 to 1.618, gentler on a phone), heading weight, letter spacing, line height and capitals.
+- **Typography** is a tab of its own, right after Branding (see [Typography](#typography) below); Branding keeps a line that leads to it.
 - **Layout and spacing**: content width, reading width, side margin, space between sections, **header height** (compact and tall follow it), and a spacing scale.
 - **Shape and depth**: corners (`appearance`), a **radius in pixels**, shadows, decoration.
 - **Buttons**: height, side padding, text size, weight, capitals, button corners.
@@ -673,7 +673,7 @@ Optional component tokens carry explicit typography choices into prose, hero tit
 
 All optional, all empty or "Theme" by default (a site that sets none gets exactly the CSS it had). Made by `BrandingTypography`, `BrandingForms` and `BrandingShape`, appended by `Branding::css()` after the token rule; every selector sits under `:root[data-theme][data-mode]`, so it wins over block and prose classes.
 
-- **Typography** (Branding > Typography > *Sizes per element*): H1, H2, H3, the lead paragraph and small text each take a **step of the type scale** (`h1_step` … `small_step`: 5, 4, 3, 2, 1, 0, -1, -2, written as `font-size: var(--step-N)`, never pixels, so the fluid sizing and the Text size and Heading scale choices still apply), a weight, a line height (tight, normal, relaxed, loose) and a letter spacing. H4 to H6 have no override: they follow the scale. H1 also reaches the Hero title and the page title, H2 the section titles. `body_weight` sets the weight of text and `paragraph_space` the space between the paragraphs of prose.
+- **Typography** (Theme > Typography > *Headings* and *Text elements*): H1, H2, H3, the lead paragraph and small text each take a **step of the type scale** (`h1_step` … `small_step`: 5, 4, 3, 2, 1, 0, -1, -2, written as `font-size: var(--step-N)`, never pixels, so the fluid sizing and the Text size and Heading scale choices still apply), a weight, a line height (tight, normal, relaxed, loose) and a letter spacing. H4 to H6 have no override: they follow the scale. H1 also reaches the Hero title and the page title, H2 the section titles. `body_weight` sets the weight of text and `paragraph_space` the space between the paragraphs of prose.
 - **Forms** (Branding > Forms): `input_bg` (page background, surface, deeper surface), `input_border` (strong border, muted text, text, accent), `input_border_width` (1 or 2px), `label_size`, `label_weight`, `input_ring` and `error_style`. They style the public forms (`PublicForms`, the form block) and the search field. Colours are the palette's own roles, so contrast follows the palette. Focus presets always draw a visible ring: the theme's ring, a 2px accent outline, or a 3px outline in the text colour ("high contrast"). Errors never rely on colour alone: *Strong border* thickens the field's border and bolds the message; *Tinted field* adds a tint, a 3px bar and a heavier message. The text colour of messages stays `--color-danger`, which is AA on the page and on the tint in light and dark.
 - **Corners and borders** (Branding > Shape and depth): `radius_card`, `radius_image` and `radius_input` (empty follows *Corner radius*; a number in px, 0 is square), and `border_width` for cards (none, 1, 2, 3px; it changes a border the card already has). The lists of what counts as a card or an image are in `BrandingShape`.
 - **Shadows**: `shadows` is *Theme*, *None*, *Soft* (the theme's own, written out), *Medium* or *Strong*. Sites that stored `none` or `strong` before keep exactly the same CSS.
@@ -701,6 +701,17 @@ All optional, all empty or "Theme" by default (a site that sets none gets exactl
 - The state from before (theme settings, the archives of every list, Custom CSS) is kept as one backup (`theme_backup` in the system database); **Undo the last import** puts it back. Imported font files stay.
 - Routes: `GET /admin/theme?transfer=export`, `POST /admin/theme?transfer=preview|import|undo` (JSON, with the form token; `parts[]` names the parts for `import`).
 
+
+## Typography
+
+**Admin > Theme > Typography** holds every type setting, with the same live preview as Branding (Site and Style samples, computer, tablet and phone, light and dark). The values are stored in the `appearance` and `design` sections under the same keys Branding used before 0.1.225, so moving them changed nothing that is saved, and Branding's export, Theme > Export and import, and the section resets carry them as before. A theme that declares `design` gets the tab.
+
+- **Fonts**: the font pairing (`appearance.font`), a family for headings and one for text (thirteen system stacks, so nothing is downloaded, or **your own font families**, see [Your own font families](#your-own-font-families)), and the earlier single font file when one is set.
+- **Text**: text size, line height, the weight of text (`body_weight`) and the space between paragraphs (`paragraph_space`).
+- **Headings**: a **heading scale** (a ratio from 1.125 to 1.618, gentler on a phone), heading weight, letter spacing, line height and capitals, and H1, H2 and H3 each with a step of the scale, weight, line height and letter spacing. The heading colour stays in Branding > Colour.
+- **Text elements**: the lead paragraph and small text, with the same four choices.
+
+Each card has its own reset, which changes only the unsaved form. The plan for the rest of the tab (navigation, more elements, buttons and labels) is in `docs/typography-tab-plan.md`.
 ## Design tokens
 
 `site.css` defines semantic tokens (`--color-bg`, `--color-surface`, `--color-text`, `--color-muted`, `--color-border`, `--accent`, `--accent-soft`, `--accent-contrast`, spacing `--space-*`, type scale `--step-*`, radii `--radius-*`). Theme settings switch them through attributes on `<html>`:
@@ -719,7 +730,7 @@ Inter ships with the theme (`assets/fonts/inter/`, SIL Open Font License) as a v
 
 ### Your own font families
 
-Theme > Branding > Typography > *Your own fonts* lets a site use its own typeface for headings and for text, each with its own family.
+Theme > Typography > *Fonts* > *Your own fonts* lets a site use its own typeface for headings and for text, each with its own family.
 
 - **A family** is a name and a set of font files. Upload them there (WOFF2 is best; WOFF, TTF and OTF are accepted with a hint, since the CMS cannot convert them; up to 6 MB each). Each file is stored in `custom/assets/fonts/<family>/<name>-<hash>.<ext>`, so it is served by `ThemeAssets` with its real type (`font/woff2`, `font/woff`, `font/ttf`, `font/otf`), a year of caching under its `?v=` version, and is included in backups with the rest of `custom/`. A file renamed to another type is refused, and the stored extension follows what the file really is.
 - **Tagged files.** The weight (100–900, or a range such as 200 900 for a variable font) and style come from the file: the weight axis of a variable font, a weight in the file name (`-SemiBold`, `-700-`), then the OS/2 table; italic from the name, the font's style bits and its name table. Both are editable on the screen.

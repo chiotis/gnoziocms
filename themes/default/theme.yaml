@@ -574,7 +574,7 @@ settings:
         item_label: Font file
         max: 48
         span: full
-        help: The font files of your own families, each with its weight and style. Managed on the Branding screen (Typography).
+        help: The font files of your own families, each with its weight and style. Managed on the Typography tab (Fonts).
         fields:
           family: {type: text, label: Family, default: ''}
           file: {type: text, label: File in custom/assets, default: ''}
