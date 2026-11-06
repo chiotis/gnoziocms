@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.235 — 2026-11-06 — AI publishing: schedules that write posts
+- **Manage > AI publishing > Schedules** (new, the first tab once there is a key): each schedule writes **one post each time it runs**, on the days of the week and at the time you choose (in the site's time zone), with optional start and end dates. It is written ahead (30 minutes by default) and goes live on the minute. For twenty posts a day, add twenty schedules; **Duplicate** makes it quick.
+- Each schedule says what its posts are about in a few lines, the content type and language, categories that are always given and taxonomies the model may choose from (only existing terms), what to avoid in the text and in the picture, what the pictures show, and the result: **published at its time**, **published as soon as it is ready**, or **kept as a draft**. **Run now**, **Switch off**, **Duplicate** and **Delete** on each.
+- **Instructions > Writing** (new): the writing instructions every post starts from, what never to write, facts about the site, and the byline.
+- A run asks OpenAI for the post as structured JSON, checks it (title, length, no HTML, terms from the list) and asks once more if it falls short, saves it as a draft through the editor (history, address and categories as usual), makes its picture in the house style from the writer's picture description, and then gives it its status. With **Publish only with a picture** (on by default) a post whose picture fails stays a draft. Each run is told the titles the schedule wrote before, so it does not repeat them. A slot runs once; one missed by more than an hour (site or cron down) is skipped.
+- **Runs** shows posts and pictures together and keeps working while the page is open. Posts written by a schedule carry an **AI** badge in the content list.
+- Tests: `tests/unit/ai-writer.php`, `tests/http/ai_publishing_test.py`; `tests/unit/site-limits.php` derives every level from the measured size of the empty database.
+
 ## 0.1.234 — 2026-11-06 — The AI pictures bar leaves when the pictures are done
 - On a content list, the purple **AI pictures** bar now shows only while pictures are waiting or being made, and afterwards only if some failed (with **See why**). A run that went well leaves just the **AI picture** chip on each row.
 - Tests: `tests/http/ai_publishing_test.py`.
