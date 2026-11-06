@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.237 — 2026-11-06 — AI schedules search the web and read feeds
+- **Search the web while writing**, on by default for every schedule (existing ones included): the model searches and reads while it writes, prefers official and primary sources, and gives the addresses it used. The sources are kept with the post and, unless you untick it, listed as links at its end. *What to search for* steers it. Each search is billed by OpenAI and counted on the Usage tab (fill the search price of your model in the price table).
+- **Feeds and pages** in a schedule's new **Material** card: RSS or Atom feeds, of which each run takes the newest items it has not used (a number per post, no older than N days), so an item is written about once; and pages read every run. They are passed to the model as quoted information, never as instructions. Greek sites in older encodings read correctly.
+- **When the model cannot write a real post** (the facts cannot be found or confirmed, the material says nothing useful), nothing is saved and no picture is made: the run fails on the Runs tab with the model's reason. Feeds with nothing new and search off stop the run before OpenAI is called.
+- `php src/ai-check.php --search` tries web search with your key and model.
+- Tests: `tests/unit/feed-reader.php`, `tests/unit/ai-writer.php`, `tests/http/ai_publishing_test.py`.
+
 ## 0.1.236 — 2026-11-06 — Bylines in every title area, feed times, wider titles
 - The line above an entry's title (author, categories, date) now shows in every page layout, not only on the post template: the sidebar layout (also chosen by the table of contents), the generic single template and the **Entry title** block draw it too. The default layout adds tags and the site's own taxonomies. One shared piece, `components/entry-byline.twig`, draws it everywhere; **Single Layouts** offers the byline switch for every content type but pages and forms.
 - RSS feeds give each entry the time of day it was made, not 00:00, when its date is a day only (as lists already order them).
