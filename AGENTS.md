@@ -2,6 +2,8 @@
 
 This file is for coding agents (Codex, Claude Code and others) working in this repository. People should start with `README.md`.
 
+All communications should be done in english
+
 ## Environment
 
 - **PHP 8.5 or newer** is required (`composer.json`), with the extensions listed in `SystemStatus::EXTENSIONS` (pdo_sqlite, zip, curl, mbstring, fileinfo, openssl, simplexml; intl is optional). Python 3 runs the HTTP tests. Node 20 or newer runs the JS tests (`tests/run.sh js`).
