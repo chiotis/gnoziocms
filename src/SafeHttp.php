@@ -20,15 +20,18 @@ final class SafeHttp
 
     /**
      * @param (\Closure(string): string[])|null $resolve a host's addresses (tests give their own)
-     * @param (\Closure(string, string, string, int, int): array{status: int, location: string, error: string})|null $transport fetches one
-     *   address, connecting to the given IP, into a file; no redirects followed (tests give their own)
+     * @param (\Closure(string, string, string, int, int, string): array{status: int, location: string, error: string})|null $transport fetches one
+     *   address, connecting to the given IP, into a file, with an Accept header; no redirects followed (tests give their own)
      */
     public function __construct(private ?\Closure $resolve = null, private ?\Closure $transport = null)
     {
     }
 
-    /** @return array{ok: bool, error: string, url: string} the address the file came from in the end */
-    public function download(string $url, string $to, int $maxBytes, int $timeout = 15): array
+    /**
+     * @param string $accept the Accept header: pictures by default; feeds and pages ask for text and XML
+     * @return array{ok: bool, error: string, url: string} the address the file came from in the end
+     */
+    public function download(string $url, string $to, int $maxBytes, int $timeout = 15, string $accept = 'image/*'): array
     {
         $fail = static fn(string $error): array => ['ok' => false, 'error' => $error, 'url' => $url];
         for ($hop = 0; $hop <= self::MAX_REDIRECTS; $hop++) {
@@ -54,7 +57,7 @@ final class SafeHttp
                     return $fail('The address ' . $host . ' is on a private or reserved network and cannot be fetched.');
                 }
             }
-            $answer = ($this->transport ?? self::curl(...))($url, $ips[0], $to, $maxBytes, $timeout);
+            $answer = ($this->transport ?? self::curl(...))($url, $ips[0], $to, $maxBytes, $timeout, $accept);
             if ($answer['error'] !== '') {
                 return $fail($answer['error']);
             }
@@ -127,7 +130,7 @@ final class SafeHttp
     }
 
     /** @return array{status: int, location: string, error: string} */
-    private static function curl(string $url, string $ip, string $to, int $maxBytes, int $timeout): array
+    private static function curl(string $url, string $ip, string $to, int $maxBytes, int $timeout, string $accept = 'image/*'): array
     {
         if (!function_exists('curl_init')) {
             return ['status' => 0, 'location' => '', 'error' => 'This server cannot fetch addresses (no curl).'];
@@ -149,7 +152,8 @@ final class SafeHttp
             CURLOPT_CONNECTTIMEOUT => 5,
             CURLOPT_TIMEOUT => $timeout,
             CURLOPT_USERAGENT => self::AGENT,
-            CURLOPT_HTTPHEADER => ['Accept: image/*'],
+            CURLOPT_HTTPHEADER => ['Accept: ' . $accept],
+            CURLOPT_ENCODING => '',
             CURLOPT_HEADERFUNCTION => static function ($ch, string $line) use (&$location): int {
                 if (stripos($line, 'Location:') === 0) {
                     $location = trim(substr($line, 9));

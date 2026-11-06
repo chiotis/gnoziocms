@@ -84,12 +84,13 @@ final class OpenAiProvider
 
     /**
      * Writes with the Responses API, the answer bound to a JSON schema (strict). `$instructions` go as the developer message, `$input`
-     * as the user's. Reasoning models get a low effort; others none.
+     * as the user's. Reasoning models get a low effort; others none. With `$search` the model may search the web while it writes
+     * (the `web_search` tool); each search is counted in `searches` (OpenAI bills them per call).
      * @param array<string, mixed> $schema
      * @return array{ok: bool, data: array<string, mixed>|null, usage: array<string, mixed>, kind: string, error: string, retry_after: int|null,
-     *   ms: int, model_gone: bool, refusal: string, incomplete: string}
+     *   ms: int, model_gone: bool, refusal: string, incomplete: string, searches: int, cited: string[]}
      */
-    public function write(string $model, string $instructions, string $input, string $schemaName, array $schema, int $maxTokens = 8000): array
+    public function write(string $model, string $instructions, string $input, string $schemaName, array $schema, int $maxTokens = 8000, bool $search = false): array
     {
         $payload = [
             'model' => $model,
@@ -100,20 +101,33 @@ final class OpenAiProvider
         if (self::reasons($model)) {
             $payload['reasoning'] = ['effort' => 'low'];
         }
-        $r = $this->http->postJson(self::BASE . '/responses', $payload, $this->auth(), 240);
+        if ($search) {
+            $payload['tools'] = [['type' => 'web_search']];
+            // More room: searching and reading take output tokens of their own before the post is written.
+            $payload['max_output_tokens'] = max($maxTokens, 16000);
+        }
+        $r = $this->http->postJson(self::BASE . '/responses', $payload, $this->auth(), $search ? 300 : 240);
         $result = ['ok' => false, 'data' => null, 'usage' => is_array($r['data']['usage'] ?? null) ? $r['data']['usage'] : [], 'kind' => $r['kind'], 'error' => $r['error'],
-            'retry_after' => $r['retry_after'], 'ms' => $r['ms'], 'model_gone' => self::modelGone($r), 'refusal' => '', 'incomplete' => ''];
+            'retry_after' => $r['retry_after'], 'ms' => $r['ms'], 'model_gone' => self::modelGone($r), 'refusal' => '', 'incomplete' => '', 'searches' => 0, 'cited' => []];
         if (!$r['ok']) {
             return $result;
         }
         $text = '';
         foreach ((array)($r['data']['output'] ?? []) as $item) {
+            if (is_array($item) && ($item['type'] ?? '') === 'web_search_call') {
+                $result['searches']++;
+            }
             if (!is_array($item) || ($item['type'] ?? '') !== 'message') {
                 continue;
             }
             foreach ((array)($item['content'] ?? []) as $part) {
                 if (($part['type'] ?? '') === 'output_text') {
                     $text .= (string)($part['text'] ?? '');
+                    foreach ((array)($part['annotations'] ?? []) as $note) {
+                        if (is_array($note) && ($note['type'] ?? '') === 'url_citation' && is_string($note['url'] ?? null)) {
+                            $result['cited'][] = $note['url'];
+                        }
+                    }
                 } elseif (($part['type'] ?? '') === 'refusal') {
                     $result['refusal'] = trim((string)($part['refusal'] ?? ''));
                 }
@@ -127,6 +141,7 @@ final class OpenAiProvider
         if (!is_array($data)) {
             return ['kind' => AiHttp::SERVER, 'error' => $result['incomplete'] !== '' ? 'The answer was cut short (' . $result['incomplete'] . ').' : 'The answer was not the JSON asked for.'] + $result;
         }
+        $result['cited'] = array_values(array_unique($result['cited']));
         return ['ok' => true, 'data' => $data, 'kind' => '', 'error' => ''] + $result;
     }
 
