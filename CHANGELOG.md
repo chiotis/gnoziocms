@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.240 — 2026-11-06 — A title pattern for AI schedules
+- **Title pattern** (optional) in a schedule's *What* card: a fixed title with tags, for example `Weekly news: {title} – {date}`. `{title}` is the model's title, `{term}` the name of the post's first term (`{term:category}` of one taxonomy), `{date}` the post's date in its language (`{date:d/m/Y}` in a PHP date format), `{weekday}`, `{day}`, `{month}`, `{year}`, `{week}` (ISO week) and `{schedule}`. The date is the one the post goes out on. An empty tag takes its separator with it; an unknown tag stays as written. Empty, the model writes the title as before.
+- The model is told the pattern, so its title fits into it. Its own title is kept as `ai_title` in the front matter, and the repeat check compares that, so fixed words shared by every post do not make them look alike.
+- Tests: `tests/unit/ai-writer.php`, `tests/http/ai_publishing_test.py`.
+
 ## 0.1.239 — 2026-11-06 — No repeated AI posts, MCP and automatic main pictures
 - **No repeats**: every AI schedule run is shown the site's published and scheduled posts of the same type and language from the last 60 days, whoever wrote them, and told not to repeat them. After writing, a post with a near-identical title (accents, case and punctuation aside) or sharing at least two sources, half of its own, with a recent post is sent back once; a second repeat fails the run with the similar post linked, and nothing is saved.
 - **What a failed run looked at**: failed runs keep how many searches the model made, what it searched for and the pages it used, shown under *What it looked at* on the Runs tab.
