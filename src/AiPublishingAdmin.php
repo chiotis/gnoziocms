@@ -303,6 +303,7 @@ final class AiPublishingAdmin
             'languages' => $site['languages'],
             'taxonomies' => $editing !== null ? ($site['terms'])($editing['settings']['type'], $editing['settings']['lang']) : [],
             'zone' => $zone->getName(),
+            'title_tags' => AiWriter::TITLE_TAGS,
             'missed_window' => (int)$this->settings->all()['missed_window'],
         ];
     }

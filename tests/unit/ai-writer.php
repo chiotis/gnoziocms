@@ -81,6 +81,16 @@ check('at its time, the slot has come: published', AiWriter::finalStatus('at_tim
 check('when ready, and draft', [AiWriter::finalStatus('when_ready', $slot, 0, $zone)['status'], AiWriter::finalStatus('draft', $slot, 0, $zone)['status']], ['published', 'draft']);
 $schema = AiWriter::schema(['categories' => ['tips', 'news']]);
 check('the schema: every field required, nothing else allowed, terms from the list', [$schema['additionalProperties'], in_array('image_brief', $schema['required'], true), $schema['properties']['terms']['properties']['categories']['items']['enum']], [false, true, ['tips', 'news']]);
+$at = (new DateTimeImmutable('2026-11-06 09:00', $zone))->getTimestamp();
+$t = static fn(string $pattern, string $lang = 'en', array $terms = ['categories' => ['Tips', 'News'], 'tags' => []]): string => AiWriter::titleFrom($pattern, 'Show holiday hours early', $terms, $at, $zone, $lang, 'Tip of the day');
+check('no pattern: the model\'s title', $t(''), 'Show holiday hours early');
+check('title, term, date', $t('{term}: {title} – {date:d/m/Y}'), 'Tips: Show holiday hours early – 06/11/2026');
+check('a fixed title with the week and the schedule', $t('{schedule}, week {week} of {year}'), 'Tip of the day, week 45 of 2026');
+check('a term of one taxonomy, empty: its separator goes too', [$t('Roundup – {term:tags} – {day}'), $t('Roundup ({term:tags})')], ['Roundup – 6', 'Roundup']);
+check('an unknown tag stays as it is', $t('{title} {nope}'), 'Show holiday hours early {nope}');
+if (class_exists(IntlDateFormatter::class)) {
+    check('dates in the post\'s language', [$t('{date}', 'el'), $t('{weekday}', 'el')], ['6 Νοεμβρίου 2026', 'Παρασκευή']);
+}
 check('no terms field when there is nothing to choose', isset(AiWriter::schema([])['properties']['terms']), false);
 $good = ['title' => 'Clear hours', 'body' => str_repeat('Clear hours help. ', 30), 'terms' => ['categories' => ['tips']]];
 check('a good answer has no problems', AiWriter::problems($good, ['categories' => ['tips', 'news']]), []);
@@ -190,6 +200,21 @@ $replies = [$writeReply(['title' => 'Another note', 'excerpt' => 'x', 'body' => 
 $runner->work($soon(), [AiWriter::KIND]);
 check('draft mode: no status change, and the picture queued anyway', [$statusCalls, count($runner->list(AiPictures::KIND, [JobRunner::QUEUED]))], [[], 1]);
 $runner->cancel((int)$runner->list(AiPictures::KIND, [JobRunner::QUEUED])[0]['id']);
+
+// A title pattern: the model's title in it, the post's date, the model's title kept for the repeat check.
+$schedules->save($noPic, ['name' => 'Quick note', 'days' => ['5'], 'time' => '07:00', 'type' => 'posts', 'lang' => 'el', 'content' => 'A short note.', 'no_picture' => '1', 'status' => 'draft',
+    'title_pattern' => "Σημείωμα {date:d/m/Y}: {title}\n"], $types, $langs);
+check('the pattern is kept on one line', $schedules->get($noPic)['settings']['title_pattern'], 'Σημείωμα {date:d/m/Y}: {title}');
+$writer->runNow($noPic, 'chris');
+$replies = [$writeReply(['title' => 'Αλλαγή ωραρίου', 'excerpt' => 'x', 'body' => str_repeat('Κείμενο. ', 50), 'seo_title' => '', 'seo_description' => '', 'image_brief' => ''])];
+$calls = [];
+$saveCalls = [];
+$runner->work($soon(), [AiWriter::KIND]);
+$post = $saveCalls[0]['post'] ?? [];
+check('the model is told the pattern', str_contains(json_decode((string)$calls[0]['body'], true)['input'][1]['content'], 'made from the pattern "Σημείωμα {date:d/m/Y}: {title}"'), true);
+check('the title follows the pattern, the model\'s own title is kept', [$post['title'] ?? '', str_contains($post['frontmatter'] ?? '', 'ai_title: \'Αλλαγή ωραρίου\'') || str_contains($post['frontmatter'] ?? '', 'ai_title: Αλλαγή ωραρίου'), $runner->list(AiWriter::KIND)[0]['result']['title'] ?? ''],
+    ['Σημείωμα ' . date('d/m/Y', $now) . ': Αλλαγή ωραρίου', true, 'Σημείωμα ' . date('d/m/Y', $now) . ': Αλλαγή ωραρίου']);
+check('the schedule remembers the topic, not the pattern', $schedules->recentTitles($noPic)[0], 'Αλλαγή ωραρίου');
 
 // ---- failures
 $writer->runNow($noPic, 'chris');
