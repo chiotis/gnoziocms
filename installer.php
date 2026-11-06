@@ -982,7 +982,10 @@ final class GnozioInstaller
         if (is_dir($dir)) {
             $left[] = $dir;
         }
-        return ['ok' => true, 'redirect' => '/admin', 'left' => $left];
+        // The cron job the site should have (CronStatus): scheduled entries, picture sizes and the scheduled backup.
+        $root = realpath($base);
+        $cron = '*/5 * * * * php ' . escapeshellarg(($root === false ? $base : $root) . '/src/cron-backup.php');
+        return ['ok' => true, 'redirect' => '/admin', 'left' => $left, 'cron' => $cron];
     }
 
     // ---------------------------------------------------------------- language
@@ -1029,8 +1032,8 @@ final class GnozioInstaller
                 'mcp_untyped' => 'Optional, for MCP (docs/mcp.md), to let AI assistants such as ChatGPT write to the site: nginx serves the files in /.well-known/ itself and sends them without a JSON type, so ChatGPT cannot connect. In the site\'s nginx configuration (CloudPanel: Vhost) add this block before the `location ~ /.well-known` block, reload nginx and check again. Claude and Codex connect without it.',
                 'docroot_not_yet' => 'The site is still served from the old folder. Make sure the document root is the path above and saved, wait a moment for the web server to reload, then press the button again.', 'docroot_not_public' => 'This page is still coming from the old location. Change the document root, then press the button again.',
                 'finishing' => 'Removing the installer…', 'finish_ok' => 'Installer removed', 'finish_left' => 'These could not be deleted; please delete them by hand: {left}',
-                'redirecting' => 'GnozioCMS is installed. Opening the admin to create the first administrator…',
-                'last_title' => 'One last step, for ChatGPT', 'last_text' => 'GnozioCMS is installed. To let ChatGPT connect to the site over MCP (docs/mcp.md), nginx must send the files in /.well-known/oauth- as JSON. In the site\'s nginx configuration (CloudPanel: Vhost, in the server block on port 443) add this block before the `location ~ /.well-known` block and reload nginx. Claude and Codex connect without it; you can also do it later.', 'last_cf' => 'Without access to the vhost, behind Cloudflare: Rules > Transform Rules > Modify Response Header, for paths starting with /.well-known/oauth-, set Content-Type to application/json.', 'last_open' => 'Open the admin',
+                'last_title' => 'For ChatGPT: one nginx block', 'last_text' => 'To let ChatGPT connect to the site over MCP (docs/mcp.md), nginx must send the files in /.well-known/oauth- as JSON. In the site\'s nginx configuration (CloudPanel: Vhost, in the server block on port 443) add this block before the `location ~ /.well-known` block and reload nginx. Claude and Codex connect without it; you can also do it later.', 'last_cf' => 'Without access to the vhost, behind Cloudflare: Rules > Transform Rules > Modify Response Header, for paths starting with /.well-known/oauth-, set Content-Type to application/json.', 'last_open' => 'Open the admin',
+                'done_title' => 'GnozioCMS is installed: what is left to do', 'cron_title' => 'Add the cron job', 'cron_text' => 'One cron job does the timed work: it publishes scheduled entries, writes picture sizes and takes the automatic backups (once you switch them on in Settings > Backup). Add this line on the server, every 5 minutes. Running it often does no harm: it does nothing when nothing is due.', 'cron_where' => 'CloudPanel: Sites > the site > Cron Jobs. cPanel: Cron Jobs, as a Custom command. If `php` is not this site\'s PHP, give its full path (for example /usr/bin/php8.5). Admin > System shows when the cron job last ran.',
                 'e_auth' => 'Your session ended. Reload the page and enter the key again.', 'e_unknown' => 'Unknown step.', 'e_nostate' => 'The installation has not started. Reload the page.', 'e_existing' => 'A GnozioCMS site already exists in this folder; the installer stops here.', 'e_finished' => 'This installation has finished.', 'e_internal' => 'Something unexpected went wrong: {detail}', 'e_manifest' => 'The latest release could not be read from GitHub ({detail}). Try again in a minute.',
                 'e_download' => 'The download failed: {detail}. Try again.', 'e_size' => 'The downloaded file has the wrong size, so it was thrown away. Try again; if it repeats, GitHub or a proxy is altering the download.', 'e_sha' => 'The downloaded package is not the one that was published (its checksum differs), so it was refused and thrown away. Nothing was installed. Try again.',
                 'e_zip_bad' => 'The package is not a valid ZIP file (or the ZIP extension is missing).', 'e_zip_count' => 'The package has an unexpected number of files, so it was refused.', 'e_zip_unsafe' => 'The package holds a file an install may not write ({name}), so it was refused. Nothing was installed.', 'e_zip_link' => 'The package holds a link ({name}), so it was refused. Nothing was installed.', 'e_zip_large' => 'The package is larger than expected once unpacked, so it was refused.', 'e_zip_incomplete' => 'The package is incomplete ({name} is missing).', 'e_zip_version' => 'The package is not version {version}.',
@@ -1064,8 +1067,8 @@ final class GnozioInstaller
                 'mcp_untyped' => 'Προαιρετικό, για το MCP (docs/mcp.md), ώστε βοηθοί AI όπως το ChatGPT να γράφουν στο site: το nginx σερβίρει μόνο του τα αρχεία του /.well-known/ και τα στέλνει χωρίς τύπο JSON, οπότε το ChatGPT δεν μπορεί να συνδεθεί. Στη ρύθμιση nginx του site (CloudPanel: Vhost) πρόσθεσε αυτό το block πριν από το `location ~ /.well-known`, κάνε reload το nginx και έλεγξε ξανά. Το Claude και το Codex συνδέονται και χωρίς αυτό.',
                 'docroot_not_yet' => 'Το site σερβίρεται ακόμη από τον παλιό φάκελο. Βεβαιώσου ότι το document root είναι η διαδρομή παραπάνω και αποθηκεύτηκε, περίμενε λίγο να ξαναφορτώσει ο web server και πάτα ξανά το κουμπί.', 'docroot_not_public' => 'Αυτή η σελίδα έρχεται ακόμη από την παλιά θέση. Άλλαξε το document root και πάτα ξανά το κουμπί.',
                 'finishing' => 'Διαγραφή του installer…', 'finish_ok' => 'Ο installer διαγράφηκε', 'finish_left' => 'Αυτά δεν μπόρεσαν να διαγραφούν· σβήσε τα με το χέρι: {left}',
-                'redirecting' => 'Το GnozioCMS εγκαταστάθηκε. Ανοίγω το admin για να φτιάξεις τον πρώτο διαχειριστή…',
-                'last_title' => 'Ένα τελευταίο βήμα, για το ChatGPT', 'last_text' => 'Το GnozioCMS εγκαταστάθηκε. Για να συνδέεται το ChatGPT στο site μέσω MCP (docs/mcp.md), το nginx πρέπει να στέλνει τα αρχεία του /.well-known/oauth- ως JSON. Στη ρύθμιση nginx του site (CloudPanel: Vhost, στο server block της θύρας 443) πρόσθεσε αυτό το block πριν από το `location ~ /.well-known` και κάνε reload το nginx. Το Claude και το Codex συνδέονται και χωρίς αυτό· μπορείς να το κάνεις και αργότερα.', 'last_cf' => 'Χωρίς πρόσβαση στο vhost, πίσω από Cloudflare: Rules > Transform Rules > Modify Response Header, για διαδρομές που αρχίζουν από /.well-known/oauth-, όρισε Content-Type σε application/json.', 'last_open' => 'Άνοιγμα του admin',
+                'last_title' => 'Για το ChatGPT: ένα block στο nginx', 'last_text' => 'Για να συνδέεται το ChatGPT στο site μέσω MCP (docs/mcp.md), το nginx πρέπει να στέλνει τα αρχεία του /.well-known/oauth- ως JSON. Στη ρύθμιση nginx του site (CloudPanel: Vhost, στο server block της θύρας 443) πρόσθεσε αυτό το block πριν από το `location ~ /.well-known` και κάνε reload το nginx. Το Claude και το Codex συνδέονται και χωρίς αυτό· μπορείς να το κάνεις και αργότερα.', 'last_cf' => 'Χωρίς πρόσβαση στο vhost, πίσω από Cloudflare: Rules > Transform Rules > Modify Response Header, για διαδρομές που αρχίζουν από /.well-known/oauth-, όρισε Content-Type σε application/json.', 'last_open' => 'Άνοιγμα του admin',
+                'done_title' => 'Το GnozioCMS εγκαταστάθηκε: τι μένει να γίνει', 'cron_title' => 'Πρόσθεσε το cron job', 'cron_text' => 'Ένα cron job κάνει τις δουλειές που έχουν ώρα: δημοσιεύει τις προγραμματισμένες καταχωρήσεις, γράφει τα μεγέθη των εικόνων και παίρνει τα αυτόματα backups (όταν τα ενεργοποιήσεις στις Ρυθμίσεις > Backup). Πρόσθεσε αυτή τη γραμμή στον server, κάθε 5 λεπτά. Δεν πειράζει που τρέχει συχνά: δεν κάνει τίποτα όταν δεν υπάρχει κάτι να γίνει.', 'cron_where' => 'CloudPanel: Sites > το site > Cron Jobs. cPanel: Cron Jobs, ως Custom command. Αν η `php` δεν είναι η PHP αυτού του site, δώσε την πλήρη διαδρομή της (για παράδειγμα /usr/bin/php8.5). Το Admin > System δείχνει πότε έτρεξε τελευταία φορά το cron job.',
                 'e_auth' => 'Η συνεδρία έληξε. Φόρτωσε ξανά τη σελίδα και γράψε το κλειδί.', 'e_unknown' => 'Άγνωστο βήμα.', 'e_nostate' => 'Η εγκατάσταση δεν έχει ξεκινήσει. Φόρτωσε ξανά τη σελίδα.', 'e_existing' => 'Υπάρχει ήδη site GnozioCMS σε αυτόν τον φάκελο· ο installer σταματά εδώ.', 'e_finished' => 'Η εγκατάσταση έχει ολοκληρωθεί.', 'e_internal' => 'Κάτι δεν πήγε όπως έπρεπε: {detail}', 'e_manifest' => 'Δεν διαβάστηκε η τελευταία έκδοση από το GitHub ({detail}). Ξαναδοκίμασε σε ένα λεπτό.',
                 'e_download' => 'Η λήψη απέτυχε: {detail}. Ξαναδοκίμασε.', 'e_size' => 'Το αρχείο που κατέβηκε έχει λάθος μέγεθος και πετάχτηκε. Ξαναδοκίμασε· αν επαναληφθεί, το GitHub ή κάποιο proxy αλλοιώνει τη λήψη.', 'e_sha' => 'Το πακέτο που κατέβηκε δεν είναι αυτό που δημοσιεύτηκε (διαφέρει το checksum), οπότε απορρίφθηκε και πετάχτηκε. Δεν εγκαταστάθηκε τίποτα. Ξαναδοκίμασε.',
                 'e_zip_bad' => 'Το πακέτο δεν είναι έγκυρο αρχείο ZIP (ή λείπει η επέκταση ZIP).', 'e_zip_count' => 'Το πακέτο έχει μη αναμενόμενο αριθμό αρχείων και απορρίφθηκε.', 'e_zip_unsafe' => 'Το πακέτο περιέχει αρχείο που μια εγκατάσταση δεν επιτρέπεται να γράψει ({name}) και απορρίφθηκε. Δεν εγκαταστάθηκε τίποτα.', 'e_zip_link' => 'Το πακέτο περιέχει σύνδεσμο (link) ({name}) και απορρίφθηκε. Δεν εγκαταστάθηκε τίποτα.', 'e_zip_large' => 'Το πακέτο είναι μεγαλύτερο από το αναμενόμενο μετά την αποσυμπίεση και απορρίφθηκε.', 'e_zip_incomplete' => 'Το πακέτο είναι ελλιπές (λείπει το {name}).', 'e_zip_version' => 'Το πακέτο δεν είναι η έκδοση {version}.',
@@ -1106,7 +1109,7 @@ main{width:100%;max-width:560px;margin:0 auto;padding:28px 16px 40px}
 .lang{margin-left:auto;display:flex;gap:2px;border:1px solid var(--line);border-radius:6px;padding:2px;background:var(--card)}
 .lang button{border:0;background:transparent;color:var(--muted);font:600 12px/1 inherit;padding:5px 8px;border-radius:4px;cursor:pointer}.lang button[aria-pressed=true]{background:var(--btn);color:var(--btn-text)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:12px;box-shadow:0 1px 2px rgba(15,23,42,.04)}
-.card h1,.card h2{margin:0;font-size:16px;font-weight:600;letter-spacing:-.01em;color:var(--strong)}.card h1{font-size:19px}
+.card h1,.card h2{margin:0;font-size:16px;font-weight:600;letter-spacing:-.01em;color:var(--strong)}.card h3{margin:0 0 4px;font-size:14px;font-weight:600;color:var(--strong)}.card h1{font-size:19px}
 .card p{margin:6px 0 0;color:var(--muted)}
 .label{font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--faint);margin:0 0 8px}
 form{display:grid;gap:12px;margin-top:14px}label{display:grid;gap:4px;font-weight:500;font-size:13px}
@@ -1298,12 +1301,13 @@ function assetsMissing(){
   docCard.appendChild(again);docCard.appendChild(skip);
 }
 var mcpNote=false,MCP_BLOCK='location ^~ /.well-known/oauth- {\n    default_type application/json;\n    try_files $uri /index.php?$query_string;\n}';
-function mcpBlock(){
-  var box=el('div','path'),code=el('code',null,MCP_BLOCK),cp=el('button','btn small ghost',t('copy'));code.style.whiteSpace='pre';cp.type='button';
+function copyBlock(text){
+  var box=el('div','path'),code=el('code',null,text),cp=el('button','btn small ghost',t('copy'));code.style.whiteSpace='pre';cp.type='button';
   cp.onclick=function(){var done=function(){cp.textContent=t('copied');setTimeout(function(){cp.textContent=t('copy');},1500);};
-    if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(MCP_BLOCK).then(done);}else{var ta=document.createElement('textarea');ta.value=MCP_BLOCK;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');done();}catch(e){}document.body.removeChild(ta);}};
+    if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(text).then(done);}else{var ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');done();}catch(e){}document.body.removeChild(ta);}};
   box.appendChild(code);box.appendChild(cp);return box;
 }
+function mcpBlock(){return copyBlock(MCP_BLOCK);}
 function mcpUntyped(){
   docCard.textContent='';docCard.appendChild(el('div','notice',t('mcp_untyped')));
   docCard.appendChild(mcpBlock());
@@ -1318,16 +1322,20 @@ function finish(){
   call('finish').then(function(j){
     if(!j.ok){showError('finish',j);return;}
     setStep('finish','done',t('finish_ok'));var m=el('section','card');
-    // The last instruction: unless nginx was seen to send the discovery documents as JSON (or Apache reads its .htaccess), the block ChatGPT needs, and the admin opens on a click.
-    if(mcpNote){
-      m.appendChild(el('h2',null,t('last_title')));m.appendChild(el('p',null,t('last_text')));m.appendChild(mcpBlock());m.appendChild(el('p','note',t('last_cf')));
-      if(j.left&&j.left.length){m.appendChild(el('div','notice',t('finish_left',{left:j.left.join(', ')})));}
-      var open=el('button','btn block',t('last_open'));open.style.marginTop='14px';open.onclick=function(){location.href=j.redirect;};m.appendChild(open);
-      app.appendChild(m);return;
+    // The last instructions: the cron job, and unless nginx was seen to send the discovery documents as JSON (or Apache reads
+    // its .htaccess), the block ChatGPT needs. The admin opens on a click, so there is time to copy them.
+    m.appendChild(el('h2',null,t('done_title')));
+    if(j.cron){
+      var h=el('h3',null,t('cron_title'));h.style.marginTop='14px';m.appendChild(h);
+      m.appendChild(el('p',null,t('cron_text')));m.appendChild(copyBlock(j.cron));m.appendChild(el('p','note',t('cron_where')));
     }
-    m.appendChild(el('p',null,t('redirecting')));m.firstChild.style.margin='0';
+    if(mcpNote){
+      var h2=el('h3',null,t('last_title'));h2.style.marginTop='18px';m.appendChild(h2);
+      m.appendChild(el('p',null,t('last_text')));m.appendChild(mcpBlock());m.appendChild(el('p','note',t('last_cf')));
+    }
     if(j.left&&j.left.length){m.appendChild(el('div','notice',t('finish_left',{left:j.left.join(', ')})));}
-    app.appendChild(m);setTimeout(function(){location.href=j.redirect;},j.left&&j.left.length?6000:1200);
+    var open=el('button','btn block',t('last_open'));open.style.marginTop='14px';open.onclick=function(){location.href=j.redirect;};m.appendChild(open);
+    app.appendChild(m);
   }).catch(function(e){if(!e.handled)showError('finish',e);});
 }
 // ---- start

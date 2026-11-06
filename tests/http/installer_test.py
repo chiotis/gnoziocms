@@ -268,6 +268,7 @@ check('and that it does once it is served', j.get('ok') is True and j.get('chang
 check('the JSON type of the MCP files is asked of nginx only, and leaves nothing behind', j.get('mcp') is None and not os.path.exists(os.path.join(site, 'public/.well-known')), j)
 check('and the state and the old folder\'s files are out of reach of the web', s.request(s.at('/storage/install/state.json'))[0] == 404 and s.request(s.at('/src/App.php'))[0] == 404)
 st, j = s.step('finish')
+check('the finish gives the cron line with the site\'s path', str(j.get('cron', '')).startswith('*/5 * * * * php ') and str(j.get('cron', '')).endswith("/src/cron-backup.php'"), j)
 check('the finish removes both installers, the probe and the state', j.get('ok') is True and j.get('redirect') == '/admin' and j.get('left') == [] and not exists('installer.php') and not exists('public/installer.php') and not exists('storage/install') and not [n for n in os.listdir(os.path.join(site, 'public')) if n.startswith('gnozio-installer')], j)
 st, h, html = s.page('/installer.php')
 check('the address of the installer is gone', st == 404 or 'var GZ=' not in html, st)

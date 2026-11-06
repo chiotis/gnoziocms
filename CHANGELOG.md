@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.230 — 2026-11-06 — The installer's last screen says what is left to do
+- The installer's last screen now always shows the **cron job** to add, with this site's real path and a copy button: `*/5 * * * * php '…/src/cron-backup.php'`. That one job publishes scheduled entries, writes picture sizes and takes the automatic backups. It also says where to add it in CloudPanel and cPanel.
+- The **nginx block for ChatGPT** (MCP) is on the same screen, as before only where the server was not seen sending those files as JSON.
+- The screen no longer opens the admin by itself after a moment: **Open the admin** does, so there is time to copy the lines.
+- Tests: `tests/http/installer_test.py`.
+
 ## 0.1.229 — 2026-11-06 — A smaller backup before an update
 - The **verified backup** on the Updates screen is now a **data backup**: the system database, `content/`, `custom/` and the form files (`storage/form-uploads/`). This is what the new version can change once it runs, for example when it folds older form copies together on its first visit or changes the database.
 - It leaves out the **code**, which the update keeps itself in `storage/updates/<version>/previous` and which a restore never puts back, and **`public/uploads/`**, which no update changes. The scheduled and manual full backups still hold the uploads. The backup is much smaller and faster on sites with many images.
