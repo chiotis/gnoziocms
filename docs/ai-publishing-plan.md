@@ -22,12 +22,13 @@ So the site does both itself. It calls the providers' APIs with prompts it build
 
 ## 1. The module: Manage > AI publishing
 
-One entry in the admin's *Manage* group (`/admin/ai-publishing`), in the condensed admin style (cards, chips, compact rows). Four tabs:
+One entry in the admin's *Manage* group (`/admin/ai-publishing`), in the condensed admin style (cards, chips, compact rows). Five tabs:
 
 1. **Schedules**: the list of schedules and **Add schedule** (section 4), with a week view.
 2. **Instructions**: the general instructions for writing and for pictures (section 3).
 3. **Settings**: providers, keys, models, limits (section 2).
 4. **Runs**: the log of every run and every picture job (section 8).
+5. **Usage**: the tokens used and what they are estimated to cost (section 8a).
 
 A **Pause all** switch sits at the top of every tab. When the providers are not set up yet, the module opens on Settings with a short "start here".
 
@@ -203,7 +204,7 @@ Schedules can be **exported and imported** (JSON, with the general instructions 
 
 ### In the editor
 
-Next to the main image field: **Generate**. A small panel with the subject (filled from `image_brief`, or written by the site from the title, excerpt and start of the body; editable) and an optional *Avoid* for this picture only (added to the general list) makes 1–4 variants. The person picks one; it goes into the media library and into `main_image`. **Regenerate** keeps the subject unless the person changes it. Variants not picked are discarded. The subject is written to the front matter as `image_brief` (admin only) so a regeneration starts from the same words.
+Next to the main image field: **Generate**. A small panel with the subject (filled from `image_brief`, or written by the site from the title, excerpt and start of the body; editable) and an optional *Avoid* for this picture only (added to the general list) makes 1–4 variants. The panel does not hold one long request open (many hosts stop PHP after 30–60 seconds, and 2–4 high-quality pictures can take longer): it queues the job with the highest priority, shows "Generating…", and shows each variant as it arrives, polling the queue. The person can close the panel and come back; the variants wait for a day. The person picks one; it goes into the media library and into `main_image`. **Regenerate** keeps the subject unless the person changes it. Variants not picked are discarded. The subject is written to the front matter as `image_brief` (admin only) so a regeneration starts from the same words.
 
 ### In the content list: bulk
 
@@ -240,10 +241,10 @@ An option per content type on the Instructions tab: **make a main image when an 
 
 ## 7. The picture queue
 
-All pictures (editor variants aside, which are made while the person waits) go through one queue:
+All pictures go through one queue, built on the job runner of phase 0. Priority: the editor first (a person is waiting), then schedules, then MCP and automatic pictures, then bulk.
 
-- `ai_image_jobs` in the system database: entry, subject, the full prompt sent, provider, model, status, attempts, error, cost estimate, created/started/finished, priority (schedule before bulk), who asked (person, MCP connection or schedule).
-- Worked by the cron script, after a public response where it can be finished first (`App::runScheduledAfterResponse`), and while the admin is open (the content list's progress line polls). A time budget per run, so no PHP worker is held long.
+- `ai_image_jobs` in the system database: entry, subject, the full prompt sent, provider, model, status, attempts, error, cost estimate, created/started/finished, priority, who asked (person, MCP connection or schedule); for editor variants, the files waiting to be picked.
+- Worked by the cron script, after a public response where it can be finished first (`App::runScheduledAfterResponse`), and while the admin is open (the editor's panel and the content list's progress line poll, and each poll may work one job within its time budget, so a site whose cron runs every 5 minutes still gives the editor its pictures in about a minute). A time budget per run, so no PHP worker is held long.
 - Retries with backoff on timeouts and rate limits (`Retry-After`), at most three attempts; a prompt refused by the provider's safety filter is not retried and says so.
 - Before writing, the entry is read again: if someone set a main image meanwhile and the job is not "replace", the picture goes into the library but is not set.
 - The result enters the library through `MediaLibrary::import`, tagged `generated`, then `main_image`, as a revision with the actor *AI publishing* (and who asked), and the page and front caches are purged as a save does.
@@ -257,6 +258,37 @@ Also:
 - The dashboard's attention list (`DashboardAttention`): "2 schedule runs failed today", "Monthly AI cap at 90%".
 - The System screen says the cron job must run every 5 minutes when any schedule is on or pictures are queued, and warns when it has not run for 15 minutes.
 - Every run and job is in `activity_logs`.
+
+## 8a. Usage tab: tokens and their estimated cost
+
+Decided by the owner: the site counts the tokens it uses and estimates what they are worth. It does not try to read or keep the account's credit balance (OpenAI's API has no endpoint for it), and it needs no admin key.
+
+**What is counted.** Every call to a provider writes one row, whatever started it (schedule, bulk, editor, MCP, preview, test picture, *Check key*) and whatever its result (a failed run and a retry cost money too):
+
+- **Writing** (Responses API `usage`): input tokens, cached input tokens, output tokens, reasoning tokens.
+- **Pictures** (GPT image models `usage`): text input tokens, image input tokens (reference pictures), image output tokens.
+- **Web search**: the number of search calls in the answer.
+
+The counts are exact, as the provider returns them.
+
+**What they are worth.** A **price table** on the Settings tab: one row per model, with the price per million input, cached input and output tokens, the image token prices, and the price per web search call. It ships filled with OpenAI's published prices at the time of the build; the owner edits a row when prices change, and a note says when the table was last checked. Each usage row keeps the prices it was valued at, so a later change never rewrites the past. A model with no row in the table is counted in tokens and shown as "price unknown".
+
+The figure is always called an **estimate**: the token counts are exact, but the bill is OpenAI's.
+
+**The tab**
+
+- **This month**: tokens and estimated cost, split into writing, pictures and web search, with last month beside it and a forecast for the month's end at the current pace.
+- **By day**: a bar chart of the estimated cost, stacked by writing, pictures and search.
+- **By schedule**: posts made, average cost per post, the month's total.
+- **By source**: schedules, bulk, editor, MCP, preview and tests.
+- **By model**: tokens and estimated cost.
+- A period picker (this month, last month, last 30 days, a range) and **Export CSV**.
+- **Per entry**: the entry's editor shows what it cost to make (text, picture, regenerations) in the side panel.
+- **Per run**: the Runs tab shows each run's tokens and estimate.
+
+**Caps and warnings in money.** The monthly cap of section 2 can be set in estimated cost as well as in runs and pictures. Warnings in the dashboard's attention list at 80% and 100%, an optional email. At 100%: *pause* (schedules and the picture queue stop, the module says why) or *warn only*, as the owner chooses. Before a bulk action, the confirmation shows its estimated cost.
+
+**Out of credit.** When OpenAI refuses a call because the account has no credit left (`insufficient_quota`), the site does not retry it: it pauses schedules and the picture queue at once and shows a red notice ("OpenAI has no credit left. Top up at platform.openai.com > Settings > Billing, then press Resume"). Rate-limit refusals are different: they are retried after `Retry-After`, and the queue slows down.
 
 ## 9. Safety
 
@@ -273,17 +305,19 @@ In the system database:
 - `ai_schedules`: id, name, enabled, days, time, start/end, prepare ahead, type, language, terms (fixed and allowed), content instructions, text avoid, image instructions, picture avoid, material (JSON), status, picture required, no picture, byline, model, created/updated.
 - `ai_runs`: id, schedule, run key (unique), status, started/finished, entry, tokens, cost, error, request and answer (purged after the kept days).
 - `ai_image_jobs`: as in section 7.
+- `ai_usage`: time, source (schedule, bulk, editor, MCP, preview, test), schedule, run or job, entry, provider, model, kind (writing, picture, search), each token count, search calls, the prices used, the estimated cost. Kept for 24 months (a setting), long after the run logs, since it holds no prompts.
+- The price table in the site settings, with the date it was last checked.
 - The instructions, provider choices and limits in the site settings; the keys among its secrets.
 
 ## 11. Code shape
 
-- One interface per job: `TextProvider::write(request, schema) → answer + usage` and `ImageProvider::generate(prompt, avoid, references, size, n) → files + usage`, with `check()` for the key. One class per provider (`AnthropicProvider`, `OpenAiProvider` implementing both, `GoogleProvider` implementing both, `FalProvider`, `IdeogramProvider`), all over `SafeHttp`.
+- One interface per job: `TextProvider::write(request, schema) → answer + usage` and `ImageProvider::generate(prompt, avoid, references, size, n) → files + usage`, with `check()` for the key. One class per provider (`AnthropicProvider`, `OpenAiProvider` implementing both, `GoogleProvider` implementing both, `FalProvider`, `IdeogramProvider`), all over `AiHttp` (phase 0).
 - A fake provider of each kind for tests, so no test calls a real API.
-- `AiPublishingAdmin` for the module's screens, `AiSchedules` for slots and runs, `AiImageQueue` for the queue, each small, as the rest of `src/` is.
+- `AiPublishingAdmin` for the module's screens, `AiSchedules` for slots and runs, `AiImageQueue` for the pictures, each small, as the rest of `src/` is; `JobRunner` and `FeedReader` (phase 0) are general and not tied to AI.
 
 ## 12. Tests
 
-- Unit: due runs for days, time, the site's zone, daylight-saving changes, start/end dates; a run never done twice (two workers at once); missed runs inside and past the window; prompt order; the JSON answer checked strictly, one retry with errors, failure after it; feed items used once; caps; *Publish only with a picture* when the picture fails; the final status for each choice; the picture queue's priorities, retries, refusals, and "set meanwhile".
+- Unit: due runs for days, time, the site's zone, daylight-saving changes, start/end dates; a run never done twice (two workers at once); missed runs inside and past the window; prompt order; the JSON answer checked strictly, one retry with errors, failure after it; feed items used once; caps; *Publish only with a picture* when the picture fails; the final status for each choice; the picture queue's priorities, retries, refusals, and "set meanwhile"; usage rows from fake provider answers (writing, pictures, search), valued with the price table, kept at their old prices after a change, "price unknown" for a missing model; the cap in money; `insufficient_quota` pausing everything.
 - HTTP: the module's tabs (permissions `ai.manage` and `settings.manage`), add/edit/duplicate/pause/delete a schedule, run now, preview, the bulk action and its progress, the editor's Generate, `generate_main_image` through `/mcp`.
 - Every wait with a deadline, as `AGENTS.md` asks.
 
@@ -291,8 +325,14 @@ In the system database:
 
 Phases 1–6 use **OpenAI only**, for writing and pictures.
 
-1. **The module and pictures by hand.** Manage > AI publishing with Settings (the OpenAI card, *Check key*, help box, limits) and Instructions (picture half: house style, avoid, references, test picture); `OpenAiProvider` for pictures (GPT image models, the edits endpoint with references); the editor's Generate with variants; media metadata and alt text.
-2. **The picture queue and bulk.** `ai_image_jobs`, the worker, the bulk action with confirmation, progress and chips, retries, caps, the Runs tab for pictures.
+0. **Foundations**, each useful on its own and tested before anything AI is built on it:
+   - **`AiHttp`**, a client for provider APIs. `SafeHttp` stays as it is: it downloads untrusted pictures with GET and guards against private addresses. Provider calls are different: POST with JSON, the key in a header (never logged, never in an error message), a fixed `https` host per provider, long timeouts (up to 3 minutes for a picture), large answers (several MB of base64), the rate-limit headers read and kept, and errors sorted into kinds the queue acts on: no credit (`insufficient_quota`), rate limit (with `Retry-After`), refused by the provider's safety filter, bad request, timeout, server error. A fake transport for tests, as `SafeHttp` has.
+   - **`JobRunner`**, a general background job runner in the system database: a `jobs` table (kind, payload, priority, status, attempts, run after, lock owner and time, result, error), one claim at a time with a lock that expires if a worker dies, a time budget per run, retries with backoff, and the same three places to work from as the rest (cron, after a public response, admin polls). The picture queue and schedule runs use it; picture sizes and backups may move onto it later.
+   - **`FeedReader`** for RSS and Atom (`SimpleXML`, already required) over a text mode of `SafeHttp` (same guards, `text/*` and XML types, size and time limits). Needed only from phase 4, so it may be built then.
+   - **A real-key test** before phase 1: a command-line script (`php src/ai-check.php`, not part of the admin) run on a test site with a key from a verified OpenAI organization. It makes one picture with two reference pictures and one structured post, and prints the time each call took, the size of each answer, and the exact `usage` fields. It confirms the parameter names this plan assumes (written from mid-2026 knowledge) against today's API; the plan is corrected from what it prints before phase 1 starts.
+
+1. **The module and pictures by hand.** Manage > AI publishing with Settings (the OpenAI card, *Check key*, help box, limits) and Instructions (picture half: house style, avoid, references, test picture); `OpenAiProvider` for pictures (GPT image models, the edits endpoint with references); the picture queue on `JobRunner`; the editor's Generate with variants through the queue; media metadata and alt text; `ai_usage`, the price table and the Usage tab from the first picture, so costs are tracked from the start.
+2. **Bulk.** The bulk action with confirmation, progress and chips, retries, caps, the Runs tab for pictures.
 3. **Writing and schedules without material.** `OpenAiProvider` for writing (Responses API, strict JSON schema), the writing half of Instructions with its avoid list, the Schedules tab with both avoid fields, runs from cron, strict checking, picture then status, notices. Evergreen schedules work end to end.
 4. **Material**: feeds and pages with `source_key` memory; web search through OpenAI's `web_search` tool.
 5. **MCP and automatic pictures**: `generate_main_image`, `image_brief`, `image_status`, the instructions changed; pictures for entries without one, per content type.
