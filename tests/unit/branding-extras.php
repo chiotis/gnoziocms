@@ -29,6 +29,14 @@ check('a site that sets none of the new choices gets no CSS', Branding::css($def
 check('the new fields all start on "theme" or empty', array_filter(array_intersect_key($defaults['design'], array_flip(['h1_step', 'h3_weight', 'lead_leading', 'small_tracking', 'body_weight', 'paragraph_space', 'input_bg', 'input_border', 'input_border_width', 'label_size', 'label_weight', 'input_ring', 'error_style', 'radius_card', 'radius_image', 'radius_input', 'border_width', 'mobile_gutter', 'mobile_section_space'])), fn($v) => $v !== 'auto' && $v !== ''), []);
 check('and the type, form and shape classes add nothing for them', [BrandingTypography::css($defaults['design']), BrandingForms::css($defaults['design']), BrandingShape::css($defaults['design'])], ['', '', '']);
 
+// ---- navigation text (Theme > Typography > Navigation): variables on the root, read by the theme with its own values as fallbacks
+$nav = $design(['nav_size' => 17, 'nav_weight' => '700', 'nav_case' => 'uppercase', 'nav_tracking' => 'wide', 'dropdown_size' => 14, 'drawer_weight' => '600', 'topbar_case' => 'none', 'footer_nav_size' => 15, 'footer_title_tracking' => 'normal', 'crumbs_size' => 13, 'name_weight' => '800', 'name_case' => 'capitalize']);
+check('the navigation rows become variables, sizes in rem from pixels', has(BrandingTypography::css($nav['design']), ':root[data-theme][data-mode]{--type-nav-size:1.0625rem;--type-nav-weight:700;--type-nav-case:uppercase;--type-nav-tracking:0.04em;--type-dropdown-size:0.875rem;--type-drawer-weight:600;--type-topbar-case:none;--type-footer-nav-size:0.9375rem;--type-footer-title-tracking:0;--type-crumbs-size:0.8125rem;--type-name-weight:800;--type-name-case:capitalize}'), true);
+check('a size out of range or a value not offered adds nothing', BrandingTypography::css($design(['nav_size' => 90, 'nav_weight' => '950', 'nav_case' => 'lowercase', 'nav_tracking' => 'huge', 'name_size' => 30])['design']), '');
+check('Branding writes them with the rest', has(Branding::css($nav), '--type-nav-size:1.0625rem'), true);
+$sheet = file_get_contents($repo . '/themes/default/assets/css/site.css');
+check('the theme reads each of them, keeping its own value when one is not set', [has($sheet, 'font-size: var(--type-nav-size, 0.95rem)'), has($sheet, 'var(--type-dropdown-size, var(--type-nav-size, 0.95rem))'), has($sheet, 'font-weight: var(--type-drawer-weight, 550)'), has($sheet, 'var(--type-topbar-size, var(--step--1))'), has($sheet, 'font-size: var(--type-footer-nav-size)'), has($sheet, 'text-transform: var(--type-footer-title-case, uppercase)'), has($sheet, 'var(--type-crumbs-size, var(--step--1))'), has($sheet, 'var(--type-name-weight, var(--heading-weight))')], array_fill(0, 8, true));
+
 // ---- type overrides
 $css = Branding::css($design(['h1_step' => '4', 'h1_weight' => '800', 'h1_leading' => 'tight', 'h1_tracking' => 'tighter']));
 check('H1: a step of the scale, never pixels, with weight, line height and letter spacing, over the classes of blocks', has($css, ':root[data-theme][data-mode] h1,:root[data-theme][data-mode] .hero-title,:root[data-theme][data-mode] .place-title{font-size:var(--step-4);font-weight:800;line-height:1.05;letter-spacing:-0.045em}'), true);
@@ -152,9 +160,9 @@ $prev = $import->preview($bad);
 check('keys the theme does not declare are skipped, and a bad value falls back to the default', [$prev['skipped'], array_column($prev['changes'], 'key')], [['design.unknown_key'], ['h1_step']]);
 
 // ---- reset per section
-$store2['settings'] = $theme2->resolveSettings($design(['h1_step' => '4', 'radius_card' => 20, 'input_bg' => 'surface', 'button_height' => 50, 'light_accent' => '#112233', 'mobile_gutter' => 12]));
+$store2['settings'] = $theme2->resolveSettings($design(['h1_step' => '4', 'nav_size' => 18, 'crumbs_case' => 'uppercase', 'radius_card' => 20, 'input_bg' => 'surface', 'button_height' => 50, 'light_accent' => '#112233', 'mobile_gutter' => 12]));
 $before = $store2['settings']['design'];
-check('resetting Typography restores its defaults and only those', [$import->reset('type'), $store2['settings']['design']['h1_step'], $store2['settings']['design']['radius_card'], $store2['settings']['design']['light_accent']], [1, 'auto', 20, '#112233']);
+check('resetting Typography restores its defaults and only those (the navigation rows too)', [$import->reset('type'), $store2['settings']['design']['nav_size'] . $store2['settings']['design']['crumbs_case'], $store2['settings']['design']['h1_step'], $store2['settings']['design']['radius_card'], $store2['settings']['design']['light_accent']], [3, 'auto', 'auto', 20, '#112233']);
 check('Shape, Forms, Layout and Buttons each reset their own', [$import->reset('shape'), $import->reset('forms'), $import->reset('layout'), $import->reset('buttons'), $import->reset('colour')], [1, 1, 1, 1, 1]);
 check('everything is back at the defaults', $store2['settings']['design'] === $defaults['design'], true);
 check('a section that is not one is refused, and one already at its defaults changes nothing', [$import->reset('nope'), $import->reset('type')], [-1, 0]);

@@ -1,4 +1,4 @@
-# Theme settings of this installation (GnozioCMS 0.1.225)
+# Theme settings of this installation (GnozioCMS 0.1.226)
 
 Set with `python3 scripts/site_settings.py set theme section.field=value`. A text marked *translatable* takes a plain text or a map `{default: …, en: …}`.
 
@@ -174,6 +174,37 @@ Set with `python3 scripts/site_settings.py set theme section.field=value`. A tex
 | `small_tracking` | select; one of `auto`, `tighter`, `tight`, `normal`, `wide` | auto | Small text letter spacing |
 | `body_weight` | select; one of `auto`, `300`, `400`, `500` | auto | Text weight |
 | `paragraph_space` | select; one of `auto`, `tight`, `normal`, `relaxed`, `loose` | auto | Space between paragraphs |
+| `nav_size` | number; 10 to 32 | (empty) | Header menu text size |
+| `nav_weight` | select; one of `auto`, `300`, `400`, `500`, `600`, `700`, `800` | auto | Header menu weight |
+| `nav_case` | select; one of `auto`, `none`, `uppercase`, `capitalize` | auto | Header menu case |
+| `nav_tracking` | select; one of `auto`, `tight`, `normal`, `wide`, `wider` | auto | Header menu letter spacing |
+| `dropdown_size` | number; 10 to 32 | (empty) | Dropdown text size |
+| `dropdown_weight` | select; one of `auto`, `300`, `400`, `500`, `600`, `700`, `800` | auto | Dropdown weight |
+| `dropdown_case` | select; one of `auto`, `none`, `uppercase`, `capitalize` | auto | Dropdown case |
+| `dropdown_tracking` | select; one of `auto`, `tight`, `normal`, `wide`, `wider` | auto | Dropdown letter spacing |
+| `drawer_size` | number; 10 to 32 | (empty) | Mobile menu text size |
+| `drawer_weight` | select; one of `auto`, `300`, `400`, `500`, `600`, `700`, `800` | auto | Mobile menu weight |
+| `drawer_case` | select; one of `auto`, `none`, `uppercase`, `capitalize` | auto | Mobile menu case |
+| `drawer_tracking` | select; one of `auto`, `tight`, `normal`, `wide`, `wider` | auto | Mobile menu letter spacing |
+| `topbar_size` | number; 10 to 32 | (empty) | Top bar text size |
+| `topbar_weight` | select; one of `auto`, `300`, `400`, `500`, `600`, `700`, `800` | auto | Top bar weight |
+| `topbar_case` | select; one of `auto`, `none`, `uppercase`, `capitalize` | auto | Top bar case |
+| `topbar_tracking` | select; one of `auto`, `tight`, `normal`, `wide`, `wider` | auto | Top bar letter spacing |
+| `footer_nav_size` | number; 10 to 32 | (empty) | Footer menu text size |
+| `footer_nav_weight` | select; one of `auto`, `300`, `400`, `500`, `600`, `700`, `800` | auto | Footer menu weight |
+| `footer_nav_case` | select; one of `auto`, `none`, `uppercase`, `capitalize` | auto | Footer menu case |
+| `footer_nav_tracking` | select; one of `auto`, `tight`, `normal`, `wide`, `wider` | auto | Footer menu letter spacing |
+| `footer_title_size` | number; 10 to 32 | (empty) | Footer headings text size |
+| `footer_title_weight` | select; one of `auto`, `300`, `400`, `500`, `600`, `700`, `800` | auto | Footer headings weight |
+| `footer_title_case` | select; one of `auto`, `none`, `uppercase`, `capitalize` | auto | Footer headings case |
+| `footer_title_tracking` | select; one of `auto`, `tight`, `normal`, `wide`, `wider` | auto | Footer headings letter spacing |
+| `crumbs_size` | number; 10 to 32 | (empty) | Breadcrumbs text size |
+| `crumbs_weight` | select; one of `auto`, `300`, `400`, `500`, `600`, `700`, `800` | auto | Breadcrumbs weight |
+| `crumbs_case` | select; one of `auto`, `none`, `uppercase`, `capitalize` | auto | Breadcrumbs case |
+| `crumbs_tracking` | select; one of `auto`, `tight`, `normal`, `wide`, `wider` | auto | Breadcrumbs letter spacing |
+| `name_weight` | select; one of `auto`, `300`, `400`, `500`, `600`, `700`, `800` | auto | Site name weight |
+| `name_case` | select; one of `auto`, `none`, `uppercase`, `capitalize` | auto | Site name case |
+| `name_tracking` | select; one of `auto`, `tight`, `normal`, `wide`, `wider` | auto | Site name letter spacing |
 | `input_bg` | select; one of `auto`, `background`, `surface`, `surface_2` | auto | Field background |
 | `input_border` | select; one of `auto`, `strong`, `muted`, `text`, `accent` | auto | Field border colour |
 | `input_border_width` | select; one of `auto`, `thin`, `medium` | auto | Field border width |

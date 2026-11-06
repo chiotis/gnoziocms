@@ -10,10 +10,13 @@
 {% import _self as t %}
 {% set a = schema.appearance.fields %}
 {% set d = schema.design.fields %}
+{% set b = schema.brand.fields|default({}) %}
 {% set va = values.appearance %}
 {% set vd = values.design %}
+{% set vb = values.brand|default({}) %}
 {% set pa = 'theme_settings[appearance][' %}
 {% set pd = 'theme_settings[design][' %}
+{% set pb = 'theme_settings[brand][' %}
 {% set default_theme = theme_info.name|default('') == 'default' and custom_css|default('')|trim == '' %}
 {% set short = {
   heading_weight: {auto: 'Theme', '400': 'Regular', '500': 'Medium', '600': 'Semi', '700': 'Bold', '800': 'Black'},
@@ -29,11 +32,12 @@
   }) %}
 {% endif %}
 {% set defaults = {} %}
-{% for section in ['appearance', 'design'] %}
-  {% for key, field in schema[section].fields %}
+{% for section in ['appearance', 'brand', 'design'] %}
+  {% for key, field in schema[section].fields|default({}) %}
     {% set defaults = defaults|merge({('theme_settings[' ~ section ~ '][' ~ key ~ ']'): {value: field.default ?? '', label: field.label, equivalent: null}}) %}
   {% endfor %}
 {% endfor %}
+{% set nav_rows = {nav: 'Header menu', dropdown: 'Dropdown', drawer: 'Mobile menu', topbar: 'Top bar', footer_nav: 'Footer menu', footer_title: 'Footer headings', crumbs: 'Breadcrumbs', name: 'Site name'} %}
 {% set columns = [['step', 'Size'], ['weight', 'Weight'], ['leading', 'Line'], ['tracking', 'Spacing']] %}
 
 {# One row for each element: a step of the scale, a weight, a line height and a letter spacing. #}
@@ -56,6 +60,40 @@
             </td>
           {% endfor %}
         </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endmacro %}
+
+{# The Navigation rows: a size in pixels, then weight, case and letter spacing as selects. A row the theme does not declare is left out. #}
+{% macro nav_matrix(rows, d, vd, pd, b, vb, pb) %}
+  <table class="bp-colours bp-matrix">
+    <caption class="sr-only">The text of the menus and other navigation. An empty size and Theme keep the theme's own.</caption>
+    <thead><tr><th scope="col"><span class="sr-only">Element</span></th><th scope="col">Size</th><th scope="col">Weight</th><th scope="col">Case</th><th scope="col">Spacing</th></tr></thead>
+    <tbody>
+      {% for key, label in rows %}
+        {% if d[key ~ '_weight'] is defined %}
+          <tr>
+            <th scope="row">{{ label }}</th>
+            <td>
+              {% set size = key == 'name' ? b.name_size|default(null) : d[key ~ '_size']|default(null) %}
+              {% if size %}
+                {% set name = key == 'name' ? pb ~ 'name_size]' : pd ~ key ~ '_size]' %}
+                <span class="bp-px"><input type="number" name="{{ name }}" value="{{ key == 'name' ? vb.name_size : vd[key ~ '_size'] }}" min="{{ size.min }}" max="{{ size.max }}" step="1" placeholder="{{ size.placeholder }}" class="lc-input" aria-label="{{ size.label }}"><span aria-hidden="true">px</span></span>
+              {% endif %}
+            </td>
+            {% for col in ['weight', 'case', 'tracking'] %}
+              {% set field = d[key ~ '_' ~ col]|default(null) %}
+              <td>
+                {% if field %}
+                  <select name="{{ pd ~ key ~ '_' ~ col }}]" class="lc-input lc-select" aria-label="{{ field.label }}">
+                    {% for option, text in field.options %}<option value="{{ option }}"{% if option ~ '' == vd[key ~ '_' ~ col] ~ '' %} selected{% endif %}>{{ text }}</option>{% endfor %}
+                  </select>
+                {% endif %}
+              </td>
+            {% endfor %}
+          </tr>
+        {% endif %}
       {% endfor %}
     </tbody>
   </table>
@@ -136,6 +174,17 @@
             {{ t.matrix([['lead', 'Lead'], ['small', 'Small']], columns, d, vd, pd, 'Overrides for the lead paragraph and small text. Theme keeps the design of the theme.') }}
             <p class="m-0 text-[11px] leading-4 text-slate-500">The lead is the larger paragraph under a title; small text is used for captions and notes.</p>
             <button type="button" class="bp-reset" data-bp-reset="elements">Reset text elements</button>
+          </div>
+        </details>
+      {% endif %}
+
+      {% if d.nav_weight is defined %}
+        <details class="bp-card" open>
+          <summary><span>Navigation</span><small>Menus, top bar, footer, breadcrumbs, site name</small></summary>
+          <div class="bp-body">
+            {{ t.nav_matrix(nav_rows, d, vd, pd, b, vb, pb) }}
+            <p class="m-0 text-[11px] leading-4 text-slate-500">Sizes are in pixels; an empty size keeps the theme’s. The dropdown follows the header menu unless it is set. The full-screen mobile menu keeps its large links and takes the size for its inner links.</p>
+            <button type="button" class="bp-reset" data-bp-reset="navigation">Reset navigation</button>
           </div>
         </details>
       {% endif %}

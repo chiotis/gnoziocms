@@ -710,8 +710,9 @@ All optional, all empty or "Theme" by default (a site that sets none gets exactl
 - **Text**: text size, line height, the weight of text (`body_weight`) and the space between paragraphs (`paragraph_space`).
 - **Headings**: a **heading scale** (a ratio from 1.125 to 1.618, gentler on a phone), heading weight, letter spacing, line height and capitals, and H1, H2 and H3 each with a step of the scale, weight, line height and letter spacing. The heading colour stays in Branding > Colour.
 - **Text elements**: the lead paragraph and small text, with the same four choices.
+- **Navigation**: the header menu, dropdowns, the mobile menu, the top bar, the footer menu, the footer headings, breadcrumbs and the site name, each with a size in pixels (written as rem, so the visitor's zoom still applies), a weight, a case (as typed, capitals, first letters) and a letter spacing. They are written as `--type-*` variables on the root (`BrandingTypography::navigation`) and the theme reads them with its own values as fallbacks, so an empty size or "Theme" changes nothing. The dropdown follows the header menu unless it is set; the full-screen mobile menu keeps its large links and takes the size for its inner links. The site name's size is `brand.name_size`, moved here from Identity.
 
-Each card has its own reset, which changes only the unsaved form. The plan for the rest of the tab (navigation, more elements, buttons and labels) is in `docs/typography-tab-plan.md`.
+Each card has its own reset, which changes only the unsaved form. The plan for the rest of the tab (more elements, buttons and labels) is in `docs/typography-tab-plan.md`.
 ## Design tokens
 
 `site.css` defines semantic tokens (`--color-bg`, `--color-surface`, `--color-text`, `--color-muted`, `--color-border`, `--accent`, `--accent-soft`, `--accent-contrast`, spacing `--space-*`, type scale `--step-*`, radii `--radius-*`). Theme settings switch them through attributes on `<html>`:

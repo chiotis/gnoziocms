@@ -87,4 +87,5 @@ check('saved from the card (an unticked chip is off)', [$saved['articles']['entr
 $bad = $layouts->fromInput(['articles' => ['entries' => 'everything', 'entries_max' => '99']], ['articles'], []);
 check('a value that is not offered is not kept', [$bad['articles']['entries'], (string)$bad['articles']['entries_max']], ['none', '4']);
 
+echo $fail === 0 ? "\nALL PASSED\n" : "\n$fail FAILED\n";
 exit($fail > 0 ? 1 : 0);

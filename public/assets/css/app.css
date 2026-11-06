@@ -1918,6 +1918,9 @@ html.dark .pl-badge[data-level="fail"] { background: #3a0d0a; color: #fda29b; bo
 .bp-matrix { margin-top: .35rem; }
 .bp-matrix td { min-width: 3.75rem; }
 .bp-matrix .lc-select { width: 100%; padding-right: .25rem; }
+.bp-px { display: flex; align-items: center; gap: .2rem; color: #94a3b8; font-size: .6875rem; }
+.bp-px .lc-input { width: 2.9rem; min-width: 0; padding-inline: .3rem; }
+.bp-matrix td:has(> .bp-px) { min-width: 0; }
 .bt-row { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .6rem; }
 .bt-hint { color: #5f6f85; font-size: .6875rem; line-height: 1rem; }
 .bt-btn { position: relative; display: inline-block; padding: .25rem .65rem; border: 1px solid #cbd5e1; border-radius: .5rem; background: #fff; color: #334155; font-size: .75rem; font-weight: 500; line-height: 1.25rem; text-decoration: none; cursor: pointer; }

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.226 — 2026-11-06 — Menu and navigation text sizes
+- New card **Theme > Typography > Navigation**: the **header menu**, **dropdowns**, **mobile menu**, **top bar**, **footer menu**, **footer headings**, **breadcrumbs** and the **site name** each get a text size in pixels, a weight, a case (as typed, capitals, first letters) and a letter spacing. An empty size or "Theme" keeps the theme's own, so nothing changes until a value is chosen.
+- The dropdown follows the header menu unless it is set. The full-screen mobile menu keeps its large links and takes the size for its inner links.
+- The size of the site name moved here from Branding > Identity (the setting is the same, nothing to redo).
+- The theme reads these as `--type-*` variables with its own values as fallbacks (`docs/theme-developer-guide.md`). **Reset a section > Typography** in Branding's export screen resets them too.
+- Fixed: the `related-entries` unit test was reported as failed although every check passed.
+- Tests: `tests/unit/branding-extras.php`, `tests/http/branding_test.py`.
+
 ## 0.1.225 — 2026-11-06 — Typography has its own tab
 - New tab **Theme > Typography**, right after Branding, with the same live preview (Site and Style samples, computer, tablet, phone, light and dark). Its cards are **Fonts** (font pairing, heading and text fonts, your own font families), **Text** (size, line height, weight, space between paragraphs), **Headings** (scale, weight, letter spacing, line height, capitals, and H1 to H3 each) and **Text elements** (lead paragraph and small text). Each card has its own reset.
 - Branding no longer has the Typography card; a line there leads to the new tab, and the heading colour stays under Branding > Colour.

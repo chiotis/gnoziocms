@@ -214,6 +214,7 @@ For work that belongs in `themes/default/` (a block every site should have, a bu
 - add the block, in each variant, to `content/pages/blocks.md` so the showcase page keeps covering everything;
 - check with the audit (below), then update `docs/theming.md`, add a line to `CHANGELOG.md`, and raise `version` in `themes/default/theme.yaml`;
 - add new settings and options with defaults, and never rename existing ones.
+- the text of navigation reads `--type-<row>-size`, `-weight`, `-case` and `-tracking` (rows `nav`, `dropdown`, `drawer`, `topbar`, `footer-nav`, `footer-title`, `crumbs`, `name`), set by Theme > Typography > Navigation. Read them with the theme's own value as the fallback (`font-size: var(--type-nav-size, 0.95rem)`), or with no fallback where the theme set nothing, which then inherits as before. A theme gets a row on the screen by declaring its `<row>_weight` field (and `_size`, `_case`, `_tracking`) in the `design` section.
 
 ## Quality checklist
 

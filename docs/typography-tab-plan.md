@@ -1,6 +1,6 @@
 # Theme > Typography: plan
 
-Status: phase 1 (the tab, with the settings that existed) shipped in 0.1.225 on 2026-11-06; phases 2 to 5 are proposals.
+Status: phase 1 (the tab, with the settings that existed) shipped in 0.1.225 and phase 2 (Navigation) in 0.1.226, both on 2026-11-06; phases 3 to 5 are proposals. Navigation sizes are in pixels, as section 3 proposes; the case choices are As typed, Capitals and First letters, and the spacing adds Wider (0.08em) for capitals.
 
 ## Why
 

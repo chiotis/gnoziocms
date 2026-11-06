@@ -1136,6 +1136,38 @@ settings:
           relaxed: Relaxed
           loose: Loose
 
+      # Navigation text (Theme > Typography > Navigation, BrandingTypography::navigation). Empty or Theme keeps the theme's own; the site name's size is brand.name_size.
+      nav_size: {type: number, blank: true, min: 10, max: 32, label: Header menu text size, placeholder: '15'}
+      nav_weight: {type: select, label: Header menu weight, default: auto, options: {auto: Theme, '300': Light, '400': Regular, '500': Medium, '600': Semibold, '700': Bold, '800': Extra bold}}
+      nav_case: {type: select, label: Header menu case, default: auto, options: {auto: Theme, none: As typed, uppercase: Capitals, capitalize: First letters}}
+      nav_tracking: {type: select, label: Header menu letter spacing, default: auto, options: {auto: Theme, tight: Tight, normal: Normal, wide: Wide, wider: Wider}}
+      dropdown_size: {type: number, blank: true, min: 10, max: 32, label: Dropdown text size, placeholder: '15'}
+      dropdown_weight: {type: select, label: Dropdown weight, default: auto, options: {auto: Theme, '300': Light, '400': Regular, '500': Medium, '600': Semibold, '700': Bold, '800': Extra bold}}
+      dropdown_case: {type: select, label: Dropdown case, default: auto, options: {auto: Theme, none: As typed, uppercase: Capitals, capitalize: First letters}}
+      dropdown_tracking: {type: select, label: Dropdown letter spacing, default: auto, options: {auto: Theme, tight: Tight, normal: Normal, wide: Wide, wider: Wider}}
+      drawer_size: {type: number, blank: true, min: 10, max: 32, label: Mobile menu text size, placeholder: '17'}
+      drawer_weight: {type: select, label: Mobile menu weight, default: auto, options: {auto: Theme, '300': Light, '400': Regular, '500': Medium, '600': Semibold, '700': Bold, '800': Extra bold}}
+      drawer_case: {type: select, label: Mobile menu case, default: auto, options: {auto: Theme, none: As typed, uppercase: Capitals, capitalize: First letters}}
+      drawer_tracking: {type: select, label: Mobile menu letter spacing, default: auto, options: {auto: Theme, tight: Tight, normal: Normal, wide: Wide, wider: Wider}}
+      topbar_size: {type: number, blank: true, min: 10, max: 32, label: Top bar text size, placeholder: '14'}
+      topbar_weight: {type: select, label: Top bar weight, default: auto, options: {auto: Theme, '300': Light, '400': Regular, '500': Medium, '600': Semibold, '700': Bold, '800': Extra bold}}
+      topbar_case: {type: select, label: Top bar case, default: auto, options: {auto: Theme, none: As typed, uppercase: Capitals, capitalize: First letters}}
+      topbar_tracking: {type: select, label: Top bar letter spacing, default: auto, options: {auto: Theme, tight: Tight, normal: Normal, wide: Wide, wider: Wider}}
+      footer_nav_size: {type: number, blank: true, min: 10, max: 32, label: Footer menu text size, placeholder: '17'}
+      footer_nav_weight: {type: select, label: Footer menu weight, default: auto, options: {auto: Theme, '300': Light, '400': Regular, '500': Medium, '600': Semibold, '700': Bold, '800': Extra bold}}
+      footer_nav_case: {type: select, label: Footer menu case, default: auto, options: {auto: Theme, none: As typed, uppercase: Capitals, capitalize: First letters}}
+      footer_nav_tracking: {type: select, label: Footer menu letter spacing, default: auto, options: {auto: Theme, tight: Tight, normal: Normal, wide: Wide, wider: Wider}}
+      footer_title_size: {type: number, blank: true, min: 10, max: 32, label: Footer headings text size, placeholder: '14'}
+      footer_title_weight: {type: select, label: Footer headings weight, default: auto, options: {auto: Theme, '300': Light, '400': Regular, '500': Medium, '600': Semibold, '700': Bold, '800': Extra bold}}
+      footer_title_case: {type: select, label: Footer headings case, default: auto, options: {auto: Theme, none: As typed, uppercase: Capitals, capitalize: First letters}}
+      footer_title_tracking: {type: select, label: Footer headings letter spacing, default: auto, options: {auto: Theme, tight: Tight, normal: Normal, wide: Wide, wider: Wider}}
+      crumbs_size: {type: number, blank: true, min: 10, max: 32, label: Breadcrumbs text size, placeholder: '14'}
+      crumbs_weight: {type: select, label: Breadcrumbs weight, default: auto, options: {auto: Theme, '300': Light, '400': Regular, '500': Medium, '600': Semibold, '700': Bold, '800': Extra bold}}
+      crumbs_case: {type: select, label: Breadcrumbs case, default: auto, options: {auto: Theme, none: As typed, uppercase: Capitals, capitalize: First letters}}
+      crumbs_tracking: {type: select, label: Breadcrumbs letter spacing, default: auto, options: {auto: Theme, tight: Tight, normal: Normal, wide: Wide, wider: Wider}}
+      name_weight: {type: select, label: Site name weight, default: auto, options: {auto: Theme, '300': Light, '400': Regular, '500': Medium, '600': Semibold, '700': Bold, '800': Extra bold}}
+      name_case: {type: select, label: Site name case, default: auto, options: {auto: Theme, none: As typed, uppercase: Capitals, capitalize: First letters}}
+      name_tracking: {type: select, label: Site name letter spacing, default: auto, options: {auto: Theme, tight: Tight, normal: Normal, wide: Wide, wider: Wider}}
       # Forms (the public forms, the form block and the search field). BrandingForms.php; every choice keeps AA contrast.
       input_bg:
         type: select

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace GnozioCMS;
 
 /**
- * The type overrides of Theme > Branding: a step of the type scale, a weight, a line height and a letter spacing for H1, H2, H3,
+ * The type overrides of Theme > Typography: a step of the type scale, a weight, a line height and a letter spacing for H1, H2, H3,
  * the lead paragraph and small text, plus the weight of the text and the space between paragraphs.
  *
  * A size is always a STEP of the theme's scale (`var(--step-5)`), never pixels, so the fluid sizing and the Text size and Heading
@@ -30,6 +30,26 @@ final class BrandingTypography
     private const PARAGRAPH = ['tight' => '0.6em', 'normal' => '1em', 'relaxed' => '1.4em', 'loose' => '1.8em'];
 
     private const ROOT = ':root[data-theme][data-mode]';
+
+    /**
+     * The text of menus and other navigation (Theme > Typography > Navigation). Each is written as variables the theme reads with
+     * its own value as the fallback (`--type-nav-size` and so on), so a theme that does not use one simply ignores it. The size is
+     * in pixels, written as rem so the visitor's zoom still applies. The site name takes its size from `brand.name_size`.
+     */
+    public const NAV = [
+        'nav' => 'Header menu',
+        'dropdown' => 'Dropdown',
+        'drawer' => 'Mobile menu',
+        'topbar' => 'Top bar',
+        'footer_nav' => 'Footer menu',
+        'footer_title' => 'Footer headings',
+        'crumbs' => 'Breadcrumbs',
+        'name' => 'Site name',
+    ];
+    private const NAV_SIZE = [10, 32];
+    private const NAV_WEIGHTS = ['300', '400', '500', '600', '700', '800'];
+    private const NAV_CASE = ['none' => 'none', 'uppercase' => 'uppercase', 'capitalize' => 'capitalize'];
+    private const NAV_TRACKING = ['tight' => '-0.02em', 'normal' => '0', 'wide' => '0.04em', 'wider' => '0.08em'];
 
     /**
      * @param array<string, mixed> $design the resolved `design` settings
@@ -68,6 +88,32 @@ final class BrandingTypography
         if (isset(self::PARAGRAPH[$space])) {
             $css .= self::ROOT . ' :is(.prose,.prose-block) p:not(:last-child){margin-bottom:' . self::PARAGRAPH[$space] . '}';
         }
-        return $css;
+        return $css . self::navigation($design);
+    }
+
+    /** The variables of the Navigation rows, on the root rule; '' when none is set. */
+    private static function navigation(array $design): string
+    {
+        $vars = [];
+        foreach (array_keys(self::NAV) as $key) {
+            $slug = '--type-' . str_replace('_', '-', $key);
+            $size = $design[$key . '_size'] ?? '';
+            if ($key !== 'name' && is_numeric($size) && (float)$size >= self::NAV_SIZE[0] && (float)$size <= self::NAV_SIZE[1]) {
+                $vars[] = $slug . '-size:' . rtrim(rtrim(number_format((float)$size / 16, 4, '.', ''), '0'), '.') . 'rem';
+            }
+            $weight = (string)($design[$key . '_weight'] ?? '');
+            if (in_array($weight, self::NAV_WEIGHTS, true)) {
+                $vars[] = $slug . '-weight:' . $weight;
+            }
+            $case = (string)($design[$key . '_case'] ?? '');
+            if (isset(self::NAV_CASE[$case])) {
+                $vars[] = $slug . '-case:' . self::NAV_CASE[$case];
+            }
+            $tracking = (string)($design[$key . '_tracking'] ?? '');
+            if (isset(self::NAV_TRACKING[$tracking])) {
+                $vars[] = $slug . '-tracking:' . self::NAV_TRACKING[$tracking];
+            }
+        }
+        return $vars === [] ? '' : self::ROOT . '{' . implode(';', $vars) . '}';
     }
 }

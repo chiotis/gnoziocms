@@ -63,6 +63,8 @@ check('Typography is the tab after Branding', [k for k, _ in labels][:2] == ['br
 check('it holds the fonts, the text, the headings and the elements, which Branding no longer has', all(('name="theme_settings[design][%s]"' % k) in typo and ('name="theme_settings[design][%s]"' % k) not in brand for k in ('heading_font', 'body_font', 'base_size', 'line_height', 'scale', 'heading_weight', 'heading_case', 'h1_step', 'h3_tracking', 'lead_step', 'small_weight', 'body_weight', 'paragraph_space')) and 'name="theme_settings[appearance][font]"' in typo and 'data-bf ' in typo, [k for k in ('heading_font', 'base_size', 'h1_step') if ('name="theme_settings[design][%s]"' % k) not in typo])
 check('the heading colour stays in Branding, and each tab points at the other', 'name="theme_settings[design][heading_color]"' in brand and 'name="theme_settings[design][heading_color]"' not in typo and 'data-goto-tab="typography"' in brand and 'data-goto-tab="branding"' in typo)
 check('Typography has its own live preview, its own reset metadata and resets for each card', 'data-bp-frame' in typo and 'theme?preview=branding' in typo and 'theme_settings[design][base_size]' in unescape(re.search(r'data-bp-defaults="([^"]+)"', typo).group(1)) and all(('data-bp-reset="%s"' % k) in typo for k in ('fonts', 'text', 'headings', 'elements')))
+check('the Navigation card sets size, weight, case and spacing for menus, top bar, footer, breadcrumbs and the site name', all(('name="theme_settings[design][%s_%s]"' % (r, c)) in typo for r in ('nav', 'dropdown', 'drawer', 'topbar', 'footer_nav', 'footer_title', 'crumbs') for c in ('size', 'weight', 'case', 'tracking')) and all(('name="theme_settings[design][name_%s]"' % c) in typo for c in ('weight', 'case', 'tracking')) and 'data-bp-reset="navigation"' in typo)
+check('the size of the site name moved there from Identity', 'name="theme_settings[brand][name_size]"' in typo and 'name="theme_settings[brand][name_size]"' not in brand and html.count('name="theme_settings[brand][name_size]"') == 1)
 check('a field appears once on the screen', html.count('name="theme_settings[design][heading_font]"') == 1 and html.count('name="theme_settings[design][h1_step]"') == 1)
 for key in ('heading_font', 'body_font', 'font_file', 'base_size', 'line_height', 'scale', 'heading_weight', 'heading_tracking', 'heading_leading', 'heading_case', 'heading_color',
             'container', 'reading_width', 'gutter', 'section_space', 'header_height', 'spacing', 'radius', 'button_radius', 'shadows', 'button_height', 'button_pad', 'button_size', 'button_weight', 'button_case'):
@@ -141,6 +143,13 @@ check('out of range numbers are held to the limits, text keeps the last value', 
 (res, hdr, _), _ = post_theme(d(heading_font='nonsense', scale='9', button_case='zzz', spacing='huge'))
 css = style(page())
 check('a word that is not on the list keeps the last choice', '--font-heading:Avenir,' in css and '--step-5:' in css and '--btn-case:uppercase;' in css and '--space-scale:1.2;' in css, css[:300])
+
+# ---- saving: navigation text, saved from the Typography tab
+(res, hdr, _), _ = post_theme(d(nav_size='17', nav_weight='700', nav_case='uppercase', footer_title_case='none', crumbs_size='13'), tab='typography')
+css = style(page())
+check('the menu and the other navigation take their variables, and the screen opens on Typography again', '--type-nav-size:1.0625rem;--type-nav-weight:700;--type-nav-case:uppercase' in css and '--type-footer-title-case:none' in css and '--type-crumbs-size:0.8125rem' in css and 'tab=typography' in (hdr.get('Location') or hdr.get('location') or ''), css[-400:])
+(res, hdr, _), _ = post_theme(d(nav_size='', nav_weight='auto', nav_case='auto', footer_title_case='auto', crumbs_size=''), tab='typography')
+check('emptied, they add nothing', not re.search(r'--type-(nav|footer-title|crumbs)-', style(page())))
 
 # ---- the theme's style sheet follows the tokens
 sheet = asset('css')

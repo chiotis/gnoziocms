@@ -1018,12 +1018,15 @@ body.header-sticky .site-header {
   }
 }
 
+/* Navigation text reads --type-* variables set in Theme > Typography > Navigation. A variable with no fallback that is not set
+   makes the property inherit, as if the line were not there, so a site that sets nothing looks the same. */
 .site-brand-title {
   font-family: var(--font-heading);
   font-size: var(--brand-name-size, 1.3rem);
-  font-weight: var(--heading-weight);
-  letter-spacing: -0.02em;
+  font-weight: var(--type-name-weight, var(--heading-weight));
+  letter-spacing: var(--type-name-tracking, -0.02em);
   line-height: 1.1;
+  text-transform: var(--type-name-case);
 }
 
 .site-brand-tagline {
@@ -1060,9 +1063,11 @@ body.header-sticky .site-header {
   padding: 0.5rem 0.75rem;
   border-radius: var(--radius-button);
   color: var(--color-muted);
-  font-size: 0.95rem;
-  font-weight: 550;
+  font-size: var(--type-nav-size, 0.95rem);
+  font-weight: var(--type-nav-weight, 550);
+  letter-spacing: var(--type-nav-tracking);
   text-decoration: none;
+  text-transform: var(--type-nav-case);
   white-space: nowrap;
   transition: color 0.2s var(--ease), background-color 0.2s var(--ease);
 }
@@ -1164,6 +1169,10 @@ body.header-sticky .site-header {
 .nav-list-3 .nav-link {
   width: 100%;
   border-radius: var(--radius-s);
+  font-size: var(--type-dropdown-size, var(--type-nav-size, 0.95rem));
+  font-weight: var(--type-dropdown-weight, var(--type-nav-weight, 550));
+  letter-spacing: var(--type-dropdown-tracking, var(--type-nav-tracking));
+  text-transform: var(--type-dropdown-case, var(--type-nav-case));
 }
 
 .header-tools {
@@ -1365,15 +1374,15 @@ body.mobile-menu-open .mobile-drawer--fullscreen {
   font-family: var(--font-heading);
   font-size: clamp(1.6rem, 1rem + 3.5vw, 2.4rem);
   font-weight: var(--heading-weight);
-  letter-spacing: -0.02em;
+  letter-spacing: var(--type-drawer-tracking, -0.02em);
   line-height: 1.2;
 }
 
 .mobile-drawer--fullscreen .mobile-item .mobile-menu .mobile-link {
   font-family: var(--font-body);
-  font-size: var(--step-0);
-  font-weight: 550;
-  letter-spacing: 0;
+  font-size: var(--type-drawer-size, var(--step-0));
+  font-weight: var(--type-drawer-weight, 550);
+  letter-spacing: var(--type-drawer-tracking, 0);
 }
 
 .mobile-drawer--top_sheet,
@@ -1478,8 +1487,11 @@ body.mobile-menu-open .mobile-drawer--bottom_sheet {
   padding: 0.7rem 0.85rem;
   border-radius: var(--radius-s);
   color: var(--color-text);
-  font-weight: 550;
+  font-size: var(--type-drawer-size);
+  font-weight: var(--type-drawer-weight, 550);
+  letter-spacing: var(--type-drawer-tracking);
   text-decoration: none;
+  text-transform: var(--type-drawer-case);
 }
 
 .mobile-link:hover,
@@ -1546,7 +1558,10 @@ body.header-solid .site-header[data-sticky="always"] {
   border-bottom: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-muted);
-  font-size: var(--step--1);
+  font-size: var(--type-topbar-size, var(--step--1));
+  font-weight: var(--type-topbar-weight);
+  letter-spacing: var(--type-topbar-tracking);
+  text-transform: var(--type-topbar-case);
 }
 
 .topbar-row {
@@ -2225,7 +2240,10 @@ body.has-transparent-header:not(.header-solid) .site-header.is-on-dark[data-stic
 /* Breadcrumbs: the trail above a title (Single Layouts and Archive Layouts > Breadcrumbs). It takes the colour of the area, so it
    reads over a picture too, and is centred where the title is. */
 .crumbs {
-  font-size: var(--step--1);
+  font-size: var(--type-crumbs-size, var(--step--1));
+  font-weight: var(--type-crumbs-weight);
+  letter-spacing: var(--type-crumbs-tracking);
+  text-transform: var(--type-crumbs-case);
   color: var(--color-muted);
 }
 
@@ -3231,10 +3249,10 @@ p.form-error {
   margin: 0 0 var(--space-s);
   color: var(--color-muted);
   font-family: var(--heading-font-custom, var(--font-body));
-  font-size: var(--step--1);
-  font-weight: var(--heading-weight-custom, 600);
-  letter-spacing: var(--heading-tracking-custom, 0.08em);
-  text-transform: uppercase;
+  font-size: var(--type-footer-title-size, var(--step--1));
+  font-weight: var(--type-footer-title-weight, var(--heading-weight-custom, 600));
+  letter-spacing: var(--type-footer-title-tracking, var(--heading-tracking-custom, 0.08em));
+  text-transform: var(--type-footer-title-case, uppercase);
 }
 
 .footer-list {
@@ -3252,7 +3270,11 @@ p.form-error {
 
 .footer-link {
   color: var(--color-text);
+  font-size: var(--type-footer-nav-size);
+  font-weight: var(--type-footer-nav-weight);
+  letter-spacing: var(--type-footer-nav-tracking);
   text-decoration: none;
+  text-transform: var(--type-footer-nav-case);
 }
 
 .footer-link:hover {

@@ -76,7 +76,7 @@
             {% if b.show_name is defined %}{{ c.toggles('Site name', [[pb ~ 'show_name]', b.show_name.label, vb.show_name]]) }}{% endif %}
           </dl>
           <div class="bp-nums">
-            {% for key in ['logo_height', 'logo_height_mobile', 'footer_logo_height', 'name_size'] %}
+            {% for key in ['logo_height', 'logo_height_mobile', 'footer_logo_height'] %}
               {% if b[key] is defined %}{{ c.num(b[key], pb ~ key ~ ']', vb[key], 'px') }}{% endif %}
             {% endfor %}
           </div>
