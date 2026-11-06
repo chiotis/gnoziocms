@@ -9,7 +9,7 @@
  *   php src/ai-check.php [options]
  *
  *   --text-model=gpt-5-mini     the model that writes
- *   --image-model=gpt-image-1   the model that paints
+ *   --image-model=gpt-image-2   the model that paints
  *   --effort=low                reasoning effort for reasoning models (minimal, low, medium, high; "none" sends nothing)
  *   --quality=low               picture quality (low, medium, high, auto)
  *   --size=1536x1024            picture size
@@ -44,7 +44,7 @@ if ($key === '') {
     exit(2);
 }
 $textModel = (string)($options['text-model'] ?? 'gpt-5-mini');
-$imageModel = (string)($options['image-model'] ?? 'gpt-image-1');
+$imageModel = (string)($options['image-model'] ?? 'gpt-image-2');
 $effort = (string)($options['effort'] ?? 'low');
 $quality = (string)($options['quality'] ?? 'low');
 $size = (string)($options['size'] ?? '1536x1024');
