@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.241 — 2026-11-06 — AI publishing in dark mode
+- **Dark mode fixes** in Manage > AI publishing, made in the admin's shared dark styles so other screens benefit: dark violet text on violet (the week view's writing chips, the Runs tab's *Working* line, the posts list's AI pictures bar) is now light violet; violet borders are toned down; chosen day, content-type and term chips get a soft blue tint instead of staying light blue; pink badges have a dark version.
+- The leftover "(used from phase 3)" note is gone from the *Writing model* label in Settings.
+
 ## 0.1.240 — 2026-11-06 — A title pattern for AI schedules
 - **Title pattern** (optional) in a schedule's *What* card: a fixed title with tags, for example `Weekly news: {title} – {date}`. `{title}` is the model's title, `{term}` the name of the post's first term (`{term:category}` of one taxonomy), `{date}` the post's date in its language (`{date:d/m/Y}` in a PHP date format), `{weekday}`, `{day}`, `{month}`, `{year}`, `{week}` (ISO week) and `{schedule}`. The date is the one the post goes out on. An empty tag takes its separator with it; an unknown tag stays as written. Empty, the model writes the title as before.
 - The model is told the pattern, so its title fits into it. Its own title is kept as `ai_title` in the front matter, and the repeat check compares that, so fixed words shared by every post do not make them look alike.
