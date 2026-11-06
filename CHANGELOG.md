@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.238 — 2026-11-06 — A week calendar of the AI schedules
+- **Manage > AI publishing > Schedules** has a **List | Week** switcher at the right of the tab row; the choice is remembered.
+- **Week**: Monday to Sunday in the site's time zone, today shaded, every run of every schedule a chip at its time: planned, off, writing, scheduled, published, draft, waiting for its picture, failed (the reason on hover), missed, or post deleted. A written run shows its post as it is now. A chip opens the post, the failed runs or the schedule. Arrows for the previous and next week, and *This week*.
+- **+ Add** on any empty hour opens a new schedule set to that day and time.
+- Tests: `tests/unit/ai-writer.php`, `tests/http/ai_publishing_test.py`.
+
 ## 0.1.237 — 2026-11-06 — AI schedules search the web and read feeds
 - **Search the web while writing**, on by default for every schedule (existing ones included): the model searches and reads while it writes, prefers official and primary sources, and gives the addresses it used. The sources are kept with the post and, unless you untick it, listed as links at its end. *What to search for* steers it. Each search is billed by OpenAI and counted on the Usage tab (fill the search price of your model in the price table).
 - **Feeds and pages** in a schedule's new **Material** card: RSS or Atom feeds, of which each run takes the newest items it has not used (a number per post, no older than N days), so an item is written about once; and pages read every run. They are passed to the model as quoted information, never as instructions. Greek sites in older encodings read correctly.
