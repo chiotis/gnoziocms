@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.233 — 2026-11-06 — AI pictures for many posts at once
+- **Content list > Bulk action > Generate main images (AI)**: tick posts (or select all matching) and the site makes one picture for each, in the house style of **Manage > AI publishing**, and sets it as the main image. Posts that have a main image are left as they are unless **Replace existing images** is ticked (the old picture stays in the Media library and in the history). The confirmation says how many pictures will be made and about what they cost.
+- Each picture is made from its post's **title and excerpt** (else the start of its text), as Generate in the editor does. They are made one at a time in the background: the list shows **Making AI pictures: 7 left · 5 done** and works the next one while it is open; the cron job goes on without it. Each row shows a chip: waiting, making, **AI picture**, or failed with the reason. A post that got a main image meanwhile, or was deleted, is skipped before anything is paid for.
+- **Manage > AI publishing > Runs** (new tab): every picture made, from the editor, a test or in bulk, with its post, subject, result and cost; **Retry** a failed one, **Cancel** a waiting one, or cancel all that wait.
+- The admin stylesheet is rebuilt, so the layout and colours of the AI publishing screens added in 0.1.232 show as intended.
+- Tests: `tests/unit/ai-pictures.php`, `tests/unit/content-screens.php`, `tests/http/ai_publishing_test.py`.
+
 ## 0.1.232 — 2026-11-06 — AI publishing: pictures in the site's own style
 - **Manage > AI publishing** (new; the `ai.manage` permission, given to super admins and admins). The site makes main images itself with OpenAI, from one house style, so every post gets the same look. Three tabs:
   - **Instructions**: the house style (sent word for word), what to avoid in the picture, up to four **reference pictures** from the Media library whose style new pictures follow, shape, quality, format, variants, and a **Test picture**.
