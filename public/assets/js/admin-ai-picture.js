@@ -254,7 +254,38 @@
     ask();
   }
 
+  // ---- the Runs tab while posts or pictures wait: each request works the next one, then the page shows the result
+  function initRunsLive(box) {
+    var endpoint = box.getAttribute('data-ai-endpoint');
+    var url = endpoint + (endpoint.indexOf('?') === -1 ? '?' : '&') + 'work=1';
+    var line = box.querySelector('[data-ai-runs-line]');
+    var started = Date.now();
+    var RUNS_DEADLINE_MS = 30 * 60 * 1000;
+    var before = parseInt(box.getAttribute('data-ai-runs-live') || '0', 10);
+    function ask() {
+      if (Date.now() - started > RUNS_DEADLINE_MS) {
+        if (line) line.textContent = 'Still working. Reload this page to see how far it is.';
+        return;
+      }
+      fetch(url, { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+        .then(function (r) { return r.json(); })
+        .then(function (p) {
+          var live = p.live || 0;
+          if (live !== before || live === 0) {
+            // Something finished: the table again, with its result.
+            window.location.reload();
+            return;
+          }
+          if (line) line.textContent = 'Working: ' + live + ' waiting. Keep this page open, or the cron job finishes them.';
+          setTimeout(ask, POLL_MS);
+        })
+        .catch(function () { setTimeout(ask, POLL_MS * 4); });
+    }
+    ask();
+  }
+
   document.querySelectorAll('[data-ai-picture]').forEach(initEditor);
+  document.querySelectorAll('[data-ai-runs-live]').forEach(initRunsLive);
   document.querySelectorAll('[data-ai-bulk-apply]').forEach(initBulkApply);
   document.querySelectorAll('[data-ai-bulk-progress]').forEach(initBulkProgress);
   document.querySelectorAll('[data-ai-watch]').forEach(initWatch);

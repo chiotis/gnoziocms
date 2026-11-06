@@ -22,6 +22,8 @@ final class AiSettings
     public const PRICE_FIELDS = ['text_input', 'cached_input', 'text_output', 'image_input', 'image_output', 'search_call'];
 
     public const HOUSE_STYLE_EXAMPLE = 'Flat editorial illustration, soft muted palette, generous empty space, one clear subject in the centre, gentle natural light, calm mood.';
+    public const WRITING_EXAMPLE = "Write for the readers of this site in clear, friendly language, in the language of the post. Short paragraphs, a few ## headings, lists where they help. 400 to 700 words unless the schedule says otherwise. A clear title that says what the reader gets; an excerpt of one or two sentences; an SEO description of about 150 characters.";
+    public const TEXT_AVOID_EXAMPLE = "invented facts, quotes, prices, dates or statistics\nmedical, legal or financial advice\nnames of competitors\nphrases such as \"in today's fast-paced world\" or \"in conclusion\"\nemojis";
     public const AVOID_EXAMPLE = "text, letters or numbers\nlogos and watermarks\nrecognisable faces\nclichés such as handshakes and light bulbs";
 
     public function __construct(private SystemMetaRepository $meta)
@@ -76,6 +78,7 @@ final class AiSettings
             'monthly_picture_cap' => self::positiveInt($post['monthly_picture_cap'] ?? ''),
             'cap_action' => ($post['cap_action'] ?? '') === 'warn' ? 'warn' : 'pause',
             'keep_logs_days' => max(1, min(365, (int)($post['keep_logs_days'] ?? 30) ?: 30)),
+            'missed_window' => max(0, min(1440, (int)($post['missed_window'] ?? 60))),
         ];
         $key = trim((string)($post['openai_key'] ?? ''));
         if (($post['clear_key'] ?? '') === '1') {
@@ -118,6 +121,20 @@ final class AiSettings
             'quality' => (string)($post['quality'] ?? ''),
             'format' => (string)($post['format'] ?? ''),
             'variants' => (int)($post['variants'] ?? 0),
+        ]);
+    }
+
+    /**
+     * The writing half of the Instructions tab.
+     * @param array<string, mixed> $post
+     */
+    public function saveWritingInstructions(array $post): void
+    {
+        $this->update([
+            'writing_instructions' => self::text($post['writing_instructions'] ?? '', 6000),
+            'text_avoid' => self::lines($post['text_avoid'] ?? '', 40),
+            'site_facts' => self::text($post['site_facts'] ?? '', 4000),
+            'byline' => self::text($post['byline'] ?? '', 80),
         ]);
     }
 
@@ -184,6 +201,11 @@ final class AiSettings
             'monthly_picture_cap' => isset($stored['monthly_picture_cap']) && is_numeric($stored['monthly_picture_cap']) && $stored['monthly_picture_cap'] > 0 ? (int)$stored['monthly_picture_cap'] : null,
             'cap_action' => ($stored['cap_action'] ?? '') === 'warn' ? 'warn' : 'pause',
             'keep_logs_days' => max(1, min(365, (int)($stored['keep_logs_days'] ?? 30) ?: 30)),
+            'missed_window' => isset($stored['missed_window']) && is_numeric($stored['missed_window']) ? max(0, min(1440, (int)$stored['missed_window'])) : 60,
+            'writing_instructions' => is_string($stored['writing_instructions'] ?? null) ? $stored['writing_instructions'] : self::WRITING_EXAMPLE,
+            'text_avoid' => is_array($stored['text_avoid'] ?? null) ? array_values(array_map('strval', $stored['text_avoid'])) : self::lines(self::TEXT_AVOID_EXAMPLE, 40),
+            'site_facts' => is_string($stored['site_facts'] ?? null) ? $stored['site_facts'] : '',
+            'byline' => is_string($stored['byline'] ?? null) ? $stored['byline'] : '',
             'paused' => (bool)($stored['paused'] ?? false),
             'paused_reason' => is_string($stored['paused_reason'] ?? null) ? $stored['paused_reason'] : '',
             'prices' => $prices,
@@ -244,7 +266,9 @@ final class AiSettings
     public static function lines(mixed $value, int $max): array
     {
         $lines = [];
-        foreach (preg_split('/\R/', (string)$value) ?: [] as $line) {
+        // Stored lists come back as lists; forms send text.
+        $value = is_array($value) ? implode("\n", array_map(static fn($v): string => is_scalar($v) ? (string)$v : '', $value)) : (string)$value;
+        foreach (preg_split('/\R/', $value) ?: [] as $line) {
             $line = trim(preg_replace('/^[-*•]\s*/u', '', trim($line)) ?? '');
             if ($line !== '') {
                 $lines[] = mb_substr($line, 0, 200);

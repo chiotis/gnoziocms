@@ -467,6 +467,45 @@ final class ContentAdmin
         return 'set';
     }
 
+    /**
+     * Gives an entry a status from outside the editor (a post written on a schedule): published (dated today when it goes live for the
+     * first time) or scheduled for `$publishAt` (Y-m-d H:i, released by ScheduledPublishing). Returns set, missing or unreadable.
+     */
+    public function setStatus(string $type, string $slug, string $lang, string $status, ?string $publishAt, string $actor): string
+    {
+        $path = $this->path($type, $slug, $lang);
+        if (!is_file($path)) {
+            return 'missing';
+        }
+        [$frontmatter, $body] = FrontMatter::split((string)file_get_contents($path));
+        try {
+            $meta = $frontmatter !== '' ? (Yaml::parse($frontmatter) ?: []) : [];
+        } catch (\Throwable) {
+            return 'unreadable';
+        }
+        if (!is_array($meta)) {
+            return 'unreadable';
+        }
+        $previous = (string)($meta['status'] ?? 'published');
+        $meta['status'] = in_array($status, ['published', 'draft', ScheduledPublishing::STATUS], true) ? $status : 'draft';
+        if ($meta['status'] === ScheduledPublishing::STATUS && $publishAt !== null && $publishAt !== '') {
+            $meta['publish_at'] = $publishAt;
+        } else {
+            unset($meta['publish_at']);
+            if ($meta['status'] === ScheduledPublishing::STATUS) {
+                $meta['status'] = 'published';
+            }
+        }
+        $meta = ContentEditor::goingLive($meta, $previous);
+        $body = preg_replace('/\A\R/', '', $body) ?? $body;
+        $this->revisions->baseline($type, $slug, $lang, $path, $actor);
+        $payload = "---\n" . trim(Yaml::dump($meta, 10, 2, Yaml::DUMP_MULTI_LINE_LITERAL_BLOCK)) . "\n---\n\n" . rtrim($body) . "\n";
+        file_put_contents($path, $payload);
+        $this->revisions->capture($type, $slug, $lang, $payload, 'save', $actor);
+        $this->reindex($type, $path);
+        return 'set';
+    }
+
     private function path(string $type, string $slug, string $lang): string
     {
         return $this->contentDir . '/' . $type . '/' . (new ContentPaths(($this->settings)()))->filename($slug, $lang);

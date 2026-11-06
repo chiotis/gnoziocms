@@ -60,6 +60,52 @@ check('the picture endpoint refuses a request without the form token', st == 419
 st, _, body = root.request('/admin/ai-picture', data={'action': 'start', 'subject': '  ', '_csrf': token})
 check('an empty subject is refused', st == 422 and 'Say what the picture shows' in body, (st, body[:120]))
 
+# Writing instructions and schedules.
+st, _, html = root.get('/admin/ai-publishing')
+check('with a key it opens on Schedules', st == 200 and 'No schedules yet' in html and 'edit=new' in html, st)
+root.submit('/admin/ai-publishing?tab=instructions', has_field('writing_instructions'),
+            {'writing_instructions': 'Warm and short.', 'text_avoid': 'prices\nemojis', 'site_facts': 'A bakery in Volos.', 'byline': 'The Bakery'}, button=('ai_action', 'save_writing'))
+st, _, html = root.get('/admin/ai-publishing?tab=instructions')
+check('writing instructions are kept', 'Warm and short.' in html and 'prices\nemojis' in html and 'A bakery in Volos.' in html and 'value="The Bakery"' in html, st)
+
+st, hdr, _ = root.submit('/admin/ai-publishing?tab=schedules&edit=new', has_field('content'), {'name': 'Tips', 'content': ''}, button=('ai_action', 'save_schedule'))
+loc = hdr.get('Location') or ''
+st, _, html = root.get(re.sub(r'^https?://[^/]+', '', loc))
+check('a schedule without content is refused, the form kept', 'done=fail' in loc and 'edit=new' in loc and 'Say what the posts are about' in html and 'value="Tips"' in html, (loc, st))
+form = {'name': 'Tips', 'days[]': ['1', '3', '5'], 'time': '08:00', 'type': 'posts', 'lang': 'el', 'content': 'One practical tip about opening hours.',
+        'image': 'An everyday object.', 'status': 'at_time', 'no_picture': '0', 'picture_required': '1'}
+st, hdr, _ = root.submit('/admin/ai-publishing?tab=schedules&edit=new', has_field('content'), form, button=('ai_action', 'save_schedule'))
+check('a schedule is added', 'done=ok' in (hdr.get('Location') or ''), hdr.get('Location'))
+st, _, html = root.get('/admin/ai-publishing?tab=schedules')
+row = re.search(r'data-ai-schedule="(\d+)".*?</li>', html, re.S)
+check('it is listed: on, its days and time, its next run', row is not None and 'On' in row.group(0) and 'Mon Wed Fri' in row.group(0) and '08:00' in row.group(0) and 'Next:' in row.group(0), row and row.group(0)[:300])
+sid = row.group(1) if row else '0'
+st, _, html = root.get('/admin/ai-publishing?tab=schedules&edit=' + sid)
+check('its form shows what was saved', 'One practical tip about opening hours.' in html and 'value="1" class="h-3.5 w-3.5" checked' in html, st)
+pick = lambda value: (lambda f: any(b[1] == value for b in f['buttons']) and any(x == ['schedule', sid] or tuple(x) == ('schedule', sid) for x in f['fields']))
+root.submit('/admin/ai-publishing?tab=schedules', pick('schedule_toggle'), button=('ai_action', 'schedule_toggle'))
+st, _, html = root.get('/admin/ai-publishing?tab=schedules')
+check('it can be switched off', 'Switched off' in html and 'Switch on' in html, st)
+root.submit('/admin/ai-publishing?tab=schedules', pick('schedule_duplicate'), button=('ai_action', 'schedule_duplicate'))
+st, _, html = root.get('/admin/ai-publishing?tab=schedules')
+check('it can be copied', 'Tips (copy)' in html, st)
+
+st, hdr, _ = root.submit('/admin/ai-publishing?tab=schedules', pick('schedule_run'), button=('ai_action', 'schedule_run'))
+loc = hdr.get('Location') or ''
+check('Run now queues a post and opens Runs', 'done=ok' in loc and 'tab=runs' in loc, loc)
+st, _, html = root.get('/admin/ai-publishing?tab=runs')
+check('Runs shows the post waiting, and keeps working while open', 'Post · Schedule' in html and 'data-ai-runs-live' in html, st)
+st, _, body = root.request('/admin/ai-picture?work=1')
+check('the work poll works it; without outside calls it fails', st == 200 and '"live":0' in body, (st, body[:120]))
+st, _, html = root.get('/admin/ai-publishing?tab=runs&show=failed')
+check('the post run failed with a plain sentence', 'Post · Schedule' in html and 'curl' in html, st)
+st, _, html = root.get('/admin/ai-publishing?tab=schedules')
+check('the schedule says its last run failed', 'Last run failed' in html, st)
+for _ in range(2):
+    root.submit('/admin/ai-publishing?tab=schedules', lambda f: any(b[1] == 'schedule_delete' for b in f['buttons']), button=('ai_action', 'schedule_delete'))
+st, _, html = root.get('/admin/ai-publishing?tab=schedules')
+check('schedules can be deleted', 'No schedules yet' in html, st)
+
 # Bulk: Content list > Generate main images. The test server cannot make outside calls, so a picture fails with a plain sentence.
 st, _, html = root.get('/admin/content?type=posts&lang=el')
 check('the list offers Generate main images', st == 200 and 'value="generate_images"' in html and 'data-ai-bulk-apply' in html, st)

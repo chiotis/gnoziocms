@@ -21,7 +21,7 @@
 
   <header class="mb-4 border-b border-slate-200 pb-4">
     <div class="flex flex-wrap items-start justify-between gap-3">
-      <p class="max-w-3xl text-xs text-slate-500">The site makes pictures itself, with OpenAI, from one house style, so every post gets the same look. Pictures are made from the editor's Main image (Generate) or for many entries at once from a content list (Bulk action › Generate main images); posts written on a timetable come later. Every call is counted on the Usage tab.</p>
+      <p class="max-w-3xl text-xs text-slate-500">The site writes posts on a timetable and makes their pictures itself, with OpenAI, from one set of instructions, so every post has the site's voice and look. <strong>Schedules</strong> write one post each time they run; pictures can also be made from the editor's Main image (Generate) or for many entries at once from a content list (Bulk action › Generate main images). Every call is counted on the Usage tab.</p>
       <div class="flex flex-wrap items-center gap-2" data-ai-state>
         {% if ai.paused %}
           {{ ui.badge('Paused', 'amber') }}
@@ -47,6 +47,36 @@
   </header>
 
   {% if tab == 'instructions' %}
+    <form method="post" action="{{ url('admin/ai-publishing?tab=instructions') }}" class="{{ card }} mb-4" data-ai-writing>
+      {{ csrf_field() }}
+      <div class="{{ card_head }}"><h2 class="text-sm font-semibold text-slate-900">Writing</h2><span class="text-xs text-slate-400">Sent first with every post a schedule writes</span></div>
+      <div class="grid gap-4 px-4 py-4 lg:grid-cols-2">
+        <div>
+          <label class="{{ label }}" for="ai-writing">Writing instructions</label>
+          <textarea id="ai-writing" name="writing_instructions" rows="7" class="{{ input }}" maxlength="6000">{{ ai.writing_instructions }}</textarea>
+          <p class="{{ note }}">Who reads the site, the voice and tone, typical length and structure, SEO habits. A schedule adds only what is particular to it.</p>
+        </div>
+        <div class="space-y-4">
+          <div>
+            <label class="{{ label }}" for="ai-text-avoid">Avoid in the text</label>
+            <textarea id="ai-text-avoid" name="text_avoid" rows="4" class="{{ input }}" placeholder="One per line">{{ ai.text_avoid|join("\n") }}</textarea>
+            <p class="{{ note }}">One per line, sent as "Never do any of these". Each schedule can add its own.</p>
+          </div>
+          <div>
+            <label class="{{ label }}" for="ai-facts">Facts about the site</label>
+            <textarea id="ai-facts" name="site_facts" rows="3" class="{{ input }}" maxlength="4000" placeholder="What the business is and offers, where, its name as it must be written">{{ ai.site_facts }}</textarea>
+          </div>
+          <div>
+            <label class="{{ label }}" for="ai-byline">Byline</label>
+            <input id="ai-byline" name="byline" value="{{ ai.byline }}" class="{{ input }}" maxlength="80" placeholder="The author shown on the posts, for example the site's name">
+          </div>
+        </div>
+      </div>
+      <div class="flex justify-end border-t border-slate-100 px-4 py-3">
+        <button type="submit" name="ai_action" value="save_writing" class="{{ primary }}">Save writing instructions</button>
+      </div>
+    </form>
+
     <div class="grid gap-4 lg:grid-cols-3">
       <form method="post" action="{{ url('admin/ai-publishing?tab=instructions') }}" class="{{ card }} lg:col-span-2" data-ai-instructions>
         {{ csrf_field() }}
@@ -126,10 +156,191 @@
           {% endif %}
         </div>
         <div class="{{ card }} px-4 py-3 text-xs text-slate-500">
-          <p><strong class="text-slate-700">Writing instructions</strong> (the voice of posts, what to avoid in the text) and <strong class="text-slate-700">schedules</strong> come with the next phases of AI publishing.</p>
+          <p>The writing instructions above and these picture instructions are used by every <a class="font-medium text-blue-700 underline" href="{{ url('admin/ai-publishing?tab=schedules') }}">schedule</a>. A schedule adds a few lines of its own.</p>
         </div>
       </div>
     </div>
+
+  {% elseif tab == 'schedules' %}
+    {% set sc = schedules %}
+    {% if sc.editing %}
+      {% set e = sc.editing %}
+      {% set c = e.settings %}
+      <form method="post" action="{{ url('admin/ai-publishing?tab=schedules') }}" class="space-y-4" data-ai-schedule-form>
+        {{ csrf_field() }}
+        <input type="hidden" name="schedule" value="{{ e.id }}">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <a class="text-sm text-slate-500 hover:text-slate-800" href="{{ url('admin/ai-publishing?tab=schedules') }}">‹ All schedules</a>
+          <button type="submit" name="ai_action" value="save_schedule" class="{{ primary }}">{{ e.id ? 'Save schedule' : 'Add schedule' }}</button>
+        </div>
+        <div class="{{ card }}">
+          <div class="{{ card_head }}"><h2 class="text-sm font-semibold text-slate-900">{{ e.id ? e.name : 'New schedule' }}</h2><span class="text-xs text-slate-400">One post each time it runs</span></div>
+          <div class="grid gap-4 px-4 py-4 sm:grid-cols-2">
+            <div class="sm:col-span-2">
+              <label class="{{ label }}" for="sc-name">Name</label>
+              <input id="sc-name" name="name" value="{{ e.name }}" class="{{ input }}" maxlength="120" placeholder="Tip of the day" required>
+            </div>
+          </div>
+        </div>
+
+        <div class="{{ card }}">
+          <div class="{{ card_head }}"><h2 class="text-sm font-semibold text-slate-900">When</h2><span class="text-xs text-slate-400">Time zone {{ sc.zone }}</span></div>
+          <div class="grid gap-4 px-4 py-4 sm:grid-cols-4">
+            <div class="sm:col-span-4">
+              <span class="{{ label }}">Days of the week</span>
+              <div class="flex flex-wrap gap-1.5">
+                {% for n, d in day_names %}
+                  <label class="inline-flex cursor-pointer items-center gap-1 rounded-md border border-slate-300 px-2.5 py-1 text-sm has-[:checked]:border-blue-600 has-[:checked]:bg-blue-50 has-[:checked]:text-blue-800">
+                    <input type="checkbox" name="days[]" value="{{ n }}" class="h-3.5 w-3.5"{{ n in c.days ? ' checked' }}> {{ d }}
+                  </label>
+                {% endfor %}
+              </div>
+            </div>
+            <div>
+              <label class="{{ label }}" for="sc-time">Time of day</label>
+              <input id="sc-time" type="time" name="time" value="{{ c.time }}" class="{{ input }}" required>
+            </div>
+            <div>
+              <label class="{{ label }}" for="sc-prepare">Write it ahead (minutes)</label>
+              <input id="sc-prepare" name="prepare" inputmode="numeric" value="{{ c.prepare }}" class="{{ input }}">
+            </div>
+            <div>
+              <label class="{{ label }}" for="sc-start">From <span class="font-normal text-slate-400">(optional)</span></label>
+              <input id="sc-start" type="date" name="start_date" value="{{ c.start_date }}" class="{{ input }}">
+            </div>
+            <div>
+              <label class="{{ label }}" for="sc-end">Until <span class="font-normal text-slate-400">(optional)</span></label>
+              <input id="sc-end" type="date" name="end_date" value="{{ c.end_date }}" class="{{ input }}">
+            </div>
+            <p class="text-xs text-slate-500 sm:col-span-4">The post is written ahead and goes live on the minute. A second post a day is another schedule (Duplicate makes it quick). A run missed by more than {{ sc.missed_window }} minutes (the site or cron was down) is skipped, not made up later.</p>
+          </div>
+        </div>
+
+        <div class="{{ card }}">
+          <div class="{{ card_head }}"><h2 class="text-sm font-semibold text-slate-900">What</h2></div>
+          <div class="grid gap-4 px-4 py-4 sm:grid-cols-2">
+            <div>
+              <label class="{{ label }}" for="sc-type">Content type</label>
+              <select id="sc-type" name="type" class="{{ input }}">{% for t in sc.types %}<option value="{{ t }}"{{ c.type == t ? ' selected' }}>{{ t|title }}</option>{% endfor %}</select>
+            </div>
+            <div>
+              <label class="{{ label }}" for="sc-lang">Language</label>
+              <select id="sc-lang" name="lang" class="{{ input }}">{% for l in sc.languages %}<option value="{{ l.code }}"{{ c.lang == l.code ? ' selected' }}>{{ l.name }}</option>{% endfor %}</select>
+            </div>
+            <div class="sm:col-span-2">
+              <label class="{{ label }}" for="sc-content">What the posts are about</label>
+              <textarea id="sc-content" name="content" rows="4" class="{{ input }}" maxlength="4000" placeholder="One practical tip for small-business owners about online marketing, 300–400 words." required>{{ c.content }}</textarea>
+              <p class="{{ note }}">The topic, the angle, and length or structure if they differ from the writing instructions. Each run is told the titles this schedule wrote before, so it does not repeat them.</p>
+            </div>
+            <div>
+              <label class="{{ label }}" for="sc-text-avoid">Avoid in the text <span class="font-normal text-slate-400">(added to the site's list)</span></label>
+              <textarea id="sc-text-avoid" name="text_avoid" rows="2" class="{{ input }}" placeholder="One per line">{{ c.text_avoid|join("\n") }}</textarea>
+            </div>
+            <div>
+              <label class="{{ label }}" for="sc-model">Writing model <span class="font-normal text-slate-400">(optional)</span></label>
+              <input id="sc-model" name="model" value="{{ c.model }}" class="{{ input }} font-mono" placeholder="{{ ai.text_model }}" list="sc-models">
+              <datalist id="sc-models">{% for m in ai.models.writing %}<option value="{{ m }}">{% endfor %}</datalist>
+            </div>
+            {% if sc.taxonomies %}
+              <div class="sm:col-span-2 space-y-3" data-sc-terms>
+                {% for tax, terms in sc.taxonomies %}
+                  {% if terms %}
+                    <div>
+                      <div class="mb-1 flex flex-wrap items-center gap-3">
+                        <span class="text-xs font-medium text-slate-600">{{ tax|title }}</span>
+                        <label class="inline-flex items-center gap-1 text-xs text-slate-600"><input type="checkbox" name="choose[]" value="{{ tax }}" class="h-3.5 w-3.5"{{ tax in c.choose ? ' checked' }}> Let the model choose from these</label>
+                      </div>
+                      <div class="flex flex-wrap gap-1.5">
+                        {% for t in terms %}
+                          <label class="inline-flex cursor-pointer items-center gap-1 rounded-full border border-slate-200 px-2 py-0.5 text-xs has-[:checked]:border-blue-600 has-[:checked]:bg-blue-50">
+                            <input type="checkbox" name="terms[{{ tax }}][]" value="{{ t.id }}" class="h-3 w-3"{{ t.id in (c.terms[tax] ?? []) ? ' checked' }}> {{ t.label }}
+                          </label>
+                        {% endfor %}
+                      </div>
+                    </div>
+                  {% endif %}
+                {% endfor %}
+                <p class="text-xs text-slate-500">Ticked terms are always given; with "let the model choose", it adds one to three that fit, never a new one. Changed the type? Save first to see its terms.</p>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="{{ card }}">
+          <div class="{{ card_head }}"><h2 class="text-sm font-semibold text-slate-900">Picture</h2><span class="text-xs text-slate-400">In the house style of the Instructions tab</span></div>
+          <div class="grid gap-4 px-4 py-4 sm:grid-cols-2">
+            <div>
+              <label class="{{ label }}" for="sc-image">What the pictures show</label>
+              <textarea id="sc-image" name="image" rows="2" class="{{ input }}" maxlength="1000" placeholder="A single everyday object that stands for the tip.">{{ c.image }}</textarea>
+            </div>
+            <div>
+              <label class="{{ label }}" for="sc-picture-avoid">Avoid in the picture <span class="font-normal text-slate-400">(added to the site's list)</span></label>
+              <textarea id="sc-picture-avoid" name="picture_avoid" rows="2" class="{{ input }}" placeholder="One per line">{{ c.picture_avoid|join("\n") }}</textarea>
+            </div>
+            <label class="inline-flex items-center gap-2 text-sm"><input type="hidden" name="no_picture" value="0"><input type="checkbox" name="no_picture" value="1"{{ c.no_picture ? ' checked' }}> No picture for these posts</label>
+            <label class="inline-flex items-center gap-2 text-sm"><input type="hidden" name="picture_required" value="0"><input type="checkbox" name="picture_required" value="1"{{ c.picture_required ? ' checked' }}> Publish only with a picture <span class="text-xs text-slate-400">(if it fails, the post stays a draft)</span></label>
+          </div>
+        </div>
+
+        <div class="{{ card }}">
+          <div class="{{ card_head }}"><h2 class="text-sm font-semibold text-slate-900">Result</h2></div>
+          <div class="grid gap-4 px-4 py-4 sm:grid-cols-2">
+            <div class="space-y-1.5">
+              {% for value, name in status_modes %}
+                <label class="flex items-center gap-2 text-sm"><input type="radio" name="status" value="{{ value }}"{{ c.status == value ? ' checked' }}> {{ name }}</label>
+              {% endfor %}
+            </div>
+            <div>
+              <label class="{{ label }}" for="sc-byline">Byline <span class="font-normal text-slate-400">(optional)</span></label>
+              <input id="sc-byline" name="byline" value="{{ c.byline }}" class="{{ input }}" maxlength="80" placeholder="{{ ai.byline ?: 'The byline of the writing instructions' }}">
+            </div>
+          </div>
+          <div class="flex justify-end border-t border-slate-100 px-4 py-3">
+            <button type="submit" name="ai_action" value="save_schedule" class="{{ primary }}">{{ e.id ? 'Save schedule' : 'Add schedule' }}</button>
+          </div>
+        </div>
+      </form>
+    {% else %}
+      <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <p class="text-xs text-slate-500">Each schedule writes one post each time it runs, from the writing and picture instructions plus its own lines. The cron job runs them (every 5 minutes, Admin › System).</p>
+        <a href="{{ url('admin/ai-publishing?tab=schedules&edit=new') }}" class="{{ primary }}">Add schedule</a>
+      </div>
+      <div class="{{ card }}" data-ai-schedules>
+        {% if sc.list is empty %}
+          <p class="px-4 py-6 text-center text-sm text-slate-500">No schedules yet. Add one: a name, the days and time, and a few lines about what the posts are about.</p>
+        {% else %}
+          <ul class="divide-y divide-slate-100">
+            {% for s in sc.list %}
+              <li class="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3" data-ai-schedule="{{ s.id }}">
+                <div class="min-w-0 flex-1">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <a href="{{ url('admin/ai-publishing?tab=schedules&edit=' ~ s.id) }}" class="font-medium text-slate-900 hover:text-blue-700">{{ s.name }}</a>
+                    {{ s.enabled ? ui.badge('On', 'green') : ui.badge('Off', 'slate') }}
+                    {% if s.last_status == 'failed' %}<span title="{{ s.last_error }}">{{ ui.badge('Last run failed', 'red') }}</span>{% endif %}
+                  </div>
+                  <p class="mt-0.5 text-xs text-slate-500">
+                    {% for n, d in day_names %}{% if n in s.settings.days %}{{ d }} {% endif %}{% endfor %}· {{ s.settings.time }} · {{ s.settings.type }} {{ s.settings.lang|upper }}
+                    · {{ status_modes[s.settings.status] }}{{ s.settings.no_picture ? ' · no picture' : '' }}
+                  </p>
+                  <p class="text-xs text-slate-500">
+                    {{ s.next ? 'Next: ' ~ s.next : (s.enabled ? 'No run ahead (dates)' : 'Switched off') }}
+                    {% if s.last and s.last.title %} · Last: <a class="underline" href="{{ url('admin/edit?type=' ~ (s.last.entry|split('/')[0]) ~ '&slug=' ~ (s.last.entry|split('/')[1]) ~ '&lang=' ~ (s.last.entry|split('/')[2])) }}">{{ s.last.title }}</a>{% endif %}
+                    · {{ s.month_posts }} this month
+                  </p>
+                </div>
+                <form method="post" action="{{ url('admin/ai-publishing?tab=schedules') }}" class="flex flex-wrap items-center gap-1.5">
+                  {{ csrf_field() }}<input type="hidden" name="schedule" value="{{ s.id }}">
+                  <button type="submit" name="ai_action" value="schedule_run" class="{{ secondary }} py-1 text-xs" data-confirm="Write a post for “{{ s.name }}” now? It gets the schedule's usual status." data-confirm-button="Write it now"{{ ai.has_key ? '' : ' disabled' }}>Run now</button>
+                  <button type="submit" name="ai_action" value="schedule_toggle" class="{{ secondary }} py-1 text-xs">{{ s.enabled ? 'Switch off' : 'Switch on' }}</button>
+                  <button type="submit" name="ai_action" value="schedule_duplicate" class="{{ secondary }} py-1 text-xs">Duplicate</button>
+                  <button type="submit" name="ai_action" value="schedule_delete" class="{{ secondary }} py-1 text-xs text-red-700" data-confirm="Delete “{{ s.name }}”? The posts it wrote stay." data-confirm-button="Delete">Delete</button>
+                </form>
+              </li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      </div>
+    {% endif %}
 
   {% elseif tab == 'runs' %}
     <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -145,7 +356,9 @@
         </form>
       {% endif %}
     </div>
-    <div class="{{ card }}" data-ai-runs>
+    {% set live_rows = runs.rows|filter(r => r.status in ['queued', 'running'])|length %}
+    <div class="{{ card }}" data-ai-runs{% if live_rows %} data-ai-runs-live="{{ live_rows }}" data-ai-endpoint="{{ url('admin/ai-picture') }}"{% endif %}>
+      {% if live_rows %}<p class="border-b border-violet-100 bg-violet-50 px-4 py-2 text-sm text-violet-900" role="status" aria-live="polite" data-ai-runs-line>Working: {{ live_rows }} waiting. Keep this page open, or the cron job finishes them.</p>{% endif %}
       {% if runs.rows is empty %}
         <p class="px-4 py-3 text-sm text-slate-500">No pictures yet{{ show ? ' with this status' : '' }}.</p>
       {% else %}
@@ -158,14 +371,15 @@
               {% for r in runs.rows %}
                 <tr data-ai-run="{{ r.id }}">
                   <td class="whitespace-nowrap px-4 py-2 text-xs text-slate-500">{{ r.created|date('j M H:i') }}</td>
-                  <td class="px-2 text-xs">{{ {'editor': 'Editor', 'test': 'Test', 'bulk': 'Bulk', 'schedule': 'Schedule', 'mcp': 'MCP', 'automatic': 'Automatic'}[r.source] ?? r.source }}{% if r.by %}<span class="block text-slate-400">{{ r.by }}</span>{% endif %}</td>
+                  <td class="px-2 text-xs">{{ r.kind == 'post' ? 'Post' : 'Picture' }} · {{ {'editor': 'Editor', 'test': 'Test', 'bulk': 'Bulk', 'schedule': 'Schedule', 'mcp': 'MCP', 'automatic': 'Automatic'}[r.source] ?? r.source }}{% if r.by %}<span class="block text-slate-400">{{ r.by }}</span>{% endif %}</td>
                   <td class="max-w-md px-2 py-2">
                     {% if r.slug %}<a class="font-medium text-slate-800 hover:text-blue-700" href="{{ url('admin/edit?type=' ~ r.type ~ '&slug=' ~ r.slug ~ '&lang=' ~ r.lang) }}">{{ r.type }}/{{ r.slug }} <span class="text-xs text-slate-400">{{ r.lang|upper }}</span></a>{% endif %}
                     {% if r.subject %}<span class="block truncate text-xs text-slate-500" title="{{ r.subject }}">{{ r.subject }}</span>{% endif %}
                   </td>
                   <td class="px-2 py-2 text-xs">
                     {{ ui.status_badge(r.status) }}
-                    {% if r.status == 'done' and r.outcome == 'set' %}<span class="text-slate-500">set as main image</span>
+                    {% if r.kind == 'post' and r.status == 'done' %}<span class="text-slate-500">{{ r.post_status == 'scheduled' ? 'goes live ' ~ r.publish_at : r.post_status }}</span>
+                    {% elseif r.status == 'done' and r.outcome == 'set' %}<span class="text-slate-500">set as main image</span>
                     {% elseif r.status == 'done' and r.outcome == 'kept' %}<span class="text-slate-500">in the library (it had a main image by then)</span>
                     {% elseif r.status == 'done' and r.pictures %}<span class="text-slate-500">{{ r.pictures }} picture{{ r.pictures == 1 ? '' : 's' }}</span>{% endif %}
                     {% if r.status == 'queued' and r.wait %}<span class="text-slate-500">tries again in {{ (r.wait / 60)|round(0, 'ceil') }} min</span>{% endif %}

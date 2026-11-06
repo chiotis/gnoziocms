@@ -24,6 +24,7 @@ final class App
     private const MCP_PATHS = ['mcp', '_mcp/token', '_mcp/register', '.well-known/oauth-protected-resource', '.well-known/oauth-protected-resource/mcp', '.well-known/oauth-authorization-server'];
     /** When the scheduled entries were last looked at (a Unix time in the system meta). */
     private const SCHEDULE_CHECKED_KEY = 'schedule_checked_at';
+    private const AI_TICK_KEY = 'ai_schedules_checked_at';
     private bool $updateCheck = false;
 
     private string $basePath;
@@ -108,6 +109,8 @@ final class App
     private ?AiUsage $aiUsageService = null;
     private ?AiPictures $aiPicturesService = null;
     private ?AiPublishingAdmin $aiPublishingAdminService = null;
+    private ?AiSchedules $aiSchedulesService = null;
+    private ?AiWriter $aiWriterService = null;
     private ?DashboardData $dashboardDataService = null;
     private ?FormsAdmin $formsAdminService = null;
     private ?FormTranslationMigration $formTranslationMigrationService = null;
@@ -302,6 +305,7 @@ final class App
             $backupDue = $this->backupManager()->isRunDue();
             $releaseDue = $this->scheduleCheckIsDue();
             $picturesDue = $this->images->pendingCount() > 0;
+            $this->aiTick();
             $jobsDue = $this->jobRunner()->pending(null, true) > 0;
             if (!$backupDue && !$releaseDue && !$picturesDue && !$jobsDue && !$this->omniClient()->isDue()) {
                 return;
@@ -384,7 +388,22 @@ final class App
         if (function_exists('set_time_limit')) {
             @set_time_limit($seconds + 300);
         }
+        $this->aiTick(false);
         return $this->jobRunner()->work(microtime(true) + $seconds);
+    }
+
+    /** Queues the AI schedules' posts that are due (AiWriter::tick); with `$throttle` at most once a minute, for visits and the admin. */
+    private function aiTick(bool $throttle = true): int
+    {
+        try {
+            if ($throttle && (int)$this->systemMeta->get(self::AI_TICK_KEY) >= time() - 60) {
+                return 0;
+            }
+            $this->systemMeta->set(self::AI_TICK_KEY, (string)time());
+            return $this->aiWriter()->tick();
+        } catch (\Throwable) {
+            return 0;
+        }
     }
 
     public function releaseScheduled(bool $throttle = true): int
@@ -1333,6 +1352,7 @@ final class App
 
         if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
             $this->releaseScheduled();
+            $this->aiTick();
             $this->backupManager()->runIfDue();
             register_shutdown_function(fn() => $this->sendOmniReportAfterResponse());
         }
@@ -3517,6 +3537,7 @@ final class App
         if ($this->jobRunnerService === null) {
             $this->jobRunnerService = new JobRunner($this->systemDatabase);
             $this->aiPictures()->register();
+            $this->aiWriter()->register();
         }
         return $this->jobRunnerService;
     }
@@ -3559,8 +3580,67 @@ final class App
                     $this->contentIndex->bump();
                 }
                 return $outcome;
-            }
+            },
+            finalize: fn(string $type, string $slug, string $lang, string $status, ?string $publishAt, string $actor): string => $this->aiSetStatus($type, $slug, $lang, $status, $publishAt, $actor)
         );
+    }
+
+    /** An entry's status set by AI publishing, with the caches emptied when visitors' pages change. */
+    private function aiSetStatus(string $type, string $slug, string $lang, string $status, ?string $publishAt, string $actor): string
+    {
+        $outcome = $this->contentAdmin()->setStatus($type, $slug, $lang, $status, $publishAt, $actor);
+        if ($outcome === 'set') {
+            $this->content->forget();
+            $this->frontCache()->purgeAll();
+            $this->contentIndex->bump();
+        }
+        return $outcome;
+    }
+
+    private function aiSchedules(): AiSchedules
+    {
+        return $this->aiSchedulesService ??= new AiSchedules($this->systemDatabase);
+    }
+
+    private function aiWriter(): AiWriter
+    {
+        return $this->aiWriterService ??= new AiWriter(
+            $this->jobRunner(),
+            $this->aiSettings(),
+            $this->aiUsage(),
+            $this->aiSchedules(),
+            $this->aiPictures(),
+            static fn(string $key): OpenAiProvider => new OpenAiProvider($key),
+            function (string $type, array $post, string $actor): array {
+                $saved = $this->contentEditor()->save($type, $post, null, false, $actor);
+                $this->content->forget();
+                return $saved;
+            },
+            fn(string $type, string $lang): array => $this->aiTermsFor($type, $lang),
+            fn(string $type, string $slug, string $lang, string $status, ?string $publishAt, string $actor): string => $this->aiSetStatus($type, $slug, $lang, $status, $publishAt, $actor),
+            static fn(string $code): string => MenuAdmin::languageName($code),
+            SiteSettings::timeZone($this->settings)
+        );
+    }
+
+    /** @return array<string, array<int, array{id: string, label: string}>> the taxonomies of a type with their terms, labelled in a language */
+    private function aiTermsFor(string $type, string $lang): array
+    {
+        if ($type === 'pages') {
+            return [];
+        }
+        $out = [];
+        foreach ($this->taxonomies()->names($type) as $name) {
+            $terms = [];
+            foreach ((array)($this->taxonomies()->load($name)['terms'] ?? []) as $term) {
+                $id = (string)($term['id'] ?? '');
+                if ($id !== '') {
+                    $terms[] = ['id' => $id, 'label' => (string)($term['labels'][$lang] ?? (reset($term['labels']) ?: $id))];
+                }
+            }
+            $out[$name] = $terms;
+        }
+        return $out;
     }
 
     /** Whether the signed-in person may make AI pictures for entries (content and media) and a key is set. */
@@ -3578,7 +3658,15 @@ final class App
             $this->aiPictures(),
             $this->jobRunner(),
             static fn(string $key): OpenAiProvider => new OpenAiProvider($key),
-            fn(string $action, string $level, ?string $type, ?string $id, string $message, array $context) => $this->logActivity($action, $level, $type, $id, $message, $context)
+            fn(string $action, string $level, ?string $type, ?string $id, string $message, array $context) => $this->logActivity($action, $level, $type, $id, $message, $context),
+            $this->aiSchedules(),
+            $this->aiWriter(),
+            SiteSettings::timeZone($this->settings),
+            fn(): array => [
+                'types' => array_values(array_diff($this->content->getTypes(), ['forms'])),
+                'languages' => array_map(static fn(string $code): array => ['code' => $code, 'name' => MenuAdmin::languageName($code)], array_values(array_map('strval', (array)($this->settings['languages']['available'] ?? [])))),
+                'terms' => fn(string $type, string $lang): array => $this->aiTermsFor($type, $lang),
+            ]
         );
     }
 
@@ -3589,7 +3677,7 @@ final class App
         $canSettings = $this->permissions->can($user, 'settings.manage');
         if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             $result = $this->aiPublishingAdmin()->act($_POST, $user, $canSettings);
-            $this->redirect('/admin/ai-publishing?' . http_build_query(array_filter(['tab' => $result['tab'], 'job' => $result['job'] ?: null,
+            $this->redirect('/admin/ai-publishing?' . http_build_query(array_filter(['tab' => $result['tab'], 'job' => $result['job'] ?: null, 'edit' => $result['edit'] ?? null,
                 'done' => $result['ok'] ? 'ok' : 'fail', 'msg' => $result['message']], static fn($v): bool => $v !== null)));
             return;
         }
@@ -3642,6 +3730,19 @@ final class App
                 return;
             }
             $json(['ok' => false, 'error' => 'Unknown action.'], 400);
+            return;
+        }
+        // The Runs tab, while posts or pictures wait: works the next one that is due and says how many are left.
+        if (isset($_GET['work'])) {
+            $kinds = [AiWriter::KIND, AiPictures::KIND];
+            if ($this->jobRunner()->pending(AiWriter::KIND, true) + $this->jobRunner()->pending(AiPictures::KIND, true) > 0) {
+                @session_write_close();
+                if (function_exists('set_time_limit')) {
+                    @set_time_limit(400);
+                }
+                $this->jobRunner()->work(microtime(true) + 1, $kinds, 1);
+            }
+            $json(['live' => $this->jobRunner()->pending(AiWriter::KIND) + $this->jobRunner()->pending(AiPictures::KIND)]);
             return;
         }
         // The content list's progress line: how far the bulk pictures of a type and language are, working the next one when due.

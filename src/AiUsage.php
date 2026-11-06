@@ -161,6 +161,15 @@ final class AiUsage
         return ['cost' => (float)$row['cost'], 'pictures' => (int)$row['pictures']];
     }
 
+    /** Gives the calls of a job the entry they made (known only once the post is saved). */
+    public function attachEntry(string $ref, string $entry): void
+    {
+        $pdo = $this->pdo();
+        if ($pdo !== null && $ref !== '') {
+            $pdo->prepare("UPDATE ai_usage SET entry = ? WHERE ref = ? AND entry = ''")->execute([$entry, $ref]);
+        }
+    }
+
     /** The average estimated cost of one picture over the last 30 days, or null when nothing priced was made. */
     public function averagePictureCost(): ?float
     {
