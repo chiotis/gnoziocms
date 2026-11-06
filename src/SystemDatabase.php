@@ -107,6 +107,7 @@ final class SystemDatabase
         $this->applyMigration($pdo, '202610200001_archive_query', fn(PDO $db) => $this->createArchiveQuery($db));
         $this->applyMigration($pdo, '202611020001_mcp', fn(PDO $db) => $this->createMcpTables($db));
         $this->applyMigration($pdo, '202611020002_mcp_sources', fn(PDO $db) => $this->createMcpSources($db));
+        $this->applyMigration($pdo, '202611060001_jobs', fn(PDO $db) => $this->createJobsTable($db));
     }
 
     /**
@@ -257,6 +258,38 @@ final class SystemDatabase
      * What MCP connections wrote: the entry made for each source (a job that runs again finds it instead of writing it twice),
      * and each publication, for the daily limit of a connection.
      */
+    /**
+     * Background work (JobRunner): one row per job, claimed by one worker at a time through its lock, which runs out if the worker
+     * dies. Times are Unix seconds, so ordering and comparing them needs no date parsing.
+     */
+    private function createJobsTable(PDO $pdo): void
+    {
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS jobs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                kind TEXT NOT NULL,
+                payload TEXT NOT NULL DEFAULT '{}',
+                priority INTEGER NOT NULL DEFAULT 0,
+                status TEXT NOT NULL DEFAULT 'queued',
+                attempts INTEGER NOT NULL DEFAULT 0,
+                max_attempts INTEGER NOT NULL DEFAULT 3,
+                run_after INTEGER NOT NULL DEFAULT 0,
+                unique_key TEXT,
+                locked_by TEXT NOT NULL DEFAULT '',
+                locked_until INTEGER NOT NULL DEFAULT 0,
+                result TEXT NOT NULL DEFAULT '',
+                error TEXT NOT NULL DEFAULT '',
+                created_at INTEGER NOT NULL,
+                started_at INTEGER NOT NULL DEFAULT 0,
+                finished_at INTEGER NOT NULL DEFAULT 0
+            )"
+        );
+        $pdo->exec('CREATE INDEX IF NOT EXISTS idx_jobs_claim ON jobs (status, priority, run_after)');
+        $pdo->exec('CREATE INDEX IF NOT EXISTS idx_jobs_kind ON jobs (kind, status)');
+        // One live job per key (a picture for an entry, a schedule's run): a finished job frees its key.
+        $pdo->exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_jobs_unique_live ON jobs (unique_key) WHERE unique_key IS NOT NULL AND status IN ('queued', 'running')");
+    }
+
     private function createMcpSources(PDO $pdo): void
     {
         $pdo->exec(
