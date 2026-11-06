@@ -3667,6 +3667,11 @@ final class App
                 'types' => array_values(array_diff($this->content->getTypes(), ['forms'])),
                 'languages' => array_map(static fn(string $code): array => ['code' => $code, 'name' => MenuAdmin::languageName($code)], array_values(array_map('strval', (array)($this->settings['languages']['available'] ?? [])))),
                 'terms' => fn(string $type, string $lang): array => $this->aiTermsFor($type, $lang),
+                'entry_status' => function (string $entry): ?string {
+                    [$type, $slug, $lang] = array_pad(explode('/', $entry, 3), 3, '');
+                    $item = in_array($type, $this->content->getTypes(), true) ? $this->content->find($type, $slug, $lang, true, false) : null;
+                    return $item === null ? null : (string)($item->meta['status'] ?? 'published');
+                },
             ]
         );
     }
@@ -3682,6 +3687,13 @@ final class App
                 'done' => $result['ok'] ? 'ok' : 'fail', 'msg' => $result['message']], static fn($v): bool => $v !== null)));
             return;
         }
+        // The Schedules tab's view (list or week), remembered for this person in a cookie of the admin.
+        $get = $_GET;
+        if (in_array($get['view'] ?? '', ['list', 'week'], true)) {
+            setcookie('gnozio_ai_view', (string)$get['view'], ['expires' => time() + 365 * 86400, 'path' => '/', 'httponly' => true, 'samesite' => 'Lax', 'secure' => $this->isHttpsRequest()]);
+        } elseif (in_array($_COOKIE['gnozio_ai_view'] ?? '', ['list', 'week'], true)) {
+            $get['view'] = (string)$_COOKIE['gnozio_ai_view'];
+        }
         if (($_GET['export'] ?? '') === 'csv') {
             $month = preg_match('/^\d{4}-\d{2}$/', (string)($_GET['month'] ?? '')) === 1 ? (string)$_GET['month'] : date('Y-m');
             header('Content-Type: text/csv; charset=utf-8');
@@ -3689,7 +3701,7 @@ final class App
             echo $this->aiPublishingAdmin()->usageCsv($month);
             return;
         }
-        $this->render('@admin/ai-publishing.twig', $this->aiPublishingAdmin()->screen($_GET, $canSettings) + [
+        $this->render('@admin/ai-publishing.twig', $this->aiPublishingAdmin()->screen($get, $canSettings) + [
             'title' => 'AI publishing',
             'types' => $this->content->getTypes(),
             'user' => $user,
