@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.231 — 2026-11-06 — One place for the cron job
+- **Admin > System > Cron job** now recommends the job **every 5 minutes** (`*/5 * * * * php '…/src/cron-backup.php'`), as the installer does, and says everything it does: scheduled entries, missing picture sizes and the automatic backup. It also says where to add it in CloudPanel and cPanel. The health checks are unchanged.
+- The **"When does it run?"** box on the Backups screen is gone; the cron line is on the System screen.
+- Tests: `tests/unit/cron-status.php`, `tests/http/backup_schedule_test.py`.
+
 ## 0.1.230 — 2026-11-06 — The installer's last screen says what is left to do
 - The installer's last screen now always shows the **cron job** to add, with this site's real path and a copy button: `*/5 * * * * php '…/src/cron-backup.php'`. That one job publishes scheduled entries, writes picture sizes and takes the automatic backups. It also says where to add it in CloudPanel and cPanel.
 - The **nginx block for ChatGPT** (MCP) is on the same screen, as before only where the server was not seen sending those files as JSON.

@@ -16,7 +16,7 @@ def cron():
 def archives(): return sorted(glob.glob('app/storage/backups/*.zip'))
 
 st, _, html = root.get('/admin/system')
-check('the System screen has a cron job card with the line to add, before the script has ever run', st == 200 and 'id="cron"' in html and re.search(r'0 3 \* \* \* php [^<]*src/cron-backup\.php', html) is not None and 'never' in html, st)
+check('the System screen has a cron job card with the line to add, before the script has ever run', st == 200 and 'id="cron"' in html and re.search(r'\*/5 \* \* \* \* php [^<]*src/cron-backup\.php', html) is not None and 'never' in html, st)
 check('and says it is not set up: on this server (the built-in one) a visit does not start due work', 'not set up (due work waits for the admin)' in html and 'no (cli-server)' in html, re.findall(r'not set up[^<]*', html))
 check('the health checks list it too', re.search(r'Cron job</dt>', html) is not None)
 check('the script does nothing while there is no schedule', cron()[:2] == ('off', 0), cron())
@@ -32,7 +32,9 @@ check('and says it is not due when run again', out == 'not due' and code == 0 an
 st, _, html = root.get('/admin/system')
 check('after the script has run the System screen says the cron job is running and when it was seen', 'running, last ' in html and re.search(r'Last seen</dt><dd[^>]*>\s*20\d\d-\d\d-\d\d \d\d:\d\d', html) is not None, re.findall(r'running[^<]*|Last seen[^<]*<[^<]*<[^<]*', html)[:3])
 st, _, html = root.get('/admin/backups')
-check('the Backups screen shows the run, and the cron line to add', 'scheduled' in html.lower() and re.search(r'0 3 \* \* \* php [^<]*src/cron-backup\.php', html) is not None, re.findall(r'0 3[^<]*', html))
+check('the Backups screen shows the run, and no longer the cron line (System has it)', 'scheduled' in html.lower() and 'cron-backup.php' not in html and 'When does it run?' not in html, re.findall(r'[^<]*cron-backup[^<]*', html))
+st, _, html = root.get('/admin/system')
+check('the System screen gives the cron line, every 5 minutes', re.search(r'\*/5 \* \* \* \* php [^<]*src/cron-backup\.php', html) is not None, re.findall(r'\*/5[^<]*', html))
 st, _, _ = Client().get('/admin/backups')
 check('the script cannot be reached from the web', Client().get('/src/cron-backup.php')[0] == 404)
 

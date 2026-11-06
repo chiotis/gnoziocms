@@ -1873,7 +1873,6 @@ final class App
             'user' => $this->auth->user(),
             'admin_section' => 'backups',
             'current_type' => 'pages',
-            'backup_cron_command' => 'php ' . escapeshellarg($this->basePath . '/src/cron-backup.php'),
             'backup_status' => (string)($_GET['backup'] ?? ''),
             'delete_status' => (string)($_GET['deleted'] ?? ''),
             'backup_message' => trim((string)($_GET['backup_msg'] ?? '')),

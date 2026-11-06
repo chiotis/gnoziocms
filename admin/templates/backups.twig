@@ -225,14 +225,6 @@
             <div class="flex justify-between gap-3"><dt class="text-slate-500">Keep in remote storage</dt><dd class="font-medium text-slate-900">{{ backup_remote.keep }}</dd></div>
           {% endif %}
         </dl>
-        {% if backup_schedule.enabled %}
-          <details class="mt-3 rounded-md border border-slate-200 bg-slate-50/60 px-3 py-2">
-            <summary class="cursor-pointer select-none text-xs font-medium text-slate-600">When does it run?</summary>
-            <p class="mt-2 text-xs leading-5 text-slate-500">When a backup is due it is taken after the next visit to the site (the visitor does not wait for it) or when someone opens the admin. A site nobody visits makes none. For one on time every day, add a cron job on the server:</p>
-            <code class="mt-1.5 block break-all rounded bg-slate-100 px-2 py-1.5 text-[11px] text-slate-700">0 3 * * * {{ backup_cron_command }}</code>
-            <p class="mt-1.5 text-[11px] leading-4 text-slate-500">It does nothing when no backup is due, so running it more often does no harm.</p>
-          </details>
-        {% endif %}
       </div>
 
       <div class="rounded-lg border border-slate-200 bg-white">

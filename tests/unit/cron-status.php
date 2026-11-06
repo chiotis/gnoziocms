@@ -14,7 +14,7 @@ $iso = fn(int $t) => date('c', $t);
 $info = fn(string $seen, bool $backups, ?string $finish) => C::info('/home/u/site', $seen, $backups, $now, $finish);
 
 $i = $info('', true, null);
-check('the line to add: every day at 03:00, the script of this site', [$i['line'], $i['schedule']], ["0 3 * * * php '/home/u/site/src/cron-backup.php'", '0 3 * * *']);
+check('the line to add: every 5 minutes, the script of this site', [$i['line'], $i['schedule']], ["*/5 * * * * php '/home/u/site/src/cron-backup.php'", '*/5 * * * *']);
 check('a path with a space is quoted', C::info('/home/my site', '', false, $now, null)['command'], "php '/home/my site/src/cron-backup.php'");
 check('never seen, on a server that cannot start work after a visit: a warning while backups are on', [$i['state'], $i['check']], ['never', ['label' => 'Cron job', 'value' => 'not set up (due work waits for the admin)', 'status' => 'warning']]);
 check('and only a note while they are off', $info('', false, null)['check']['status'], 'ok');

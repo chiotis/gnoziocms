@@ -83,7 +83,7 @@
         <div class="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
           <div>
             <h2 class="text-sm font-semibold text-slate-900">Cron job</h2>
-            <p class="mt-0.5 text-xs text-slate-400">Recommended: one entry on the server, once a day.</p>
+            <p class="mt-0.5 text-xs text-slate-400">Recommended: one entry on the server, every 5 minutes.</p>
           </div>
           {{ ui.status_badge(cron.check.status) }}
         </div>
@@ -94,14 +94,13 @@
             <div class="flex justify-between gap-3"><dt class="text-slate-500">A visit starts due work</dt><dd class="text-right font-medium text-slate-900">{{ cron.after_visit ? 'yes (' ~ cron.sapi ~ ')' : 'no (' ~ cron.sapi ~ ')' }}</dd></div>
           </dl>
           <div>
-            <p class="mb-1 text-xs font-medium text-slate-600">The entry to add (every day at 03:00)</p>
+            <p class="mb-1 text-xs font-medium text-slate-600">The entry to add (every 5 minutes)</p>
             <code class="block break-all rounded bg-slate-100 px-2 py-1.5 text-[11px] text-slate-700" data-cron-line>{{ cron.line }}</code>
           </div>
           <ul class="list-disc space-y-1 pl-5 text-xs leading-5 text-slate-500">
-            <li>It takes the scheduled backup when one is due and does nothing otherwise, so running it more often does no harm. It prints <code>off</code>, <code>not due</code>, <code>busy</code>, <code>ok</code> or <code>failed</code>.</li>
-            <li>In cPanel or a similar panel, add it under <em>Cron Jobs</em> as a <em>Custom</em> command. If <code>php</code> is not the right PHP, give the full path to the PHP of this site (for example <code>/usr/local/bin/php</code>).</li>
-            <li>{% if cron.after_visit %}This server can start due work right after a visit, so a site with visitors takes its backups without a cron job; the cron job covers the quiet days.{% else %}This server cannot start due work after a visit ({{ cron.sapi }}), so without a cron job a scheduled backup waits until someone opens the admin.{% endif %}</li>
-            <li>Without a schedule on, there is nothing for the cron job to do yet: the backup schedule is in Settings > Backup.</li>
+            <li>One job does all the timed work: it publishes scheduled entries, writes missing picture sizes and takes the automatic backup when one is due (the schedule is in Settings > Backup). It does nothing when nothing is due, so running it often does no harm. It prints <code>off</code>, <code>not due</code>, <code>busy</code>, <code>ok</code> or <code>failed</code> for the backup.</li>
+            <li>CloudPanel: <em>Sites</em> &gt; the site &gt; <em>Cron Jobs</em>. cPanel: <em>Cron Jobs</em>, as a <em>Custom</em> command. If <code>php</code> is not the PHP of this site, give its full path (for example <code>/usr/bin/php8.5</code>).</li>
+            <li>{% if cron.after_visit %}This server can start due work right after a visit, so a site with visitors gets it done without a cron job; the cron job keeps it on time on quiet days.{% else %}This server cannot start due work after a visit ({{ cron.sapi }}), so without a cron job scheduled entries and backups wait until someone opens the admin.{% endif %}</li>
           </ul>
         </div>
       </div>

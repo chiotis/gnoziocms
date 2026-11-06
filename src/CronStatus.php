@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace GnozioCMS;
 
 /**
- * What the System screen says about the cron job a site should have (`php src/cron-backup.php`, once a day): the line to add, whether
+ * What the System screen says about the cron job a site should have (`php src/cron-backup.php`, every 5 minutes): the line to add, whether
  * this server can start due work after a visit instead, when the cron job was last seen (it records the time each time it runs), and the
  * health check that follows from those. Without a cron job GnozioCMS still works: due work starts after a visit (PHP-FPM, LiteSpeed)
  * or when someone opens the admin; the cron job is what makes it happen on time on a quiet site.
@@ -19,7 +19,7 @@ final class CronStatus
     public const STALE_AFTER = 129600;
 
     /** The recommended time: every day at 03:00. */
-    public const SCHEDULE = '0 3 * * *';
+    public const SCHEDULE = '*/5 * * * *';
 
     /** The function that lets a response end before the work after it starts, when this server has one. */
     public static function finishFunction(): ?string
