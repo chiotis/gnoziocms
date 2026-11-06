@@ -46,7 +46,7 @@ def groups(side):
     return out
 st, _, html = root.get('/admin')
 g = groups(re.search(r'<aside.*?</aside>', html, re.S).group(0))
-check('Manage lists Forms, Menus, Theme, Taxonomies, Content types, SEO, Redirects, Translations, History in that order', g.get('Manage') == ['Forms', 'Menus', 'Theme', 'Taxonomies', 'Content types', 'SEO', 'Redirects', 'Translations', 'History'], g.get('Manage'))
+check('Manage lists Forms, Menus, Theme, Taxonomies, AI publishing, Content types, SEO, Redirects, Translations, History in that order', g.get('Manage') == ['Forms', 'Menus', 'Theme', 'Taxonomies', 'AI publishing', 'Content types', 'SEO', 'Redirects', 'Translations', 'History'], g.get('Manage'))
 check('and System no longer lists them', not {'Content types', 'Redirects', 'Translations'} & set(g.get('System', [])), g.get('System'))
 for path, name in (('/admin/content-types', 'Content types'), ('/admin/redirects', 'Redirects'), ('/admin/translations', 'Translations')):
     st, _, html = root.get(path)
