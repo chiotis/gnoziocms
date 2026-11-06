@@ -264,8 +264,11 @@ final class AiPublishingAdmin
         $editId = (string)($get['edit'] ?? '');
         $editing = null;
         if ($editId === 'new') {
+            // From the week view: a day and an hour clicked.
+            $day = (int)($get['day'] ?? 0);
+            $time = preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', (string)($get['time'] ?? '')) === 1 ? (string)$get['time'] : '08:00';
             $editing = ['id' => 0, 'name' => '', 'enabled' => true, 'settings' => AiSchedules::normalize([
-                'days' => [1, 2, 3, 4, 5], 'time' => '08:00', 'type' => in_array('posts', $site['types'], true) ? 'posts' : ($site['types'][0] ?? ''),
+                'days' => $day >= 1 && $day <= 7 ? [$day] : [1, 2, 3, 4, 5], 'time' => $time, 'type' => in_array('posts', $site['types'], true) ? 'posts' : ($site['types'][0] ?? ''),
                 'lang' => $site['languages'][0]['code'] ?? '', 'prepare' => 30, 'status' => 'at_time',
             ])];
         } elseif (ctype_digit($editId)) {
@@ -278,7 +281,18 @@ final class AiPublishingAdmin
             $editing['name'] = (string)($form['name'] ?? '');
             $editing['settings'] = AiSchedules::normalize($form);
         }
+        $view = ($get['view'] ?? '') === 'week' ? 'week' : 'list';
+        $week = null;
+        if ($view === 'week' && $editing === null && $this->schedules !== null) {
+            $anchor = preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)($get['week'] ?? '')) === 1
+                ? (\DateTimeImmutable::createFromFormat('!Y-m-d', (string)$get['week'], $zone) ?: new \DateTimeImmutable('now', $zone))
+                : new \DateTimeImmutable('now', $zone);
+            $week = $this->schedules->week($anchor, $zone, (int)$this->settings->all()['missed_window'],
+                fn(int $id): ?array => $this->runner->get($id), $site['entry_status'] ?? null);
+        }
         return [
+            'view' => $view,
+            'week' => $week,
             'list' => $list,
             'editing' => $editing,
             'types' => $site['types'],

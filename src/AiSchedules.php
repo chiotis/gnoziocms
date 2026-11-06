@@ -179,6 +179,120 @@ final class AiSchedules
     }
 
     /**
+     * A week of runs for the calendar: Monday to Sunday of the week of `$anyDay`, in the site's zone. Each day lists every schedule's
+     * slot that day (planned, off, due, missed, or how its run went), and the runs made with Run now, sorted by time.
+     * @param (\Closure(int): (array<string, mixed>|null))|null $job reads a job (its status, error and result)
+     * @param (\Closure(string): ?string)|null $entryStatus the status a post has now (type/slug/lang), or null when it is gone
+     * @return array{start: string, prev: string, next: string, this_week: bool, hours: array{0: int, 1: int},
+     *   days: array<int, array{date: string, label: string, today: bool, runs: array<int, array<string, mixed>>}>}
+     */
+    public function week(\DateTimeImmutable $anyDay, \DateTimeZone $zone, int $window, ?\Closure $job = null, ?\Closure $entryStatus = null): array
+    {
+        $day = $anyDay->setTimezone($zone)->setTime(0, 0);
+        $monday = $day->modify('-' . ((int)$day->format('N') - 1) . ' day');
+        $sunday = $monday->modify('+6 day');
+        $now = $this->now();
+        $today = (new \DateTimeImmutable('@' . $now))->setTimezone($zone)->format('Y-m-d');
+        $schedules = $this->all();
+        $taken = [];
+        $manual = [];
+        $pdo = $this->pdo();
+        if ($pdo !== null) {
+            $stmt = $pdo->prepare("SELECT * FROM ai_schedule_slots WHERE (slot >= ? AND slot <= ?) OR (slot LIKE 'now %' AND created_at >= ? AND created_at < ?)");
+            $stmt->execute([$monday->format('Y-m-d') . ' 00:00', $sunday->format('Y-m-d') . ' 23:59', $monday->getTimestamp(), $sunday->modify('+1 day')->getTimestamp()]);
+            foreach ($stmt->fetchAll() as $row) {
+                if (str_starts_with((string)$row['slot'], 'now ')) {
+                    $manual[] = $row;
+                } else {
+                    $taken[(int)$row['schedule_id'] . '|' . $row['slot']] = $row;
+                }
+            }
+        }
+        $names = array_column($schedules, 'name', 'id');
+        $enabled = array_column($schedules, 'enabled', 'id');
+        $days = [];
+        $hours = [];
+        for ($i = 0; $i < 7; $i++) {
+            $date = $monday->modify('+' . $i . ' day');
+            $runs = [];
+            foreach ($schedules as $schedule) {
+                $at = self::slotOn($schedule['settings'], $date, $zone);
+                if ($at === null) {
+                    continue;
+                }
+                $slot = $at->format('Y-m-d H:i');
+                $row = $taken[$schedule['id'] . '|' . $slot] ?? null;
+                if ($row !== null) {
+                    $state = self::runState($row, $job, $entryStatus);
+                } elseif ($at->getTimestamp() + $window * 60 < $now) {
+                    // Gone by without a run: missed, unless the schedule did not exist yet or was off.
+                    if ($schedule['created_at'] > $at->getTimestamp() || !$schedule['enabled']) {
+                        continue;
+                    }
+                    $state = ['state' => 'missed', 'title' => '', 'entry' => '', 'error' => ''];
+                } elseif ($at->getTimestamp() - $schedule['settings']['prepare'] * 60 <= $now) {
+                    $state = ['state' => $schedule['enabled'] ? 'due' : 'off', 'title' => '', 'entry' => '', 'error' => ''];
+                } else {
+                    $state = ['state' => $schedule['enabled'] ? 'planned' : 'off', 'title' => '', 'entry' => '', 'error' => ''];
+                }
+                $runs[] = ['schedule' => $schedule['id'], 'name' => $schedule['name'], 'time' => $at->format('H:i'), 'hour' => (int)$at->format('G'), 'manual' => false] + $state;
+            }
+            foreach ($manual as $row) {
+                $at = (new \DateTimeImmutable('@' . (int)$row['created_at']))->setTimezone($zone);
+                if ($at->format('Y-m-d') !== $date->format('Y-m-d')) {
+                    continue;
+                }
+                $runs[] = ['schedule' => (int)$row['schedule_id'], 'name' => (string)($names[(int)$row['schedule_id']] ?? 'Deleted schedule'), 'time' => $at->format('H:i'),
+                    'hour' => (int)$at->format('G'), 'manual' => true] + self::runState($row, $job, $entryStatus);
+            }
+            usort($runs, static fn(array $a, array $b): int => [$a['time'], $a['name']] <=> [$b['time'], $b['name']]);
+            foreach ($runs as $run) {
+                $hours[] = $run['hour'];
+            }
+            $days[] = ['date' => $date->format('Y-m-d'), 'label' => $date->format('D j M'), 'today' => $date->format('Y-m-d') === $today, 'runs' => $runs];
+        }
+        return [
+            'start' => $monday->format('Y-m-d'),
+            'end' => $sunday->format('Y-m-d'),
+            'prev' => $monday->modify('-7 day')->format('Y-m-d'),
+            'next' => $monday->modify('+7 day')->format('Y-m-d'),
+            'this_week' => $today >= $monday->format('Y-m-d') && $today <= $sunday->format('Y-m-d'),
+            'hours' => [min(7, ...($hours ?: [7])), max(20, ...($hours ?: [20]))],
+            'days' => $days,
+        ];
+    }
+
+    /**
+     * How a run that was taken went: failed or still working from its job, otherwise the status its post has now.
+     * @param array<string, mixed> $row a slot row @param (\Closure(int): (array<string, mixed>|null))|null $job
+     * @param (\Closure(string): ?string)|null $entryStatus
+     * @return array{state: string, title: string, entry: string, error: string}
+     */
+    private static function runState(array $row, ?\Closure $job, ?\Closure $entryStatus): array
+    {
+        $found = $job !== null && (int)$row['job_id'] > 0 ? $job((int)$row['job_id']) : null;
+        $out = ['state' => 'working', 'title' => (string)$row['title'], 'entry' => (string)$row['entry'], 'error' => ''];
+        // A job long finished may be purged: then the post itself says how it went (no post: it did not work out).
+        $status = $found === null ? ($out['entry'] !== '' ? 'done' : ((int)$row['job_id'] > 0 ? 'failed' : 'queued')) : (string)($found['status'] ?? '');
+        if ($status === 'failed' || $status === 'cancelled') {
+            return ['state' => 'failed', 'error' => (string)($found['error'] ?? '')] + $out;
+        }
+        if ($status !== 'done') {
+            return $out;
+        }
+        $written = (string)($found['result']['status'] ?? 'published');
+        $now = $entryStatus !== null && $out['entry'] !== '' ? $entryStatus($out['entry']) : $written;
+        $state = match (true) {
+            $now === null => 'gone',
+            $now === 'draft' && str_starts_with($written, 'draft until') => 'picture',
+            $now === 'draft' => 'draft',
+            $now === ScheduledPublishing::STATUS => 'scheduled',
+            default => 'published',
+        };
+        return ['state' => $state] + $out;
+    }
+
+    /**
      * Writes a slot down as taken; false when it already was (another worker, or an earlier run). This is the once-only guard.
      */
     public function claim(int $scheduleId, string $slot): bool

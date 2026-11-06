@@ -217,6 +217,34 @@ $runner->work($soon(), [AiWriter::KIND]);
 check('a schedule deleted before its run', $runner->list(AiWriter::KIND)[0]['error'], 'The schedule was deleted.');
 check('Run now for a schedule that is not there', $writer->runNow(99999, 'chris')['error'], 'There is no such schedule.');
 
+// ---- the week view
+$wk = new AiSchedules($db, $clock);
+$weekNow = $now;
+$now = (new DateTimeImmutable('2026-11-11 12:00', $zone))->getTimestamp(); // Wednesday
+$planned = $wk->save(0, ['name' => 'Midweek', 'days' => ['1', '3', '5'], 'time' => '09:30', 'type' => 'posts', 'lang' => 'en', 'content' => 'x'], $types, $langs)['id'];
+$offOne = $wk->save(0, ['name' => 'Paused one', 'days' => ['4'], 'time' => '18:00', 'type' => 'posts', 'lang' => 'en', 'content' => 'x'], $types, $langs)['id'];
+$wk->setEnabled($offOne, false);
+$db->connection()->prepare('UPDATE ai_schedules SET created_at = ? WHERE id IN (?, ?)')->execute([$now - 30 * 86400, $planned, $offOne]);
+// Monday ran and its post was published; Wednesday 09:30 was missed (no run, past the window).
+$wk->claim($planned, '2026-11-09 09:30');
+$wk->recordPost($planned, '2026-11-09 09:30', 'posts/monday-post/en', 'Monday post');
+$jobs = [];
+$weekData = $wk->week(new DateTimeImmutable('2026-11-12', $zone), $zone, 60, fn(int $id): ?array => null, fn(string $entry): ?string => $entry === 'posts/monday-post/en' ? 'published' : null);
+check('the week runs Monday to Sunday, today marked', [$weekData['start'], $weekData['end'], $weekData['days'][2]['today'], $weekData['days'][0]['today']], ['2026-11-09', '2026-11-15', true, false]);
+check('previous and next week', [$weekData['prev'], $weekData['next'], $weekData['this_week']], ['2026-11-02', '2026-11-16', true]);
+$byDay = array_map(static fn(array $d): array => array_map(static fn(array $r): string => $r['time'] . ' ' . $r['name'] . ' ' . $r['state'], array_values(array_filter($d['runs'], static fn(array $r): bool => in_array($r['name'], ['Midweek', 'Paused one'], true)))), $weekData['days']);
+check('Monday: ran, its post published', $byDay[0], ['09:30 Midweek published']);
+check('Wednesday: missed (past the window, never ran)', $byDay[2], ['09:30 Midweek missed']);
+check('Thursday: a schedule that is off shows as off', $byDay[3], ['18:00 Paused one off']);
+check('Friday: planned', $byDay[4], ['09:30 Midweek planned']);
+check('a run shows its post\'s title and address', [$weekData['days'][0]['runs'][array_search('Midweek', array_column($weekData['days'][0]['runs'], 'name'), true)]['title'] ?? '', $weekData['days'][0]['runs'][array_search('Midweek', array_column($weekData['days'][0]['runs'], 'name'), true)]['entry'] ?? ''], ['Monday post', 'posts/monday-post/en']);
+check('the hours cover 07:00 to 20:00 at least, and stretch to every run (one at 00:10 here)', $weekData['hours'], [0, 20]);
+$gone = $wk->week(new DateTimeImmutable('2026-11-12', $zone), $zone, 60, fn(int $id): ?array => null, fn(string $entry): ?string => null);
+check('a post deleted since shows as gone', array_values(array_filter($gone['days'][0]['runs'], static fn(array $r): bool => $r['name'] === 'Midweek'))[0]['state'], 'gone');
+$wk->delete($planned);
+$wk->delete($offOne);
+$now = $weekNow;
+
 // ---- phase 4: web search, material from feeds and pages, and "cannot write"
 use GnozioCMS\{FeedReader, SafeHttp};
 $feedXml = '<?xml version="1.0"?><rss version="2.0"><channel><title>Gov</title>'

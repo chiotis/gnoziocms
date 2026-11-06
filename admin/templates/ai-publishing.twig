@@ -39,11 +39,25 @@
     </div>
     {% if ai.paused and ai.paused_reason %}<p class="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">{{ ai.paused_reason }}.</p>{% endif %}
     {% if blocked and not ai.paused %}<p class="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">{{ blocked }}</p>{% endif %}
-    <nav class="-mb-4 mt-3 flex gap-1 overflow-x-auto" aria-label="AI publishing">
-      {% for key, name in tabs %}
-        <a href="{{ url('admin/ai-publishing?tab=' ~ key) }}" class="shrink-0 border-b-2 px-3 py-2 text-sm font-medium {{ tab == key ? 'border-blue-600 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-800' }}"{% if tab == key %} aria-current="page"{% endif %}>{{ name }}</a>
-      {% endfor %}
-    </nav>
+    <div class="-mb-4 mt-3 flex items-end justify-between gap-3">
+      <nav class="flex min-w-0 gap-1 overflow-x-auto" aria-label="AI publishing">
+        {% for key, name in tabs %}
+          <a href="{{ url('admin/ai-publishing?tab=' ~ key) }}" class="shrink-0 border-b-2 px-3 py-2 text-sm font-medium {{ tab == key ? 'border-blue-600 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-800' }}"{% if tab == key %} aria-current="page"{% endif %}>{{ name }}</a>
+        {% endfor %}
+      </nav>
+      {% if tab == 'schedules' and schedules and not schedules.editing %}
+        {# List or week: the view of the schedules, kept for this person. #}
+        <div class="mb-1.5 inline-flex shrink-0 rounded-md border border-slate-300 bg-white p-0.5 shadow-sm" role="group" aria-label="View" data-ai-view-switch>
+          {% for key, name in {'list': 'List', 'week': 'Week'} %}
+            <a href="{{ url('admin/ai-publishing?tab=schedules&view=' ~ key) }}" class="inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium {{ schedules.view == key ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100' }}"{% if schedules.view == key %} aria-current="true"{% endif %}>
+              {% if key == 'list' %}<svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+              {% else %}<svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 7a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V7zM4 10h16M9 3v4M15 3v4"/></svg>{% endif %}
+              {{ name }}
+            </a>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
   </header>
 
   {% if tab == 'instructions' %}
@@ -336,6 +350,67 @@
           </div>
         </div>
       </form>
+    {% elseif sc.view == 'week' and sc.week %}
+      {% set w = sc.week %}
+      {% set state_names = {'planned': 'Planned', 'off': 'Off', 'due': 'Due', 'working': 'Writing…', 'published': 'Published', 'scheduled': 'Scheduled', 'draft': 'Draft', 'picture': 'Waiting for picture', 'failed': 'Failed', 'missed': 'Missed', 'gone': 'Post deleted'} %}
+      {% set state_class = {
+        'planned': 'border-blue-200 bg-blue-50 text-blue-900',
+        'off': 'border-dashed border-slate-300 bg-white text-slate-500',
+        'due': 'border-violet-200 bg-violet-50 text-violet-900',
+        'working': 'border-violet-200 bg-violet-50 text-violet-900',
+        'published': 'border-emerald-200 bg-emerald-50 text-emerald-900',
+        'scheduled': 'border-blue-300 bg-white text-blue-900',
+        'draft': 'border-amber-200 bg-amber-50 text-amber-900',
+        'picture': 'border-amber-200 bg-amber-50 text-amber-900',
+        'failed': 'border-red-200 bg-red-50 text-red-900',
+        'missed': 'border-slate-200 bg-slate-100 text-slate-500 line-through',
+        'gone': 'border-slate-200 bg-slate-100 text-slate-500'
+      } %}
+      <div class="mb-3 flex flex-wrap items-center justify-between gap-2" data-ai-week-head>
+        <div class="flex items-center gap-2 text-sm">
+          <a class="{{ secondary }} px-2 py-1 text-xs" href="{{ url('admin/ai-publishing?tab=schedules&week=' ~ w.prev) }}" aria-label="Previous week">‹</a>
+          <strong class="text-slate-900">{{ w.start|date('j M') }} – {{ w.end|date('j M Y') }}</strong>
+          <a class="{{ secondary }} px-2 py-1 text-xs" href="{{ url('admin/ai-publishing?tab=schedules&week=' ~ w.next) }}" aria-label="Next week">›</a>
+          {% if not w.this_week %}<a class="text-xs font-medium text-blue-700 underline" href="{{ url('admin/ai-publishing?tab=schedules') }}">This week</a>{% endif %}
+          <span class="text-xs text-slate-400">Time zone {{ sc.zone }}</span>
+        </div>
+        <a href="{{ url('admin/ai-publishing?tab=schedules&edit=new') }}" class="{{ primary }}">Add schedule</a>
+      </div>
+      <div class="{{ card }} overflow-x-auto" data-ai-week>
+        <div class="grid min-w-[880px]" style="grid-template-columns: 3.5rem repeat(7, minmax(0, 1fr));">
+          <div class="border-b border-slate-200"></div>
+          {% for d in w.days %}
+            <div class="border-b border-l border-slate-200 px-2 py-2 text-xs font-semibold {{ d.today ? 'bg-blue-50 text-blue-900' : 'text-slate-700' }}"{% if d.today %} aria-current="date"{% endif %}>
+              {{ d.label }}{% if d.today %} <span class="font-normal">· today</span>{% endif %}
+              <span class="block font-normal text-slate-400">{{ d.runs|length }} post{{ d.runs|length == 1 ? '' : 's' }}</span>
+            </div>
+          {% endfor %}
+          {% for h in w.hours[0]..w.hours[1] %}
+            <div class="border-b border-slate-100 px-1.5 py-1 text-right text-[11px] text-slate-400">{{ '%02d'|format(h) }}:00</div>
+            {% for d in w.days %}
+              {% set here = d.runs|filter(r => r.hour == h) %}
+              <div class="group relative min-h-[2.25rem] border-b border-l border-slate-100 p-1 {{ d.today ? 'bg-blue-50/40' : '' }}" data-ai-week-cell="{{ d.date }} {{ '%02d'|format(h) }}">
+                {% for r in here %}
+                  {% set href = r.entry and r.state in ['published', 'scheduled', 'draft', 'picture'] ? url('admin/edit?type=' ~ (r.entry|split('/')[0]) ~ '&slug=' ~ (r.entry|split('/')[1]) ~ '&lang=' ~ (r.entry|split('/')[2]))
+                    : (r.state == 'failed' ? url('admin/ai-publishing?tab=runs&show=failed') : url('admin/ai-publishing?tab=schedules&edit=' ~ r.schedule)) %}
+                  <a href="{{ href }}" class="relative z-10 mb-1 block rounded border px-1.5 py-1 text-[11px] leading-tight shadow-sm hover:shadow {{ state_class[r.state] ?? state_class.planned }}" title="{{ r.name }} · {{ r.time }} · {{ state_names[r.state] ?? r.state }}{{ r.title ? ' · ' ~ r.title : '' }}{{ r.error ? ' · ' ~ r.error : '' }}" data-ai-week-run="{{ r.state }}">
+                    <span class="font-semibold">{{ r.time }}</span> {{ r.name }}{% if r.manual %} <span class="opacity-70">(run now)</span>{% endif %}
+                    <span class="block opacity-80">{{ state_names[r.state] ?? r.state }}{% if r.title %} · {{ r.title }}{% endif %}</span>
+                  </a>
+                {% endfor %}
+                {% set wd = d.date|date('N') %}
+                <a href="{{ url('admin/ai-publishing?tab=schedules&edit=new&day=' ~ wd ~ '&time=' ~ '%02d'|format(h) ~ ':00') }}" class="absolute inset-0 z-0 flex items-end justify-end p-1 text-[11px] text-blue-700 opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100" aria-label="Add a schedule on {{ d.label }} at {{ '%02d'|format(h) }}:00"><span class="rounded bg-white/90 px-1">+ Add</span></a>
+              </div>
+            {% endfor %}
+          {% endfor %}
+        </div>
+      </div>
+      <div class="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-500" data-ai-week-legend>
+        {% for key in ['planned', 'off', 'working', 'scheduled', 'published', 'draft', 'failed', 'missed'] %}
+          <span class="inline-flex items-center gap-1"><span class="inline-block h-3 w-3 rounded border {{ state_class[key] }}"></span>{{ state_names[key] }}</span>
+        {% endfor %}
+        <span class="ml-auto">Click an empty hour to add a schedule there.</span>
+      </div>
     {% else %}
       <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
         <p class="text-xs text-slate-500">Each schedule writes one post each time it runs, from the writing and picture instructions plus its own lines. The cron job runs them (every 5 minutes, Admin › System).</p>
