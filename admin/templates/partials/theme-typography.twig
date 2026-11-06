@@ -38,7 +38,8 @@
   {% endfor %}
 {% endfor %}
 {% set nav_rows = {nav: 'Header menu', dropdown: 'Dropdown', drawer: 'Mobile menu', topbar: 'Top bar', footer_nav: 'Footer menu', footer_title: 'Footer headings', crumbs: 'Breadcrumbs', name: 'Site name'} %}
-{% set columns = [['step', 'Size'], ['weight', 'Weight'], ['leading', 'Line'], ['tracking', 'Spacing']] %}
+{% set columns = [['step', 'Size'], ['weight', 'Weight'], ['leading', 'Line'], ['tracking', 'Spacing'], ['case', 'Case']] %}
+{% set element_rows = [['lead', 'Lead'], ['small', 'Small'], ['eyebrow', 'Eyebrow'], ['meta', 'Meta'], ['quote', 'Quote'], ['caption', 'Caption'], ['card_title', 'Card title']]|filter(row => d[row[0] ~ '_step'] is defined) %}
 
 {# One row for each element: a step of the scale, a weight, a line height and a letter spacing. #}
 {% macro matrix(rows, columns, d, vd, pd, caption) %}
@@ -67,7 +68,7 @@
 
 {# The Navigation rows: a size in pixels, then weight, case and letter spacing as selects. A row the theme does not declare is left out. #}
 {% macro nav_matrix(rows, d, vd, pd, b, vb, pb) %}
-  <table class="bp-colours bp-matrix">
+  <table class="bp-colours bp-matrix bp-matrix--nav">
     <caption class="sr-only">The text of the menus and other navigation. An empty size and Theme keep the theme's own.</caption>
     <thead><tr><th scope="col"><span class="sr-only">Element</span></th><th scope="col">Size</th><th scope="col">Weight</th><th scope="col">Case</th><th scope="col">Spacing</th></tr></thead>
     <tbody>
@@ -147,7 +148,7 @@
       </details>
 
       <details class="bp-card" open>
-        <summary><span>Headings</span><small>Scale, weight, spacing, case, H1 to H3</small></summary>
+        <summary><span>Headings</span><small>Scale, weight, spacing, case, H1 to H6</small></summary>
         <div class="bp-body">
           <dl class="m-0 space-y-2.5">
             {% if d.scale is defined %}
@@ -160,19 +161,19 @@
           </dl>
           {% if default_theme %}<p class="m-0 text-[11px] leading-4 text-slate-500">“By element” keeps the weight, letter spacing and line height designed for each heading. “Theme scale” keeps the theme’s responsive sizes.</p>{% endif %}
           {% if d.h1_step is defined %}
-            {{ t.matrix([['h1', 'H1'], ['h2', 'H2'], ['h3', 'H3']], columns, d, vd, pd, 'Overrides for headings 1 to 3. Theme keeps the design of the theme. The size is a step of the type scale, so it stays fluid.') }}
-            <p class="m-0 text-[11px] leading-4 text-slate-500">Size is a step of the scale (5 largest, 0 the text), so it stays fluid and follows Text size and Heading scale. Headings 4 to 6 follow the scale. The heading colour is set in <button type="button" class="bp-goto" data-goto-tab="branding">Branding, under Colour</button>.</p>
+            {{ t.matrix([['h1', 'H1'], ['h2', 'H2'], ['h3', 'H3'], ['h4', 'H4'], ['h5', 'H5'], ['h6', 'H6']]|filter(row => d[row[0] ~ '_step'] is defined), columns, d, vd, pd, 'Overrides for headings 1 to 6. Theme keeps the design of the theme. The size is a step of the type scale, so it stays fluid.') }}
+            <p class="m-0 text-[11px] leading-4 text-slate-500">Size is a step of the scale (5 largest, 0 the text), so it stays fluid and follows Text size and Heading scale. H1 also styles the hero and page titles, H2 the section titles. A case here wins over Case above. The heading colour is set in <button type="button" class="bp-goto" data-goto-tab="branding">Branding, under Colour</button>.</p>
           {% endif %}
           <button type="button" class="bp-reset" data-bp-reset="headings">Reset headings</button>
         </div>
       </details>
 
-      {% if d.lead_step is defined or d.small_step is defined %}
+      {% if element_rows is not empty %}
         <details class="bp-card" open>
-          <summary><span>Text elements</span><small>Lead paragraph, small text</small></summary>
+          <summary><span>Text elements</span><small>Lead, small, eyebrow, meta, quote, caption, cards</small></summary>
           <div class="bp-body">
-            {{ t.matrix([['lead', 'Lead'], ['small', 'Small']], columns, d, vd, pd, 'Overrides for the lead paragraph and small text. Theme keeps the design of the theme.') }}
-            <p class="m-0 text-[11px] leading-4 text-slate-500">The lead is the larger paragraph under a title; small text is used for captions and notes.</p>
+            {{ t.matrix(element_rows, columns, d, vd, pd, 'Overrides for the lead paragraph, small text, the eyebrow, meta, quotes, captions and the titles of cards. Theme keeps the design of the theme.') }}
+            <p class="m-0 text-[11px] leading-4 text-slate-500"><strong class="font-medium text-slate-600">Lead</strong> is the larger paragraph under a title; <strong class="font-medium text-slate-600">eyebrow</strong> the small label above a section heading; <strong class="font-medium text-slate-600">meta</strong> the dates, bylines and categories; <strong class="font-medium text-slate-600">quote</strong> the Quote block and quotes in text; <strong class="font-medium text-slate-600">caption</strong> the text under pictures and videos (it wins over Small there); <strong class="font-medium text-slate-600">card title</strong> the titles in lists of entries, not their large lead story.</p>
             <button type="button" class="bp-reset" data-bp-reset="elements">Reset text elements</button>
           </div>
         </details>

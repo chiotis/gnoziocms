@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.227 — 2026-11-06 — Every heading level and more text elements
+- **Theme > Typography > Headings** now sets **H1 to H6**, each with a size (a step of the scale), weight, line height, letter spacing and a new **Case** (as typed, capitals, first letters, small capitals). A case set for one level wins over the heading case above it.
+- **Text elements** adds the **eyebrow**, **meta** (dates, bylines, categories), **quotes** (the Quote block and quotes in text), **captions** (under pictures and videos; they win over Small text) and **card titles** (lists of entries, not their large lead story), next to Lead and Small, with the same five choices.
+- **Style samples** in the preview now shows every element of the tab, the menus, a dropdown, breadcrumbs and the footer, so each choice can be seen before saving.
+- The rows of the tab have even columns, so every choice reads in full.
+- As before, "Theme" adds nothing, so a site looks the same until a value is chosen.
+- Tests: `tests/unit/branding-extras.php`, `tests/http/branding_test.py`.
+
 ## 0.1.226 — 2026-11-06 — Menu and navigation text sizes
 - New card **Theme > Typography > Navigation**: the **header menu**, **dropdowns**, **mobile menu**, **top bar**, **footer menu**, **footer headings**, **breadcrumbs** and the **site name** each get a text size in pixels, a weight, a case (as typed, capitals, first letters) and a letter spacing. An empty size or "Theme" keeps the theme's own, so nothing changes until a value is chosen.
 - The dropdown follows the header menu unless it is set. The full-screen mobile menu keeps its large links and takes the size for its inner links.

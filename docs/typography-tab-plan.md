@@ -1,6 +1,6 @@
 # Theme > Typography: plan
 
-Status: phase 1 (the tab, with the settings that existed) shipped in 0.1.225 and phase 2 (Navigation) in 0.1.226, both on 2026-11-06; phases 3 to 5 are proposals. Navigation sizes are in pixels, as section 3 proposes; the case choices are As typed, Capitals and First letters, and the spacing adds Wider (0.08em) for capitals.
+Status: phase 1 (the tab, with the settings that existed) shipped in 0.1.225 phase 2 (Navigation) in 0.1.226 and phase 3 (H4 to H6, a Case column, eyebrow, meta, quote, caption and card title, and the extended Style samples) in 0.1.227, all on 2026-11-06; phases 4 and 5 are proposals. Balanced headings (2.3) moved to phase 4. Navigation sizes are in pixels, as section 3 proposes; the case choices are As typed, Capitals and First letters, and the spacing adds Wider (0.08em) for capitals.
 
 ## Why
 

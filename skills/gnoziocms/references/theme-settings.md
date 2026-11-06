@@ -1,4 +1,4 @@
-# Theme settings of this installation (GnozioCMS 0.1.226)
+# Theme settings of this installation (GnozioCMS 0.1.227)
 
 Set with `python3 scripts/site_settings.py set theme section.field=value`. A text marked *translatable* takes a plain text or a map `{default: …, en: …}`.
 
@@ -172,6 +172,51 @@ Set with `python3 scripts/site_settings.py set theme section.field=value`. A tex
 | `small_weight` | select; one of `auto`, `300`, `400`, `500`, `600`, `700`, `800` | auto | Small text weight |
 | `small_leading` | select; one of `auto`, `tight`, `normal`, `relaxed`, `loose` | auto | Small text line height |
 | `small_tracking` | select; one of `auto`, `tighter`, `tight`, `normal`, `wide` | auto | Small text letter spacing |
+| `h4_step` | select; one of `auto`, `5`, `4`, `3`, `2`, `1`, `0`, `-1`, `-2` | auto | H4 size |
+| `h4_weight` | select; one of `auto`, `300`, `400`, `500`, `600`, `700`, `800` | auto | H4 weight |
+| `h4_leading` | select; one of `auto`, `tight`, `normal`, `relaxed`, `loose` | auto | H4 line height |
+| `h4_tracking` | select; one of `auto`, `tighter`, `tight`, `normal`, `wide` | auto | H4 letter spacing |
+| `h5_step` | select; one of `auto`, `5`, `4`, `3`, `2`, `1`, `0`, `-1`, `-2` | auto | H5 size |
+| `h5_weight` | select; one of `auto`, `300`, `400`, `500`, `600`, `700`, `800` | auto | H5 weight |
+| `h5_leading` | select; one of `auto`, `tight`, `normal`, `relaxed`, `loose` | auto | H5 line height |
+| `h5_tracking` | select; one of `auto`, `tighter`, `tight`, `normal`, `wide` | auto | H5 letter spacing |
+| `h6_step` | select; one of `auto`, `5`, `4`, `3`, `2`, `1`, `0`, `-1`, `-2` | auto | H6 size |
+| `h6_weight` | select; one of `auto`, `300`, `400`, `500`, `600`, `700`, `800` | auto | H6 weight |
+| `h6_leading` | select; one of `auto`, `tight`, `normal`, `relaxed`, `loose` | auto | H6 line height |
+| `h6_tracking` | select; one of `auto`, `tighter`, `tight`, `normal`, `wide` | auto | H6 letter spacing |
+| `eyebrow_step` | select; one of `auto`, `5`, `4`, `3`, `2`, `1`, `0`, `-1`, `-2` | auto | Eyebrow size |
+| `eyebrow_weight` | select; one of `auto`, `300`, `400`, `500`, `600`, `700`, `800` | auto | Eyebrow weight |
+| `eyebrow_leading` | select; one of `auto`, `tight`, `normal`, `relaxed`, `loose` | auto | Eyebrow line height |
+| `eyebrow_tracking` | select; one of `auto`, `tighter`, `tight`, `normal`, `wide` | auto | Eyebrow letter spacing |
+| `meta_step` | select; one of `auto`, `5`, `4`, `3`, `2`, `1`, `0`, `-1`, `-2` | auto | Meta size |
+| `meta_weight` | select; one of `auto`, `300`, `400`, `500`, `600`, `700`, `800` | auto | Meta weight |
+| `meta_leading` | select; one of `auto`, `tight`, `normal`, `relaxed`, `loose` | auto | Meta line height |
+| `meta_tracking` | select; one of `auto`, `tighter`, `tight`, `normal`, `wide` | auto | Meta letter spacing |
+| `quote_step` | select; one of `auto`, `5`, `4`, `3`, `2`, `1`, `0`, `-1`, `-2` | auto | Quote size |
+| `quote_weight` | select; one of `auto`, `300`, `400`, `500`, `600`, `700`, `800` | auto | Quote weight |
+| `quote_leading` | select; one of `auto`, `tight`, `normal`, `relaxed`, `loose` | auto | Quote line height |
+| `quote_tracking` | select; one of `auto`, `tighter`, `tight`, `normal`, `wide` | auto | Quote letter spacing |
+| `caption_step` | select; one of `auto`, `5`, `4`, `3`, `2`, `1`, `0`, `-1`, `-2` | auto | Caption size |
+| `caption_weight` | select; one of `auto`, `300`, `400`, `500`, `600`, `700`, `800` | auto | Caption weight |
+| `caption_leading` | select; one of `auto`, `tight`, `normal`, `relaxed`, `loose` | auto | Caption line height |
+| `caption_tracking` | select; one of `auto`, `tighter`, `tight`, `normal`, `wide` | auto | Caption letter spacing |
+| `card_title_step` | select; one of `auto`, `5`, `4`, `3`, `2`, `1`, `0`, `-1`, `-2` | auto | Card title size |
+| `card_title_weight` | select; one of `auto`, `300`, `400`, `500`, `600`, `700`, `800` | auto | Card title weight |
+| `card_title_leading` | select; one of `auto`, `tight`, `normal`, `relaxed`, `loose` | auto | Card title line height |
+| `card_title_tracking` | select; one of `auto`, `tighter`, `tight`, `normal`, `wide` | auto | Card title letter spacing |
+| `h1_case` | select; one of `auto`, `none`, `uppercase`, `capitalize`, `small_caps` | auto | H1 case |
+| `h2_case` | select; one of `auto`, `none`, `uppercase`, `capitalize`, `small_caps` | auto | H2 case |
+| `h3_case` | select; one of `auto`, `none`, `uppercase`, `capitalize`, `small_caps` | auto | H3 case |
+| `h4_case` | select; one of `auto`, `none`, `uppercase`, `capitalize`, `small_caps` | auto | H4 case |
+| `h5_case` | select; one of `auto`, `none`, `uppercase`, `capitalize`, `small_caps` | auto | H5 case |
+| `h6_case` | select; one of `auto`, `none`, `uppercase`, `capitalize`, `small_caps` | auto | H6 case |
+| `lead_case` | select; one of `auto`, `none`, `uppercase`, `capitalize`, `small_caps` | auto | Lead case |
+| `small_case` | select; one of `auto`, `none`, `uppercase`, `capitalize`, `small_caps` | auto | Small case |
+| `eyebrow_case` | select; one of `auto`, `none`, `uppercase`, `capitalize`, `small_caps` | auto | Eyebrow case |
+| `meta_case` | select; one of `auto`, `none`, `uppercase`, `capitalize`, `small_caps` | auto | Meta case |
+| `quote_case` | select; one of `auto`, `none`, `uppercase`, `capitalize`, `small_caps` | auto | Quote case |
+| `caption_case` | select; one of `auto`, `none`, `uppercase`, `capitalize`, `small_caps` | auto | Caption case |
+| `card_title_case` | select; one of `auto`, `none`, `uppercase`, `capitalize`, `small_caps` | auto | Card title case |
 | `body_weight` | select; one of `auto`, `300`, `400`, `500` | auto | Text weight |
 | `paragraph_space` | select; one of `auto`, `tight`, `normal`, `relaxed`, `loose` | auto | Space between paragraphs |
 | `nav_size` | number; 10 to 32 | (empty) | Header menu text size |

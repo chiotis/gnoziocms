@@ -65,6 +65,7 @@ check('the heading colour stays in Branding, and each tab points at the other', 
 check('Typography has its own live preview, its own reset metadata and resets for each card', 'data-bp-frame' in typo and 'theme?preview=branding' in typo and 'theme_settings[design][base_size]' in unescape(re.search(r'data-bp-defaults="([^"]+)"', typo).group(1)) and all(('data-bp-reset="%s"' % k) in typo for k in ('fonts', 'text', 'headings', 'elements')))
 check('the Navigation card sets size, weight, case and spacing for menus, top bar, footer, breadcrumbs and the site name', all(('name="theme_settings[design][%s_%s]"' % (r, c)) in typo for r in ('nav', 'dropdown', 'drawer', 'topbar', 'footer_nav', 'footer_title', 'crumbs') for c in ('size', 'weight', 'case', 'tracking')) and all(('name="theme_settings[design][name_%s]"' % c) in typo for c in ('weight', 'case', 'tracking')) and 'data-bp-reset="navigation"' in typo)
 check('the size of the site name moved there from Identity', 'name="theme_settings[brand][name_size]"' in typo and 'name="theme_settings[brand][name_size]"' not in brand and html.count('name="theme_settings[brand][name_size]"') == 1)
+check('Headings has H1 to H6 and Text elements the eyebrow, meta, quote, caption and card title, each with a Case', all(('name="theme_settings[design][%s_%s]"' % (r, c)) in typo for r in ('h1', 'h4', 'h6', 'lead', 'eyebrow', 'meta', 'quote', 'caption', 'card_title') for c in ('step', 'weight', 'leading', 'tracking', 'case')))
 check('a field appears once on the screen', html.count('name="theme_settings[design][heading_font]"') == 1 and html.count('name="theme_settings[design][h1_step]"') == 1)
 for key in ('heading_font', 'body_font', 'font_file', 'base_size', 'line_height', 'scale', 'heading_weight', 'heading_tracking', 'heading_leading', 'heading_case', 'heading_color',
             'container', 'reading_width', 'gutter', 'section_space', 'header_height', 'spacing', 'radius', 'button_radius', 'shadows', 'button_height', 'button_pad', 'button_size', 'button_weight', 'button_case'):
@@ -108,6 +109,7 @@ before_samples = stored()
 st, hdr, samples = root.get('/admin/theme?preview=styles')
 check('style samples use the real theme, typography, buttons, card and fields', st == 200 and '<body class="theme-body">' in samples and 'site.css' in samples and all(tag in samples for tag in ('<h1>', '<h6>', 'class="prose"', 'class="btn btn-primary"', 'class="content-item"', 'class="form-grid"', 'tone-accent', 'tone-contrast')))
 check('samples have no submit form, keep admin frame protection, cannot be indexed or cached, and store nothing', '<form' not in samples and hdr.get('X-Frame-Options') == 'DENY' and 'no-store' in (hdr.get('Cache-Control') or '') and 'noindex' in (hdr.get('X-Robots-Tag') or '') and stored() == before_samples)
+check('the samples show every element of the Typography tab: H1 to H6, eyebrow, lead, meta, quote, caption, a card, the menus, breadcrumbs and the footer', all(x in samples for x in ('<h4>', '<h6>', 'class="eyebrow"', 'class="lead"', 'class="content-meta"', '<blockquote>', '<figcaption>', 'class="content-item-title"', 'class="nav-link"', 'nav-list-2', 'class="crumbs"', 'class="footer-title"', 'class="footer-link"')))
 check('style samples require theme access', ed.get('/admin/theme?preview=styles')[0] in (302, 403) and pub.get('/admin/theme?preview=styles')[0] in (302, 403))
 
 # ---- saving: colours
@@ -143,6 +145,12 @@ check('out of range numbers are held to the limits, text keeps the last value', 
 (res, hdr, _), _ = post_theme(d(heading_font='nonsense', scale='9', button_case='zzz', spacing='huge'))
 css = style(page())
 check('a word that is not on the list keeps the last choice', '--font-heading:Avenir,' in css and '--step-5:' in css and '--btn-case:uppercase;' in css and '--space-scale:1.2;' in css, css[:300])
+
+# ---- saving: more elements and a case, from the Typography tab
+(res, hdr, _), _ = post_theme(d(h5_step='1', eyebrow_case='none', card_title_case='small_caps'), tab='typography')
+css = style(page())
+check('H5, the eyebrow and the card titles take their rules on the site', '[data-mode] h5{font-size:var(--step-1)}' in css and '[data-mode] .eyebrow{text-transform:none;font-variant-caps:normal}' in css and '.latest-item:not(.is-lead) .latest-title' in css and 'font-variant-caps:all-small-caps' in css, css[-500:])
+post_theme(d(h5_step='auto', eyebrow_case='auto', card_title_case='auto'), tab='typography')
 
 # ---- saving: navigation text, saved from the Typography tab
 (res, hdr, _), _ = post_theme(d(nav_size='17', nav_weight='700', nav_case='uppercase', footer_title_case='none', crumbs_size='13'), tab='typography')

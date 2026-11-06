@@ -1915,9 +1915,12 @@ html.dark .pl-badge[data-level="fail"] { background: #3a0d0a; color: #fda29b; bo
 .bp-sub > summary { cursor: pointer; color: #0f172a; font-size: .75rem; font-weight: 600; }
 .bp-sub > summary small { color: #5f6f85; font-weight: 400; }
 .bp-sub > summary:focus-visible { outline: 2px solid #1d4ed8; outline-offset: 2px; border-radius: .25rem; }
-.bp-matrix { margin-top: .35rem; }
-.bp-matrix td { min-width: 3.75rem; }
-.bp-matrix .lc-select { width: 100%; padding-right: .25rem; }
+.bp-matrix { margin-top: .35rem; width: 100%; table-layout: fixed; }
+.bp-matrix thead th:first-child { width: 4.25rem; }
+.bp-matrix--nav thead th:first-child { width: 6.25rem; }
+.bp-matrix th[scope="row"] { overflow-wrap: anywhere; }
+.bp-matrix td { min-width: 0; }
+.bp-matrix .lc-select { width: 100%; padding-left: .3rem; padding-right: 0; font-size: .6875rem; }
 .bp-px { display: flex; align-items: center; gap: .2rem; color: #94a3b8; font-size: .6875rem; }
 .bp-px .lc-input { width: 2.9rem; min-width: 0; padding-inline: .3rem; }
 .bp-matrix td:has(> .bp-px) { min-width: 0; }

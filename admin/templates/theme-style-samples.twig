@@ -12,10 +12,19 @@
     .sample-grid { display: grid; gap: var(--space-xl); }
     .sample-group { min-width: 0; }
     .sample-label { margin: 0 0 var(--space-m); color: var(--color-muted); font: 600 .875rem/1.5 var(--font-system); }
+    .sample-group > .sample-label:not(:first-child) { margin-top: var(--space-l); }
     .sample-actions { display: flex; flex-wrap: wrap; gap: var(--space-s); align-items: center; }
     .sample-panel { padding: var(--space-l); border: 1px solid var(--color-border); border-radius: var(--radius-m); }
     .sample-swatches { display: grid; gap: var(--space-s); grid-template-columns: repeat(3, minmax(0, 1fr)); margin-block: var(--space-m); }
     .sample-swatch { min-height: 4rem; border: 1px solid var(--color-border); border-radius: var(--radius-s); }
+    .sample-elements { display: grid; gap: var(--space-s); }
+    .sample-elements > * { margin: 0; }
+    .sample-figure { margin: var(--space-m) 0 0; }
+    .sample-picture { display: block; height: 4rem; border-radius: var(--radius-s); background: var(--color-surface-2, var(--color-surface)); }
+    .sample-nav { display: grid; gap: var(--space-s); }
+    .sample-nav .nav-list-1 { flex-wrap: wrap; }
+    .sample-nav .sample-dropdown { position: static; display: block; max-width: 16rem; margin: 0; padding: .25rem; visibility: visible; opacity: 1; transform: none; border: 1px solid var(--color-border); border-radius: var(--radius-s); list-style: none; }
+    .sample-nav .footer-title { margin: var(--space-s) 0 0; }
     .sample-swatch:nth-child(1) { background: var(--color-bg); }
     .sample-swatch:nth-child(2) { background: var(--color-surface); }
     .sample-swatch:nth-child(3) { background: var(--accent); }
@@ -29,7 +38,7 @@
   <main>
     <div class="container sample-intro">
       <p class="eyebrow">Style samples</p>
-      <p class="lead">Headings, text and controls with your current branding choices.</p>
+      <p class="lead">Headings, text, navigation and controls with your current branding and typography choices.</p>
     </div>
     <section class="block tone-default space-compact" aria-label="Typography and controls">
       <div class="container sample-grid">
@@ -49,6 +58,16 @@
             <p lang="el">Καθαρή τυπογραφία, σωστές αποστάσεις και χρώματα που διαβάζονται εύκολα. Ελληνικοί χαρακτήρες: ά έ ή ί ό ύ ώ.</p>
             <p><small>Small text · Dates, captions and supporting information.</small></p>
           </div>
+          <p class="sample-label">Text elements</p>
+          <div class="sample-elements">
+            <p class="eyebrow">Eyebrow above a section</p>
+            <p class="lead">A lead paragraph that opens a page, larger than the text.</p>
+            <p class="content-meta"><span>Meta</span><span>6 November 2026</span><span>5 min read</span></p>
+            <div class="prose-block">
+              <blockquote><p>A quote in the text, with a voice of its own.</p></blockquote>
+              <figure class="sample-figure"><span class="sample-picture" aria-hidden="true"></span><figcaption>A caption under a picture.</figcaption></figure>
+            </div>
+          </div>
         </div>
         <div class="sample-group section-stack">
           <div id="sample-buttons">
@@ -63,11 +82,22 @@
             <p class="sample-label">Card and surfaces</p>
             <article class="content-item">
               <div class="content-item-body">
+                <p class="content-meta"><span>Meta of a card</span></p>
                 <h3 class="content-item-title">A card title</h3>
                 <p>Corners, borders, shadows and text share the site's theme.</p>
                 <div class="sample-swatches" aria-label="Background, surface and accent colours"><span class="sample-swatch"></span><span class="sample-swatch"></span><span class="sample-swatch"></span></div>
               </div>
             </article>
+          </div>
+          <div>
+            <p class="sample-label">Navigation</p>
+            <div class="sample-panel sample-nav">
+              <ul class="nav-list nav-list-1" aria-label="Header menu sample"><li class="nav-item is-active"><a class="nav-link" href="about:srcdoc#sample-nav">Header menu</a></li><li class="nav-item"><a class="nav-link" href="about:srcdoc#sample-nav">About</a></li><li class="nav-item"><a class="nav-link" href="about:srcdoc#sample-nav">Contact</a></li></ul>
+              <ul class="nav-list nav-list-2 sample-dropdown" aria-label="Dropdown sample"><li class="nav-item"><a class="nav-link" href="about:srcdoc#sample-nav">A dropdown link</a></li></ul>
+              <nav class="crumbs" aria-label="Breadcrumb sample"><ol><li><a href="about:srcdoc#sample-nav">Home</a></li><li><a href="about:srcdoc#sample-nav">Breadcrumbs</a></li><li><span aria-current="page">This page</span></li></ol></nav>
+              <p class="footer-title">Footer heading</p>
+              <ul class="footer-list"><li><a class="footer-link" href="about:srcdoc#sample-nav">A footer link</a></li><li><a class="footer-link" href="about:srcdoc#sample-nav">Another footer link</a></li></ul>
+            </div>
           </div>
           <div id="sample-fields" class="sample-panel">
             <p class="sample-label">Form fields — sample only</p>

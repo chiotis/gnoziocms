@@ -37,7 +37,7 @@ final class BrandingTransfer
      */
     public const SECTIONS = [
         'colour' => ['label' => 'Colour', 'patterns' => ['/^(light|dark)_/', '/^ink$/', '/^heading_color/', '/^secondary/', '/^palette/', '/^site_palette/', '/^duo_/']],
-        'type' => ['label' => 'Typography', 'patterns' => ['/^(heading_font|body_font|font_file|fonts?|font_)/', '/^(base_size|line_height|scale)$/', '/^heading_(weight|tracking|leading|case)$/', '/^(h1|h2|h3|lead|small)_/', '/^(body_weight|paragraph_space)$/', '/^(nav|dropdown|drawer|topbar|footer_nav|footer_title|crumbs|name)_(size|weight|case|tracking)$/']],
+        'type' => ['label' => 'Typography', 'patterns' => ['/^(heading_font|body_font|font_file|fonts?|font_)/', '/^(base_size|line_height|scale)$/', '/^heading_(weight|tracking|leading|case)$/', '/^(h1|h2|h3|h4|h5|h6|lead|small|eyebrow|meta|quote|caption|card_title)_/', '/^(body_weight|paragraph_space)$/', '/^(nav|dropdown|drawer|topbar|footer_nav|footer_title|crumbs|name)_(size|weight|case|tracking)$/']],
         'layout' => ['label' => 'Layout and spacing', 'patterns' => ['/^(container|reading_width|gutter|section_space|header_height|spacing)$/', '/^mobile_/']],
         'shape' => ['label' => 'Shape and depth', 'patterns' => ['/^radius(_|$)/', '/^(border_width|shadows)$/']],
         'forms' => ['label' => 'Forms', 'patterns' => ['/^(input_|label_)/', '/^(input_ring|error_style)$/']],

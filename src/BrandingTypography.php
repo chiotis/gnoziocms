@@ -5,11 +5,12 @@ declare(strict_types=1);
 namespace GnozioCMS;
 
 /**
- * The type overrides of Theme > Typography: a step of the type scale, a weight, a line height and a letter spacing for H1, H2, H3,
- * the lead paragraph and small text, plus the weight of the text and the space between paragraphs.
+ * The type overrides of Theme > Typography: a step of the type scale, a weight, a line height, a letter spacing and a case for H1 to
+ * H6, the lead paragraph, small text, the eyebrow, meta, quotes, captions and card titles, plus the weight of the text and the space
+ * between paragraphs.
  *
  * A size is always a STEP of the theme's scale (`var(--step-5)`), never pixels, so the fluid sizing and the Text size and Heading
- * scale choices still apply. H4 to H6 have no override: they follow the scale. A choice that is empty or "auto" adds nothing, so a
+ * scale choices still apply. A choice that is empty or "auto" adds nothing, so a
  * site that sets none of them gets no CSS from here.
  */
 final class BrandingTypography
@@ -21,12 +22,23 @@ final class BrandingTypography
         'h3' => ['h3'],
         'lead' => ['.lead', '.single-hero-subtitle', '.prose.is-lead', '.book-lead', '.place-lead'],
         'small' => ['small', 'figcaption'],
+        'h4' => ['h4'],
+        'h5' => ['h5'],
+        'h6' => ['h6'],
+        'eyebrow' => ['.eyebrow'],
+        'meta' => ['.content-meta', '.single-hero-meta', '.latest-meta'],
+        'quote' => ['.quote-text p', '.prose blockquote', '.prose-block blockquote'],
+        // After small, so a caption size wins over small text where both are set.
+        'caption' => ['figcaption', '.image-block-caption', '.video-caption', '.ba-caption'],
+        // The titles of cards in lists, not the large lead story of Featured and Magazine.
+        'card_title' => ['.content-item-title', '.latest-item:not(.is-lead) .latest-title', '.place-card-title'],
     ];
 
     public const STEPS = ['5', '4', '3', '2', '1', '0', '-1', '-2'];
     private const WEIGHTS = ['300', '400', '500', '600', '700', '800'];
     private const LEADING = ['tight' => '1.05', 'normal' => '1.2', 'relaxed' => '1.35', 'loose' => '1.6'];
     private const TRACKING = ['tighter' => '-0.045em', 'tight' => '-0.028em', 'normal' => '0', 'wide' => '0.025em'];
+    private const CASE = ['none' => 'text-transform:none;font-variant-caps:normal', 'uppercase' => 'text-transform:uppercase', 'capitalize' => 'text-transform:capitalize', 'small_caps' => 'text-transform:none;font-variant-caps:all-small-caps'];
     private const PARAGRAPH = ['tight' => '0.6em', 'normal' => '1em', 'relaxed' => '1.4em', 'loose' => '1.8em'];
 
     private const ROOT = ':root[data-theme][data-mode]';
@@ -75,6 +87,10 @@ final class BrandingTypography
             $tracking = (string)($design[$key . '_tracking'] ?? '');
             if (isset(self::TRACKING[$tracking])) {
                 $declarations[] = 'letter-spacing:' . self::TRACKING[$tracking];
+            }
+            $case = (string)($design[$key . '_case'] ?? '');
+            if (isset(self::CASE[$case])) {
+                $declarations[] = self::CASE[$case];
             }
             if ($declarations !== []) {
                 $css .= implode(',', array_map(static fn(string $selector): string => self::ROOT . ' ' . $selector, $selectors)) . '{' . implode(';', $declarations) . '}';

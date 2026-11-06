@@ -1116,6 +1116,52 @@ settings:
           tight: Tight
           normal: Normal
           wide: Wide
+      # H4 to H6 and more text elements (Theme > Typography > Headings and Text elements); a Case for every row. BrandingTypography.php.
+      h4_step: {type: select, label: H4 size, default: auto, options: {auto: Theme, '5': Step 5 (largest), '4': Step 4, '3': Step 3, '2': Step 2, '1': Step 1, '0': Step 0 (body text), '-1': Step -1, '-2': Step -2}}
+      h4_weight: {type: select, label: H4 weight, default: auto, options: {auto: Theme, '300': Light, '400': Regular, '500': Medium, '600': Semibold, '700': Bold, '800': Extra bold}}
+      h4_leading: {type: select, label: H4 line height, default: auto, options: {auto: Theme, tight: Tight, normal: Normal, relaxed: Relaxed, loose: Loose}}
+      h4_tracking: {type: select, label: H4 letter spacing, default: auto, options: {auto: Theme, tighter: Tighter, tight: Tight, normal: Normal, wide: Wide}}
+      h5_step: {type: select, label: H5 size, default: auto, options: {auto: Theme, '5': Step 5 (largest), '4': Step 4, '3': Step 3, '2': Step 2, '1': Step 1, '0': Step 0 (body text), '-1': Step -1, '-2': Step -2}}
+      h5_weight: {type: select, label: H5 weight, default: auto, options: {auto: Theme, '300': Light, '400': Regular, '500': Medium, '600': Semibold, '700': Bold, '800': Extra bold}}
+      h5_leading: {type: select, label: H5 line height, default: auto, options: {auto: Theme, tight: Tight, normal: Normal, relaxed: Relaxed, loose: Loose}}
+      h5_tracking: {type: select, label: H5 letter spacing, default: auto, options: {auto: Theme, tighter: Tighter, tight: Tight, normal: Normal, wide: Wide}}
+      h6_step: {type: select, label: H6 size, default: auto, options: {auto: Theme, '5': Step 5 (largest), '4': Step 4, '3': Step 3, '2': Step 2, '1': Step 1, '0': Step 0 (body text), '-1': Step -1, '-2': Step -2}}
+      h6_weight: {type: select, label: H6 weight, default: auto, options: {auto: Theme, '300': Light, '400': Regular, '500': Medium, '600': Semibold, '700': Bold, '800': Extra bold}}
+      h6_leading: {type: select, label: H6 line height, default: auto, options: {auto: Theme, tight: Tight, normal: Normal, relaxed: Relaxed, loose: Loose}}
+      h6_tracking: {type: select, label: H6 letter spacing, default: auto, options: {auto: Theme, tighter: Tighter, tight: Tight, normal: Normal, wide: Wide}}
+      eyebrow_step: {type: select, label: Eyebrow size, default: auto, options: {auto: Theme, '5': Step 5 (largest), '4': Step 4, '3': Step 3, '2': Step 2, '1': Step 1, '0': Step 0 (body text), '-1': Step -1, '-2': Step -2}}
+      eyebrow_weight: {type: select, label: Eyebrow weight, default: auto, options: {auto: Theme, '300': Light, '400': Regular, '500': Medium, '600': Semibold, '700': Bold, '800': Extra bold}}
+      eyebrow_leading: {type: select, label: Eyebrow line height, default: auto, options: {auto: Theme, tight: Tight, normal: Normal, relaxed: Relaxed, loose: Loose}}
+      eyebrow_tracking: {type: select, label: Eyebrow letter spacing, default: auto, options: {auto: Theme, tighter: Tighter, tight: Tight, normal: Normal, wide: Wide}}
+      meta_step: {type: select, label: Meta size, default: auto, options: {auto: Theme, '5': Step 5 (largest), '4': Step 4, '3': Step 3, '2': Step 2, '1': Step 1, '0': Step 0 (body text), '-1': Step -1, '-2': Step -2}}
+      meta_weight: {type: select, label: Meta weight, default: auto, options: {auto: Theme, '300': Light, '400': Regular, '500': Medium, '600': Semibold, '700': Bold, '800': Extra bold}}
+      meta_leading: {type: select, label: Meta line height, default: auto, options: {auto: Theme, tight: Tight, normal: Normal, relaxed: Relaxed, loose: Loose}}
+      meta_tracking: {type: select, label: Meta letter spacing, default: auto, options: {auto: Theme, tighter: Tighter, tight: Tight, normal: Normal, wide: Wide}}
+      quote_step: {type: select, label: Quote size, default: auto, options: {auto: Theme, '5': Step 5 (largest), '4': Step 4, '3': Step 3, '2': Step 2, '1': Step 1, '0': Step 0 (body text), '-1': Step -1, '-2': Step -2}}
+      quote_weight: {type: select, label: Quote weight, default: auto, options: {auto: Theme, '300': Light, '400': Regular, '500': Medium, '600': Semibold, '700': Bold, '800': Extra bold}}
+      quote_leading: {type: select, label: Quote line height, default: auto, options: {auto: Theme, tight: Tight, normal: Normal, relaxed: Relaxed, loose: Loose}}
+      quote_tracking: {type: select, label: Quote letter spacing, default: auto, options: {auto: Theme, tighter: Tighter, tight: Tight, normal: Normal, wide: Wide}}
+      caption_step: {type: select, label: Caption size, default: auto, options: {auto: Theme, '5': Step 5 (largest), '4': Step 4, '3': Step 3, '2': Step 2, '1': Step 1, '0': Step 0 (body text), '-1': Step -1, '-2': Step -2}}
+      caption_weight: {type: select, label: Caption weight, default: auto, options: {auto: Theme, '300': Light, '400': Regular, '500': Medium, '600': Semibold, '700': Bold, '800': Extra bold}}
+      caption_leading: {type: select, label: Caption line height, default: auto, options: {auto: Theme, tight: Tight, normal: Normal, relaxed: Relaxed, loose: Loose}}
+      caption_tracking: {type: select, label: Caption letter spacing, default: auto, options: {auto: Theme, tighter: Tighter, tight: Tight, normal: Normal, wide: Wide}}
+      card_title_step: {type: select, label: Card title size, default: auto, options: {auto: Theme, '5': Step 5 (largest), '4': Step 4, '3': Step 3, '2': Step 2, '1': Step 1, '0': Step 0 (body text), '-1': Step -1, '-2': Step -2}}
+      card_title_weight: {type: select, label: Card title weight, default: auto, options: {auto: Theme, '300': Light, '400': Regular, '500': Medium, '600': Semibold, '700': Bold, '800': Extra bold}}
+      card_title_leading: {type: select, label: Card title line height, default: auto, options: {auto: Theme, tight: Tight, normal: Normal, relaxed: Relaxed, loose: Loose}}
+      card_title_tracking: {type: select, label: Card title letter spacing, default: auto, options: {auto: Theme, tighter: Tighter, tight: Tight, normal: Normal, wide: Wide}}
+      h1_case: {type: select, label: H1 case, default: auto, options: {auto: Theme, none: As typed, uppercase: Capitals, capitalize: First letters, small_caps: Small capitals}}
+      h2_case: {type: select, label: H2 case, default: auto, options: {auto: Theme, none: As typed, uppercase: Capitals, capitalize: First letters, small_caps: Small capitals}}
+      h3_case: {type: select, label: H3 case, default: auto, options: {auto: Theme, none: As typed, uppercase: Capitals, capitalize: First letters, small_caps: Small capitals}}
+      h4_case: {type: select, label: H4 case, default: auto, options: {auto: Theme, none: As typed, uppercase: Capitals, capitalize: First letters, small_caps: Small capitals}}
+      h5_case: {type: select, label: H5 case, default: auto, options: {auto: Theme, none: As typed, uppercase: Capitals, capitalize: First letters, small_caps: Small capitals}}
+      h6_case: {type: select, label: H6 case, default: auto, options: {auto: Theme, none: As typed, uppercase: Capitals, capitalize: First letters, small_caps: Small capitals}}
+      lead_case: {type: select, label: Lead case, default: auto, options: {auto: Theme, none: As typed, uppercase: Capitals, capitalize: First letters, small_caps: Small capitals}}
+      small_case: {type: select, label: Small case, default: auto, options: {auto: Theme, none: As typed, uppercase: Capitals, capitalize: First letters, small_caps: Small capitals}}
+      eyebrow_case: {type: select, label: Eyebrow case, default: auto, options: {auto: Theme, none: As typed, uppercase: Capitals, capitalize: First letters, small_caps: Small capitals}}
+      meta_case: {type: select, label: Meta case, default: auto, options: {auto: Theme, none: As typed, uppercase: Capitals, capitalize: First letters, small_caps: Small capitals}}
+      quote_case: {type: select, label: Quote case, default: auto, options: {auto: Theme, none: As typed, uppercase: Capitals, capitalize: First letters, small_caps: Small capitals}}
+      caption_case: {type: select, label: Caption case, default: auto, options: {auto: Theme, none: As typed, uppercase: Capitals, capitalize: First letters, small_caps: Small capitals}}
+      card_title_case: {type: select, label: Card title case, default: auto, options: {auto: Theme, none: As typed, uppercase: Capitals, capitalize: First letters, small_caps: Small capitals}}
       body_weight:
         type: select
         label: Text weight
