@@ -51,6 +51,7 @@ final class PermissionService
             'updates.manage',
             'omni.manage',
             'mcp.manage',
+            'ai.manage',
         ],
         'admin' => [
             'admin.access',
@@ -74,6 +75,7 @@ final class PermissionService
             'exports.manage',
             'backups.manage',
             'updates.manage',
+            'ai.manage',
         ],
         // Writes and publishes content and manages media and taxonomies. No forms (their submissions hold
         // visitors' personal data), menus, settings, users, logs, backups, updates, or import/export, and no
@@ -230,6 +232,7 @@ final class PermissionService
             'users.manage' => $c('System', 'Users', 'Creates users and sets their roles. Super admin only.', 'critical', false),
             'roles.manage' => $c('System', 'Roles and permissions', 'Changes what each role can do. Super admin only.', 'critical', false),
             'limits.manage' => $c('System', 'Site limits', 'Sets how much storage the site may use. Super admin only.', 'critical', false),
+            'ai.manage' => $c('Site', 'AI publishing', 'Sets the instructions for pictures (and later posts) made by AI, makes test pictures, pauses and resumes, and sees what AI costs. The provider key and prices also need Settings.', 'sensitive'),
             'mcp.manage' => $c('System', 'MCP (AI assistants)', 'Lets AI assistants such as Claude or ChatGPT read and write content as an account of the site, and removes those connections. Super admin only.', 'critical', false),
             'omni.manage' => $c('System', 'Omni', 'Connects the site to an Omni, which then sees its health, storage, backups and updates. Super admin only.', 'critical', false),
         ];
@@ -340,6 +343,10 @@ final class PermissionService
         if ($action === 'media-picker') {
             return $this->can($user, 'content.manage') || $this->can($user, 'media.manage') || $this->can($user, 'settings.manage');
         }
+        // AI pictures: made from the editor (content and media) or as a test on Manage > AI publishing.
+        if ($action === 'ai-picture') {
+            return ($this->can($user, 'content.manage') && $this->can($user, 'media.manage')) || $this->can($user, 'ai.manage');
+        }
 
         $capability = match ($action) {
             'settings', 'theme', 'system', 'content-types' => 'settings.manage',
@@ -359,6 +366,7 @@ final class PermissionService
             'updates' => 'updates.manage',
             'omni' => 'omni.manage',
             'mcp', 'mcp-authorize' => 'mcp.manage',
+            'ai-publishing' => 'ai.manage',
             'users', 'users-delete' => 'users.manage',
             'roles' => 'roles.manage',
             'redirects' => 'redirects.manage',

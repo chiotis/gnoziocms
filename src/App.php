@@ -18,6 +18,7 @@ final class App
     /** How long a cache in front of the site may keep a public page (see sendPublicCacheHeaders). */
     private const PUBLIC_CACHE_SECONDS = 60;
     /** How long the work after a page may spend writing the picture sizes it named (Images::generatePending()). */
+    private const JOBS_AFTER_RESPONSE_SECONDS = 120;
     private const PICTURES_AFTER_RESPONSE_SECONDS = 20;
     /** The addresses of the MCP server and its OAuth (docs/mcp.md); answered only while MCP is on. */
     private const MCP_PATHS = ['mcp', '_mcp/token', '_mcp/register', '.well-known/oauth-protected-resource', '.well-known/oauth-protected-resource/mcp', '.well-known/oauth-authorization-server'];
@@ -102,6 +103,11 @@ final class App
     private ?McpStore $mcpStoreService = null;
     private ?McpOAuth $mcpOAuthService = null;
     private ?McpAdmin $mcpAdminService = null;
+    private ?JobRunner $jobRunnerService = null;
+    private ?AiSettings $aiSettingsService = null;
+    private ?AiUsage $aiUsageService = null;
+    private ?AiPictures $aiPicturesService = null;
+    private ?AiPublishingAdmin $aiPublishingAdminService = null;
     private ?DashboardData $dashboardDataService = null;
     private ?FormsAdmin $formsAdminService = null;
     private ?FormTranslationMigration $formTranslationMigrationService = null;
@@ -296,7 +302,8 @@ final class App
             $backupDue = $this->backupManager()->isRunDue();
             $releaseDue = $this->scheduleCheckIsDue();
             $picturesDue = $this->images->pendingCount() > 0;
-            if (!$backupDue && !$releaseDue && !$picturesDue && !$this->omniClient()->isDue()) {
+            $jobsDue = $this->jobRunner()->pending(null, true) > 0;
+            if (!$backupDue && !$releaseDue && !$picturesDue && !$jobsDue && !$this->omniClient()->isDue()) {
                 return;
             }
             $finish = CronStatus::finishFunction();
@@ -315,6 +322,10 @@ final class App
             // The picture sizes this page named before they were written, so the next visitor gets files the web server sends itself.
             if ($picturesDue) {
                 $this->images->generatePending(microtime(true) + self::PICTURES_AFTER_RESPONSE_SECONDS);
+            }
+            // Background jobs (AI pictures): a few minutes' worth, one at a time; the next visit or the cron job goes on.
+            if ($jobsDue) {
+                $this->jobRunner()->work(microtime(true) + self::JOBS_AFTER_RESPONSE_SECONDS);
             }
             // Before the backup, so what it keeps is the site as it is now.
             if ($releaseDue) {
@@ -365,6 +376,15 @@ final class App
             @set_time_limit($seconds + 30);
         }
         return $this->images->fill(microtime(true) + $seconds);
+    }
+
+    /** For the command line (src/cron-backup.php): works background jobs for `$seconds` at most. How many. */
+    public function runJobs(int $seconds): int
+    {
+        if (function_exists('set_time_limit')) {
+            @set_time_limit($seconds + 300);
+        }
+        return $this->jobRunner()->work(microtime(true) + $seconds);
     }
 
     public function releaseScheduled(bool $throttle = true): int
@@ -1200,6 +1220,8 @@ final class App
         'updates' => 'handleUpdates',
         'omni' => 'handleOmni',
         'mcp' => 'handleMcpAdmin',
+        'ai-publishing' => 'handleAiPublishing',
+        'ai-picture' => 'handleAiPicture',
         'mcp-authorize' => 'handleMcpAuthorize',
         'notification-read' => 'handleNotificationRead',
         'notifications-read-all' => 'handleNotificationsReadAll',
@@ -1237,7 +1259,7 @@ final class App
     ];
 
     /** Admin addresses whose POST only reads, previews or exports, so the cache in front of the site stays as it is. */
-    private const ADMIN_POSTS_THAT_CHANGE_NOTHING = ['search', 'markdown-visual', 'media-picker', 'block-presets', 'notification-read', 'notifications-read-all', 'forms-export', 'form-file', 'form-files-zip', 'export', 'omni', 'mcp', 'mcp-authorize', 'activity-logs', 'email-logs'];
+    private const ADMIN_POSTS_THAT_CHANGE_NOTHING = ['search', 'markdown-visual', 'media-picker', 'block-presets', 'notification-read', 'notifications-read-all', 'forms-export', 'form-file', 'form-files-zip', 'export', 'omni', 'mcp', 'mcp-authorize', 'activity-logs', 'email-logs', 'ai-publishing', 'ai-picture'];
 
     private function frontCache(): FrontCache
     {
@@ -2096,7 +2118,14 @@ final class App
             $this->redirect('/admin/edit?' . http_build_query($query));
             return;
         }
-        $this->render($type === 'forms' ? '@admin/form-edit.twig' : '@admin/edit.twig', $this->entryForm()->form($type, $slug, $lang, $_GET, $this->permissions->can($this->auth->user(), 'redirects.manage')) + ['user' => $this->auth->user()]);
+        $user = $this->auth->user();
+        // Generate (AI) next to the main image, for people who may edit content and keep pictures, once a key is set.
+        $aiPicture = null;
+        if ($type !== 'forms' && $this->permissions->can($user, 'content.manage') && $this->permissions->can($user, 'media.manage') && $this->aiSettings()->hasKey()) {
+            $aiPicture = ['variants' => (int)$this->aiSettings()->all()['variants'], 'blocked' => $this->aiPictures()->blocked(), 'entry' => $type . '/' . $slug . '/' . $lang,
+                'cost' => $slug !== '' ? $this->aiUsage()->forEntry($type . '/' . $slug . '/' . $lang) : null];
+        }
+        $this->render($type === 'forms' ? '@admin/form-edit.twig' : '@admin/edit.twig', $this->entryForm()->form($type, $slug, $lang, $_GET, $this->permissions->can($user, 'redirects.manage')) + ['user' => $user, 'ai_picture' => $aiPicture]);
     }
 
     /**
@@ -3433,6 +3462,140 @@ final class App
     private function mcpOAuth(): McpOAuth
     {
         return $this->mcpOAuthService ??= new McpOAuth($this->mcpStore(), rtrim($this->getBaseUrl(), '/'), fn(string $action, string $level, ?string $type, ?string $id, string $message, array $context) => $this->logActivity($action, $level, $type, $id, $message, $context));
+    }
+
+    /** Background jobs, with the handlers of every kind registered (docs/ai-publishing-plan.md, phase 0). */
+    private function jobRunner(): JobRunner
+    {
+        if ($this->jobRunnerService === null) {
+            $this->jobRunnerService = new JobRunner($this->systemDatabase);
+            $this->aiPictures()->register();
+        }
+        return $this->jobRunnerService;
+    }
+
+    private function aiSettings(): AiSettings
+    {
+        return $this->aiSettingsService ??= new AiSettings($this->systemMeta);
+    }
+
+    private function aiUsage(): AiUsage
+    {
+        return $this->aiUsageService ??= new AiUsage($this->systemDatabase);
+    }
+
+    private function aiPictures(): AiPictures
+    {
+        return $this->aiPicturesService ??= new AiPictures(
+            $this->jobRunner(),
+            $this->aiSettings(),
+            $this->aiUsage(),
+            $this->media,
+            $this->systemDatabase,
+            $this->basePath . '/storage',
+            $this->basePath . '/public',
+            static fn(string $key): OpenAiProvider => new OpenAiProvider($key)
+        );
+    }
+
+    private function aiPublishingAdmin(): AiPublishingAdmin
+    {
+        return $this->aiPublishingAdminService ??= new AiPublishingAdmin(
+            $this->aiSettings(),
+            $this->aiUsage(),
+            $this->aiPictures(),
+            $this->jobRunner(),
+            static fn(string $key): OpenAiProvider => new OpenAiProvider($key),
+            fn(string $action, string $level, ?string $type, ?string $id, string $message, array $context) => $this->logActivity($action, $level, $type, $id, $message, $context)
+        );
+    }
+
+    /** Manage > AI publishing (docs/ai-publishing-plan.md). */
+    private function handleAiPublishing(): void
+    {
+        $user = $this->auth->user();
+        $canSettings = $this->permissions->can($user, 'settings.manage');
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
+            $result = $this->aiPublishingAdmin()->act($_POST, $user, $canSettings);
+            $this->redirect('/admin/ai-publishing?' . http_build_query(array_filter(['tab' => $result['tab'], 'job' => $result['job'] ?: null,
+                'done' => $result['ok'] ? 'ok' : 'fail', 'msg' => $result['message']], static fn($v): bool => $v !== null)));
+            return;
+        }
+        if (($_GET['export'] ?? '') === 'csv') {
+            $month = preg_match('/^\d{4}-\d{2}$/', (string)($_GET['month'] ?? '')) === 1 ? (string)$_GET['month'] : date('Y-m');
+            header('Content-Type: text/csv; charset=utf-8');
+            header('Content-Disposition: attachment; filename="ai-usage-' . $month . '.csv"');
+            echo $this->aiPublishingAdmin()->usageCsv($month);
+            return;
+        }
+        $this->render('@admin/ai-publishing.twig', $this->aiPublishingAdmin()->screen($_GET, $canSettings) + [
+            'title' => 'AI publishing',
+            'types' => $this->content->getTypes(),
+            'user' => $user,
+            'admin_section' => 'ai-publishing',
+            'current_type' => 'pages',
+        ]);
+    }
+
+    /**
+     * The pictures' own addresses, for the editor's Generate panel and the test picture: POST start (subject, avoid, variants,
+     * entry) and pick (job, index) answer JSON; GET job=… answers its state, working it first when it is due (a site whose cron
+     * runs every few minutes still gives the person their pictures at once); GET job=…&file=N sends a variant.
+     */
+    private function handleAiPicture(): void
+    {
+        $user = $this->auth->user();
+        $pictures = $this->aiPictures();
+        $json = static function (array $data, int $status = 200): void {
+            http_response_code($status);
+            header('Content-Type: application/json; charset=utf-8');
+            header('Cache-Control: no-store');
+            echo json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        };
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
+            $action = (string)($_POST['action'] ?? '');
+            if ($action === 'start') {
+                $variants = (int)($_POST['variants'] ?? 0) ?: (int)$this->aiSettings()->all()['variants'];
+                $entry = preg_match('#^[a-z0-9_-]+/[a-z0-9_-]+/[a-z]{2,8}(-[a-z0-9]+)?$#i', (string)($_POST['entry'] ?? '')) === 1 ? (string)$_POST['entry'] : '';
+                $result = $pictures->request((string)($_POST['subject'] ?? ''), AiSettings::lines((string)($_POST['avoid'] ?? ''), 20), $variants, 'editor', (string)($user['username'] ?? ''), $entry);
+                $json($result, $result['ok'] ? 200 : 422);
+                return;
+            }
+            if ($action === 'pick') {
+                $result = $pictures->pick((int)($_POST['job'] ?? 0), (int)($_POST['index'] ?? 0), (string)($user['username'] ?? ''));
+                if ($result['ok']) {
+                    $this->logActivity('ai.picture_kept', 'info', 'media', $result['id'], 'AI picture kept in the media library.', ['path' => $result['path']]);
+                }
+                $json($result, $result['ok'] ? 200 : 422);
+                return;
+            }
+            $json(['ok' => false, 'error' => 'Unknown action.'], 400);
+            return;
+        }
+        $jobId = (int)($_GET['job'] ?? 0);
+        if (isset($_GET['file'])) {
+            $file = $pictures->variantPath($jobId, (int)$_GET['file']);
+            if ($file === null) {
+                http_response_code(404);
+                return;
+            }
+            header('Content-Type: ' . (match (strtolower(pathinfo($file, PATHINFO_EXTENSION))) { 'jpg' => 'image/jpeg', 'png' => 'image/png', default => 'image/webp' }));
+            header('Cache-Control: private, max-age=3600');
+            header('Content-Length: ' . (string)filesize($file));
+            readfile($file);
+            return;
+        }
+        $status = $pictures->status($jobId);
+        if ($status !== null && $status['status'] === JobRunner::QUEUED && $status['wait'] === 0) {
+            // The person is waiting: the session is let go (other tabs go on) and this request works the queue's next job.
+            @session_write_close();
+            if (function_exists('set_time_limit')) {
+                @set_time_limit(400);
+            }
+            $this->jobRunner()->work(microtime(true) + 1, [AiPictures::KIND], 1);
+            $status = $pictures->status($jobId);
+        }
+        $json($status ?? ['status' => 'missing', 'error' => 'This request is no longer kept.', 'variants' => 0, 'wait' => 0], $status === null ? 404 : 200);
     }
 
     private function mcpAdmin(): McpAdmin

@@ -265,8 +265,8 @@ final class AiHttp
      */
     private static function curl(string $method, string $url, array $headers, ?string $body, int $timeout, int $maxBytes): array
     {
-        if (!function_exists('curl_init')) {
-            return ['status' => 0, 'headers' => [], 'body' => '', 'error' => 'this server has no curl', 'timed_out' => false];
+        if (!function_exists('curl_init') || !function_exists('curl_exec')) {
+            return ['status' => 0, 'headers' => [], 'body' => '', 'error' => 'this server cannot make outside calls (PHP curl is missing or switched off)', 'timed_out' => false];
         }
         $received = '';
         $tooBig = false;

@@ -1,0 +1,310 @@
+{% extends '@admin/base.twig' %}
+{% set page_heading = 'AI publishing' %}
+{% import '@admin/partials/ui.twig' as ui %}
+{#
+  Manage > AI publishing (docs/ai-publishing-plan.md): Instructions (the house style for pictures), Settings (key, models, limits,
+  prices) and Usage (tokens and their estimated cost). Schedules and Runs come with phase 3.
+#}
+
+{% block content %}
+  {% set btn = 'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium shadow-sm' %}
+  {% set primary = btn ~ ' bg-blue-600 text-white hover:bg-blue-700' %}
+  {% set secondary = btn ~ ' border border-slate-300 bg-white text-slate-700 hover:bg-slate-50' %}
+  {% set input = 'block w-full rounded-md border border-slate-300 px-2.5 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500' %}
+  {% set card = 'rounded-lg border border-slate-200 bg-white' %}
+  {% set card_head = 'flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3' %}
+  {% set label = 'block text-xs font-medium text-slate-600 mb-1' %}
+  {% set note = 'mt-1 text-xs text-slate-500' %}
+  {% set money = '%.4f' %}
+
+  {{ ui.flash(message, done == 'ok' ? 'success' : 'error') }}
+
+  <header class="mb-4 border-b border-slate-200 pb-4">
+    <div class="flex flex-wrap items-start justify-between gap-3">
+      <p class="max-w-3xl text-xs text-slate-500">The site makes pictures itself, with OpenAI, from one house style, so every post gets the same look. Pictures are made from the editor's Main image (Generate); posts written on a timetable come later. Every call is counted on the Usage tab.</p>
+      <div class="flex flex-wrap items-center gap-2" data-ai-state>
+        {% if ai.paused %}
+          {{ ui.badge('Paused', 'amber') }}
+        {% elseif ai.has_key %}
+          {{ ui.badge('Ready', 'green') }}
+        {% else %}
+          {{ ui.badge('No key yet', 'slate') }}
+        {% endif %}
+        <span class="text-xs text-slate-500">This month: ${{ money|format(this_month.cost) }} · {{ this_month.pictures }} picture{{ this_month.pictures == 1 ? '' : 's' }}</span>
+        <form method="post" action="{{ url('admin/ai-publishing') }}">
+          {{ csrf_field() }}<input type="hidden" name="tab" value="{{ tab }}">
+          <button type="submit" name="ai_action" value="{{ ai.paused ? 'resume' : 'pause' }}" class="{{ secondary }} py-1 text-xs">{{ ai.paused ? 'Resume' : 'Pause all' }}</button>
+        </form>
+      </div>
+    </div>
+    {% if ai.paused and ai.paused_reason %}<p class="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">{{ ai.paused_reason }}.</p>{% endif %}
+    {% if blocked and not ai.paused %}<p class="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">{{ blocked }}</p>{% endif %}
+    <nav class="-mb-4 mt-3 flex gap-1 overflow-x-auto" aria-label="AI publishing">
+      {% for key, name in tabs %}
+        <a href="{{ url('admin/ai-publishing?tab=' ~ key) }}" class="shrink-0 border-b-2 px-3 py-2 text-sm font-medium {{ tab == key ? 'border-blue-600 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-800' }}"{% if tab == key %} aria-current="page"{% endif %}>{{ name }}</a>
+      {% endfor %}
+    </nav>
+  </header>
+
+  {% if tab == 'instructions' %}
+    <div class="grid gap-4 lg:grid-cols-3">
+      <form method="post" action="{{ url('admin/ai-publishing?tab=instructions') }}" class="{{ card }} lg:col-span-2" data-ai-instructions>
+        {{ csrf_field() }}
+        <div class="{{ card_head }}"><h2 class="text-sm font-semibold text-slate-900">Pictures</h2><span class="text-xs text-slate-400">Used by every picture the site makes</span></div>
+        <div class="space-y-4 px-4 py-4">
+          <div>
+            <label class="{{ label }}" for="ai-house-style">House style</label>
+            <textarea id="ai-house-style" name="house_style" rows="4" class="{{ input }}" maxlength="4000">{{ ai.house_style }}</textarea>
+            <p class="{{ note }}">The medium (photo, illustration, 3D, flat), palette, composition, light and mood. Sent word for word, first, with every picture. Illustration and abstract styles stay consistent far better than photographs.</p>
+          </div>
+          <div>
+            <label class="{{ label }}" for="ai-avoid">Avoid in the picture</label>
+            <textarea id="ai-avoid" name="picture_avoid" rows="4" class="{{ input }}" placeholder="One per line">{{ ai.picture_avoid|join("\n") }}</textarea>
+            <p class="{{ note }}">One per line. Text, letters, numbers and logos are always avoided. Keep the list short: naming a thing, even to forbid it, can pull it into the picture, so where you can, say what the picture <em>does</em> show ("an empty street at dawn" rather than "no people").</p>
+          </div>
+          <div>
+            <label class="{{ label }}" for="ai-references">Reference pictures <span class="font-normal text-slate-400">(up to {{ max_references }})</span></label>
+            {% if ai.references %}
+              <div class="mb-2 flex flex-wrap gap-2">
+                {% for ref in ai.references %}<img src="{{ url(ref|trim('/')) }}" alt="" class="h-16 w-24 rounded border border-slate-200 object-cover">{% endfor %}
+              </div>
+            {% endif %}
+            <textarea id="ai-references" name="references" rows="3" class="{{ input }} font-mono text-xs" placeholder="/uploads/media/…">{{ ai.references|join("\n") }}</textarea>
+            <p class="{{ note }}">Addresses of pictures in the Media library, one per line. They are sent with every request so the new pictures follow their style (not their subjects). They keep a look far better than words do.</p>
+          </div>
+          <div class="grid gap-3 sm:grid-cols-4">
+            <div>
+              <label class="{{ label }}" for="ai-aspect">Shape</label>
+              <select id="ai-aspect" name="aspect" class="{{ input }}">{% for a in aspects %}<option value="{{ a }}"{{ ai.aspect == a ? ' selected' }}>{{ a }}</option>{% endfor %}</select>
+            </div>
+            <div>
+              <label class="{{ label }}" for="ai-quality">Quality</label>
+              <select id="ai-quality" name="quality" class="{{ input }}">{% for q in qualities %}<option value="{{ q }}"{{ ai.quality == q ? ' selected' }}>{{ {'low': 'Draft (cheapest)', 'medium': 'Standard', 'high': 'High (dearest)'}[q] }}</option>{% endfor %}</select>
+            </div>
+            <div>
+              <label class="{{ label }}" for="ai-format">Format</label>
+              <select id="ai-format" name="format" class="{{ input }}">{% for f in formats %}<option value="{{ f }}"{{ ai.format == f ? ' selected' }}>{{ f|upper }}</option>{% endfor %}</select>
+            </div>
+            <div>
+              <label class="{{ label }}" for="ai-variants">Variants in the editor</label>
+              <select id="ai-variants" name="variants" class="{{ input }}">{% for n in 1..4 %}<option value="{{ n }}"{{ ai.variants == n ? ' selected' }}>{{ n }}</option>{% endfor %}</select>
+            </div>
+          </div>
+          <p class="text-xs text-slate-500">Quality is the main cost: a draft picture costs a small fraction of a high one. Each variant is a picture paid for.</p>
+        </div>
+        <div class="flex justify-end border-t border-slate-100 px-4 py-3">
+          <button type="submit" name="ai_action" value="save_instructions" class="{{ primary }}">Save instructions</button>
+        </div>
+      </form>
+
+      <div class="space-y-4">
+        <div class="{{ card }}" data-ai-test>
+          <div class="{{ card_head }}"><h2 class="text-sm font-semibold text-slate-900">Test picture</h2></div>
+          <form method="post" action="{{ url('admin/ai-publishing?tab=instructions') }}" class="space-y-2 px-4 py-3">
+            {{ csrf_field() }}
+            <label class="{{ label }}" for="ai-test-subject">Subject</label>
+            <input id="ai-test-subject" name="subject" class="{{ input }}" placeholder="A cup of coffee on a wooden table by a window.">
+            <p class="text-xs text-slate-500">One picture with the saved instructions, so you see the style before using it. Save the instructions first.</p>
+            <button type="submit" name="ai_action" value="test_picture" class="{{ secondary }}"{{ ai.has_key ? '' : ' disabled' }}>Make a test picture</button>
+          </form>
+          {% if tests %}
+            <ul class="divide-y divide-slate-100 border-t border-slate-100">
+              {% for t in tests %}
+                <li class="px-4 py-3 text-sm" data-ai-watch="{{ t.id }}" data-ai-endpoint="{{ url('admin/ai-picture') }}" data-ai-status="{{ t.status }}">
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="truncate text-slate-700" title="{{ t.subject }}">{{ t.subject }}</span>
+                    <span data-ai-badge>{{ ui.status_badge(t.status) }}</span>
+                  </div>
+                  <div data-ai-variants class="mt-2 grid max-w-md grid-cols-1 gap-2">
+                    {% if t.status == 'done' %}{% for i in 0..(t.variants - 1) %}{% if t.variants > 0 %}<a href="{{ url('admin/ai-picture?job=' ~ t.id ~ '&file=' ~ i) }}" target="_blank" rel="noopener"><img src="{{ url('admin/ai-picture?job=' ~ t.id ~ '&file=' ~ i) }}" alt="Test picture" class="w-full rounded border border-slate-200"></a>{% endif %}{% endfor %}{% endif %}
+                  </div>
+                  <p data-ai-error class="mt-1 text-xs text-red-700">{{ t.status == 'failed' ? t.error }}</p>
+                  {% if t.cost is not null %}<p class="mt-1 text-xs text-slate-400">About ${{ money|format(t.cost) }}</p>{% endif %}
+                </li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+        </div>
+        <div class="{{ card }} px-4 py-3 text-xs text-slate-500">
+          <p><strong class="text-slate-700">Writing instructions</strong> (the voice of posts, what to avoid in the text) and <strong class="text-slate-700">schedules</strong> come with the next phases of AI publishing.</p>
+        </div>
+      </div>
+    </div>
+
+  {% elseif tab == 'settings' %}
+    {% if not can_settings %}
+      <p class="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">The key, models, limits and prices are changed by people who may change the site settings.</p>
+    {% else %}
+    <form method="post" action="{{ url('admin/ai-publishing?tab=settings') }}" class="space-y-4" autocomplete="off" data-ai-settings>
+      {{ csrf_field() }}
+      <div class="grid gap-4 lg:grid-cols-3">
+        <div class="{{ card }} lg:col-span-2">
+          <div class="{{ card_head }}">
+            <h2 class="text-sm font-semibold text-slate-900">OpenAI</h2>
+            {{ ai.has_key ? ui.badge('Key ' ~ ai.key_hint, 'green') : ui.badge('No key', 'slate') }}
+          </div>
+          <div class="space-y-4 px-4 py-4">
+            <div>
+              <label class="{{ label }}" for="ai-key">API key</label>
+              <input id="ai-key" type="password" name="openai_key" class="{{ input }} font-mono" placeholder="{{ ai.has_key ? 'Kept. Paste a new key to replace it.' : 'sk-…' }}" autocomplete="new-password" spellcheck="false">
+              <p class="{{ note }}">Kept on this server only: never shown again, exported or logged. {% if ai.has_key %}<label class="ml-2 inline-flex items-center gap-1"><input type="checkbox" name="clear_key" value="1"> Remove the key</label>{% endif %}</p>
+            </div>
+            <div class="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label class="{{ label }}" for="ai-image-model">Picture model</label>
+                {% if ai.models.pictures %}
+                  <select id="ai-image-model" name="image_model" class="{{ input }}">
+                    {% if ai.image_model not in ai.models.pictures %}<option value="{{ ai.image_model }}" selected>{{ ai.image_model }} (not offered to this key)</option>{% endif %}
+                    {% for m in ai.models.pictures %}<option value="{{ m }}"{{ ai.image_model == m ? ' selected' }}>{{ m }}</option>{% endfor %}
+                  </select>
+                {% else %}
+                  <input id="ai-image-model" name="image_model" value="{{ ai.image_model }}" class="{{ input }} font-mono">
+                {% endif %}
+              </div>
+              <div>
+                <label class="{{ label }}" for="ai-text-model">Writing model <span class="font-normal text-slate-400">(used from phase 3)</span></label>
+                {% if ai.models.writing %}
+                  <select id="ai-text-model" name="text_model" class="{{ input }}">
+                    {% if ai.text_model not in ai.models.writing %}<option value="{{ ai.text_model }}" selected>{{ ai.text_model }} (not offered to this key)</option>{% endif %}
+                    {% for m in ai.models.writing %}<option value="{{ m }}"{{ ai.text_model == m ? ' selected' }}>{{ m }}</option>{% endfor %}
+                  </select>
+                {% else %}
+                  <input id="ai-text-model" name="text_model" value="{{ ai.text_model }}" class="{{ input }} font-mono">
+                {% endif %}
+              </div>
+            </div>
+            <p class="text-xs text-slate-500">{% if ai.models.checked_at %}The lists are the models this key can use, read {{ ai.models.checked_at|date('j M Y, H:i') }}. {% endif %}<em>Check key</em> reads them again; model names change often.</p>
+          </div>
+          <div class="flex flex-wrap justify-end gap-2 border-t border-slate-100 px-4 py-3">
+            {% if ai.has_key %}<button type="submit" name="ai_action" value="check_key" class="{{ secondary }}">Check key</button>{% endif %}
+            <button type="submit" name="ai_action" value="save_settings" class="{{ primary }}">Save settings</button>
+          </div>
+        </div>
+
+        <details class="{{ card }} px-4 py-3 text-sm text-slate-700" {{ ai.has_key ? '' : 'open' }}>
+          <summary class="cursor-pointer font-semibold text-slate-900">Getting an OpenAI key</summary>
+          <ol class="mt-2 list-decimal space-y-1.5 pl-5 text-xs">
+            <li>Sign in at <a class="text-blue-700 underline" href="https://platform.openai.com" target="_blank" rel="noopener">platform.openai.com</a>.</li>
+            <li><em>Settings › Billing</em>: add a payment method and some credit. The API is billed apart from a ChatGPT subscription.</li>
+            <li><em>Settings › Organization › General</em>: <strong>verify the organization</strong>. Picture models need it; it takes a few minutes with an ID.</li>
+            <li>Make a project named after this site, with a monthly budget, and in it <strong>create a new secret key</strong> (or a service account key). Copy it at once: it is shown once.</li>
+            <li>Paste it here, save, and the site checks it.</li>
+          </ol>
+          <p class="mt-2 text-xs text-slate-500">Set a spending limit at OpenAI too, apart from the caps here. Never paste the key in a chat or a screenshot.</p>
+        </details>
+      </div>
+
+      <div class="{{ card }}">
+        <div class="{{ card_head }}"><h2 class="text-sm font-semibold text-slate-900">Limits</h2></div>
+        <div class="grid gap-3 px-4 py-4 sm:grid-cols-4">
+          <div>
+            <label class="{{ label }}" for="ai-cost-cap">Monthly cap, estimated (US $)</label>
+            <input id="ai-cost-cap" name="monthly_cost_cap" inputmode="decimal" value="{{ ai.monthly_cost_cap }}" class="{{ input }}" placeholder="No cap">
+          </div>
+          <div>
+            <label class="{{ label }}" for="ai-picture-cap">Monthly cap, pictures</label>
+            <input id="ai-picture-cap" name="monthly_picture_cap" inputmode="numeric" value="{{ ai.monthly_picture_cap }}" class="{{ input }}" placeholder="No cap">
+          </div>
+          <div>
+            <span class="{{ label }}">At the cap</span>
+            <label class="mr-3 inline-flex items-center gap-1 text-sm"><input type="radio" name="cap_action" value="pause"{{ ai.cap_action == 'pause' ? ' checked' }}> Stop</label>
+            <label class="inline-flex items-center gap-1 text-sm"><input type="radio" name="cap_action" value="warn"{{ ai.cap_action == 'warn' ? ' checked' }}> Warn only</label>
+          </div>
+          <div>
+            <label class="{{ label }}" for="ai-keep">Keep run logs (days)</label>
+            <input id="ai-keep" name="keep_logs_days" inputmode="numeric" value="{{ ai.keep_logs_days }}" class="{{ input }}">
+          </div>
+        </div>
+      </div>
+
+      <div class="{{ card }}">
+        <div class="{{ card_head }}">
+          <h2 class="text-sm font-semibold text-slate-900">Prices</h2>
+          <span class="text-xs text-slate-400">{{ ai.prices_checked ? 'Checked ' ~ ai.prices_checked|date('j M Y') : 'Not checked yet' }}</span>
+        </div>
+        <div class="overflow-x-auto px-4 py-3">
+          <p class="mb-2 text-xs text-slate-500">US dollars per million tokens (web search: per call), from <a class="text-blue-700 underline" href="https://openai.com/api/pricing" target="_blank" rel="noopener">OpenAI's pricing page</a>. They turn the exact token counts into an estimate. A model with an empty price is counted in tokens and shown as "price unknown". Changing a price never changes what was already counted.</p>
+          <table class="w-full min-w-[720px] text-sm">
+            <thead><tr class="text-left text-xs text-slate-500">
+              <th class="py-1 pr-2 font-medium">Model</th><th class="px-1 font-medium">Text in</th><th class="px-1 font-medium">Cached in</th><th class="px-1 font-medium">Text out</th><th class="px-1 font-medium">Image in</th><th class="px-1 font-medium">Image out</th><th class="px-1 font-medium">Search</th>
+            </tr></thead>
+            <tbody>
+              {% set rows = ai.prices|merge({'': {}}) %}
+              {% set i = 0 %}
+              {% for model, row in rows %}
+                <tr>
+                  <td class="py-1 pr-2"><input name="prices[{{ i }}][model]" value="{{ model }}" class="{{ input }} font-mono text-xs" placeholder="model name"></td>
+                  {% for f in price_fields %}<td class="px-1"><input name="prices[{{ i }}][{{ f }}]" value="{{ row[f] ?? '' }}" inputmode="decimal" class="{{ input }} text-xs"></td>{% endfor %}
+                </tr>
+                {% set i = i + 1 %}
+              {% endfor %}
+            </tbody>
+          </table>
+          <label class="mt-2 inline-flex items-center gap-1 text-xs text-slate-600"><input type="checkbox" name="prices_checked" value="1"> I checked these prices against OpenAI's page today</label>
+        </div>
+        <div class="flex justify-end border-t border-slate-100 px-4 py-3">
+          <button type="submit" name="ai_action" value="save_settings" class="{{ primary }}">Save settings</button>
+        </div>
+      </div>
+    </form>
+    {% endif %}
+
+  {% elseif tab == 'usage' %}
+    {% set u = usage %}
+    <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+      <div class="flex items-center gap-2 text-sm">
+        <a class="{{ secondary }} py-1 text-xs" href="{{ url('admin/ai-publishing?tab=usage&month=' ~ u.previous_month) }}">‹</a>
+        <strong class="text-slate-900">{{ u.month_label }}</strong>
+        {% if u.next_month %}<a class="{{ secondary }} py-1 text-xs" href="{{ url('admin/ai-publishing?tab=usage&month=' ~ u.next_month) }}">›</a>{% endif %}
+      </div>
+      <a class="{{ secondary }} py-1 text-xs" href="{{ url('admin/ai-publishing?tab=usage&export=csv&month=' ~ u.month) }}">Export CSV</a>
+    </div>
+    <div class="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4" data-ai-usage>
+      {% set t = u.total %}
+      <div class="{{ card }} px-4 py-3"><p class="text-xs text-slate-500">Estimated cost</p><p class="text-xl font-semibold text-slate-900">${{ money|format(t.cost ?? 0) }}</p>
+        <p class="text-xs text-slate-400">Last month ${{ money|format(u.previous.cost ?? 0) }}{% if u.forecast is not null %} · month end about ${{ '%.2f'|format(u.forecast) }}{% endif %}</p></div>
+      <div class="{{ card }} px-4 py-3"><p class="text-xs text-slate-500">Tokens</p><p class="text-xl font-semibold text-slate-900">{{ (t.tokens ?? 0)|number_format }}</p>
+        <p class="text-xs text-slate-400">{{ (t.text_input ?? 0)|number_format }} text in · {{ (t.image_output ?? 0)|number_format }} image out</p></div>
+      <div class="{{ card }} px-4 py-3"><p class="text-xs text-slate-500">Pictures made</p><p class="text-xl font-semibold text-slate-900">{{ t.pictures ?? 0 }}</p>
+        <p class="text-xs text-slate-400">{{ t.calls ?? 0 }} calls{% if t.failed %} · {{ t.failed }} failed{% endif %}</p></div>
+      <div class="{{ card }} px-4 py-3"><p class="text-xs text-slate-500">Caps</p>
+        <p class="text-sm text-slate-800">{{ ai.monthly_cost_cap is not null ? '$' ~ ai.monthly_cost_cap : 'No cost cap' }} · {{ ai.monthly_picture_cap ?? 'no' }} picture cap</p>
+        <p class="text-xs text-slate-400">At the cap: {{ ai.cap_action == 'pause' ? 'stop' : 'warn only' }}</p></div>
+    </div>
+    {% if t and t.unknown %}<p class="mb-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">{{ t.unknown }} call{{ t.unknown == 1 ? '' : 's' }} used a model without a price, so the cost above leaves {{ t.unknown == 1 ? 'it' : 'them' }} out. Add the price on the Settings tab.</p>{% endif %}
+    <p class="mb-4 text-xs text-slate-500">Token counts are exact, as OpenAI returns them; the cost is an estimate from the price table. The bill is OpenAI's.</p>
+
+    <div class="grid gap-4 lg:grid-cols-2">
+      <div class="{{ card }}">
+        <div class="{{ card_head }}"><h2 class="text-sm font-semibold text-slate-900">By day</h2></div>
+        {% if u.by_day %}
+          <ul class="space-y-1 px-4 py-3 text-xs">
+            {% for d in u.by_day %}
+              <li class="flex items-center gap-2"><span class="w-20 shrink-0 text-slate-500">{{ d.label|date('D j M') }}</span>
+                <span class="h-2 rounded bg-blue-500" style="width: {{ max(d.share, 1) }}%"></span>
+                <span class="shrink-0 text-slate-700">${{ money|format(d.cost) }}</span></li>
+            {% endfor %}
+          </ul>
+        {% else %}<p class="px-4 py-3 text-sm text-slate-500">Nothing this month.</p>{% endif %}
+      </div>
+      {% for group in [['By source', u.by_source, {'editor': 'Editor', 'test': 'Test pictures', 'bulk': 'Bulk', 'schedule': 'Schedules', 'mcp': 'MCP', 'automatic': 'Automatic', 'preview': 'Preview', 'check': 'Checks'}], ['By kind', u.by_kind, {'picture': 'Pictures', 'writing': 'Writing', 'search': 'Web search'}], ['By model', u.by_model, {}]] %}
+        <div class="{{ card }}">
+          <div class="{{ card_head }}"><h2 class="text-sm font-semibold text-slate-900">{{ group[0] }}</h2></div>
+          {% if group[1] %}
+            <table class="w-full text-sm">
+              <thead><tr class="text-left text-xs text-slate-500"><th class="px-4 py-1.5 font-medium">{{ group[0]|replace({'By ': ''})|capitalize }}</th><th class="px-2 font-medium">Calls</th><th class="px-2 font-medium">Tokens</th><th class="px-4 text-right font-medium">Estimated</th></tr></thead>
+              <tbody class="divide-y divide-slate-50">
+                {% for r in group[1] %}
+                  <tr><td class="px-4 py-1.5 {{ group[2] ? '' : 'font-mono text-xs' }}">{{ group[2][r.label] ?? r.label }}</td><td class="px-2">{{ r.calls }}</td><td class="px-2">{{ r.tokens|number_format }}</td>
+                    <td class="px-4 text-right">${{ money|format(r.cost) }}{% if r.unknown %} <span class="text-xs text-amber-700">+ {{ r.unknown }} unknown</span>{% endif %}</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          {% else %}<p class="px-4 py-3 text-sm text-slate-500">Nothing this month.</p>{% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <script src="{{ asset('js/admin-ai-picture.js') }}" defer></script>
+{% endblock %}

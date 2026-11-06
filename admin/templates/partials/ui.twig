@@ -27,7 +27,8 @@
     'published': 'green', 'active': 'green', 'success': 'green', 'sent': 'green', 'ok': 'green', 'info': 'blue',
     'draft': 'slate', 'inactive': 'slate', 'disabled': 'slate',
     'warning': 'amber', 'pending': 'amber', 'scheduled': 'blue',
-    'failed': 'red', 'error': 'red', 'critical': 'red'
+    'failed': 'red', 'error': 'red', 'critical': 'red',
+    'done': 'green', 'queued': 'amber', 'running': 'blue', 'cancelled': 'slate'
   } %}
   {{ _self.badge(value, map[value|lower] ?? 'slate') }}
 {% endmacro %}
