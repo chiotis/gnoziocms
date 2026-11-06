@@ -3388,7 +3388,15 @@ p.form-error {
 }
 
 .footer--centered .footer-summary {
+  width: 70%;
+  max-width: none;
   margin-inline: auto;
+}
+
+@media (max-width: 640px) {
+  .footer--centered .footer-summary {
+    width: 100%;
+  }
 }
 
 .footer--centered .footer-inline-nav .footer-list-1,

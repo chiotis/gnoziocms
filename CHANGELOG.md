@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.224 — 2026-11-06 — A wider description in the centered footer
+- In the **Centered** footer, the site description now spans 70% of the footer's width instead of a narrow column, so it reads in fewer lines. On phones it takes the full width.
+- Tests: `tests/http/header_footer_test.py`.
+
 ## 0.1.223 — 2026-11-06 — No empty space above a block without a heading
 - A block with no **eyebrow**, **heading** or **introduction** now starts right at its content. **Latest content** and **Cards** drop their head row (kept when a "view all" link is set), so the list no longer sits under an empty gap.
 - The split layouts of **FAQ**, **Checklist**, **Form**, **Video** and **Text** become one full-width column when there is nothing for the side column, instead of leaving it empty. With a heading they look as before.
