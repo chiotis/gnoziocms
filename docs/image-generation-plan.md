@@ -23,7 +23,76 @@ One style per site, generic (no code for one client site):
 - **Test**: a button that makes one picture from a sample subject, so the owner sees the style before using it on posts.
 - Later, if wanted: a style per content type or per category, falling back to the site's.
 
-The screen follows the admin rule (modern and condensed: cards, chips, compact rows) and shows the month's count and an estimated cost.
+The screen follows the admin rule (modern and condensed: cards, chips, compact rows) and shows the month's count and an estimated cost. The exact fields, per provider, are in section 1a; how to get a key is in section 1b.
+
+## 1a. The API settings
+
+Three groups: settings every provider has (always on the screen), the provider's own (under **Advanced**, filled with good defaults), and values the site fixes itself (never shown). Parameter names are as of mid-2026 and are checked against each provider's documentation when its class is written.
+
+### Common settings
+
+| Setting | Values | Notes |
+| --- | --- | --- |
+| Provider | OpenAI, Google, fal.ai (Flux), Ideogram | Decides which other fields show |
+| API key | secret | As the other secrets; a *Check key* button makes one cheap call |
+| Model | list per provider | A newer model without a code change |
+| House style prompt | textarea | Sent word for word |
+| Avoid | textarea | A real negative prompt where the provider has one, otherwise "Do not show…" in the prompt |
+| Reference pictures | 0–4 from the media library | Where the provider accepts them; hidden otherwise |
+| Aspect ratio | 16:9, 3:2, 4:3, 1:1, 4:5 | Mapped to the provider's nearest size, then cropped exactly by `Images` |
+| Quality | Draft / Standard / High | Mapped to each provider's own scale; the main cost lever |
+| Output format | WebP (default), JPEG, PNG | Other sizes and AVIF come from `Images` as usual |
+| People in pictures | Never / Adults only / Allowed | A real parameter on Imagen; elsewhere added to *Avoid* |
+| Monthly cap | number of pictures | With the estimated cost |
+| Variants in the editor | 1–4 | Bulk and automatic generation always make one |
+
+### Advanced, per provider
+
+- **OpenAI (GPT image models)**: `quality` (low/medium/high), `size` (one of its fixed sizes; 1536×1024 for landscape), `output_format` and `output_compression`, `background` (opaque), `moderation` (auto/low). With reference pictures the request goes to the edits endpoint, with `input_fidelity: high` so the references are followed closely.
+- **Google**: *Gemini image* models take `aspectRatio` and the reference pictures as image parts of the request. *Imagen* takes `aspectRatio`, `personGeneration`, `sampleImageSize` (1K/2K), `seed`; **`enhancePrompt` is forced off**.
+- **fal.ai (Flux)**: `image_size`/aspect ratio, `guidance_scale` (how strictly the prompt is followed; around 3–4), `num_inference_steps`, `seed`, `safety_tolerance`, `raw` (Pro/Ultra models: less polished, more natural), reference strength (`image_prompt_strength` / Redux), and **LoRA URL and scale** for a trained house style.
+- **Ideogram**: `style_type` (general, realistic, design), `style_codes` and style reference images, `negative_prompt`, `rendering_speed`; **`magic_prompt` is forced off**.
+
+### Fixed by the site, not shown
+
+- **Prompt rewriting is always off** (`enhancePrompt`, `magic_prompt` and the like). Rewriting is what breaks the look, the same problem as with ChatGPT.
+- "No text, letters or logos in the picture" is always part of *Avoid*.
+- No site-wide fixed `seed`: it does not hold a style across subjects, it only makes pictures look oddly alike. Each picture's seed is stored with it, so a regeneration can reuse it.
+- Timeouts, retries and backoff stay in code.
+- `n` comes from *Variants* (1 for bulk and automatic).
+- The subject is written with the same key and the provider's cheapest text model; the model can be changed under Advanced, the instruction it gets cannot.
+
+## 1b. Getting a key: help on the settings screen
+
+When a provider is chosen, a short box under the key field says where to get one, with the links. The texts below are the starting point; the links and steps are checked when each provider is built, since dashboards move.
+
+**OpenAI**
+1. Sign in at platform.openai.com.
+2. *Settings > Billing*: add a payment method and some credit (the API is billed apart from a ChatGPT subscription).
+3. *Settings > Organization > General*: verify the organization. GPT image models need it; the check takes a few minutes with an ID.
+4. *API keys* (platform.openai.com/api-keys): **Create new secret key**, ideally in its own project named after the site, with permissions limited to images and the model the subject uses. Copy it at once; it is shown once.
+5. Paste it here and press *Check key*.
+
+**Google (Gemini / Imagen)**
+1. Sign in at aistudio.google.com with a Google account.
+2. **Get API key** > *Create API key* (it creates or picks a Google Cloud project).
+3. Image models need a project with billing: from AI Studio, *Set up billing* on that project (Google Cloud console > Billing). Without it the key works only for the free text models.
+4. Paste the key here and press *Check key*. Optionally, in the Cloud console, restrict the key to the "Generative Language API".
+
+**fal.ai (Flux)**
+1. Sign up at fal.ai (GitHub or Google sign-in).
+2. *Billing*: add credit (prepaid).
+3. *Dashboard > Keys* (fal.ai/dashboard/keys): **Add key**, scope *API*, name it after the site. Copy the whole key (`id:secret`); it is shown once.
+4. Paste it here and press *Check key*.
+5. For a trained house style later: train a Flux LoRA on fal (its LoRA trainer, 15–30 pictures in the style), then paste the LoRA's file URL under *Advanced > LoRA*.
+
+**Ideogram**
+1. Sign in at ideogram.ai.
+2. *Settings > API* (the developer section): accept the API terms and add a payment method; API use is billed apart from an Ideogram subscription.
+3. **Create API key**, copy it (shown once).
+4. Paste it here and press *Check key*.
+
+Every box ends the same way: "The key stays on this server; it is never shown again, exported or logged. Set a spending limit at the provider too, apart from the monthly cap here."
 
 ## 2. How the prompt is built
 
@@ -109,7 +178,7 @@ Advice for the style itself, shown on the settings screen: illustration and abst
 
 ## Phases
 
-1. **Style settings, one provider, editor button.** Settings screen with the secret key, style prompt, avoid list, references, size, test button; the provider interface and the first provider; the editor's Generate panel with variants; media metadata and alt text. Useful at once, by hand.
+1. **Style settings, one provider, editor button.** Settings screen with the secret key, *Check key* and the provider's help box (1b), style prompt, avoid list, references, size, Advanced (1a), test button; the provider interface and the first provider; the editor's Generate panel with variants; media metadata and alt text. Useful at once, by hand.
 2. **The queue and bulk generation.** `image_jobs`, the worker in cron/after response/admin, the bulk action with its confirmation, progress line and chips, retries, monthly cap.
 3. **MCP.** `generate_main_image`, `image_brief` on create/update, `image_status` on get_entry, the instructions changed, the per-connection cap. Tested with ChatGPT and Claude jobs.
 4. **Automatic generation** per content type, and subjects written by the site's text model when none is given.
