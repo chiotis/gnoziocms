@@ -274,7 +274,8 @@ final class JobRunner
                 $wait = max($failure->retryAfter, self::BACKOFF[min($job['attempts'] - 1, count(self::BACKOFF) - 1)]);
                 $this->requeue($job, $failure->getMessage(), $wait);
             } else {
-                $this->finish($job, self::FAILED, '', $failure->getMessage());
+                // What the handler found before it gave up (searches, pages, a similar entry) stays with the job, for the person who reads why.
+                $this->finish($job, self::FAILED, $failure->details === [] ? '' : (json_encode($failure->details, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR) ?: ''), $failure->getMessage());
             }
         } catch (\Throwable $e) {
             error_log('GnozioCMS job ' . $job['id'] . ' (' . $job['kind'] . ') failed: ' . $e::class . ': ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());

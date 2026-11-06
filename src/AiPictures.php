@@ -120,7 +120,7 @@ final class AiPictures
      * @param array<int, array{type: string, slug: string, lang: string, has_image: bool}> $entries
      * @return array{ok: bool, queued: int, skipped: int, error: string}
      */
-    public function requestBulk(array $entries, bool $replace, string $by): array
+    public function requestBulk(array $entries, bool $replace, string $by, string $source = 'bulk'): array
     {
         if (!$this->settings->hasKey()) {
             return ['ok' => false, 'queued' => 0, 'skipped' => 0, 'error' => 'Add an OpenAI key first, in Manage > AI publishing > Settings.'];
@@ -138,7 +138,7 @@ final class AiPictures
         foreach ($wanted as $e) {
             $entry = $e['type'] . '/' . $e['slug'] . '/' . $e['lang'];
             $id = $this->runner->enqueue(self::KIND, [
-                'mode' => 'bulk', 'entry' => $entry, 'replace' => $replace, 'variants' => 1, 'source' => 'bulk', 'by' => mb_substr($by, 0, 120),
+                'mode' => 'bulk', 'entry' => $entry, 'replace' => $replace, 'variants' => 1, 'source' => in_array($source, AiUsage::SOURCES, true) ? $source : 'bulk', 'by' => mb_substr($by, 0, 120),
             ], self::PRIORITY_BULK, self::bulkKey($entry), 3);
             $queued += $id > 0 ? 1 : 0;
         }
@@ -151,7 +151,7 @@ final class AiPictures
      * @param string[] $avoid @param array{status: string, publish_at: ?string, actor: string}|null $finalize
      * @return array{ok: bool, job: int, error: string}
      */
-    public function requestForEntry(string $entry, string $subject, array $avoid, string $by, ?array $finalize): array
+    public function requestForEntry(string $entry, string $subject, array $avoid, string $by, ?array $finalize, string $source = 'schedule', bool $replace = false): array
     {
         $blocked = $this->blocked(1);
         if ($blocked !== '') {
@@ -159,7 +159,7 @@ final class AiPictures
         }
         $job = $this->runner->enqueue(self::KIND, [
             'mode' => 'schedule', 'entry' => $entry, 'subject' => mb_substr(trim($subject), 0, 1000), 'avoid' => array_slice($avoid, 0, 20),
-            'replace' => false, 'variants' => 1, 'source' => 'schedule', 'by' => mb_substr($by, 0, 120), 'finalize' => $finalize,
+            'replace' => $replace, 'variants' => 1, 'source' => in_array($source, AiUsage::SOURCES, true) ? $source : 'schedule', 'by' => mb_substr($by, 0, 120), 'finalize' => $finalize,
         ], self::PRIORITY_SCHEDULE, self::bulkKey($entry), 3);
         return $job > 0 ? ['ok' => true, 'job' => $job, 'error' => ''] : ['ok' => false, 'job' => 0, 'error' => 'The site database is not available.'];
     }
@@ -186,6 +186,17 @@ final class AiPictures
             $out[$keys[$key]] = ['status' => (string)$job['status'], 'error' => (string)$job['error'], 'outcome' => (string)($job['result']['outcome'] ?? '')];
         }
         return $out;
+    }
+
+    /**
+     * Where an entry's picture stands (the newest job for it in the last day), for MCP's get_entry: queued, running, done or
+     * failed with the reason; null when none was asked for.
+     * @return array{status: string, error: string, main_image: string}|null
+     */
+    public function entryState(string $entry): ?array
+    {
+        $job = $this->runner->latestByKeys([self::bulkKey($entry)], $this->now() - 86400)[self::bulkKey($entry)] ?? null;
+        return $job === null ? null : ['status' => (string)$job['status'], 'error' => (string)$job['error'], 'main_image' => (string)($job['result']['path'] ?? '')];
     }
 
     /** @return array{waiting: int, working: int, done: int, failed: int} bulk pictures of a type and language: waiting and working now, done and failed in the last hours */
@@ -422,8 +433,10 @@ final class AiPictures
             throw JobFailure::final('It has a main image by now; it was left as it is.');
         }
         // A schedule's picture comes with the brief its writer gave; a bulk one is made from the entry.
+        // An entry can carry its own picture subject (image_brief, given through MCP or the editor).
         if (($payload['mode'] ?? '') !== 'schedule' || trim((string)($payload['subject'] ?? '')) === '') {
-            $payload['subject'] = self::subjectFrom($entry['title'], $entry['excerpt'], $entry['body']);
+            $payload['subject'] = trim((string)($entry['image_brief'] ?? '')) !== '' ? trim((string)$entry['image_brief'])
+                : self::subjectFrom($entry['title'], $entry['excerpt'], $entry['body']);
         }
         if ($payload['subject'] === '') {
             throw JobFailure::final('The entry has no title or text to make a picture from.');

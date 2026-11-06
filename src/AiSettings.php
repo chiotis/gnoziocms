@@ -121,6 +121,7 @@ final class AiSettings
             'quality' => (string)($post['quality'] ?? ''),
             'format' => (string)($post['format'] ?? ''),
             'variants' => (int)($post['variants'] ?? 0),
+            'auto_types' => array_values(array_unique(array_filter(array_map(static fn($t): string => Slug::plain((string)$t), (array)($post['auto_types'] ?? []))))),
         ]);
     }
 
@@ -197,6 +198,7 @@ final class AiSettings
             'quality' => in_array($stored['quality'] ?? null, self::QUALITIES, true) ? $stored['quality'] : 'medium',
             'format' => in_array($stored['format'] ?? null, self::FORMATS, true) ? $stored['format'] : 'webp',
             'variants' => max(1, min(4, (int)($stored['variants'] ?? 2) ?: 2)),
+            'auto_types' => array_values(array_filter(array_map(static fn($t): string => Slug::plain((string)$t), (array)($stored['auto_types'] ?? [])))),
             'monthly_cost_cap' => isset($stored['monthly_cost_cap']) && is_numeric($stored['monthly_cost_cap']) && $stored['monthly_cost_cap'] > 0 ? (float)$stored['monthly_cost_cap'] : null,
             'monthly_picture_cap' => isset($stored['monthly_picture_cap']) && is_numeric($stored['monthly_picture_cap']) && $stored['monthly_picture_cap'] > 0 ? (int)$stored['monthly_picture_cap'] : null,
             'cap_action' => ($stored['cap_action'] ?? '') === 'warn' ? 'warn' : 'pause',

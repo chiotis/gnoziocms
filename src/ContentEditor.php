@@ -877,6 +877,10 @@ final class ContentEditor
             'created',
             // The MCP connection that made the entry (docs/mcp.md); shown in the admin only.
             'generated_by',
+            // AI publishing (docs/ai-publishing-plan.md): the schedule that wrote it, the pages it relied on, and its picture's subject.
+            'ai_schedule',
+            'ai_sources',
+            'image_brief',
             'author',
             'tags',
             'categories',
