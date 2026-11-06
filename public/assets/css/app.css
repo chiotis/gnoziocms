@@ -148,6 +148,17 @@ html.dark body.bg-slate-100 { background-color: #0b1120; }
 .dark .text-red-900 { color: #fecaca; }
 .dark .text-violet-700,
 .dark .text-violet-600 { color: #a78bfa; }
+.dark .text-violet-800 { color: #c4b5fd; }
+.dark .text-violet-900 { color: #ddd6fe; }
+.dark .border-violet-100 { border-color: rgba(167, 139, 250, .2); }
+.dark .border-violet-200 { border-color: rgba(167, 139, 250, .35); }
+.dark .bg-pink-50 { background-color: rgba(244, 114, 182, .15); }
+.dark .text-pink-700 { color: #f472b6; }
+.dark .ring-pink-200 { --tw-ring-color: rgba(244, 114, 182, .4); }
+/* Choice chips (a checkbox or radio inside a label): the chosen one tinted, as in light. */
+.dark .has-\[\:checked\]\:bg-blue-50:has(:checked) { background-color: rgba(96, 165, 250, .15); }
+.dark .has-\[\:checked\]\:border-blue-600:has(:checked) { border-color: #60a5fa; }
+.dark .has-\[\:checked\]\:text-blue-800:has(:checked) { color: #bfdbfe; }
 
 /* Colored rings on tinted badges/cards — brighten so the outline reads on dark */
 .dark .ring-emerald-200 { --tw-ring-color: rgba(16, 185, 129, .4); }

@@ -3,7 +3,7 @@
 {% import '@admin/partials/ui.twig' as ui %}
 {#
   Manage > AI publishing (docs/ai-publishing-plan.md): Instructions (the house style for pictures), Settings (key, models, limits,
-  prices) and Usage (tokens and their estimated cost). Schedules and Runs come with phase 3.
+  prices) and Usage (tokens and their estimated cost), with Schedules and Runs.
 #}
 
 {% block content %}
@@ -570,7 +570,7 @@
                 {% endif %}
               </div>
               <div>
-                <label class="{{ label }}" for="ai-text-model">Writing model <span class="font-normal text-slate-400">(used from phase 3)</span></label>
+                <label class="{{ label }}" for="ai-text-model">Writing model</label>
                 {% if ai.models.writing %}
                   <select id="ai-text-model" name="text_model" class="{{ input }}">
                     {% if ai.text_model not in ai.models.writing %}<option value="{{ ai.text_model }}" selected>{{ ai.text_model }} (not offered to this key)</option>{% endif %}
