@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.239 — 2026-11-06 — No repeated AI posts, MCP and automatic main pictures
+- **No repeats**: every AI schedule run is shown the site's published and scheduled posts of the same type and language from the last 60 days, whoever wrote them, and told not to repeat them. After writing, a post with a near-identical title (accents, case and punctuation aside) or sharing at least two sources, half of its own, with a recent post is sent back once; a second repeat fails the run with the similar post linked, and nothing is saved.
+- **What a failed run looked at**: failed runs keep how many searches the model made, what it searched for and the pages it used, shown under *What it looked at* on the Runs tab.
+- **MCP**: a new `generate_main_image` tool makes the main picture in the site's house style (an existing one is kept unless `replace` is set); `create_entry` and `update_entry` accept `image_brief`, the picture's subject; `get_entry` shows the picture's status. The server's instructions ask assistants to use the tool instead of making pictures in the chat.
+- **Automatic main pictures**: *Instructions › Pictures* can make a main picture for the content types you tick, when a published or scheduled entry is saved without one from the editor or through MCP.
+- **Fix**: the editor's save dropped the `ai_schedule`, `ai_sources` and `image_brief` front-matter keys, so posts written by schedules since 0.1.235 lost their schedule link and sources. They are kept now.
+- Tests: `tests/unit/ai-writer.php`, `tests/unit/mcp-images.php`, `tests/http/ai_publishing_test.py`.
+
 ## 0.1.238 — 2026-11-06 — A week calendar of the AI schedules
 - **Manage > AI publishing > Schedules** has a **List | Week** switcher at the right of the tab row; the choice is remembered.
 - **Week**: Monday to Sunday in the site's time zone, today shaded, every run of every schedule a chip at its time: planned, off, writing, scheduled, published, draft, waiting for its picture, failed (the reason on hover), missed, or post deleted. A written run shows its post as it is now. A chip opens the post, the failed runs or the schedule. Arrows for the previous and next week, and *This week*.
