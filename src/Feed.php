@@ -141,13 +141,10 @@ final class Feed
         return $xml . "</channel>\n</rss>\n";
     }
 
+    /** When the entry was published: its date, at the time of day it was made when the date is a day only (see sortTime). */
     private function when(ContentItem $item): int
     {
-        $date = $item->meta['date'] ?? '';
-        if (is_int($date)) {
-            return $date;
-        }
-        return strtotime((string)$date) ?: $item->mtime;
+        return $item->sortTime();
     }
 
     /**

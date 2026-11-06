@@ -1,0 +1,15 @@
+{#
+  The line above an entry's title: its author, its categories and its date, then (with `full`) its tags and its terms in the
+  taxonomies a site added. The default layout draws it full; the centred layouts draw the short line.
+  Context: item (the entry), prefix (the language prefix of addresses), full (true for the long line).
+#}
+{% set prefix = prefix|default('') %}
+{% set tags = item.meta.tags is iterable ? item.meta.tags : (item.meta.tags is defined and item.meta.tags ? [item.meta.tags] : []) %}
+{% set categories = item.meta.categories is iterable ? item.meta.categories : (item.meta.categories is defined and item.meta.categories ? [item.meta.categories] : []) %}
+{% if item.authorName() %}<span>{{ t('post.by', 'By') }} {{ item.authorName() }}</span>{% endif %}
+{% if categories is not empty %}<span>{{ t('post.in', 'in') }} {% for category in categories %}<a href="{{ taxonomy_url('categories', category, prefix) }}">{{ taxonomy_label('categories', category) }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</span>{% endif %}
+{% if item.meta.date is defined and item.meta.date %}<span>{{ t('post.on', 'on') }} {{ format_date(item.meta.date) }}</span>{% endif %}
+{% if full|default(false) %}
+  {% if tags is not empty %}<span>{{ t('post.tags') }}: {% for tag in tags %}<a href="{{ taxonomy_url('tags', tag, prefix) }}">{{ taxonomy_label('tags', tag) }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</span>{% endif %}
+  {% for group in item_terms(item, prefix) %}<span>{{ group.title }}: {% for term in group.terms %}<a href="{{ term.url }}">{{ term.label }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</span>{% endfor %}
+{% endif %}

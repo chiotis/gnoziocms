@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.236 — 2026-11-06 — Bylines in every title area, feed times, wider titles
+- The line above an entry's title (author, categories, date) now shows in every page layout, not only on the post template: the sidebar layout (also chosen by the table of contents), the generic single template and the **Entry title** block draw it too. The default layout adds tags and the site's own taxonomies. One shared piece, `components/entry-byline.twig`, draws it everywhere; **Single Layouts** offers the byline switch for every content type but pages and forms.
+- RSS feeds give each entry the time of day it was made, not 00:00, when its date is a day only (as lists already order them).
+- The title in the default title area can run to 32 characters a line (was 22), about as wide as the line under it.
+- Tests: `tests/unit/feed.php`, `tests/unit/entry-bindings.php`.
+
 ## 0.1.235 — 2026-11-06 — AI publishing: schedules that write posts
 - **Manage > AI publishing > Schedules** (new, the first tab once there is a key): each schedule writes **one post each time it runs**, on the days of the week and at the time you choose (in the site's time zone), with optional start and end dates. It is written ahead (30 minutes by default) and goes live on the minute. For twenty posts a day, add twenty schedules; **Duplicate** makes it quick.
 - Each schedule says what its posts are about in a few lines, the content type and language, categories that are always given and taxonomies the model may choose from (only existing terms), what to avoid in the text and in the picture, what the pictures show, and the result: **published at its time**, **published as soon as it is ready**, or **kept as a draft**. **Run now**, **Switch off**, **Duplicate** and **Delete** on each.

@@ -6,6 +6,7 @@
     hero_subtitle  text under the title (default: the excerpt; nothing when there is none)
     hero_meta      small line above the title, as HTML
     hero_meta_inline  the same line worded for the centred layouts (default: hero_meta)
+  Without hero_meta, an entry that is not a page or a form gets its byline (components/entry-byline.twig).
   The trail above the title (Home, the list of its type, the entry) is drawn when the content type's single layout asks for breadcrumbs.
 #}
 {% import 'components/hero-layout.twig' as opening %}
@@ -15,6 +16,11 @@
 {% set hero_parallax = opening.parallax(item, theme_settings)|trim != '' %}
 {% set hero_bg = item.meta.hero_background ?? item.meta.hero_color ?? '' %}
 {% set hero_text = single.excerpt is same as(false) ? '' : (hero_subtitle is defined ? hero_subtitle : item.meta.excerpt|default('')) %}
+{# A template that gives no line of its own (the sidebar layout, the generic single) gets the entry's byline: author, categories, date. #}
+{% if hero_meta is not defined and item.type|default('pages') not in ['pages', 'forms'] %}
+  {% set hero_meta %}{% include 'components/entry-byline.twig' with {item: item, prefix: lang_prefix|default(''), full: true} only %}{% endset %}
+  {% set hero_meta_inline %}{% include 'components/entry-byline.twig' with {item: item, prefix: lang_prefix|default('')} only %}{% endset %}
+{% endif %}
 {% set meta_html = single.byline is same as(false) ? '' : hero_meta|default('') %}
 {% set meta_inline = single.byline is same as(false) ? '' : (hero_meta_inline|default('')|trim ? hero_meta_inline : meta_html) %}
 {# The trail (Single Layouts > Breadcrumbs): Home, the list of its type, the entry. #}

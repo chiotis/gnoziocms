@@ -2220,7 +2220,7 @@ body.has-transparent-header:not(.header-solid) .site-header.is-on-dark[data-stic
 }
 
 .single-hero-inner h1 {
-  max-width: 22ch;
+  max-width: 32ch; /* about as wide as the line under it */
   margin: 0;
   font-size: var(--step-5);
 }

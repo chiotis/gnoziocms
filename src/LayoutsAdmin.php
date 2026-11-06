@@ -66,7 +66,8 @@ final class LayoutsAdmin
                 // A page of its own (the book page) has no title area to style; its choices are the content type's fields.
                 'standard' => $standard,
                 'layouts' => $standard && $type !== 'forms',
-                'byline' => $standard && str_contains($source, 'hero_meta'),
+                // The title area draws the byline of any entry but a page or a form (components/page-header.twig), or the template's own line.
+                'byline' => $standard && (!in_array($type, ['pages', 'forms'], true) || str_contains($source, 'hero_meta')),
                 // A page of its own draws the sidebar and the header over it itself when its content type says so.
                 'sidebar' => ($standard && $type !== 'forms') || $declared['sidebar'],
                 'header' => $standard || $declared['header'],

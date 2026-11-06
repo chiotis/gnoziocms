@@ -19,7 +19,7 @@ $settings = ['title' => 'Site & Co', 'tagline' => 'Words', 'base_url' => 'https:
 $write = function (string $type, string $name, string $text, int $mtime = 0) use ($dir): void { $p = "$dir/content/$type/$name.md"; file_put_contents($p, $text); if ($mtime > 0) { touch($p, $mtime); } };
 $write('pages', 'index', "---\ntitle: Home\nstatus: published\n---\n\nx\n");
 $write('posts', 'old', "---\ntitle: Old\nstatus: published\ndate: '2025-01-01'\ncategories: [world]\ntags: [news]\nexcerpt: 'The <b>short</b> text'\n---\n\nLong body.\n", 1700000300);
-$write('posts', 'new', "---\ntitle: 'New & shiny'\nstatus: published\ndate: '2026-02-01'\ncategories: [world]\n---\n\nFirst paragraph with a [link](https://x.test) in it.\n\n```block\ntype: hero\ntitle: Hidden code\n```\n\nLast.\n", 1700000400);
+$write('posts', 'new', "---\ntitle: 'New & shiny'\nstatus: published\ndate: '2026-02-01'\ncreated: '2026-01-30 14:30:00'\ncategories: [world]\n---\n\nFirst paragraph with a [link](https://x.test) in it.\n\n```block\ntype: hero\ntitle: Hidden code\n```\n\nLast.\n", 1700000400);
 $write('posts', 'long', "---\ntitle: Long\nstatus: published\ndate: '2026-03-01'\n---\n\n" . str_repeat('word ', 200) . "\n", 1700000450);
 $write('posts', 'old.en', "---\ntitle: Old EN\nstatus: published\ndate: '2025-01-02'\n---\n\nEnglish.\n", 1700000310);
 $write('posts', 'draft', "---\ntitle: Draft\nstatus: draft\ndate: '2026-04-01'\n---\n\nx\n");
@@ -59,7 +59,8 @@ $x = new DOMXPath($doc);
 $x->registerNamespace('atom', 'http://www.w3.org/2005/Atom');
 check('RSS 2.0 with the channel named, linked and in a language', [$doc->documentElement->getAttribute('version'), $x->evaluate('string(//channel/title)'), $x->evaluate('string(//channel/link)'), $x->evaluate('string(//channel/language)')], ['2.0', 'Site & Co', 'https://s.test/', 'el']);
 check('it points to itself', $x->evaluate('string(//channel/atom:link/@href)'), 'https://s.test/feed');
-check('each entry has its title, address and date', [$x->evaluate('string(//item[2]/title)'), $x->evaluate('string(//item[2]/link)'), $x->evaluate('string(//item[2]/guid)'), $x->evaluate('string(//item[2]/pubDate)')], ['New & shiny', 'https://s.test/new', 'https://s.test/new', gmdate(DATE_RSS, strtotime('2026-02-01'))]);
+check('each entry has its title, address and date', [$x->evaluate('string(//item[2]/title)'), $x->evaluate('string(//item[2]/link)'), $x->evaluate('string(//item[2]/guid)'), $x->evaluate('string(//item[2]/pubDate)')], ['New & shiny', 'https://s.test/new', 'https://s.test/new', gmdate(DATE_RSS, strtotime('2026-02-01 14:30:00'))]);
+check('a date without a time takes the time of day the entry was made', substr($x->evaluate('string(//item[2]/pubDate)'), 17, 5), gmdate('H:i', strtotime('2026-02-01 14:30:00')));
 check('the build date is the newest entry\'s', $x->evaluate('string(//channel/lastBuildDate)'), gmdate(DATE_RSS, strtotime('2026-03-01')));
 check('the categories of an entry are named in the language of the feed', $x->evaluate('string(//item[3]/category)'), 'Κόσμος');
 check('an excerpt is the description, as plain text', $x->evaluate('string(//item[3]/description)'), 'The short text');

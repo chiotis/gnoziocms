@@ -3,45 +3,9 @@
 
 {% block content %}
   {% set prefix = lang_prefix|default('') %}
-  {% set tags = (item.meta.tags is iterable) ? item.meta.tags : (item.meta.tags is defined ? [item.meta.tags] : []) %}
-  {% set categories = (item.meta.categories is iterable) ? item.meta.categories : (item.meta.categories is defined ? [item.meta.categories] : []) %}
-  {# The line above the title: labelled lists for the default layout, a short byline for the others. #}
-  {% set hero_meta %}
-    {% if tags is not empty %}
-      <span>{{ t('post.tags') }}:
-        {% for tag in tags %}
-          <a href="{{ taxonomy_url('tags', tag, prefix) }}">{{ taxonomy_label('tags', tag) }}</a>{% if not loop.last %}, {% endif %}
-        {% endfor %}
-      </span>
-    {% endif %}
-    {% if categories is not empty %}
-      <span>{{ t('post.categories') }}:
-        {% for category in categories %}
-          <a href="{{ taxonomy_url('categories', category, prefix) }}">{{ taxonomy_label('categories', category) }}</a>{% if not loop.last %}, {% endif %}
-        {% endfor %}
-      </span>
-    {% endif %}
-    {% for group in item_terms(item, prefix) %}
-      <span>{{ group.title }}:
-        {% for term in group.terms %}<a href="{{ term.url }}">{{ term.label }}</a>{% if not loop.last %}, {% endif %}{% endfor %}
-      </span>
-    {% endfor %}
-  {% endset %}
-  {% set hero_meta_inline %}
-    {% if item.authorName() %}
-      <span>{{ t('post.by', 'By') }} {{ item.authorName() }}</span>
-    {% endif %}
-    {% if categories is not empty %}
-      <span>{{ t('post.in', 'in') }}
-        {% for category in categories %}
-          <a href="{{ taxonomy_url('categories', category, prefix) }}">{{ taxonomy_label('categories', category) }}</a>{% if not loop.last %}, {% endif %}
-        {% endfor %}
-      </span>
-    {% endif %}
-    {% if item.meta.date is defined and item.meta.date %}
-      <span>{{ t('post.on', 'on') }} {{ format_date(item.meta.date) }}</span>
-    {% endif %}
-  {% endset %}
+  {# The line above the title: author, categories, date, tags and terms for the default layout, a short byline for the others. #}
+  {% set hero_meta %}{% include 'components/entry-byline.twig' with {item: item, prefix: prefix, full: true} only %}{% endset %}
+  {% set hero_meta_inline %}{% include 'components/entry-byline.twig' with {item: item, prefix: prefix} only %}{% endset %}
   {% include 'components/page-header.twig' with {hero_subtitle: item.meta.excerpt|default(''), hero_meta: hero_meta, hero_meta_inline: hero_meta_inline} %}
   {% include 'components/page-body.twig' %}
 {% endblock %}
