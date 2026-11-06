@@ -217,6 +217,40 @@ $runner->work($soon(), [AiWriter::KIND]);
 check('a schedule deleted before its run', $runner->list(AiWriter::KIND)[0]['error'], 'The schedule was deleted.');
 check('Run now for a schedule that is not there', $writer->runNow(99999, 'chris')['error'], 'There is no such schedule.');
 
+// ---- what is already on the site
+check('titles compare without accents, case or punctuation', [AiWriter::titleKey('Νέα Πρόσκληση: ΕΣΠΑ 2026!'), AiWriter::titleKey('νεα προσκληση εσπα 2026')], ['νεα προσκληση εσπα 2026', 'νεα προσκληση εσπα 2026']);
+$recentSite = [['title' => 'Νέα πρόσκληση ΕΣΠΑ για δήμους', 'entry' => 'posts/espa/el', 'sources' => ['https://espa.gr/a/', 'https://gov.example/b']],
+    ['title' => 'Holiday hours', 'entry' => 'posts/hours/en', 'sources' => []]];
+check('nearly the same title is a repeat', AiWriter::similarTo('Νέα Πρόσκληση ΕΣΠΑ για Δήμους!', [], $recentSite)['entry'] ?? null, 'posts/espa/el');
+check('two shared sources making half the new post\'s are a repeat', AiWriter::similarTo('Another angle', ['https://espa.gr/a', 'https://gov.example/b', 'https://x.example/c'], $recentSite)['why'] ?? null, '2 of the same sources');
+check('one shared source is not', AiWriter::similarTo('Another angle', ['https://espa.gr/a', 'https://x.example/c'], $recentSite), null);
+check('a different title is not', AiWriter::similarTo('Spring cleaning tips', [], $recentSite), null);
+
+$siteWriter = new AiWriter($runner, $settings, $usage, $schedules, $pictures, $provider, $saveEntry, fn(string $type, string $lang): array => [], $setStatus,
+    fn(string $code): string => 'English', $zone, $clock, null, fn(string $type, string $lang, int $days, int $limit): array => $recentSite);
+$siteWriter->register();
+$dupe = $schedules->save(0, ['name' => 'Dupes', 'days' => ['5'], 'time' => '07:00', 'type' => 'posts', 'lang' => 'en', 'content' => 'Hours.', 'no_picture' => '1', 'status' => 'draft', 'web_search' => '0'], $types, $langs)['id'];
+$siteWriter->runNow($dupe, 'chris');
+$long = str_repeat('Words that make a post long enough. ', 12);
+$replies = [$writeReply(['title' => 'Holiday Hours', 'excerpt' => 'x', 'body' => $long, 'seo_title' => '', 'seo_description' => '', 'image_brief' => '', 'sources' => []]),
+    $writeReply(['title' => 'Winter opening times for the bakery', 'excerpt' => 'x', 'body' => $long, 'seo_title' => '', 'seo_description' => '', 'image_brief' => '', 'sources' => []])];
+$calls = [];
+$saveCalls = [];
+$runner->work($soon(), [AiWriter::KIND]);
+$first = json_decode((string)$calls[0]['body'], true)['input'][1]['content'];
+check('the request lists what is already on the site', [str_contains($first, 'Already on the site'), str_contains($first, '- Holiday hours')], [true, true]);
+check('a repeat is sent back once with the post it repeats', str_contains(json_decode((string)$calls[1]['body'], true)['input'][1]['content'], 'it repeats a post already on the site, "Holiday hours"'), true);
+check('the second answer is saved', $saveCalls[0]['post']['title'] ?? '', 'Winter opening times for the bakery');
+$siteWriter->runNow($dupe, 'chris');
+$replies = [$writeReply(['title' => 'Holiday hours', 'excerpt' => 'x', 'body' => $long, 'seo_title' => '', 'seo_description' => '', 'image_brief' => '', 'sources' => []]),
+    $writeReply(['title' => 'Holiday hours!', 'excerpt' => 'x', 'body' => $long, 'seo_title' => '', 'seo_description' => '', 'image_brief' => '', 'sources' => []])];
+$saveCalls = [];
+$runner->work($soon(), [AiWriter::KIND]);
+$job = $runner->list(AiWriter::KIND)[0];
+check('a repeat twice: failed, nothing saved, the similar post kept for the Runs tab', [$job['status'], str_starts_with($job['error'], 'A similar post is already on the site: "Holiday hours" (posts/hours/en'), $saveCalls, $job['result']['similar'] ?? ''],
+    [JobRunner::FAILED, true, [], 'posts/hours/en']);
+$schedules->delete($dupe);
+
 // ---- the week view
 $wk = new AiSchedules($db, $clock);
 $weekNow = $now;
@@ -306,6 +340,7 @@ $replies = [$searchReply(['can_write' => false, 'cannot_write_reason' => 'No off
 $saveCalls = [];
 $runner->work($soon(), [AiWriter::KIND]);
 $job = $runner->list(AiWriter::KIND)[0];
+check('a run that could not write keeps what it searched and looked at', [$job['result']['searches'] ?? null, $job['result']['pages'] ?? null], [2, ['https://news.example/story']]);
 check('the model cannot write a real post: failed with its reason, nothing saved, no picture', [$job['status'], $job['error'], $saveCalls, count($runner->list(AiPictures::KIND, [JobRunner::QUEUED]))],
     [JobRunner::FAILED, 'The model could not write a real post: No official announcements from last week could be confirmed. Nothing was saved.', [], 0]);
 $news->runNow($roundup, 'chris');

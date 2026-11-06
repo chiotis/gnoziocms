@@ -2421,6 +2421,9 @@ final class App
             'renamed_from' => $result['moved'] ? $result['original_slug'] . ':' . $result['original_lang'] : '',
             'translations_renamed' => $result['translations_renamed'],
         ]);
+        if ($type !== 'forms') {
+            $this->aiAutoPicture($type, $slug, $lang, $this->currentUsername());
+        }
         $this->redirect('/admin/edit?type=' . urlencode($type) . '&slug=' . urlencode($slug) . '&lang=' . urlencode($lang) . '&saved=1'
             . ($type === 'forms' && Slug::plain((string)($_POST['translate_lang'] ?? '')) !== '' ? '&translate=' . urlencode(Slug::plain((string)$_POST['translate_lang'])) : '')
             . ($result['html_neutralized'] ? '&notice=html' : ($storageBlocked ? '&notice=storage' : ''))
@@ -3568,7 +3571,7 @@ final class App
                 $item = in_array($type, $this->content->getTypes(), true) ? $this->content->find($type, $slug, $lang, true, false) : null;
                 return $item === null ? null : [
                     'title' => (string)($item->meta['title'] ?? ''), 'excerpt' => (string)($item->meta['excerpt'] ?? ''),
-                    'body' => $item->markdown, 'main_image' => (string)($item->meta['main_image'] ?? ''),
+                    'body' => $item->markdown, 'main_image' => (string)($item->meta['main_image'] ?? ''), 'image_brief' => (string)($item->meta['image_brief'] ?? ''),
                 ];
             },
             setMainImage: function (string $type, string $slug, string $lang, string $path, string $actor, bool $replace): string {
@@ -3620,8 +3623,54 @@ final class App
             fn(string $type, string $slug, string $lang, string $status, ?string $publishAt, string $actor): string => $this->aiSetStatus($type, $slug, $lang, $status, $publishAt, $actor),
             static fn(string $code): string => MenuAdmin::languageName($code),
             SiteSettings::timeZone($this->settings),
-            reader: new FeedReader(new SafeHttp(), $this->basePath . '/storage/ai/tmp')
+            reader: new FeedReader(new SafeHttp(), $this->basePath . '/storage/ai/tmp'),
+            recentPosts: fn(string $type, string $lang, int $days, int $limit): array => $this->aiRecentPosts($type, $lang, $days, $limit)
         );
+    }
+
+    /**
+     * The site's published and scheduled entries of a type and language from the last days, newest first: what a schedule must not
+     * repeat, whoever wrote them.
+     * @return array<int, array{title: string, entry: string, sources: string[]}>
+     */
+    private function aiRecentPosts(string $type, string $lang, int $days, int $limit): array
+    {
+        if (!in_array($type, $this->content->getTypes(), true)) {
+            return [];
+        }
+        $since = time() - $days * 86400;
+        $items = array_filter($this->content->getItems($type, $lang, true, false), static function (ContentItem $item) use ($since): bool {
+            return in_array((string)($item->meta['status'] ?? 'published'), ['published', ScheduledPublishing::STATUS], true) && max($item->createdTime(), $item->mtime) >= $since;
+        });
+        usort($items, static fn(ContentItem $a, ContentItem $b): int => $b->createdTime() <=> $a->createdTime());
+        return array_map(static fn(ContentItem $item): array => [
+            'title' => (string)($item->meta['title'] ?? $item->slug),
+            'entry' => $item->type . '/' . $item->slug . '/' . $item->lang,
+            'sources' => array_values(array_filter(array_map('strval', (array)($item->meta['ai_sources'] ?? [])))),
+        ], array_slice(array_values($items), 0, max(1, $limit)));
+    }
+
+    /**
+     * A picture for an entry saved without one, when Instructions > Pictures asks for it for its content type: published or scheduled,
+     * no main image, a key, nothing that blocks pictures. Never fails the save.
+     */
+    private function aiAutoPicture(string $type, string $slug, string $lang, string $by): void
+    {
+        try {
+            if (!$this->aiSettings()->hasKey() || !in_array($type, $this->aiSettings()->all()['auto_types'], true)) {
+                return;
+            }
+            $this->content->forget();
+            $item = $this->content->find($type, $slug, $lang, true, false);
+            if ($item === null || trim((string)($item->meta['main_image'] ?? '')) !== ''
+                || !in_array((string)($item->meta['status'] ?? 'published'), ['published', ScheduledPublishing::STATUS], true)
+                || ($item->meta['ai_schedule'] ?? null) !== null) {
+                return;
+            }
+            $this->aiPictures()->requestBulk([['type' => $type, 'slug' => $slug, 'lang' => $lang, 'has_image' => false]], false, $by, 'automatic');
+        } catch (\Throwable) {
+            // A picture that could not be queued never stands in the way of a save.
+        }
     }
 
     /** @return array<string, array<int, array{id: string, label: string}>> the taxonomies of a type with their terms, labelled in a language */
@@ -3826,6 +3875,7 @@ final class App
                     // What visitors see may have changed: the same as a save in the admin.
                     $this->frontCache()->purgeAll();
                     $this->contentIndex->bump();
+                    $this->aiAutoPicture((string)$entry['type'], (string)$entry['slug'], (string)$entry['lang'], (string)$connection['username'] . ' (MCP: ' . $connection['name'] . ')');
                     if ($published) {
                         $this->notifications->create([
                             'type' => 'content',
@@ -3838,7 +3888,11 @@ final class App
                 $this->media,
                 new SafeHttp(),
                 fn(int $bytes): bool => $this->siteLimits()->allows($bytes),
-                fn(int $bytes) => $this->siteLimits()->uploadsChanged($bytes)
+                fn(int $bytes) => $this->siteLimits()->uploadsChanged($bytes),
+                requestPicture: $this->aiSettings()->hasKey()
+                    ? fn(string $entry, string $brief, bool $replace, string $by): array => $this->aiPictures()->requestForEntry($entry, $brief, [], $by, null, 'mcp', $replace)
+                    : null,
+                pictureState: fn(string $entry): ?array => $this->aiPictures()->entryState($entry)
             )
         );
     }

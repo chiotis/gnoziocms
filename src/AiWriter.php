@@ -27,6 +27,8 @@ final class AiWriter
      * @param \Closure(string, string, string, string, ?string, string): string $setStatus (type, slug, lang, status, publish_at, actor)
      * @param \Closure(string): string $languageName
      * @param (\Closure(): int)|null $clock
+     * @param (\Closure(string, string, int, int): array<int, array{title: string, entry: string, sources: string[]}>)|null $recentPosts the
+     *   site's published and scheduled entries of a type and language from the last days (type, lang, days, at most), newest first
      */
     public function __construct(
         private JobRunner $runner,
@@ -42,6 +44,7 @@ final class AiWriter
         private \DateTimeZone $zone,
         private ?\Closure $clock = null,
         private ?FeedReader $reader = null,
+        private ?\Closure $recentPosts = null,
     ) {
     }
 
@@ -133,6 +136,51 @@ final class AiWriter
     }
 
     /**
+     * The entry already on the site that a new post would repeat, or null: a title that is nearly the same (accents, case and
+     * punctuation aside), or two or more source pages in common that make up at least half of the new post's sources.
+     * @param string[] $sources @param array<int, array{title: string, entry: string, sources: string[]}> $recent
+     * @return array{title: string, entry: string, why: string}|null
+     */
+    public static function similarTo(string $title, array $sources, array $recent): ?array
+    {
+        $key = self::titleKey($title);
+        $mine = array_map(self::urlKey(...), $sources);
+        foreach ($recent as $post) {
+            $theirs = self::titleKey($post['title']);
+            if ($key !== '' && $theirs !== '') {
+                similar_text($key, $theirs, $percent);
+                if ($key === $theirs || $percent >= 85) {
+                    return ['title' => $post['title'], 'entry' => $post['entry'], 'why' => 'nearly the same title'];
+                }
+            }
+            $shared = array_intersect($mine, array_map(self::urlKey(...), $post['sources']));
+            if (count($shared) >= 2 && count($shared) * 2 >= count($mine)) {
+                return ['title' => $post['title'], 'entry' => $post['entry'], 'why' => count($shared) . ' of the same sources'];
+            }
+        }
+        return null;
+    }
+
+    /** A title reduced for comparing: lower case, without accents, punctuation and extra spaces. */
+    public static function titleKey(string $title): string
+    {
+        $title = mb_strtolower($title);
+        if (class_exists(\Normalizer::class)) {
+            $title = (string)\Normalizer::normalize($title, \Normalizer::FORM_D);
+        } else {
+            $title = strtr($title, ['ά' => 'α', 'έ' => 'ε', 'ή' => 'η', 'ί' => 'ι', 'ό' => 'ο', 'ύ' => 'υ', 'ώ' => 'ω', 'ϊ' => 'ι', 'ϋ' => 'υ', 'ΐ' => 'ι', 'ΰ' => 'υ']);
+        }
+        $title = (string)preg_replace(['/\p{Mn}+/u', '/[^\p{L}\p{N}]+/u'], ['', ' '], $title);
+        return trim($title);
+    }
+
+    private static function urlKey(string $url): string
+    {
+        $parts = parse_url(strtolower(trim($url)));
+        return ($parts['host'] ?? '') . rtrim((string)($parts['path'] ?? ''), '/') . (isset($parts['query']) ? '?' . $parts['query'] : '');
+    }
+
+    /**
      * The problems that keep an answer from becoming a post ('' when there are none).
      * @param array<string, mixed> $answer @param array<string, string[]> $choose
      * @return string[]
@@ -214,7 +262,8 @@ final class AiWriter
             throw JobFailure::final($material['errors'] !== [] ? 'The feeds and pages could not be read: ' . implode(' ', $material['errors'])
                 : 'Nothing new in the feeds since the last post, and web search is off.');
         }
-        [$instructions, $input] = $this->request($schedule, $s, $taxonomies, $choose, $material);
+        [$instructions, $input] = $this->request($schedule, $s, $taxonomies, $choose, $material,
+            $this->recentPosts !== null ? array_column(($this->recentPosts)($type, $lang, 60, 80), 'title') : []);
         $model = $c['model'] !== '' ? $c['model'] : $s['text_model'];
         $schema = self::schema($choose);
         $ref = 'job:' . $job['id'];
@@ -222,6 +271,9 @@ final class AiWriter
 
         $answer = null;
         $problems = [];
+        $similar = null;
+        $found = ['searches' => 0, 'queries' => [], 'pages' => []];
+        $recent = $this->recentPosts !== null ? ($this->recentPosts)($type, $lang, 60, 200) : [];
         for ($attempt = 1; $attempt <= 2; $attempt++) {
             $prompt = $attempt === 1 ? $input : $input . "\n\nYour previous answer could not be used: " . implode('; ', $problems) . '. Write the post again, keeping to the rules.';
             $r = $provider->write($model, $instructions, $prompt, 'post', $schema, 8000, $c['web_search']);
@@ -229,19 +281,29 @@ final class AiWriter
             if (!$r['ok']) {
                 $this->fail($r, $model, $c['web_search']);
             }
+            $found['searches'] += $r['searches'];
+            $found['queries'] = array_values(array_unique(array_merge($found['queries'], $r['queries'])));
+            $found['pages'] = AiSchedules::urls(array_merge($found['pages'], (array)($r['data']['sources'] ?? []), $r['cited']), 30);
             // The model says it cannot write a real post: nothing is saved, nothing more is paid for.
             if (($r['data']['can_write'] ?? true) === false) {
                 $why = trim((string)($r['data']['cannot_write_reason'] ?? ''));
-                throw JobFailure::final('The model could not write a real post' . ($why !== '' ? ': ' . mb_substr($why, 0, 400) : '.') . ' Nothing was saved.');
+                throw JobFailure::final('The model could not write a real post' . ($why !== '' ? ': ' . mb_substr($why, 0, 400) : '.') . ' Nothing was saved.', $found);
             }
             $problems = self::problems($r['data'], $choose);
+            $similar = $problems === [] ? self::similarTo((string)$r['data']['title'], AiSchedules::urls(array_merge((array)($r['data']['sources'] ?? []), $r['cited']), 30), $recent) : null;
+            if ($similar !== null) {
+                $problems[] = 'it repeats a post already on the site, "' . $similar['title'] . '" (' . $similar['why'] . '); write about something else, or a clearly new development';
+            }
             if ($problems === []) {
                 $answer = $r['data'];
                 break;
             }
         }
+        if ($answer === null && $similar !== null) {
+            throw JobFailure::final('A similar post is already on the site: "' . $similar['title'] . '" (' . $similar['entry'] . ', ' . $similar['why'] . '). Nothing was saved.', $found + ['similar' => $similar['entry']]);
+        }
         if ($answer === null) {
-            throw JobFailure::final('The answer could not be used twice: ' . implode('; ', $problems) . '.');
+            throw JobFailure::final('The answer could not be used twice: ' . implode('; ', $problems) . '.', $found);
         }
 
         // Saved as a draft first; the status comes once the picture is there (or at once without one).
@@ -298,7 +360,7 @@ final class AiWriter
             'entry' => $entry, 'title' => (string)$answer['title'], 'status' => $waiting ? 'draft until the picture is set' : $final['status'],
             'publish_at' => $final['publish_at'], 'picture_job' => $pictureJob, 'words' => str_word_count(strip_tags((string)$answer['body'])),
             'model' => $model, 'subject' => (string)$answer['title'],
-            'searches' => $r['searches'] ?? 0, 'material' => count($material['items']) + count($material['pages']), 'material_errors' => $material['errors'],
+            'searches' => $found['searches'], 'queries' => $found['queries'], 'material' => count($material['items']) + count($material['pages']), 'material_errors' => $material['errors'],
             'sources' => count($sources),
         ];
     }
@@ -310,7 +372,7 @@ final class AiWriter
      * @param array{items: array<int, array<string, mixed>>, pages: array<int, array<string, string>>, errors: string[]} $material
      * @return array{0: string, 1: string}
      */
-    private function request(array $schedule, array $s, array $taxonomies, array $choose, array $material = ['items' => [], 'pages' => [], 'errors' => []]): array
+    private function request(array $schedule, array $s, array $taxonomies, array $choose, array $material = ['items' => [], 'pages' => [], 'errors' => []], array $siteTitles = []): array
     {
         $c = $schedule['settings'];
         $avoid = array_values(array_unique(array_merge($s['text_avoid'], $c['text_avoid'])));
@@ -360,6 +422,10 @@ final class AiWriter
         $titles = $this->schedules->recentTitles($schedule['id'], 30);
         if ($titles !== []) {
             $user[] = "Do not repeat a topic already written by this schedule:\n- " . implode("\n- ", $titles);
+        }
+        $others = array_values(array_diff(array_unique($siteTitles), $titles));
+        if ($others !== []) {
+            $user[] = "Already on the site (from the last weeks): do not repeat these topics; for news, write only about what is new since them:\n- " . implode("\n- ", array_slice($others, 0, 80));
         }
         $user[] = 'Today is ' . (new \DateTimeImmutable('@' . $this->now()))->setTimezone($this->zone)->format('l j F Y') . '.';
         return [implode("\n\n", array_filter($developer)), implode("\n\n", $user)];

@@ -121,6 +121,16 @@ for _ in range(2):
 st, _, html = root.get('/admin/ai-publishing?tab=schedules')
 check('schedules can be deleted', 'No schedules yet' in html, st)
 
+# Automatic pictures: a post of a ticked type saved without a main image gets one queued.
+root.submit('/admin/ai-publishing?tab=instructions', has_field('house_style'), {'auto_types[]': ['posts']}, button=('ai_action', 'save_instructions'))
+st, _, html = root.get('/admin/ai-publishing?tab=instructions')
+check('automatic pictures can be asked for per content type', 'name="auto_types[]" value="posts" class="h-3.5 w-3.5" checked' in html, st)
+root.submit('/admin/edit?type=posts&slug=rebrand-readiness-guide&lang=en', has_field('body'), {})
+st, _, html = root.get('/admin/ai-publishing?tab=runs')
+check('saving a published post without a picture queues one, as Automatic', 'Picture · Automatic' in html and 'posts/rebrand-readiness-guide' in html, st)
+root.submit('/admin/ai-publishing?tab=runs', lambda f: any(b[1] == 'cancel_waiting' for b in f['buttons']), button=('ai_action', 'cancel_waiting'))
+root.submit('/admin/ai-publishing?tab=instructions', has_field('house_style'), {'auto_types[]': None}, drop=['auto_types[]'], button=('ai_action', 'save_instructions'))
+
 # Bulk: Content list > Generate main images. The test server cannot make outside calls, so a picture fails with a plain sentence.
 st, _, html = root.get('/admin/content?type=posts&lang=el')
 check('the list offers Generate main images', st == 200 and 'value="generate_images"' in html and 'data-ai-bulk-apply' in html, st)

@@ -26,6 +26,9 @@ final class McpContent
      *   was published or scheduled by this save (caches, notices)
      * @param \Closure(int): bool $roomFor whether the site's storage limit leaves room for that many bytes
      * @param \Closure(int): void $uploadsChanged told when the library grew
+     * @param (\Closure(string, string, bool, string): array{ok: bool, job: int, error: string})|null $requestPicture queues a main image in the site's
+     *   house style for an entry (type/slug/lang, subject, replace, by): AI publishing, when it has a key
+     * @param (\Closure(string): (array{status: string, error: string, main_image: string}|null))|null $pictureState where an entry's picture stands
      */
     public function __construct(
         private ContentRepository $content,
@@ -42,6 +45,8 @@ final class McpContent
         private ?SafeHttp $http = null,
         private ?\Closure $roomFor = null,
         private ?\Closure $uploadsChanged = null,
+        private ?\Closure $requestPicture = null,
+        private ?\Closure $pictureState = null,
     ) {
     }
 
@@ -63,6 +68,7 @@ final class McpContent
             'terms' => ['type' => 'object', 'description' => 'Taxonomy name => list of term ids (see list_terms). Replaces the terms of that taxonomy.', 'additionalProperties' => ['type' => 'array', 'items' => ['type' => 'string']]],
             'fields' => ['type' => 'object', 'description' => 'Fields of the content type (see site_info) => value.'],
             'main_image' => $str('A picture already in the media library, as its address (/uploads/...).'),
+            'image_brief' => $str('What the main picture should show, in one or two sentences, without style words (the site has its own house style). Used by generate_main_image.', 1000),
             'seo' => ['type' => 'object', 'properties' => ['title' => $str('Title for search engines.', 200), 'description' => $str('Description for search engines.', 400)], 'additionalProperties' => false],
         ];
         $create = $entry + [
@@ -138,6 +144,18 @@ final class McpContent
                 // ChatGPT hands a file from the chat to this argument as {download_url, file_id} (Apps SDK); other clients ignore _meta.
                 '_meta' => ['openai/fileParams' => ['file']],
             ],
+            'generate_main_image' => [
+                'scopes' => [McpOAuth::SCOPE_MEDIA], 'permission' => 'media.manage', 'title' => 'Make the main picture',
+                'description' => 'Has the site make the entry\'s main picture in its own house style (the same look as every picture of the site) and set it as main_image, '
+                    . 'in the background within a minute or two; get_entry shows image_status. Do not make pictures in the chat for main images: give the subject here '
+                    . '(or as image_brief), never style words. An entry that has a main picture keeps it unless replace is true.',
+                'inputSchema' => $schema([
+                    'type' => $str('The content type.'), 'slug' => $str('Its address within the type.'), 'lang' => $str('Its language; the default when left out.'),
+                    'brief' => $str('What the picture shows, in one or two sentences, no style words. Without it: the entry\'s image_brief, else its title and excerpt.', 1000),
+                    'replace' => ['type' => 'boolean', 'description' => 'Make a new picture even when the entry has one.'],
+                ], ['type', 'slug']),
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'idempotentHint' => false, 'openWorldHint' => true],
+            ],
             'update_entry' => [
                 'scopes' => $write, 'permission' => 'content.manage', 'title' => 'Change an entry',
                 'description' => 'Changes what is given and keeps the rest. Changing a published or scheduled entry, or publishing one, needs content:publish. Give expected_updated_at from get_entry so a change made meanwhile is not overwritten.',
@@ -164,6 +182,7 @@ final class McpContent
             'create_entry' => $this->create($args, $connection),
             'update_entry' => $this->update($args, $connection),
             'add_image_from_url' => $this->addImage($args, $connection),
+            'generate_main_image' => $this->generatePicture($args, $connection),
         };
     }
 
@@ -207,11 +226,37 @@ final class McpContent
             'body' => $this->bodyOf($item->filePath),
             'author' => (string)($item->meta['author'] ?? ''),
             'main_image' => (string)($item->meta['main_image'] ?? ''),
+            'image_brief' => (string)($item->meta['image_brief'] ?? ''),
+            'image_status' => $this->pictureState !== null ? ($this->pictureState)($item->type . '/' . $item->slug . '/' . $item->lang) : null,
             'seo' => array_intersect_key($seo, ['title' => 1, 'description' => 1]),
             'terms' => $terms,
             'fields' => $this->types->values($item->type, $item->meta, 'en', $this->defaultLang()),
             'translations' => $siblings,
         ];
+    }
+
+    /**
+     * generate_main_image: the picture is made by the site, in its house style, in the background.
+     * @param array<string, mixed> $args @param array<string, mixed> $connection @return array<string, mixed>
+     */
+    private function generatePicture(array $args, array $connection): array
+    {
+        if ($this->requestPicture === null) {
+            throw new \InvalidArgumentException('This site does not make pictures (AI publishing has no key). Use add_image_from_url with a picture you may publish.');
+        }
+        $item = $this->existing($args);
+        $replace = ($args['replace'] ?? false) === true;
+        if (!$replace && trim((string)($item->meta['main_image'] ?? '')) !== '') {
+            return ['queued' => false, 'main_image' => (string)$item->meta['main_image'], 'note' => 'The entry has a main picture; pass replace: true to make a new one.'];
+        }
+        $brief = trim((string)($args['brief'] ?? ''));
+        $entry = $item->type . '/' . $item->slug . '/' . $item->lang;
+        $result = ($this->requestPicture)($entry, $brief, $replace, (string)$connection['username'] . ' (MCP: ' . $connection['name'] . ')');
+        if (!$result['ok']) {
+            throw new \InvalidArgumentException($result['error']);
+        }
+        return ['queued' => true, 'entry' => ['type' => $item->type, 'slug' => $item->slug, 'lang' => $item->lang],
+            'note' => 'The site makes the picture in its house style within a minute or two and sets it as main_image. get_entry shows image_status.'];
     }
 
     /** @param array<string, mixed> $args @return array<string, mixed> */
@@ -442,6 +487,14 @@ final class McpContent
         $front['custom_fields'] = $custom;
         if ($existing === null) {
             $front['generated_by'] = (string)$connection['name'];
+        }
+        if (array_key_exists('image_brief', $args)) {
+            $brief = trim(mb_substr((string)$args['image_brief'], 0, 1000));
+            if ($brief === '') {
+                unset($front['image_brief']);
+            } else {
+                $front['image_brief'] = $brief;
+            }
         }
         unset($front['publish_at']);
         if ($front['custom_fields'] === []) {

@@ -88,7 +88,7 @@ final class OpenAiProvider
      * (the `web_search` tool); each search is counted in `searches` (OpenAI bills them per call).
      * @param array<string, mixed> $schema
      * @return array{ok: bool, data: array<string, mixed>|null, usage: array<string, mixed>, kind: string, error: string, retry_after: int|null,
-     *   ms: int, model_gone: bool, refusal: string, incomplete: string, searches: int, cited: string[]}
+     *   ms: int, model_gone: bool, refusal: string, incomplete: string, searches: int, cited: string[], queries: string[]}
      */
     public function write(string $model, string $instructions, string $input, string $schemaName, array $schema, int $maxTokens = 8000, bool $search = false): array
     {
@@ -108,7 +108,7 @@ final class OpenAiProvider
         }
         $r = $this->http->postJson(self::BASE . '/responses', $payload, $this->auth(), $search ? 300 : 240);
         $result = ['ok' => false, 'data' => null, 'usage' => is_array($r['data']['usage'] ?? null) ? $r['data']['usage'] : [], 'kind' => $r['kind'], 'error' => $r['error'],
-            'retry_after' => $r['retry_after'], 'ms' => $r['ms'], 'model_gone' => self::modelGone($r), 'refusal' => '', 'incomplete' => '', 'searches' => 0, 'cited' => []];
+            'retry_after' => $r['retry_after'], 'ms' => $r['ms'], 'model_gone' => self::modelGone($r), 'refusal' => '', 'incomplete' => '', 'searches' => 0, 'cited' => [], 'queries' => []];
         if (!$r['ok']) {
             return $result;
         }
@@ -116,6 +116,12 @@ final class OpenAiProvider
         foreach ((array)($r['data']['output'] ?? []) as $item) {
             if (is_array($item) && ($item['type'] ?? '') === 'web_search_call') {
                 $result['searches']++;
+                // What it searched for, for a person reading why a run went as it did.
+                foreach (array_merge([$item['action']['query'] ?? null], (array)($item['action']['queries'] ?? [])) as $query) {
+                    if (is_string($query) && trim($query) !== '') {
+                        $result['queries'][] = mb_substr(trim($query), 0, 200);
+                    }
+                }
             }
             if (!is_array($item) || ($item['type'] ?? '') !== 'message') {
                 continue;

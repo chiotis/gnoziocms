@@ -145,5 +145,26 @@ foreach ([
 $entry = $tools->call('create_entry', ['type' => 'posts', 'title' => 'Storm', 'body' => 'Rain. ![Clouds](' . $first['path'] . ')', 'status' => 'draft', 'main_image' => $first['path']], $connection);
 check('the picture can be the main image', str_contains((string)file_get_contents("$dir/content/posts/storm.md"), 'main_image: ' . $first['path']), true);
 
+// ---- generate_main_image: the site makes the picture in its house style
+try { $tools->call('generate_main_image', ['type' => 'posts', 'slug' => 'storm'], $connection); $r = 'queued'; } catch (\InvalidArgumentException $e) { $r = $e->getMessage(); }
+check('without AI publishing the tool says what to use instead', str_contains($r, 'add_image_from_url'), true);
+$asked = [];
+$states = [];
+$picturing = new McpContent($content, $editor, $index, new ContentTypes($theme), $taxonomies, new McpStore($db), $settings, "$dir/public", fn(string $p): string => 'https://site.test' . $p, function (): void {}, $media, $http, null, null,
+    function (string $entry, string $brief, bool $replace, string $by) use (&$asked): array { $asked[] = [$entry, $brief, $replace, $by]; return ['ok' => true, 'job' => 7, 'error' => '']; },
+    function (string $entry) use (&$states): ?array { return $states[$entry] ?? null; });
+$created = $picturing->call('create_entry', ['type' => 'posts', 'title' => 'Harbour at dawn', 'body' => 'Boats.', 'status' => 'draft', 'image_brief' => 'Fishing boats at a quay at dawn.'], $connection);
+$file = (string)file_get_contents("$dir/content/posts/harbour-at-dawn.md");
+check('image_brief is kept with the entry', str_contains($file, 'image_brief: \'Fishing boats at a quay at dawn.\'') || str_contains($file, 'image_brief: Fishing boats at a quay at dawn.'), true);
+$r = $picturing->call('generate_main_image', ['type' => 'posts', 'slug' => 'harbour-at-dawn'], $connection);
+check('the picture is queued for the entry, by the connection', [$r['queued'], $asked[0][0], $asked[0][1], $asked[0][2], $asked[0][3]], [true, 'posts/harbour-at-dawn/en', '', false, 'newsroom (MCP: Job)']);
+check('an entry with a main picture keeps it unless replace', [$picturing->call('generate_main_image', ['type' => 'posts', 'slug' => 'storm'], $connection)['queued'], count($asked)], [false, 1]);
+$picturing->call('generate_main_image', ['type' => 'posts', 'slug' => 'storm', 'replace' => true, 'brief' => 'Dark clouds over a city.'], $connection);
+check('replace with a brief of its own', [$asked[1][1], $asked[1][2]], ['Dark clouds over a city.', true]);
+$states['posts/harbour-at-dawn/en'] = ['status' => 'done', 'error' => '', 'main_image' => '/uploads/media/x.webp'];
+$got = $picturing->call('get_entry', ['type' => 'posts', 'slug' => 'harbour-at-dawn'], $connection);
+check('get_entry shows image_brief and image_status', [$got['image_brief'], $got['image_status']['status']], ['Fishing boats at a quay at dawn.', 'done']);
+check('the tool is listed for the media scope', in_array('media:write', McpContent::definitions()['generate_main_image']['scopes'], true), true);
+
 echo $fail === 0 ? "\nALL PASSED\n" : "\n$fail FAILED\n";
 exit($fail === 0 ? 0 : 1);

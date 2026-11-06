@@ -11,7 +11,8 @@ namespace GnozioCMS;
  */
 final class JobFailure extends \RuntimeException
 {
-    private function __construct(string $message, public readonly bool $retry, public readonly int $retryAfter)
+    /** @param array<string, mixed> $details kept as the failed job's result (what was found before giving up) */
+    private function __construct(string $message, public readonly bool $retry, public readonly int $retryAfter, public readonly array $details = [])
     {
         parent::__construct($message);
     }
@@ -21,8 +22,9 @@ final class JobFailure extends \RuntimeException
         return new self($message, true, max(0, $retryAfter));
     }
 
-    public static function final(string $message): self
+    /** @param array<string, mixed> $details */
+    public static function final(string $message, array $details = []): self
     {
-        return new self($message, false, 0);
+        return new self($message, false, 0, $details);
     }
 }
