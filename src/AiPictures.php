@@ -15,12 +15,19 @@ final class AiPictures
 {
     public const KIND = 'ai_picture';
     public const PRIORITY_EDITOR = 100;
+    public const PRIORITY_BULK = 10;
+    /** How long a finished bulk job still shows on the content list. */
+    public const BULK_SHOWN = 6 * 3600;
     private const VARIANTS_KEPT = 86400;
     private const FIXED_AVOID = 'text, letters, numbers or logos';
 
     /**
      * @param \Closure(string): OpenAiProvider $provider makes the provider for a key (tests give a fake transport)
      * @param (\Closure(): int)|null $clock
+     * @param (\Closure(string, string, string): (array{title: string, excerpt: string, body: string, main_image: string}|null))|null $entries
+     *   reads an entry (type, slug, lang) for bulk pictures
+     * @param (\Closure(string, string, string, string, string, bool): string)|null $setMainImage sets an entry's main image (type, slug,
+     *   lang, address, actor, replace) and says set, kept, missing or unreadable
      */
     public function __construct(
         private JobRunner $runner,
@@ -32,6 +39,8 @@ final class AiPictures
         private string $publicDir,
         private \Closure $provider,
         private ?\Closure $clock = null,
+        private ?\Closure $entries = null,
+        private ?\Closure $setMainImage = null,
     ) {
     }
 
@@ -102,6 +111,86 @@ final class AiPictures
     }
 
     /**
+     * Queues one picture for each entry, made from the entry itself (title and excerpt) when its turn comes, and set as its main
+     * image. Entries with a main image are left out unless `$replace`. An entry whose picture is already waiting is not queued twice.
+     * @param array<int, array{type: string, slug: string, lang: string, has_image: bool}> $entries
+     * @return array{ok: bool, queued: int, skipped: int, error: string}
+     */
+    public function requestBulk(array $entries, bool $replace, string $by): array
+    {
+        if (!$this->settings->hasKey()) {
+            return ['ok' => false, 'queued' => 0, 'skipped' => 0, 'error' => 'Add an OpenAI key first, in Manage > AI publishing > Settings.'];
+        }
+        $wanted = array_values(array_filter($entries, static fn(array $e): bool => $replace || !$e['has_image']));
+        $skipped = count($entries) - count($wanted);
+        if ($wanted === []) {
+            return ['ok' => false, 'queued' => 0, 'skipped' => $skipped, 'error' => 'Every selected entry has a main image already. Choose "Replace existing images" to make new ones.'];
+        }
+        $blocked = $this->blocked(count($wanted));
+        if ($blocked !== '') {
+            return ['ok' => false, 'queued' => 0, 'skipped' => $skipped, 'error' => $blocked];
+        }
+        $queued = 0;
+        foreach ($wanted as $e) {
+            $entry = $e['type'] . '/' . $e['slug'] . '/' . $e['lang'];
+            $id = $this->runner->enqueue(self::KIND, [
+                'mode' => 'bulk', 'entry' => $entry, 'replace' => $replace, 'variants' => 1, 'source' => 'bulk', 'by' => mb_substr($by, 0, 120),
+            ], self::PRIORITY_BULK, self::bulkKey($entry), 3);
+            $queued += $id > 0 ? 1 : 0;
+        }
+        return ['ok' => $queued > 0, 'queued' => $queued, 'skipped' => $skipped, 'error' => $queued > 0 ? '' : 'The site database is not available.'];
+    }
+
+    public static function bulkKey(string $entry): string
+    {
+        return 'picture:' . $entry;
+    }
+
+    /**
+     * Where each entry's bulk picture stands, for the content list: waiting, working, done or failed (with the reason), for the
+     * entries given, from the last few hours.
+     * @param string[] $slugs
+     * @return array<string, array{status: string, error: string, outcome: string}> slug => state
+     */
+    public function bulkStates(string $type, string $lang, array $slugs): array
+    {
+        $keys = [];
+        foreach ($slugs as $slug) {
+            $keys[self::bulkKey($type . '/' . $slug . '/' . $lang)] = $slug;
+        }
+        $out = [];
+        foreach ($this->runner->latestByKeys(array_keys($keys), $this->now() - self::BULK_SHOWN) as $key => $job) {
+            $out[$keys[$key]] = ['status' => (string)$job['status'], 'error' => (string)$job['error'], 'outcome' => (string)($job['result']['outcome'] ?? '')];
+        }
+        return $out;
+    }
+
+    /** @return array{waiting: int, working: int, done: int, failed: int} bulk pictures of a type and language: waiting and working now, done and failed in the last hours */
+    public function bulkProgress(string $type, string $lang): array
+    {
+        $counts = $this->countLang($type, $lang);
+        return ['waiting' => $counts[JobRunner::QUEUED], 'working' => $counts[JobRunner::RUNNING], 'done' => $counts[JobRunner::DONE], 'failed' => $counts[JobRunner::FAILED]];
+    }
+
+    /** @return array<string, int> */
+    private function countLang(string $type, string $lang): array
+    {
+        $counts = [JobRunner::QUEUED => 0, JobRunner::RUNNING => 0, JobRunner::DONE => 0, JobRunner::FAILED => 0, JobRunner::CANCELLED => 0];
+        $since = $this->now() - self::BULK_SHOWN;
+        foreach ($this->runner->list(self::KIND, [], 500) as $job) {
+            $entry = (string)($job['payload']['entry'] ?? '');
+            if (($job['payload']['mode'] ?? '') !== 'bulk' || !str_starts_with($entry, $type . '/') || !str_ends_with($entry, '/' . $lang)) {
+                continue;
+            }
+            $live = in_array($job['status'], [JobRunner::QUEUED, JobRunner::RUNNING], true);
+            if ($live || $job['finished_at'] >= $since) {
+                $counts[$job['status']] = ($counts[$job['status']] ?? 0) + 1;
+            }
+        }
+        return $counts;
+    }
+
+    /**
      * Where a job stands, for the screen that waits on it.
      * @return array{status: string, error: string, variants: int, wait: int}|null
      */
@@ -142,9 +231,22 @@ final class AiPictures
      */
     public function pick(int $jobId, int $index, string $by): array
     {
-        $file = $this->variantPath($jobId, $index);
         $job = $this->runner->get($jobId);
-        if ($file === null || $job === null) {
+        if ($job === null) {
+            return ['ok' => false, 'path' => '', 'id' => '', 'alt' => '', 'error' => 'This picture is no longer kept; make it again.'];
+        }
+        return $this->keep($jobId, $index, $job, $by);
+    }
+
+    /**
+     * @param array<string, mixed> $job the job, with its result (it may still be running: a bulk job keeps its picture itself)
+     * @return array{ok: bool, path: string, id: string, alt: string, error: string}
+     */
+    private function keep(int $jobId, int $index, array $job, string $by): array
+    {
+        $name = (string)(array_values((array)($job['result']['files'] ?? []))[$index] ?? '');
+        $file = preg_match('/^\d\.(webp|jpg|png)$/', $name) === 1 && is_file($this->variantDir($jobId) . '/' . $name) ? $this->variantDir($jobId) . '/' . $name : null;
+        if ($file === null) {
             return ['ok' => false, 'path' => '', 'id' => '', 'alt' => '', 'error' => 'This picture is no longer kept; make it again.'];
         }
         $id = substr((string)hash_file('sha256', $file), 0, 16);
@@ -222,6 +324,10 @@ final class AiPictures
         if ($s['openai_key'] === '') {
             throw JobFailure::final('There is no OpenAI key. Add one in Manage > AI publishing > Settings.');
         }
+        $bulk = ($payload['mode'] ?? '') === 'bulk';
+        if ($bulk) {
+            $payload = $this->bulkPayload($payload);
+        }
         $variants = max(1, min(4, (int)($payload['variants'] ?? 1)));
         $blocked = $this->blocked($variants);
         if ($blocked !== '') {
@@ -269,8 +375,69 @@ final class AiPictures
             file_put_contents($dir . '/' . $name, self::cut($bytes, $s['aspect'], $s['format']));
             $files[] = $name;
         }
-        return ['files' => $files, 'prompt' => $prompt, 'model' => $model, 'size' => $size, 'quality' => $s['quality'], 'aspect' => $s['aspect'],
-            'references' => $s['references'], 'cost' => $cost];
+        $result = ['files' => $files, 'prompt' => $prompt, 'model' => $model, 'size' => $size, 'quality' => $s['quality'], 'aspect' => $s['aspect'],
+            'references' => $s['references'], 'cost' => $cost, 'subject' => (string)$payload['subject']];
+        if ($bulk) {
+            $result += $this->keepForEntry($payload, $job, $result);
+        }
+        return $result;
+    }
+
+    /**
+     * A bulk job's payload with its subject, read from the entry now (its title and excerpt, else the start of its text). An entry
+     * that is gone, or that has a main image by now when the job does not replace, ends the job here, before anything is paid for.
+     * @param array<string, mixed> $payload @return array<string, mixed>
+     */
+    private function bulkPayload(array $payload): array
+    {
+        [$type, $slug, $lang] = array_pad(explode('/', (string)($payload['entry'] ?? ''), 3), 3, '');
+        $entry = $this->entries !== null && $type !== '' && $slug !== '' ? ($this->entries)($type, $slug, $lang) : null;
+        if ($entry === null) {
+            throw JobFailure::final('The entry is no longer there.');
+        }
+        if (!($payload['replace'] ?? false) && trim($entry['main_image']) !== '') {
+            throw JobFailure::final('It has a main image by now; it was left as it is.');
+        }
+        $payload['subject'] = self::subjectFrom($entry['title'], $entry['excerpt'], $entry['body']);
+        if ($payload['subject'] === '') {
+            throw JobFailure::final('The entry has no title or text to make a picture from.');
+        }
+        return $payload;
+    }
+
+    /** The subject of an entry's picture: the title and the excerpt, as the editor fills it; without an excerpt, the start of the text. */
+    public static function subjectFrom(string $title, string $excerpt, string $body): string
+    {
+        $title = trim((string)preg_replace('/\s+/u', ' ', $title));
+        $more = trim((string)preg_replace('/\s+/u', ' ', $excerpt));
+        if ($more === '') {
+            $text = (string)preg_replace(['/<[^>]+>/', '/!\[[^\]]*\]\([^)]*\)/', '/\[([^\]]*)\]\([^)]*\)/', '/[#*_>`|~-]+/', '/\{[^}]*\}/'], [' ', ' ', '$1', ' ', ' '], $body);
+            $more = trim(mb_substr(trim((string)preg_replace('/\s+/u', ' ', $text)), 0, 300));
+        }
+        $joined = $title !== '' && $more !== '' ? $title . (preg_match('/[.!?;…]$/u', $title) === 1 ? ' ' : '. ') . $more : $title . $more;
+        return mb_substr($joined, 0, 600);
+    }
+
+    /**
+     * Keeps a bulk job's picture in the media library and sets it as the entry's main image (unless it has one by now and the job
+     * does not replace: then the picture stays in the library).
+     * @param array<string, mixed> $payload @param array<string, mixed> $job @param array<string, mixed> $result
+     * @return array{path: string, outcome: string}
+     */
+    private function keepForEntry(array $payload, array $job, array $result): array
+    {
+        $job['result'] = $result;
+        $job['payload'] = $payload;
+        $job['status'] = JobRunner::DONE;
+        $kept = $this->keep((int)$job['id'], 0, $job, (string)($payload['by'] ?? ''));
+        if (!$kept['ok']) {
+            throw JobFailure::final($kept['error']);
+        }
+        [$type, $slug, $lang] = explode('/', (string)$payload['entry'], 3);
+        $outcome = $this->setMainImage !== null
+            ? ($this->setMainImage)($type, $slug, $lang, $kept['path'], 'AI publishing (' . ($payload['by'] ?: 'bulk') . ')', (bool)($payload['replace'] ?? false))
+            : 'missing';
+        return ['path' => $kept['path'], 'outcome' => $outcome];
     }
 
     /**

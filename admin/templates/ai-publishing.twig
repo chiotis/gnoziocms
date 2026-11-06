@@ -21,7 +21,7 @@
 
   <header class="mb-4 border-b border-slate-200 pb-4">
     <div class="flex flex-wrap items-start justify-between gap-3">
-      <p class="max-w-3xl text-xs text-slate-500">The site makes pictures itself, with OpenAI, from one house style, so every post gets the same look. Pictures are made from the editor's Main image (Generate); posts written on a timetable come later. Every call is counted on the Usage tab.</p>
+      <p class="max-w-3xl text-xs text-slate-500">The site makes pictures itself, with OpenAI, from one house style, so every post gets the same look. Pictures are made from the editor's Main image (Generate) or for many entries at once from a content list (Bulk action › Generate main images); posts written on a timetable come later. Every call is counted on the Usage tab.</p>
       <div class="flex flex-wrap items-center gap-2" data-ai-state>
         {% if ai.paused %}
           {{ ui.badge('Paused', 'amber') }}
@@ -130,6 +130,63 @@
         </div>
       </div>
     </div>
+
+  {% elseif tab == 'runs' %}
+    <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+      <nav class="flex gap-1 text-xs" aria-label="Show">
+        {% for key, name in {'': 'All', 'live': 'Waiting and working', 'failed': 'Failed'} %}
+          <a href="{{ url('admin/ai-publishing?tab=runs' ~ (key ? '&show=' ~ key : '')) }}" class="rounded-md px-2.5 py-1 font-medium {{ show == key ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">{{ name }}</a>
+        {% endfor %}
+      </nav>
+      {% if runs.waiting %}
+        <form method="post" action="{{ url('admin/ai-publishing?tab=runs') }}">
+          {{ csrf_field() }}
+          <button type="submit" name="ai_action" value="cancel_waiting" class="{{ secondary }} py-1 text-xs" data-confirm="Cancel every picture that is still waiting? Pictures being made now finish." data-confirm-button="Cancel them">Cancel the {{ runs.waiting }} waiting</button>
+        </form>
+      {% endif %}
+    </div>
+    <div class="{{ card }}" data-ai-runs>
+      {% if runs.rows is empty %}
+        <p class="px-4 py-3 text-sm text-slate-500">No pictures yet{{ show ? ' with this status' : '' }}.</p>
+      {% else %}
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[720px] text-sm">
+            <thead><tr class="border-b border-slate-100 text-left text-xs text-slate-500">
+              <th class="px-4 py-2 font-medium">When</th><th class="px-2 font-medium">From</th><th class="px-2 font-medium">Entry and subject</th><th class="px-2 font-medium">Result</th><th class="px-2 text-right font-medium">Cost</th><th class="px-4"></th>
+            </tr></thead>
+            <tbody class="divide-y divide-slate-50">
+              {% for r in runs.rows %}
+                <tr data-ai-run="{{ r.id }}">
+                  <td class="whitespace-nowrap px-4 py-2 text-xs text-slate-500">{{ r.created|date('j M H:i') }}</td>
+                  <td class="px-2 text-xs">{{ {'editor': 'Editor', 'test': 'Test', 'bulk': 'Bulk', 'schedule': 'Schedule', 'mcp': 'MCP', 'automatic': 'Automatic'}[r.source] ?? r.source }}{% if r.by %}<span class="block text-slate-400">{{ r.by }}</span>{% endif %}</td>
+                  <td class="max-w-md px-2 py-2">
+                    {% if r.slug %}<a class="font-medium text-slate-800 hover:text-blue-700" href="{{ url('admin/edit?type=' ~ r.type ~ '&slug=' ~ r.slug ~ '&lang=' ~ r.lang) }}">{{ r.type }}/{{ r.slug }} <span class="text-xs text-slate-400">{{ r.lang|upper }}</span></a>{% endif %}
+                    {% if r.subject %}<span class="block truncate text-xs text-slate-500" title="{{ r.subject }}">{{ r.subject }}</span>{% endif %}
+                  </td>
+                  <td class="px-2 py-2 text-xs">
+                    {{ ui.status_badge(r.status) }}
+                    {% if r.status == 'done' and r.outcome == 'set' %}<span class="text-slate-500">set as main image</span>
+                    {% elseif r.status == 'done' and r.outcome == 'kept' %}<span class="text-slate-500">in the library (it had a main image by then)</span>
+                    {% elseif r.status == 'done' and r.pictures %}<span class="text-slate-500">{{ r.pictures }} picture{{ r.pictures == 1 ? '' : 's' }}</span>{% endif %}
+                    {% if r.status == 'queued' and r.wait %}<span class="text-slate-500">tries again in {{ (r.wait / 60)|round(0, 'ceil') }} min</span>{% endif %}
+                    {% if r.error %}<span class="mt-0.5 block {{ r.status == 'failed' ? 'text-red-700' : 'text-slate-500' }}">{{ r.error }}</span>{% endif %}
+                  </td>
+                  <td class="whitespace-nowrap px-2 text-right text-xs">{{ r.cost is not null ? '$' ~ money|format(r.cost) : '' }}</td>
+                  <td class="whitespace-nowrap px-4 text-right">
+                    {% if r.status in ['failed', 'cancelled'] %}
+                      <form method="post" action="{{ url('admin/ai-publishing?tab=runs') }}" class="inline">{{ csrf_field() }}<input type="hidden" name="job" value="{{ r.id }}"><button type="submit" name="ai_action" value="retry_job" class="{{ secondary }} py-0.5 text-xs">Retry</button></form>
+                    {% elseif r.status == 'queued' %}
+                      <form method="post" action="{{ url('admin/ai-publishing?tab=runs') }}" class="inline">{{ csrf_field() }}<input type="hidden" name="job" value="{{ r.id }}"><button type="submit" name="ai_action" value="cancel_job" class="{{ secondary }} py-0.5 text-xs">Cancel</button></form>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endif %}
+    </div>
+    <p class="mt-2 text-xs text-slate-500">The last 100. A failed picture costs nothing unless OpenAI made it; every call, failed or not, is on the Usage tab.</p>
 
   {% elseif tab == 'settings' %}
     {% if not can_settings %}

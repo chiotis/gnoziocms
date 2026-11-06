@@ -185,6 +185,30 @@ final class JobRunner
         return array_map(self::decode(...), $stmt->fetchAll());
     }
 
+    /**
+     * The newest job of each unique key given, made since a time (Unix seconds), finished or not: for screens that show where each
+     * entry's job stands.
+     * @param string[] $keys
+     * @return array<string, array<string, mixed>> key => job
+     */
+    public function latestByKeys(array $keys, int $since = 0): array
+    {
+        $pdo = $this->pdo();
+        $keys = array_values(array_unique(array_filter($keys, 'is_string')));
+        if ($pdo === null || $keys === []) {
+            return [];
+        }
+        $out = [];
+        foreach (array_chunk($keys, 400) as $chunk) {
+            $stmt = $pdo->prepare('SELECT * FROM jobs WHERE unique_key IN (' . implode(', ', array_fill(0, count($chunk), '?')) . ') AND created_at >= ? ORDER BY id DESC');
+            $stmt->execute(array_merge($chunk, [$since]));
+            foreach ($stmt->fetchAll() as $row) {
+                $out[(string)$row['unique_key']] ??= self::decode($row);
+            }
+        }
+        return $out;
+    }
+
     /** Removes finished jobs (done, failed, cancelled) older than the given days. Returns how many. */
     public function purge(int $days): int
     {

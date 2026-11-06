@@ -106,11 +106,25 @@
             <option value="publish">Publish</option>
             <option value="draft">Move to draft</option>
             <option value="delete">Delete</option>
+            {% if ai_bulk %}<option value="generate_images">Generate main images (AI)</option>{% endif %}
           </select>
-          <button type="submit" class="{{ btn_secondary }}" data-confirm="Apply this action to the selected {{ current_type }}? Deleted items cannot be recovered except from a backup." data-confirm-button="Apply">Apply</button>
+          {% if ai_bulk %}
+            <label class="hidden items-center gap-1 text-xs text-slate-600" data-ai-bulk-replace><input type="checkbox" name="ai_replace" value="1" class="h-3.5 w-3.5 rounded border-slate-300"> Replace existing images</label>
+          {% endif %}
+          <button type="submit" class="{{ btn_secondary }}" data-confirm="Apply this action to the selected {{ current_type }}? Deleted items cannot be recovered except from a backup." data-confirm-button="Apply"{% if ai_bulk %} data-ai-bulk-apply data-ai-picture-cost="{{ ai_bulk.picture_cost }}" data-ai-total="{{ total }}" data-ai-blocked="{{ ai_bulk.blocked }}"{% endif %}>Apply</button>
         </div>
       {% endif %}
     </div>
+
+    {% if ai_bulk and (ai_bulk.progress.waiting + ai_bulk.progress.working + ai_bulk.progress.failed + ai_bulk.progress.done) > 0 %}
+      {% set p = ai_bulk.progress %}
+      <div class="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-violet-100 bg-violet-50 px-4 py-2 text-sm text-violet-900" role="status" aria-live="polite"
+           data-ai-bulk-progress data-ai-endpoint="{{ url('admin/ai-picture') }}" data-ai-type="{{ current_type }}" data-ai-lang="{{ lang }}" data-ai-live="{{ p.waiting + p.working }}">
+        <span data-ai-bulk-line>{% if p.waiting + p.working > 0 %}Making AI pictures: {{ p.waiting + p.working }} left{% else %}AI pictures{% endif %}{% if p.done %} · {{ p.done }} done{% endif %}{% if p.failed %} · {{ p.failed }} failed{% endif %}</span>
+        <span class="text-xs text-violet-700">{{ p.waiting + p.working > 0 ? 'One at a time, about 15–60 s each. You can leave this page; the cron job goes on.' : 'From the last few hours.' }}</span>
+        {% if p.failed and can('ai.manage') %}<a class="text-xs font-medium underline" href="{{ url('admin/ai-publishing?tab=runs') }}">See why</a>{% endif %}
+      </div>
+    {% endif %}
 
     {% if total > items|length %}
       {# Shown once every entry on this page is ticked: the rest of the list can be taken in too. #}
@@ -157,7 +171,7 @@
               {% set key = item.slug ~ '|' ~ item.lang %}
               {% set is_home = current_type == 'pages' and item.slug == site.home_page and item.lang == site.languages.default %}
               <tr class="group hover:bg-slate-50">
-                <td class="px-4 py-2.5"><input type="checkbox" name="selected[]" value="{{ item.slug }}" class="h-4 w-4 rounded border-slate-300" aria-label="Select {{ item.meta.title ?: item.slug }}"></td>
+                <td class="px-4 py-2.5"><input type="checkbox" name="selected[]" value="{{ item.slug }}" class="h-4 w-4 rounded border-slate-300" aria-label="Select {{ item.meta.title ?: item.slug }}"{% if item.meta.main_image|default('') %} data-has-image{% endif %}></td>
                 <td class="px-4 py-2.5" data-sort-value="{{ item.meta.title ?: item.slug }}">
                   <a href="{{ url('admin/edit?type=' ~ current_type ~ '&slug=' ~ item.slug ~ '&lang=' ~ item.lang) }}" class="font-medium text-slate-900 no-underline hover:text-blue-600">
                     {{ item.meta.title ?: item.slug }}
@@ -165,6 +179,16 @@
                   <div class="mt-0.5 flex items-center gap-2 text-xs text-slate-400">
                     <span>/{{ item.slug }}</span>
                     {% if item.meta.generated_by|default('') %}<span title="Written through MCP by {{ item.meta.generated_by }}">{{ ui.badge('MCP', 'amber') }}</span>{% endif %}
+                    {% set ai_state = ai_bulk ? ai_bulk.states[item.slug]|default(null) : null %}
+                    {% if ai_state %}
+                      <span data-ai-state="{{ ai_state.status }}" title="{{ ai_state.status == 'failed' ? ai_state.error : (ai_state.outcome == 'kept' ? 'It had a main image by then, so the new picture was only added to the Media library.' : '') }}">
+                        {% if ai_state.status == 'queued' %}{{ ui.badge('Picture waiting', 'amber') }}
+                        {% elseif ai_state.status == 'running' %}{{ ui.badge('Making picture', 'blue') }}
+                        {% elseif ai_state.status == 'failed' %}{{ ui.badge('Picture failed', 'red') }}
+                        {% elseif ai_state.status == 'done' and ai_state.outcome == 'set' %}{{ ui.badge('AI picture', 'green') }}
+                        {% elseif ai_state.status == 'done' %}{{ ui.badge('Picture in library', 'slate') }}{% endif %}
+                      </span>
+                    {% endif %}
                     {% if current_type != 'pages' and item.meta.main_image %}
                       <span class="meta-icon relative inline-flex h-5 w-5 cursor-pointer items-center justify-center rounded border border-slate-200 bg-white text-slate-400" title="Has main image">
                         <svg viewBox="0 0 24 24" aria-hidden="true" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16v12H4zM8 11a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM4 16l5-5 4 4 3-3 4 4"/></svg>
@@ -252,4 +276,5 @@
       </form>
     {% endif %}
   {% endfor %}
+  {% if ai_bulk %}<script src="{{ asset('js/admin-ai-picture.js') }}" defer></script>{% endif %}
 {% endblock %}

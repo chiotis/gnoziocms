@@ -371,6 +371,22 @@ check('when nothing matches, nothing is selected', str_contains($r, 'bulk=fail')
 $html = (string)file_get_contents(dirname(__DIR__, 2) . '/admin/templates/list.twig');
 check('the list offers the rest once this page is ticked, a page size and the pages', [str_contains($html, 'data-select-rest='), str_contains($html, 'name="all_matching"'), str_contains($html, 'ui.pagination(page, total_pages, list_query)'), str_contains($html, 'shown_from')], [true, true, true, true]);
 
+// ---- a main image set from outside the editor (AI pictures in bulk)
+$write('posts', 'harbour', "---\ntitle: Harbour\nstatus: published\n---\n\nBoats.\n");
+$write('posts', 'lighthouse', "---\ntitle: Lighthouse\nstatus: draft\nmain_image: /uploads/media/old.webp\n---\n\nLight.\n");
+$before = count($revisions->forItem('posts', 'harbour', 'el'));
+check('set on an entry without one', $admin->setMainImage('posts', 'harbour', 'el', '/uploads/media/new.webp', 'AI publishing (bob)', false), 'set');
+$file = (string)file_get_contents("$dir/content/posts/harbour.md");
+check('written into the front matter, the rest kept', [str_contains($file, 'main_image: /uploads/media/new.webp'), str_contains($file, 'title: Harbour'), str_ends_with($file, "\nBoats.\n")], [true, true, true]);
+check('the history keeps the change', count($revisions->forItem('posts', 'harbour', 'el')) > $before, true);
+check('an entry with a main image keeps it', [$admin->setMainImage('posts', 'lighthouse', 'el', '/uploads/media/new.webp', 'x', false), str_contains((string)file_get_contents("$dir/content/posts/lighthouse.md"), 'old.webp')], ['kept', true]);
+check('unless replacing', [$admin->setMainImage('posts', 'lighthouse', 'el', '/uploads/media/new.webp', 'x', true), str_contains((string)file_get_contents("$dir/content/posts/lighthouse.md"), 'main_image: /uploads/media/new.webp')], ['set', true]);
+check('an entry that is not there', $admin->setMainImage('posts', 'gone', 'el', '/uploads/media/new.webp', 'x', false), 'missing');
+$chosen = $admin->bulkSelection(['type' => 'posts', 'lang' => 'el', 'bulk_action' => 'generate_images', 'selected' => ['harbour', 'lighthouse', 'bad slug!']]);
+check('a bulk selection: type, language, action, entries', [$chosen['valid'], $chosen['type'], $chosen['action'], $chosen['slugs']], [true, 'posts', 'generate_images', ['harbour', 'lighthouse', 'bad-slug']]);
+check('select all matching takes every entry the filters let through', count($admin->bulkSelection(['type' => 'posts', 'lang' => 'el', 'all_matching' => '1', 'selected' => []])['slugs']) >= 2, true);
+check('forms cannot be chosen', $admin->bulkSelection(['type' => 'forms', 'lang' => 'el', 'selected' => ['x']])['valid'], false);
+
 // tidy up
 exec('rm -rf ' . escapeshellarg($dir));
 echo $fail === 0 ? "\nALL PASSED\n" : "\n$fail FAILED\n";

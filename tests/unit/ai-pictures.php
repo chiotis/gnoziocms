@@ -189,6 +189,66 @@ $runner->cancel((int)$runner->list(AiPictures::KIND, [JobRunner::QUEUED])[0]['id
 $settings->saveSettings(['clear_key' => '1']);
 check('no key: nothing is queued', $pictures->request('A boat.', [], 1, 'editor', 'chris')['error'], 'Add an OpenAI key first, in Manage > AI publishing > Settings.');
 
+// ---- bulk: one picture per entry, made from the entry, set as its main image
+$settings->saveSettings(['openai_key' => 'sk-test-bulk-1234567890']);
+$settings->update(['monthly_cost_cap' => null, 'monthly_picture_cap' => null, 'cap_action' => 'pause', 'references' => [], 'aspect' => '16:9', 'format' => 'webp']);
+$entries = [
+    'posts/harbour/el' => ['title' => 'Το λιμάνι;', 'excerpt' => 'Βάρκες το πρωί.', 'body' => '', 'main_image' => ''],
+    'posts/lighthouse/el' => ['title' => 'Lighthouse', 'excerpt' => '', 'body' => "## Night\n\nThe **light** turns. ![x](/a.png) [More](https://x.example)", 'main_image' => ''],
+    'posts/mill/el' => ['title' => 'Mill', 'excerpt' => 'Wind.', 'body' => '', 'main_image' => '/uploads/media/old.webp'],
+];
+$setCalls = [];
+$bulk = new AiPictures($runner, $settings, $usage, $media, $db, "$dir/storage", "$dir/public", $makeProvider, $clock,
+    entries: function (string $type, string $slug, string $lang) use (&$entries): ?array { return $entries["$type/$slug/$lang"] ?? null; },
+    setMainImage: function (string $type, string $slug, string $lang, string $path, string $actor, bool $replace) use (&$entries, &$setCalls): string {
+        $setCalls[] = [$type, $slug, $lang, $path, $actor, $replace];
+        $key = "$type/$slug/$lang";
+        if (!isset($entries[$key])) { return 'missing'; }
+        if (!$replace && $entries[$key]['main_image'] !== '') { return 'kept'; }
+        $entries[$key]['main_image'] = $path;
+        return 'set';
+    });
+$bulk->register();
+check('the subject of an entry: title and excerpt, no extra stop after a question mark', AiPictures::subjectFrom('Το λιμάνι;', 'Βάρκες το πρωί.', ''), 'Το λιμάνι; Βάρκες το πρωί.');
+check('without an excerpt: the start of the text, without its markup', AiPictures::subjectFrom('Lighthouse', '', "## Night\n\nThe **light** turns. ![x](/a.png) [More](https://x.example)"), 'Lighthouse. Night The light turns. More');
+$list = [['type' => 'posts', 'slug' => 'harbour', 'lang' => 'el', 'has_image' => false], ['type' => 'posts', 'slug' => 'lighthouse', 'lang' => 'el', 'has_image' => false], ['type' => 'posts', 'slug' => 'mill', 'lang' => 'el', 'has_image' => true]];
+$r = $bulk->requestBulk($list, false, 'bob');
+check('entries with a main image are left out', [$r['ok'], $r['queued'], $r['skipped']], [true, 2, 1]);
+check('an entry already waiting is not queued twice', $bulk->requestBulk([$list[0]], false, 'bob')['queued'], 1);
+check('...it is the same job', count($runner->list(AiPictures::KIND, [JobRunner::QUEUED])), 2);
+check('all with images and no replace: nothing to do', str_starts_with($bulk->requestBulk([$list[2]], false, 'bob')['error'], 'Every selected entry has a main image'), true);
+$states = $bulk->bulkStates('posts', 'el', ['harbour', 'lighthouse', 'mill']);
+check('the list sees each entry waiting', [$states['harbour']['status'] ?? '', $states['lighthouse']['status'] ?? '', isset($states['mill'])], [JobRunner::QUEUED, JobRunner::QUEUED, false]);
+check('progress: two waiting', $bulk->bulkProgress('posts', 'el'), ['waiting' => 2, 'working' => 0, 'done' => 0, 'failed' => 0]);
+check('another language has none', $bulk->bulkProgress('posts', 'en')['waiting'], 0);
+
+$replies[] = $okReply(1);
+$calls = [];
+$entries['posts/lighthouse/el']['main_image'] = '/uploads/media/set-meanwhile.webp';
+check('both are worked', $runner->work($soon(), [AiPictures::KIND]), 2);
+$sent = json_decode((string)$calls[0]['body'], true);
+check('the prompt is made from the entry, one picture', [str_contains($sent['prompt'], 'Subject: Το λιμάνι; Βάρκες το πρωί.'), $sent['n']], [true, 1]);
+check('the picture became the main image, by the bulk run', [$setCalls[0][1], str_starts_with($setCalls[0][3], '/uploads/'), $setCalls[0][4], $entries['posts/harbour/el']['main_image'] === $setCalls[0][3]], ['harbour', true, 'AI publishing (bob)', true]);
+$states = $bulk->bulkStates('posts', 'el', ['harbour', 'lighthouse']);
+check('done and set', [$states['harbour']['status'], $states['harbour']['outcome']], [JobRunner::DONE, 'set']);
+check('an entry that got a main image meanwhile is not paid for', [$states['lighthouse']['status'], str_contains($states['lighthouse']['error'], 'has a main image by now'), count($calls)], [JobRunner::FAILED, true, 1]);
+$pic = $media->find(substr(basename($setCalls[0][3]), 0, 16));
+check('the picture is in the library with its alt text', [$pic !== null, $pic['alt'] ?? ''], [true, 'Το λιμάνι; Βάρκες το πρωί.']);
+check('usage counts it as bulk, for its entry', $usage->totals(0, $now + 1, 'source')[array_search('bulk', array_column($usage->totals(0, $now + 1, 'source'), 'label'), true)]['pictures'], 1);
+check('progress: one done, one failed', $bulk->bulkProgress('posts', 'el'), ['waiting' => 0, 'working' => 0, 'done' => 1, 'failed' => 1]);
+
+$r = $bulk->requestBulk([$list[2]], true, 'bob');
+$replies[] = $okReply(1);
+$runner->work($soon(), [AiPictures::KIND]);
+check('replace: an entry with a main image gets a new one', [$r['queued'], $setCalls[count($setCalls) - 1][1], $setCalls[count($setCalls) - 1][5], $bulk->bulkStates('posts', 'el', ['mill'])['mill']['outcome']], [1, 'mill', true, 'set']);
+unset($entries['posts/harbour/el']);
+$bulk->requestBulk([$list[0]], true, 'bob');
+$runner->work($soon(), [AiPictures::KIND]);
+check('an entry that is gone: failed, nothing paid', str_contains($bulk->bulkStates('posts', 'el', ['harbour'])['harbour']['error'], 'no longer there'), true);
+$settings->update(['monthly_picture_cap' => 1]);
+check('the cap counts every picture a bulk run would make', str_contains($bulk->requestBulk([$list[1], $list[2]], true, 'bob')['error'], 'picture cap'), true);
+$settings->update(['monthly_picture_cap' => null]);
+
 // ---- old variants are removed
 check('variants of the day are kept', count(glob("$dir/storage/ai/variants/*/*") ?: []) >= 3, true);
 $now += 2 * 86400;

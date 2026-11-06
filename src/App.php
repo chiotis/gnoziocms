@@ -2084,17 +2084,64 @@ final class App
             $this->redirect($result['location']);
             return;
         }
-        $this->render('@admin/list.twig', $result['data'] + ['user' => $this->auth->user()]);
+        $aiBulk = null;
+        $listType = (string)($result['data']['current_type'] ?? '');
+        if ($listType !== '' && $listType !== 'forms' && $this->canMakeAiPictures()) {
+            $listLang = (string)($result['data']['lang'] ?? '');
+            $slugs = array_map(static fn($item): string => $item instanceof ContentItem ? $item->slug : (string)($item['slug'] ?? ''), (array)($result['data']['items'] ?? []));
+            $aiBulk = [
+                'states' => $this->aiPictures()->bulkStates($listType, $listLang, $slugs),
+                'progress' => $this->aiPictures()->bulkProgress($listType, $listLang),
+                'picture_cost' => $this->aiUsage()->averagePictureCost(),
+                'blocked' => $this->aiPictures()->blocked(),
+            ];
+        }
+        $this->render('@admin/list.twig', $result['data'] + ['user' => $this->auth->user(), 'ai_bulk' => $aiBulk]);
     }
 
     private function handleContentBulk(): void
     {
+        if (($_POST['bulk_action'] ?? '') === 'generate_images' && ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
+            $this->bulkGenerateImages();
+            return;
+        }
         $this->redirect($this->contentAdmin()->bulk(
             $_POST,
             ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST',
             $this->permissions->can($this->auth->user(), 'redirects.manage'),
             $this->currentUsername()
         ));
+    }
+
+    /** Content list > Bulk action > Generate main images: one picture per chosen entry, queued (docs/ai-publishing-plan.md, phase 2). */
+    private function bulkGenerateImages(): void
+    {
+        $chosen = $this->contentAdmin()->bulkSelection($_POST);
+        $back = $chosen['back'];
+        $say = fn(bool $ok, string $message) => $this->redirect($back . (str_contains($back, '?') ? '&' : '?') . http_build_query(['bulk' => $ok ? 'ok' : 'fail', 'bulk_msg' => $message]));
+        if (!$this->canMakeAiPictures()) {
+            $say(false, 'Pictures need the media library and an OpenAI key (Manage > AI publishing > Settings).');
+            return;
+        }
+        if (!$chosen['valid'] || $chosen['slugs'] === []) {
+            $say(false, 'Choose a bulk action and select at least one item.');
+            return;
+        }
+        $entries = [];
+        foreach ($chosen['slugs'] as $slug) {
+            $item = $this->content->find($chosen['type'], $slug, $chosen['lang'], true, false);
+            if ($item !== null) {
+                $entries[] = ['type' => $chosen['type'], 'slug' => $slug, 'lang' => $chosen['lang'], 'has_image' => trim((string)($item->meta['main_image'] ?? '')) !== ''];
+            }
+        }
+        $replace = ($_POST['ai_replace'] ?? '') === '1';
+        $result = $this->aiPictures()->requestBulk($entries, $replace, $this->currentUsername());
+        if ($result['ok']) {
+            $this->logActivity('ai.bulk_pictures', 'info', $chosen['type'], $chosen['lang'], 'AI pictures queued in bulk.', ['queued' => $result['queued'], 'skipped' => $result['skipped'], 'replace' => $replace]);
+        }
+        $say($result['ok'], $result['ok']
+            ? $result['queued'] . ' picture' . ($result['queued'] === 1 ? '' : 's') . ' queued.' . ($result['skipped'] > 0 ? ' ' . $result['skipped'] . ' already had a main image and were left as they are.' : '') . ' They are made one at a time; this list shows how far it is.'
+            : $result['error']);
     }
 
     private function handleEdit(): void
@@ -3494,8 +3541,33 @@ final class App
             $this->systemDatabase,
             $this->basePath . '/storage',
             $this->basePath . '/public',
-            static fn(string $key): OpenAiProvider => new OpenAiProvider($key)
+            static fn(string $key): OpenAiProvider => new OpenAiProvider($key),
+            entries: function (string $type, string $slug, string $lang): ?array {
+                $this->content->forget();
+                $item = in_array($type, $this->content->getTypes(), true) ? $this->content->find($type, $slug, $lang, true, false) : null;
+                return $item === null ? null : [
+                    'title' => (string)($item->meta['title'] ?? ''), 'excerpt' => (string)($item->meta['excerpt'] ?? ''),
+                    'body' => $item->markdown, 'main_image' => (string)($item->meta['main_image'] ?? ''),
+                ];
+            },
+            setMainImage: function (string $type, string $slug, string $lang, string $path, string $actor, bool $replace): string {
+                $outcome = $this->contentAdmin()->setMainImage($type, $slug, $lang, $path, $actor, $replace);
+                if ($outcome === 'set') {
+                    // What visitors see changed: the same as a save in the admin.
+                    $this->content->forget();
+                    $this->frontCache()->purgeAll();
+                    $this->contentIndex->bump();
+                }
+                return $outcome;
+            }
         );
+    }
+
+    /** Whether the signed-in person may make AI pictures for entries (content and media) and a key is set. */
+    private function canMakeAiPictures(): bool
+    {
+        $user = $this->auth->user();
+        return $this->permissions->can($user, 'content.manage') && $this->permissions->can($user, 'media.manage') && $this->aiSettings()->hasKey();
     }
 
     private function aiPublishingAdmin(): AiPublishingAdmin
@@ -3570,6 +3642,20 @@ final class App
                 return;
             }
             $json(['ok' => false, 'error' => 'Unknown action.'], 400);
+            return;
+        }
+        // The content list's progress line: how far the bulk pictures of a type and language are, working the next one when due.
+        if (isset($_GET['bulk'])) {
+            $type = Slug::plain((string)$_GET['bulk']);
+            $lang = Slug::plain((string)($_GET['lang'] ?? ''));
+            if ($this->jobRunner()->pending(AiPictures::KIND, true) > 0) {
+                @session_write_close();
+                if (function_exists('set_time_limit')) {
+                    @set_time_limit(400);
+                }
+                $this->jobRunner()->work(microtime(true) + 1, [AiPictures::KIND], 1);
+            }
+            $json($pictures->bulkProgress($type, $lang));
             return;
         }
         $jobId = (int)($_GET['job'] ?? 0);

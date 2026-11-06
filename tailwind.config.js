@@ -8,6 +8,7 @@ module.exports = {
     './public/assets/js/admin-menus.js',
     './public/assets/js/admin-form-builder.js',
     './public/assets/js/admin-taxonomies.js',
+    './public/assets/js/admin-ai-picture.js',
     './src/**/*.php',
   ],
   theme: {
