@@ -169,18 +169,19 @@
       </details>
 
       <details class="bp-card">
-        <summary><span>Buttons</span><small>Height, padding, text, corners</small></summary>
+        <summary><span>Buttons</span><small>Height, padding, corners</small></summary>
         <div class="bp-body">
           <div class="bp-nums">
-            {% for key in ['button_height', 'button_pad', 'button_size'] %}
+            {% for key in ['button_height', 'button_pad'] %}
               {% if d[key] is defined %}{{ c.num(d[key], pd ~ key ~ ']', vd[key], 'px') }}{% endif %}
             {% endfor %}
           </div>
           <dl class="m-0 space-y-2.5">
-            {% for key in ['button_weight', 'button_case', 'button_radius'] %}
+            {% for key in ['button_radius'] %}
               {% if d[key] is defined %}{{ c.choice(d[key], pd ~ key ~ ']', vd[key], 'seg', short[key]) }}{% endif %}
             {% endfor %}
           </dl>
+          <p class="m-0 text-[11px] leading-4 text-slate-500">The size, weight, case and spacing of button text are in <button type="button" class="bp-goto" data-goto-tab="typography">Typography</button>.</p>
           {% if default_theme %}<p class="m-0 text-[11px] leading-4 text-slate-500">Inherited button corners follow the selected shape. “From shape” keeps its own radius when none of the fixed choices matches.</p>{% endif %}
           <button type="button" class="bp-reset" data-bp-reset="buttons">Reset button overrides</button>
         </div>
@@ -190,7 +191,9 @@
       {% include '@admin/partials/theme-branding-more.twig' %}
 
       {% set more_a = a|filter((field, key) => key not in known_a and not field.hidden) %}
-      {% set more_d = d|filter((field, key) => key not in known_d and not field.hidden) %}
+      {# The fields of the Typography tab (theme-typography.twig) are not repeated here. #}
+      {% set typography_key = '/^((h[1-6]|lead|small|eyebrow|meta|quote|caption|card_title|nav|dropdown|drawer|topbar|footer_nav|footer_title|crumbs|name)_(step|weight|leading|tracking|case|size)|(ui|code)_(font|family)|numerals|ligatures|phone_text_size|text_align|hyphens|heading_wrap|button_tracking|input_size)$/' %}
+      {% set more_d = d|filter((field, key) => key not in known_d and not (key matches typography_key) and not field.hidden) %}
       {% if more_a is not empty or more_d is not empty %}
         <details class="bp-card">
           <summary><span>More</span><small>Other choices of this theme</small></summary>

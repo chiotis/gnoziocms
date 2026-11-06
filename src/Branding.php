@@ -37,6 +37,7 @@ final class Branding
     private const TRACKING = ['tighter' => '-0.045em', 'tight' => '-0.028em', 'normal' => '0', 'wide' => '0.025em'];
     private const LEADING = ['tight' => '1.05', 'normal' => '1.2', 'relaxed' => '1.35'];
     private const SPACING = ['tight' => 0.8, 'airy' => 1.2, 'roomy' => 1.4];
+    private const BUTTON_TRACKING = ['tight' => '-0.01em', 'normal' => '0', 'wide' => '0.04em', 'wider' => '0.08em'];
 
     /** The selectors that win over the palette, font, shape and mode rules of the style sheet (which sit on :root[data-…]). */
     private const ROOT = ':root[data-theme][data-mode]';
@@ -144,6 +145,18 @@ final class Branding
                     $vars['--heading-font-custom'] = 'var(--font-heading)';
                 }
             }
+        }
+        // The interface (menus, buttons, labels) and code: their own font only when one is chosen (BrandingTypography uses --font-ui).
+        $ui = (string)($design['ui_font'] ?? 'auto');
+        if ($ui === 'heading') {
+            $vars['--font-ui'] = 'var(--font-heading)';
+        } elseif ($ui === 'custom' && isset($stacks['ui'])) {
+            $vars['--font-ui'] = $stacks['ui'];
+        } elseif ($ui !== 'custom' && isset(self::FONT_STACKS[$ui])) {
+            $vars['--font-ui'] = self::FONT_STACKS[$ui];
+        }
+        if (($design['code_font'] ?? '') === 'custom' && isset($stacks['code'])) {
+            $vars['--font-mono'] = $stacks['code'] . ', ui-monospace, monospace';
         }
         $fontFace = BrandingFonts::fontFaces($design, $baseUrl);
         if ($customFont !== null && $legacyUsed) {
@@ -274,6 +287,10 @@ final class Branding
         if (($design['button_case'] ?? '') === 'uppercase') {
             $vars['--btn-case'] = 'uppercase';
             $vars['--btn-tracking'] = '0.06em';
+        }
+        $buttonTracking = (string)($design['button_tracking'] ?? '');
+        if (isset(self::BUTTON_TRACKING[$buttonTracking])) {
+            $vars['--btn-tracking'] = self::BUTTON_TRACKING[$buttonTracking];
         }
 
         // ---- the logo and the name of the site

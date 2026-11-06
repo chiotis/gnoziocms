@@ -1,4 +1,4 @@
-# Theme settings of this installation (GnozioCMS 0.1.227)
+# Theme settings of this installation (GnozioCMS 0.1.228)
 
 Set with `python3 scripts/site_settings.py set theme section.field=value`. A text marked *translatable* takes a plain text or a map `{default: …, en: …}`.
 
@@ -93,6 +93,12 @@ Set with `python3 scripts/site_settings.py set theme section.field=value`. A tex
 | `ink` | color | (empty) | Dark panels and footer. The near-black behind pictures, dark panels and the footer. |
 | `heading_font` | select; one of `pairing`, `inter`, `system`, `humanist`, `geometric`, `neo_grotesque`, `rounded`, `industrial`, `classical`, `transitional`, `old_style`, `slab`, `didone`, `mono`, `custom` | pairing | Headings |
 | `body_font` | select; one of `pairing`, `inter`, `system`, `humanist`, `geometric`, `neo_grotesque`, `rounded`, `industrial`, `classical`, `transitional`, `old_style`, `slab`, `didone`, `mono`, `custom` | pairing | Text |
+| `ui_font` | select; one of `auto`, `heading`, `inter`, `system`, `humanist`, `geometric`, `neo_grotesque`, `rounded`, `industrial`, `classical`, `transitional`, `old_style`, `slab`, `didone`, `mono`, `custom` | auto | Interface. Menus, buttons, labels, eyebrows, dates and breadcrumbs. |
+| `ui_family` | text | (empty) | Interface family. The family of your own fonts the interface uses when Interface is Your own font. |
+| `code_font` | select; one of `auto`, `custom` | auto | Code |
+| `code_family` | text | (empty) | Code family. The family of your own fonts code uses when Code is Your own font. |
+| `numerals` | select; one of `auto`, `tabular`, `oldstyle` | auto | Numbers |
+| `ligatures` | select; one of `auto`, `none`, `extra` | auto | Ligatures |
 | `font_file` | url | (empty) | Font file. A WOFF2 file (one variable font with all weights is best). Put it in custom/assets/fonts/ and type fonts/name.woff2, or give a full address. |
 | `heading_family` | text | (empty) | Heading font family. The family of your own fonts that headings use when Headings is “Your own font”. |
 | `body_family` | text | (empty) | Text font family. The family of your own fonts that text uses when Text is “Your own font”. |
@@ -121,6 +127,7 @@ Set with `python3 scripts/site_settings.py set theme section.field=value`. A tex
 | `button_size` | number; 11 to 24 | (empty) | Button text size |
 | `button_weight` | select; one of `auto`, `500`, `600`, `700`, `800` | auto | Button text weight |
 | `button_case` | select; one of `auto`, `uppercase` | auto | Button text case |
+| `button_tracking` | select; one of `auto`, `tight`, `normal`, `wide`, `wider` | auto | Button letter spacing |
 | `link_color` | text | (empty) | Link colour |
 | `link_hover` | text | (empty) | Link hover colour |
 | `link_color_dark` | text | (empty) | Link colour |
@@ -172,6 +179,10 @@ Set with `python3 scripts/site_settings.py set theme section.field=value`. A tex
 | `small_weight` | select; one of `auto`, `300`, `400`, `500`, `600`, `700`, `800` | auto | Small text weight |
 | `small_leading` | select; one of `auto`, `tight`, `normal`, `relaxed`, `loose` | auto | Small text line height |
 | `small_tracking` | select; one of `auto`, `tighter`, `tight`, `normal`, `wide` | auto | Small text letter spacing |
+| `phone_text_size` | number; 13 to 22 | (empty) | Text size on phones. Screens up to 640px wide. Empty follows Text size. |
+| `text_align` | select; one of `auto`, `left`, `justify` | auto | Article text |
+| `hyphens` | select; one of `auto`, `True`, `off` | auto | Hyphenation |
+| `heading_wrap` | select; one of `auto`, `balance`, `pretty` | auto | Heading line breaks |
 | `h4_step` | select; one of `auto`, `5`, `4`, `3`, `2`, `1`, `0`, `-1`, `-2` | auto | H4 size |
 | `h4_weight` | select; one of `auto`, `300`, `400`, `500`, `600`, `700`, `800` | auto | H4 weight |
 | `h4_leading` | select; one of `auto`, `tight`, `normal`, `relaxed`, `loose` | auto | H4 line height |
@@ -255,6 +266,7 @@ Set with `python3 scripts/site_settings.py set theme section.field=value`. A tex
 | `input_border_width` | select; one of `auto`, `thin`, `medium` | auto | Field border width |
 | `label_size` | select; one of `auto`, `small`, `normal`, `large` | auto | Label size |
 | `label_weight` | select; one of `auto`, `400`, `500`, `600`, `700` | auto | Label weight |
+| `input_size` | select; one of `auto`, `normal`, `large`, `larger` | auto | Field text size. Never below 16px, so phones do not zoom into a field. |
 | `input_ring` | select; one of `auto`, `outline`, `high` | auto | Field focus |
 | `error_style` | select; one of `auto`, `strong`, `tinted` | auto | Errors |
 | `radius_card` | number; 0 to 48 | (empty) | Card corners |

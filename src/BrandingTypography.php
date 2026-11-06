@@ -104,7 +104,53 @@ final class BrandingTypography
         if (isset(self::PARAGRAPH[$space])) {
             $css .= self::ROOT . ' :is(.prose,.prose-block) p:not(:last-child){margin-bottom:' . self::PARAGRAPH[$space] . '}';
         }
-        return $css . self::navigation($design);
+        return $css . self::navigation($design) . self::details($design);
+    }
+
+    /** What the interface font reaches: menus, buttons, labels, eyebrows, dates and breadcrumbs. */
+    public const INTERFACE = '.nav-link,.mobile-link,.mobile-bar-item,.btn,.topbar,.crumbs,.footer-title,.footer-link,.eyebrow,.content-meta,.single-hero-meta,.latest-meta,.term-chips a,.form-grid label,.form-grid legend';
+    private const NUMERALS = [
+        'tabular' => ['table,.content-meta,.single-hero-meta,.latest-meta,time', 'tabular-nums'],
+        'oldstyle' => ['.prose,.prose-block', 'oldstyle-nums'],
+    ];
+    private const LIGATURES = ['none' => 'none', 'extra' => 'common-ligatures discretionary-ligatures'];
+    private const HEADINGS = 'h1,h2,h3,h4,h5,h6,.hero-title,.section-title,.cta-title';
+
+    /** The interface font, numbers and ligatures, the text size on phones, article alignment, hyphenation and heading line breaks. */
+    private static function details(array $design): string
+    {
+        $css = '';
+        $ui = (string)($design['ui_font'] ?? 'auto');
+        if ($ui === 'heading' || ($ui !== 'custom' && isset(Branding::FONT_STACKS[$ui])) || ($ui === 'custom' && isset(BrandingFonts::stacks($design)['ui']))) {
+            $css .= self::ROOT . ' :is(' . self::INTERFACE . '){font-family:var(--font-ui)}';
+        }
+        $numerals = (string)($design['numerals'] ?? '');
+        if (isset(self::NUMERALS[$numerals])) {
+            $css .= self::ROOT . ' :is(' . self::NUMERALS[$numerals][0] . '){font-variant-numeric:' . self::NUMERALS[$numerals][1] . '}';
+        }
+        $ligatures = (string)($design['ligatures'] ?? '');
+        if (isset(self::LIGATURES[$ligatures])) {
+            $css .= 'body.theme-body{font-variant-ligatures:' . self::LIGATURES[$ligatures] . '}';
+        }
+        $phone = $design['phone_text_size'] ?? '';
+        if (is_numeric($phone) && (float)$phone >= 13 && (float)$phone <= 22) {
+            $css .= '@media(max-width:640px){' . self::ROOT . '{--type-scale:' . rtrim(rtrim(number_format((float)$phone / 16, 4, '.', ''), '0'), '.') . '}}';
+        }
+        $align = (string)($design['text_align'] ?? '');
+        if ($align === 'justify') {
+            $css .= self::ROOT . ' :is(.prose,.prose-block) p{text-align:justify;hyphens:auto}';
+        } elseif ($align === 'left') {
+            $css .= self::ROOT . ' :is(.prose,.prose-block) p{text-align:start}';
+        }
+        $hyphens = (string)($design['hyphens'] ?? '');
+        if ($hyphens === 'on' || $hyphens === 'off') {
+            $css .= self::ROOT . ' :is(.prose,.prose-block){hyphens:' . ($hyphens === 'on' ? 'auto' : 'manual') . '}';
+        }
+        $wrap = (string)($design['heading_wrap'] ?? '');
+        if ($wrap === 'balance' || $wrap === 'pretty') {
+            $css .= self::ROOT . ' :is(' . self::HEADINGS . '){text-wrap:' . $wrap . '}';
+        }
+        return $css;
     }
 
     /** The variables of the Navigation rows, on the root rule; '' when none is set. */

@@ -77,7 +77,10 @@ final class BrandingFonts
         return $families;
     }
 
-    /** The family a role ('heading' or 'body') uses: only when that font is "Your own font" and the family exists. */
+    /** The roles that can use a family of the site's own: headings, text, the interface (menus, buttons, labels) and code. */
+    public const ROLES = ['heading', 'body', 'ui', 'code'];
+
+    /** The family a role (one of ROLES) uses: only when that font is "Your own font" and the family exists. */
     public static function roleFamily(array $design, string $role): ?string
     {
         if (($design[$role . '_font'] ?? '') !== 'custom') {
@@ -104,7 +107,7 @@ final class BrandingFonts
     {
         $families = self::families($design);
         $stacks = [];
-        foreach (['heading', 'body'] as $role) {
+        foreach (self::ROLES as $role) {
             $name = self::roleFamily($design, $role);
             if ($name !== null) {
                 $stacks[$role] = self::stack($name, $families[$name]);
@@ -150,7 +153,7 @@ final class BrandingFonts
     {
         $families = self::families($design);
         $used = [];
-        foreach (['heading', 'body'] as $role) {
+        foreach (self::ROLES as $role) {
             $name = self::roleFamily($design, $role);
             if ($name !== null) {
                 $used[$name] = true;
@@ -242,7 +245,7 @@ final class BrandingFonts
     public static function warnings(array $design, bool $greekSite): array
     {
         $families = self::families($design);
-        $labels = ['heading' => 'Headings', 'body' => 'Text'];
+        $labels = ['heading' => 'Headings', 'body' => 'Text', 'ui' => 'Menus, buttons and labels'];
         $out = [];
         foreach ($labels as $role => $label) {
             $name = self::roleFamily($design, $role);
@@ -423,6 +426,8 @@ final class BrandingFonts
             'files' => $files,
             'heading_family' => self::cleanName((string)($design['heading_family'] ?? '')),
             'body_family' => self::cleanName((string)($design['body_family'] ?? '')),
+            'ui_family' => self::cleanName((string)($design['ui_family'] ?? '')),
+            'code_family' => self::cleanName((string)($design['code_family'] ?? '')),
             'base' => rtrim($baseUrl, '/'),
             'greek_site' => $greekSite,
             'groups' => array_map(static fn(array $group): string => $group[0], FontFile::GROUPS),

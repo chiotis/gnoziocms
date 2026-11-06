@@ -66,7 +66,7 @@
   function warnings() {
     var out = [];
     if (!state.greek_site) { return out; }
-    [['heading', 'Headings'], ['body', 'Text']].forEach(function (role) {
+    [['heading', 'Headings'], ['body', 'Text'], ['ui', 'Menus, buttons and labels']].forEach(function (role) {
       if (!usesOwn(role[0])) { return; }
       var select = roleSelect(role[0]);
       var name = select && select.value ? select.value : (families().length === 1 ? families()[0] : '');
@@ -193,10 +193,10 @@
       commit();
     });
     head.appendChild(rename);
-    ['heading', 'body'].forEach(function (role) {
+    ['heading', 'body', 'ui', 'code'].forEach(function (role) {
       var select = roleSelect(role);
       var current = select && (select.value === name || (select.value === '' && families().length === 1));
-      if (current && usesOwn(role)) { head.appendChild(el('span', { 'class': 'bf-used' }, role === 'heading' ? 'Headings' : 'Text')); }
+      if (current && usesOwn(role)) { head.appendChild(el('span', { 'class': 'bf-used' }, ({ heading: 'Headings', body: 'Text', ui: 'Interface', code: 'Code' })[role])); }
     });
     var all = { cover: unionCover(files) };
     head.appendChild(chips(all, false));
@@ -220,7 +220,7 @@
 
   function drawRoles() {
     var names = families();
-    [['heading', 'Headings'], ['body', 'Text']].forEach(function (role) {
+    [['heading', 'Headings'], ['body', 'Text'], ['ui', 'Interface'], ['code', 'Code']].forEach(function (role) {
       var select = roleSelect(role[0]);
       var box = root.querySelector('[data-bf-role="' + role[0] + '"]');
       if (!select || !box) { return; }
@@ -410,7 +410,7 @@
       if (!answer || !answer.ok || !answer.entry) { say((answer && answer.error) || 'The file could not be read.'); return; }
       var entry = addEntry(answer);
       // Roles that used the single file keep their look: they now use the new family.
-      ['heading', 'body'].forEach(function (role) {
+      ['heading', 'body', 'ui', 'code'].forEach(function (role) {
         var select = roleSelect(role);
         if (select && usesOwn(role)) { select.setAttribute('data-bf-set', entry.family); }
       });
@@ -423,7 +423,7 @@
   });
 
   // Choosing "Your own font" for a role shows its family; with a family already there, the first one is chosen for it.
-  ['heading', 'body'].forEach(function (role) {
+  ['heading', 'body', 'ui', 'code'].forEach(function (role) {
     var font = fontSelect(role);
     var family = roleSelect(role);
     if (font) {

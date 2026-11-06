@@ -5,14 +5,14 @@
 #}
 {% import '@admin/partials/layout-controls.twig' as c %}
 <details class="bp-card">
-  <summary><span>Forms</span><small>Fields, labels, focus, errors</small></summary>
+  <summary><span>Forms</span><small>Fields, focus, errors</small></summary>
   <div class="bp-body">
     <dl class="m-0 space-y-2.5">
-      {% for key in ['input_bg', 'input_border', 'input_border_width', 'label_size', 'label_weight', 'input_ring', 'error_style'] %}
+      {% for key in ['input_bg', 'input_border', 'input_border_width', 'input_ring', 'error_style'] %}
         {% if d[key] is defined %}{{ c.choice(d[key], pd ~ key ~ ']', vd[key], 'select', {}) }}{% endif %}
       {% endfor %}
     </dl>
-    <p class="m-0 text-[11px] leading-4 text-slate-500">Applies to the public forms, the form block and the search field. The choices are built from the palette, so the text and the focus ring keep their contrast; the focus is always a visible ring. Field corners are in Shape and depth.</p>
+    <p class="m-0 text-[11px] leading-4 text-slate-500">Applies to the public forms, the form block and the search field. The choices are built from the palette, so the text and the focus ring keep their contrast; the focus is always a visible ring. Field corners are in Shape and depth; the size of labels and field text is in <button type="button" class="bp-goto" data-goto-tab="typography">Typography</button>.</p>
     <button type="button" class="bp-reset" data-bp-reset="forms">Reset form overrides</button>
   </div>
 </details>

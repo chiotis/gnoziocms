@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.228 — 2026-11-06 — Typography is complete: buttons, forms and font details
+- **Theme > Typography > Buttons and forms**: the size, weight, case and new **letter spacing** of button text, the size and weight of labels, and a new **field text size** (never below 16px, so phones do not zoom into a field). They moved from Branding's Buttons and Forms cards, which keep the height, padding, corners and colours. Saved values are unchanged.
+- **Fonts**: an **Interface** font for menus, buttons, labels, eyebrows, dates and breadcrumbs (the text font by default, the heading font, any stack, or your own family), a **Code** font (system monospace or your own family), **Numbers** (same width in tables and dates, or old-style in text) and **Ligatures** (off, or extra where the font has them). Your own fonts can now be used for the interface and for code too.
+- **Text**: a **text size on phones**, **justified** article text (with hyphenation) and **hyphenation** that follows each page's language.
+- **Headings**: **balanced line breaks**, or no lone last word.
+- Fixed: since 0.1.226 the new Typography settings were also listed in Branding's "More" card, so they appeared twice on the screen. They are now only on the Typography tab, and a test checks that no setting appears twice.
+- Tests: `tests/unit/branding-extras.php`, `tests/http/branding_test.py`.
+
 ## 0.1.227 — 2026-11-06 — Every heading level and more text elements
 - **Theme > Typography > Headings** now sets **H1 to H6**, each with a size (a step of the scale), weight, line height, letter spacing and a new **Case** (as typed, capitals, first letters, small capitals). A case set for one level wins over the heading case above it.
 - **Text elements** adds the **eyebrow**, **meta** (dates, bylines, categories), **quotes** (the Quote block and quotes in text), **captions** (under pictures and videos; they win over Small text) and **card titles** (lists of entries, not their large lead story), next to Lead and Small, with the same five choices.

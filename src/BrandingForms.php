@@ -22,6 +22,8 @@ final class BrandingForms
     private const BACKGROUND = ['background' => 'var(--color-bg)', 'surface' => 'var(--color-surface)', 'surface_2' => 'var(--color-surface-2)'];
     private const BORDER = ['strong' => 'var(--color-border-strong)', 'muted' => 'var(--color-muted)', 'text' => 'var(--color-text)', 'accent' => 'var(--accent)'];
     private const WIDTH = ['thin' => '1px', 'medium' => '2px'];
+    /** Never below 16px: a phone zooms into a field with smaller text. */
+    private const INPUT_SIZE = ['normal' => '1rem', 'large' => '1.125rem', 'larger' => '1.25rem'];
     private const LABEL_SIZE = ['small' => '0.85rem', 'normal' => '0.95rem', 'large' => '1.05rem'];
 
     /**
@@ -47,6 +49,10 @@ final class BrandingForms
         $radius = $design['radius_input'] ?? '';
         if (is_numeric($radius) && $radius !== '') {
             $field[] = 'border-radius:' . BrandingShape::rem((float)$radius);
+        }
+        $inputSize = (string)($design['input_size'] ?? '');
+        if (isset(self::INPUT_SIZE[$inputSize])) {
+            $field[] = 'font-size:' . self::INPUT_SIZE[$inputSize];
         }
         if ($field !== []) {
             $css .= self::scope(self::FIELD) . '{' . implode(';', $field) . '}';

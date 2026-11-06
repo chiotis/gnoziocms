@@ -22,7 +22,9 @@
   heading_weight: {auto: 'Theme', '400': 'Regular', '500': 'Medium', '600': 'Semi', '700': 'Bold', '800': 'Black'},
   heading_tracking: {auto: 'Theme', tighter: 'Tighter', tight: 'Tight', normal: 'Normal', wide: 'Wide'},
   heading_leading: {auto: 'Theme', tight: 'Tight', normal: 'Normal', relaxed: 'Relaxed'},
-  heading_case: {auto: 'As typed', uppercase: 'CAPITALS'}
+  heading_case: {auto: 'As typed', uppercase: 'CAPITALS'},
+  button_weight: {auto: 'Theme', '500': 'Medium', '600': 'Semi', '700': 'Bold', '800': 'Black'},
+  button_case: {auto: 'As typed', uppercase: 'CAPITALS'}
 } %}
 {% if default_theme %}
   {% set short = short|merge({
@@ -34,7 +36,7 @@
 {% set defaults = {} %}
 {% for section in ['appearance', 'brand', 'design'] %}
   {% for key, field in schema[section].fields|default({}) %}
-    {% set defaults = defaults|merge({('theme_settings[' ~ section ~ '][' ~ key ~ ']'): {value: field.default ?? '', label: field.label, equivalent: null}}) %}
+    {% set defaults = defaults|merge({('theme_settings[' ~ section ~ '][' ~ key ~ ']'): {value: field.default ?? '', label: field.label, equivalent: section == 'design' and key == 'button_weight' and default_theme ? {value: '600'} : null}}) %}
   {% endfor %}
 {% endfor %}
 {% set nav_rows = {nav: 'Header menu', dropdown: 'Dropdown', drawer: 'Mobile menu', topbar: 'Top bar', footer_nav: 'Footer menu', footer_title: 'Footer headings', crumbs: 'Breadcrumbs', name: 'Site name'} %}
@@ -126,7 +128,18 @@
               </div>
             {% endif %}
           </dl>
+          <dl class="m-0 space-y-2.5">
+            {% for key in ['ui_font', 'code_font'] %}
+              {% if d[key] is defined %}{{ c.choice(d[key], pd ~ key ~ ']', vd[key], 'select', {}) }}{% endif %}
+            {% endfor %}
+          </dl>
           {% if d.fonts is defined %}{% include '@admin/partials/theme-fonts.twig' %}{% endif %}
+          <dl class="m-0 space-y-2.5">
+            {% for key in ['numerals', 'ligatures'] %}
+              {% if d[key] is defined %}{{ c.choice(d[key], pd ~ key ~ ']', vd[key], 'select', {}) }}{% endif %}
+            {% endfor %}
+          </dl>
+          <p class="m-0 text-[11px] leading-4 text-slate-500">Numbers and ligatures apply only where the font has them.</p>
           <button type="button" class="bp-reset" data-bp-reset="fonts">Reset fonts</button>
         </div>
       </details>
@@ -137,12 +150,14 @@
           <div class="bp-nums">
             {% if d.base_size is defined %}{{ c.num(d.base_size, pd ~ 'base_size]', vd.base_size, 'px') }}{% endif %}
             {% if d.line_height is defined %}{{ c.num(d.line_height, pd ~ 'line_height]', vd.line_height, '') }}{% endif %}
+            {% if d.phone_text_size is defined %}{{ c.num(d.phone_text_size, pd ~ 'phone_text_size]', vd.phone_text_size, 'px') }}{% endif %}
           </div>
           <dl class="m-0 space-y-2.5">
-            {% for key in ['body_weight', 'paragraph_space'] %}
+            {% for key in ['body_weight', 'paragraph_space', 'text_align', 'hyphens'] %}
               {% if d[key] is defined %}{{ c.choice(d[key], pd ~ key ~ ']', vd[key], 'select', {}) }}{% endif %}
             {% endfor %}
           </dl>
+          <p class="m-0 text-[11px] leading-4 text-slate-500">Justified text always hyphenates. Hyphenation follows the language of each page, so Greek and English break by their own rules.</p>
           <button type="button" class="bp-reset" data-bp-reset="text">Reset text</button>
         </div>
       </details>
@@ -158,6 +173,7 @@
             {% for key in ['heading_weight', 'heading_tracking', 'heading_leading', 'heading_case'] %}
               {% if d[key] is defined %}{{ c.choice(d[key], pd ~ key ~ ']', vd[key], 'seg', short[key]) }}{% endif %}
             {% endfor %}
+            {% if d.heading_wrap is defined %}{{ c.choice(d.heading_wrap, pd ~ 'heading_wrap]', vd.heading_wrap, 'select', {}) }}{% endif %}
           </dl>
           {% if default_theme %}<p class="m-0 text-[11px] leading-4 text-slate-500">“By element” keeps the weight, letter spacing and line height designed for each heading. “Theme scale” keeps the theme’s responsive sizes.</p>{% endif %}
           {% if d.h1_step is defined %}
@@ -175,6 +191,27 @@
             {{ t.matrix(element_rows, columns, d, vd, pd, 'Overrides for the lead paragraph, small text, the eyebrow, meta, quotes, captions and the titles of cards. Theme keeps the design of the theme.') }}
             <p class="m-0 text-[11px] leading-4 text-slate-500"><strong class="font-medium text-slate-600">Lead</strong> is the larger paragraph under a title; <strong class="font-medium text-slate-600">eyebrow</strong> the small label above a section heading; <strong class="font-medium text-slate-600">meta</strong> the dates, bylines and categories; <strong class="font-medium text-slate-600">quote</strong> the Quote block and quotes in text; <strong class="font-medium text-slate-600">caption</strong> the text under pictures and videos (it wins over Small there); <strong class="font-medium text-slate-600">card title</strong> the titles in lists of entries, not their large lead story.</p>
             <button type="button" class="bp-reset" data-bp-reset="elements">Reset text elements</button>
+          </div>
+        </details>
+      {% endif %}
+
+      {% if d.button_size is defined or d.label_size is defined %}
+        <details class="bp-card" open>
+          <summary><span>Buttons and forms</span><small>Button text, labels, fields</small></summary>
+          <div class="bp-body">
+            <div class="bp-nums">
+              {% if d.button_size is defined %}{{ c.num(d.button_size, pd ~ 'button_size]', vd.button_size, 'px') }}{% endif %}
+            </div>
+            <dl class="m-0 space-y-2.5">
+              {% for key in ['button_weight', 'button_case'] %}
+                {% if d[key] is defined %}{{ c.choice(d[key], pd ~ key ~ ']', vd[key], 'seg', short[key]) }}{% endif %}
+              {% endfor %}
+              {% for key in ['button_tracking', 'label_size', 'label_weight', 'input_size'] %}
+                {% if d[key] is defined %}{{ c.choice(d[key], pd ~ key ~ ']', vd[key], 'select', {}) }}{% endif %}
+              {% endfor %}
+            </dl>
+            <p class="m-0 text-[11px] leading-4 text-slate-500">The look of buttons (height, padding, corners, colours) and of fields (background, border, focus) is in <button type="button" class="bp-goto" data-goto-tab="branding">Branding</button>.</p>
+            <button type="button" class="bp-reset" data-bp-reset="buttons-forms">Reset buttons and forms</button>
           </div>
         </details>
       {% endif %}

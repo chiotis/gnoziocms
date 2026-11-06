@@ -11,10 +11,10 @@
 <div class="bf" data-bf data-bf-endpoint="{{ url('admin/theme?preview=fonts') }}" data-bf-state="{{ fonts|json_encode }}" data-bf-prefix="{{ pd }}" data-bf-legacy="{{ vd.font_file|trim }}">
   <div class="bf-head">
     <strong>Your own fonts</strong>
-    <span>Upload font files (WOFF2 is best), then choose the family for Headings or Text by setting it to “Your own font”.</span>
+    <span>Upload font files (WOFF2 is best), then choose the family for Headings, Text, Interface or Code by setting it to “Your own font”.</span>
   </div>
   <div class="bf-roles" data-bf-roles>
-    {% for role, label in {heading: 'Headings use', body: 'Text uses'} %}
+    {% for role, label in {heading: 'Headings use', body: 'Text uses', ui: 'Interface uses', code: 'Code uses'} %}
       {% set key = role ~ '_family' %}
       <div class="bf-role" data-bf-role="{{ role }}">
         <label for="f-{{ key }}">{{ label }}</label>

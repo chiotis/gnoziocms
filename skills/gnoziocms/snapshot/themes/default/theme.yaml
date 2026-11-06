@@ -552,6 +552,33 @@ settings:
           didone: Didone serif
           mono: Monospace
           custom: Your own font
+      ui_font:
+        type: select
+        label: Interface
+        default: auto
+        help: Menus, buttons, labels, eyebrows, dates and breadcrumbs.
+        options:
+          auto: Same as the text
+          heading: Same as the headings
+          inter: Inter
+          system: System font
+          humanist: Humanist
+          geometric: Geometric
+          neo_grotesque: Neo-grotesque
+          rounded: Rounded
+          industrial: Industrial
+          classical: Classical humanist
+          transitional: Transitional serif
+          old_style: Old-style serif
+          slab: Slab serif
+          didone: Didone serif
+          mono: Monospace
+          custom: Your own font
+      ui_family: {type: text, label: Interface family, default: '', help: 'The family of your own fonts the interface uses when Interface is Your own font.'}
+      code_font: {type: select, label: Code, default: auto, options: {auto: System monospace, custom: Your own font}}
+      code_family: {type: text, label: Code family, default: '', help: 'The family of your own fonts code uses when Code is Your own font.'}
+      numerals: {type: select, label: Numbers, default: auto, options: {auto: Theme, tabular: Same width in tables and dates, oldstyle: Old-style in text}}
+      ligatures: {type: select, label: Ligatures, default: auto, options: {auto: Theme, none: 'Off', extra: Extra (where the font has them)}}
       font_file:
         type: url
         label: Font file
@@ -777,6 +804,7 @@ settings:
         options:
           auto: As typed
           uppercase: Capitals
+      button_tracking: {type: select, label: Button letter spacing, default: auto, options: {auto: Theme, tight: Tight, normal: Normal, wide: Wide, wider: Wider}}
       # Links and buttons (BrandingButtons.php). A tone is a palette role or a custom #rrggbb that passes AA; empty keeps the theme's own.
       link_color: {type: tone, label: Link colour, default: ''}
       link_hover: {type: tone, label: Link hover colour, default: ''}
@@ -1116,6 +1144,11 @@ settings:
           tight: Tight
           normal: Normal
           wide: Wide
+      # Text on phones, alignment, hyphenation and heading line breaks (Theme > Typography > Text and Headings).
+      phone_text_size: {type: number, blank: true, min: 13, max: 22, label: Text size on phones, placeholder: '16', help: 'Screens up to 640px wide. Empty follows Text size.'}
+      text_align: {type: select, label: Article text, default: auto, options: {auto: Theme, left: Left, justify: Justified}}
+      hyphens: {type: select, label: Hyphenation, default: auto, options: {auto: Theme, on: Automatic, 'off': 'Off'}}
+      heading_wrap: {type: select, label: Heading line breaks, default: auto, options: {auto: Theme, balance: Balanced, pretty: No lone last word}}
       # H4 to H6 and more text elements (Theme > Typography > Headings and Text elements); a Case for every row. BrandingTypography.php.
       h4_step: {type: select, label: H4 size, default: auto, options: {auto: Theme, '5': Step 5 (largest), '4': Step 4, '3': Step 3, '2': Step 2, '1': Step 1, '0': Step 0 (body text), '-1': Step -1, '-2': Step -2}}
       h4_weight: {type: select, label: H4 weight, default: auto, options: {auto: Theme, '300': Light, '400': Regular, '500': Medium, '600': Semibold, '700': Bold, '800': Extra bold}}
@@ -1261,6 +1294,7 @@ settings:
           '500': Medium
           '600': Semibold
           '700': Bold
+      input_size: {type: select, label: Field text size, default: auto, options: {auto: Theme, normal: Normal, large: Large, larger: Larger}, help: 'Never below 16px, so phones do not zoom into a field.'}
       input_ring:
         type: select
         label: Field focus
