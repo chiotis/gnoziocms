@@ -304,6 +304,29 @@
             </div>
           </div>
         </div>
+        {% if ai_picture %}
+          <details class="en-ai-picture mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2" data-ai-picture data-ai-endpoint="{{ url('admin/ai-picture') }}" data-ai-entry="{{ ai_picture.entry }}">
+            <summary class="cursor-pointer text-sm font-semibold text-slate-800">Generate with AI</summary>
+            <div class="mt-2 space-y-2">
+              {% if ai_picture.blocked %}<p class="rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs text-amber-900">{{ ai_picture.blocked }}</p>{% endif %}
+              <label class="en-field is-wide"><span>What the picture shows</span>
+                <textarea rows="2" class="lc-input" data-ai-subject placeholder="Filled from the title and excerpt; say what the picture shows, not its style"></textarea>
+              </label>
+              <label class="en-field is-wide"><span>Avoid in this picture <small class="text-slate-400">(optional, added to the site's list)</small></span>
+                <input type="text" class="lc-input" data-ai-avoid placeholder="for example: laptops">
+              </label>
+              <div class="flex flex-wrap items-center gap-2">
+                <label class="text-xs text-slate-600">Variants
+                  <select class="lc-input lc-select ml-1 inline-block w-auto" data-ai-count>{% for n in 1..4 %}<option value="{{ n }}"{{ ai_picture.variants == n ? ' selected' }}>{{ n }}</option>{% endfor %}</select>
+                </label>
+                <button type="button" class="{{ secondary_button_class }}" data-ai-generate>Generate</button>
+                <span class="text-xs text-slate-500" data-ai-message role="status" aria-live="polite"></span>
+              </div>
+              <div class="grid grid-cols-2 gap-2" data-ai-results></div>
+              <p class="text-xs text-slate-400">The house style, reference pictures and what to avoid are set in Manage › AI publishing. A picture you choose goes into the Media library; save the entry to keep it as the main image.{% if ai_picture.cost %} Pictures for this entry so far: about ${{ '%.4f'|format(ai_picture.cost) }}.{% endif %}</p>
+            </div>
+          </details>
+        {% endif %}
       </section>
     </div>
 
@@ -521,6 +544,7 @@
   <script src="{{ asset('js/admin-preview.js') }}" defer></script>
   <script src="{{ asset('js/admin-entry-preview.js') }}" defer></script>
   <script src="{{ asset('js/admin-entry.js') }}" defer></script>
+  {% if ai_picture %}<script src="{{ asset('js/admin-ai-picture.js') }}" defer></script>{% endif %}
   <script src="{{ asset('js/admin-editor.js') }}" defer></script>
   <script src="{{ asset('js/admin-seo-count.js') }}" defer></script>
   {% if type_fields is not empty %}<script src="{{ asset('js/admin-relations.js') }}" defer></script>{% endif %}

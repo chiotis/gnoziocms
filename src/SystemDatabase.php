@@ -107,6 +107,8 @@ final class SystemDatabase
         $this->applyMigration($pdo, '202610200001_archive_query', fn(PDO $db) => $this->createArchiveQuery($db));
         $this->applyMigration($pdo, '202611020001_mcp', fn(PDO $db) => $this->createMcpTables($db));
         $this->applyMigration($pdo, '202611020002_mcp_sources', fn(PDO $db) => $this->createMcpSources($db));
+        $this->applyMigration($pdo, '202611060001_jobs', fn(PDO $db) => $this->createJobsTable($db));
+        $this->applyMigration($pdo, '202611060002_ai_usage', fn(PDO $db) => $this->createAiTables($db));
     }
 
     /**
@@ -257,6 +259,88 @@ final class SystemDatabase
      * What MCP connections wrote: the entry made for each source (a job that runs again finds it instead of writing it twice),
      * and each publication, for the daily limit of a connection.
      */
+    /**
+     * Background work (JobRunner): one row per job, claimed by one worker at a time through its lock, which runs out if the worker
+     * dies. Times are Unix seconds, so ordering and comparing them needs no date parsing.
+     */
+    private function createJobsTable(PDO $pdo): void
+    {
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS jobs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                kind TEXT NOT NULL,
+                payload TEXT NOT NULL DEFAULT '{}',
+                priority INTEGER NOT NULL DEFAULT 0,
+                status TEXT NOT NULL DEFAULT 'queued',
+                attempts INTEGER NOT NULL DEFAULT 0,
+                max_attempts INTEGER NOT NULL DEFAULT 3,
+                run_after INTEGER NOT NULL DEFAULT 0,
+                unique_key TEXT,
+                locked_by TEXT NOT NULL DEFAULT '',
+                locked_until INTEGER NOT NULL DEFAULT 0,
+                result TEXT NOT NULL DEFAULT '',
+                error TEXT NOT NULL DEFAULT '',
+                created_at INTEGER NOT NULL,
+                started_at INTEGER NOT NULL DEFAULT 0,
+                finished_at INTEGER NOT NULL DEFAULT 0
+            )"
+        );
+        $pdo->exec('CREATE INDEX IF NOT EXISTS idx_jobs_claim ON jobs (status, priority, run_after)');
+        $pdo->exec('CREATE INDEX IF NOT EXISTS idx_jobs_kind ON jobs (kind, status)');
+        // One live job per key (a picture for an entry, a schedule's run): a finished job frees its key.
+        $pdo->exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_jobs_unique_live ON jobs (unique_key) WHERE unique_key IS NOT NULL AND status IN ('queued', 'running')");
+    }
+
+    /**
+     * AI publishing: one row per call to a provider (`ai_usage`, tokens and the estimated cost at the prices of the day), and one per
+     * picture kept in the media library (`ai_pictures`: how it was made, for audit and for making it again).
+     */
+    private function createAiTables(PDO $pdo): void
+    {
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS ai_usage (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                at INTEGER NOT NULL,
+                source TEXT NOT NULL,
+                ref TEXT NOT NULL DEFAULT '',
+                entry TEXT NOT NULL DEFAULT '',
+                provider TEXT NOT NULL,
+                model TEXT NOT NULL,
+                kind TEXT NOT NULL,
+                ok INTEGER NOT NULL DEFAULT 1,
+                text_input INTEGER NOT NULL DEFAULT 0,
+                cached_input INTEGER NOT NULL DEFAULT 0,
+                cache_write INTEGER NOT NULL DEFAULT 0,
+                image_input INTEGER NOT NULL DEFAULT 0,
+                text_output INTEGER NOT NULL DEFAULT 0,
+                reasoning INTEGER NOT NULL DEFAULT 0,
+                image_output INTEGER NOT NULL DEFAULT 0,
+                searches INTEGER NOT NULL DEFAULT 0,
+                pictures INTEGER NOT NULL DEFAULT 0,
+                cost REAL,
+                prices TEXT NOT NULL DEFAULT '{}'
+            )"
+        );
+        $pdo->exec('CREATE INDEX IF NOT EXISTS idx_ai_usage_at ON ai_usage (at)');
+        $pdo->exec('CREATE INDEX IF NOT EXISTS idx_ai_usage_entry ON ai_usage (entry)');
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS ai_pictures (
+                media_id TEXT PRIMARY KEY,
+                job_id INTEGER NOT NULL DEFAULT 0,
+                entry TEXT NOT NULL DEFAULT '',
+                subject TEXT NOT NULL DEFAULT '',
+                prompt TEXT NOT NULL,
+                provider TEXT NOT NULL,
+                model TEXT NOT NULL,
+                size TEXT NOT NULL DEFAULT '',
+                quality TEXT NOT NULL DEFAULT '',
+                references_used TEXT NOT NULL DEFAULT '[]',
+                made_by TEXT NOT NULL DEFAULT '',
+                made_at INTEGER NOT NULL
+            )"
+        );
+    }
+
     private function createMcpSources(PDO $pdo): void
     {
         $pdo->exec(
