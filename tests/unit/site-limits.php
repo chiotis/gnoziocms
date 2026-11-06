@@ -28,8 +28,8 @@ $usedSystem = SiteLimits::directorySize("$dir/storage");
 check('a folder is the sum of its files, in every level', SiteLimits::directorySize("$dir/public/uploads"), 200000);
 $s = $limits->summary();
 check('the summary adds up the three parts', [$s['used'], $s['used'] === 200000 + 50000 + $usedSystem], [250000 + $usedSystem, true]);
-// The empty system database grows with every migration, so the level follows the size measured (warn from 80%), not a fixed guess.
-check('against a limit of 1 MB', [$s['limit'], $s['percent_of_limit'], $s['level'], $s['full']], [1048576, (int)round($s['used'] / 1048576 * 100), $s['used'] >= 0.8 * 1048576 ? 'warn' : 'ok', false]);
+// The empty system database grows with every migration, so the level follows the size measured (warn from 80%, danger from 90%), not a fixed guess.
+check('against a limit of 1 MB', [$s['limit'], $s['percent_of_limit'], $s['level'], $s['full']], [1048576, (int)round($s['used'] / 1048576 * 100), $s['used'] >= 0.9 * 1048576 ? 'danger' : ($s['used'] >= 0.8 * 1048576 ? 'warn' : 'ok'), $s['used'] >= 1048576]);
 check('the label says used and limit', $s['label'], $s['used_human'] . ' / 1.0 MB');
 check('the parts are readable sizes', array_keys($s['parts']), ['uploads', 'content', 'system', 'forms']);
 check('the measurement time is now', abs($s['measured_at'] - time()) <= 2, true);

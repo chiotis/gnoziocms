@@ -179,7 +179,8 @@
                   </a>
                   <div class="mt-0.5 flex items-center gap-2 text-xs text-slate-400">
                     <span>/{{ item.slug }}</span>
-                    {% if item.meta.generated_by|default('') %}<span title="Written through MCP by {{ item.meta.generated_by }}">{{ ui.badge('MCP', 'amber') }}</span>{% endif %}
+                    {% if item.meta.generated_by|default('') starts with 'AI publishing' %}<span title="Written by {{ item.meta.generated_by }}">{{ ui.badge('AI', 'violet') }}</span>
+                    {% elseif item.meta.generated_by|default('') %}<span title="Written through MCP by {{ item.meta.generated_by }}">{{ ui.badge('MCP', 'amber') }}</span>{% endif %}
                     {% set ai_state = ai_bulk ? ai_bulk.states[item.slug]|default(null) : null %}
                     {% if ai_state %}
                       <span data-ai-state="{{ ai_state.status }}" title="{{ ai_state.status == 'failed' ? ai_state.error : (ai_state.outcome == 'kept' ? 'It had a main image by then, so the new picture was only added to the Media library.' : '') }}">

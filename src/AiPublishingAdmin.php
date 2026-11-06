@@ -10,11 +10,13 @@ namespace GnozioCMS;
  */
 final class AiPublishingAdmin
 {
-    public const TABS = ['instructions' => 'Instructions', 'runs' => 'Runs', 'settings' => 'Settings', 'usage' => 'Usage'];
+    public const TABS = ['schedules' => 'Schedules', 'instructions' => 'Instructions', 'runs' => 'Runs', 'settings' => 'Settings', 'usage' => 'Usage'];
 
     /**
      * @param \Closure(string): OpenAiProvider $provider
      * @param \Closure(string, string, ?string, ?string, string, array<string, mixed>): void $log as App::logActivity
+     * @param (\Closure(): array{types: string[], languages: array<int, array{code: string, name: string}>, terms: \Closure(string, string): array<string, array<int, array{id: string, label: string}>>})|null $site
+     *   what a schedule may write: content types, languages, and the terms of a type
      */
     public function __construct(
         private AiSettings $settings,
@@ -23,6 +25,10 @@ final class AiPublishingAdmin
         private JobRunner $runner,
         private \Closure $provider,
         private \Closure $log,
+        private ?AiSchedules $schedules = null,
+        private ?AiWriter $writer = null,
+        private ?\DateTimeZone $zone = null,
+        private ?\Closure $site = null,
     ) {
     }
 
@@ -35,7 +41,7 @@ final class AiPublishingAdmin
         $view = $this->settings->view();
         $tab = (string)($get['tab'] ?? '');
         if (!isset(self::TABS[$tab])) {
-            $tab = $view['has_key'] ? 'instructions' : ($canSettings ? 'settings' : 'instructions');
+            $tab = $view['has_key'] ? 'schedules' : ($canSettings ? 'settings' : 'instructions');
         }
         $month = preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', (string)($get['month'] ?? '')) === 1 ? (string)$get['month'] : date('Y-m');
         $tests = array_map(fn(array $job): array => [
@@ -62,6 +68,9 @@ final class AiPublishingAdmin
             'watch_job' => (int)($get['job'] ?? 0),
             'usage' => $tab === 'usage' ? $this->usageScreen($month) : null,
             'runs' => $tab === 'runs' ? $this->runs((string)($get['show'] ?? '')) : null,
+            'schedules' => $tab === 'schedules' ? $this->schedulesScreen($get) : null,
+            'status_modes' => ['at_time' => 'Published at its time', 'when_ready' => 'Published as soon as it is ready', 'draft' => 'Kept as a draft for review'],
+            'day_names' => AiSchedules::DAY_NAMES,
             'show' => in_array($get['show'] ?? '', ['failed', 'live'], true) ? (string)$get['show'] : '',
             'this_month' => $this->usage->month(),
             'done' => (string)($get['done'] ?? ''),
@@ -90,6 +99,16 @@ final class AiPublishingAdmin
                 return $result(true, !$hadKey && $this->settings->hasKey() ? 'Settings saved. Press Check key to see the models this key can use.' : 'Settings saved.', 'settings');
             case 'check_key':
                 return $this->checkKey($result);
+            case 'save_writing':
+                $this->settings->saveWritingInstructions($post);
+                ($this->log)('ai.instructions', 'info', 'ai', null, 'AI publishing writing instructions saved.', []);
+                return $result(true, 'Writing instructions saved.', 'instructions');
+            case 'save_schedule':
+            case 'schedule_toggle':
+            case 'schedule_run':
+            case 'schedule_duplicate':
+            case 'schedule_delete':
+                return $this->scheduleAction($action, $post, $who, $result);
             case 'save_instructions':
                 $this->settings->savePictureInstructions($post);
                 ($this->log)('ai.instructions', 'info', 'ai', null, 'AI publishing picture instructions saved.', []);
@@ -110,7 +129,7 @@ final class AiPublishingAdmin
                 return $result($ok, $ok ? 'Cancelled.' : 'It has finished already.', 'runs');
             case 'cancel_waiting':
                 $n = 0;
-                foreach ($this->runner->list(AiPictures::KIND, [JobRunner::QUEUED], 500) as $job) {
+                foreach (array_merge($this->runner->list(AiPictures::KIND, [JobRunner::QUEUED], 500), $this->runner->list(AiWriter::KIND, [JobRunner::QUEUED], 500)) as $job) {
                     $n += $this->runner->cancel((int)$job['id']) ? 1 : 0;
                 }
                 ($this->log)('ai.cancel_waiting', 'warning', 'ai', null, 'Waiting AI pictures cancelled.', ['count' => $n]);
@@ -176,29 +195,144 @@ final class AiPublishingAdmin
             default => [],
         };
         $rows = array_map(static function (array $job): array {
-            [$type, $slug, $lang] = array_pad(explode('/', (string)($job['payload']['entry'] ?? ''), 3), 3, '');
+            $post = $job['kind'] === AiWriter::KIND;
+            [$type, $slug, $lang] = array_pad(explode('/', (string)($post ? ($job['result']['entry'] ?? '') : ($job['payload']['entry'] ?? '')), 3), 3, '');
             return [
                 'id' => (int)$job['id'],
-                'source' => (string)($job['payload']['source'] ?? 'editor'),
+                'kind' => $post ? 'post' : 'picture',
+                'source' => $post ? 'schedule' : (string)($job['payload']['source'] ?? 'editor'),
                 'by' => (string)($job['payload']['by'] ?? ''),
                 'type' => $type, 'slug' => $slug, 'lang' => $lang,
-                'subject' => (string)($job['result']['subject'] ?? ($job['payload']['subject'] ?? '')),
+                'subject' => $post ? (string)($job['result']['title'] ?? ('Schedule: ' . ($job['payload']['name'] ?? ''))) : (string)($job['result']['subject'] ?? ($job['payload']['subject'] ?? '')),
                 'status' => (string)$job['status'],
                 'error' => (string)$job['error'],
                 'attempts' => (int)$job['attempts'],
                 'pictures' => count((array)($job['result']['files'] ?? [])),
                 'outcome' => (string)($job['result']['outcome'] ?? ''),
+                'post_status' => (string)($job['result']['status'] ?? ''),
+                'publish_at' => (string)($job['result']['publish_at'] ?? ''),
                 'path' => (string)($job['result']['path'] ?? ''),
                 'cost' => $job['result']['cost'] ?? null,
                 'created' => (int)$job['created_at'],
                 'finished' => (int)$job['finished_at'],
                 'wait' => $job['status'] === JobRunner::QUEUED ? max(0, (int)$job['run_after'] - time()) : 0,
             ];
-        }, $this->runner->list(AiPictures::KIND, $statuses, 100));
+        }, $this->mergedJobs($statuses));
         return [
             'rows' => $rows,
-            'waiting' => $this->runner->pending(AiPictures::KIND),
+            'waiting' => $this->runner->pending(AiPictures::KIND) + $this->runner->pending(AiWriter::KIND),
         ];
+    }
+
+    /**
+     * Picture and post jobs together, newest first.
+     * @param string[] $statuses
+     * @return array<int, array<string, mixed>>
+     */
+    private function mergedJobs(array $statuses): array
+    {
+        $jobs = array_merge($this->runner->list(AiPictures::KIND, $statuses, 100), $this->runner->list(AiWriter::KIND, $statuses, 100));
+        usort($jobs, static fn(array $a, array $b): int => $b['id'] <=> $a['id']);
+        return array_slice($jobs, 0, 100);
+    }
+
+    /**
+     * The Schedules tab: the list (each with its next run, its last run and its posts this month), and the form of one.
+     * @param array<string, mixed> $get
+     * @return array<string, mixed>
+     */
+    private function schedulesScreen(array $get): array
+    {
+        $site = $this->site !== null ? ($this->site)() : ['types' => [], 'languages' => [], 'terms' => static fn(): array => []];
+        $zone = $this->zone ?? new \DateTimeZone(date_default_timezone_get());
+        $monthStart = (int)strtotime(date('Y-m-01 00:00:00'));
+        $list = [];
+        foreach ($this->schedules?->all() ?? [] as $schedule) {
+            $last = $this->schedules->lastRun($schedule['id']);
+            $lastJob = $last !== null && $last['job_id'] > 0 ? $this->runner->get($last['job_id']) : null;
+            $next = $this->schedules->next($schedule, $zone);
+            $list[] = $schedule + [
+                'next' => $next?->format('D j M, H:i'),
+                'last' => $last,
+                'last_status' => (string)($lastJob['status'] ?? ''),
+                'last_error' => (string)($lastJob['error'] ?? ''),
+                'month_posts' => $this->schedules->postsSince($schedule['id'], $monthStart),
+            ];
+        }
+        $editId = (string)($get['edit'] ?? '');
+        $editing = null;
+        if ($editId === 'new') {
+            $editing = ['id' => 0, 'name' => '', 'enabled' => true, 'settings' => AiSchedules::normalize([
+                'days' => [1, 2, 3, 4, 5], 'time' => '08:00', 'type' => in_array('posts', $site['types'], true) ? 'posts' : ($site['types'][0] ?? ''),
+                'lang' => $site['languages'][0]['code'] ?? '', 'prepare' => 30, 'status' => 'at_time',
+            ])];
+        } elseif (ctype_digit($editId)) {
+            $editing = $this->schedules?->get((int)$editId);
+        }
+        $form = is_array($_SESSION['ai_schedule_form'] ?? null) ? $_SESSION['ai_schedule_form'] : null;
+        unset($_SESSION['ai_schedule_form']);
+        if ($editing !== null && $form !== null && (int)($form['id'] ?? -1) === (int)$editing['id']) {
+            // The form as it was sent, after a save that was refused.
+            $editing['name'] = (string)($form['name'] ?? '');
+            $editing['settings'] = AiSchedules::normalize($form);
+        }
+        return [
+            'list' => $list,
+            'editing' => $editing,
+            'types' => $site['types'],
+            'languages' => $site['languages'],
+            'taxonomies' => $editing !== null ? ($site['terms'])($editing['settings']['type'], $editing['settings']['lang']) : [],
+            'zone' => $zone->getName(),
+            'missed_window' => (int)$this->settings->all()['missed_window'],
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $post
+     * @param \Closure(bool, string, string, int=): array{ok: bool, message: string, tab: string, job: int} $result
+     * @return array{ok: bool, message: string, tab: string, job: int, edit?: string}
+     */
+    private function scheduleAction(string $action, array $post, string $who, \Closure $result): array
+    {
+        if ($this->schedules === null || $this->writer === null) {
+            return $result(false, 'Schedules are not available.', 'schedules');
+        }
+        $id = (int)($post['schedule'] ?? 0);
+        switch ($action) {
+            case 'save_schedule':
+                $site = $this->site !== null ? ($this->site)() : ['types' => [], 'languages' => []];
+                $saved = $this->schedules->save($id, $post, $site['types'], array_column($site['languages'], 'code'));
+                if (!$saved['ok']) {
+                    $_SESSION['ai_schedule_form'] = $post + ['id' => $id];
+                    return ['ok' => false, 'message' => implode(' ', $saved['errors']), 'tab' => 'schedules', 'job' => 0, 'edit' => $id > 0 ? (string)$id : 'new'];
+                }
+                ($this->log)('ai.schedule_saved', 'info', 'ai_schedule', (string)$saved['id'], 'AI publishing schedule saved.', ['name' => (string)($post['name'] ?? '')]);
+                return $result(true, 'Schedule saved.', 'schedules');
+            case 'schedule_toggle':
+                $schedule = $this->schedules->get($id);
+                if ($schedule === null) {
+                    return $result(false, 'There is no such schedule.', 'schedules');
+                }
+                $this->schedules->setEnabled($id, !$schedule['enabled']);
+                return $result(true, $schedule['enabled'] ? 'Switched off: it does not run until you switch it on.' : 'Switched on.', 'schedules');
+            case 'schedule_run':
+                $run = $this->writer->runNow($id, $who);
+                if ($run['ok']) {
+                    ($this->log)('ai.schedule_run', 'info', 'ai_schedule', (string)$id, 'AI publishing schedule run by hand.', []);
+                }
+                return $result($run['ok'], $run['ok'] ? 'Writing the post now; it shows below. Keep this page open, or the cron job finishes it.' : $run['error'], $run['ok'] ? 'runs' : 'schedules', $run['job']);
+            case 'schedule_duplicate':
+                $copy = $this->schedules->duplicate($id);
+                return $copy > 0 ? ['ok' => true, 'message' => 'Copied, switched off. Change what you need and switch it on.', 'tab' => 'schedules', 'job' => 0, 'edit' => (string)$copy]
+                    : $result(false, 'There is no such schedule.', 'schedules');
+            case 'schedule_delete':
+                $ok = $this->schedules->delete($id);
+                if ($ok) {
+                    ($this->log)('ai.schedule_deleted', 'warning', 'ai_schedule', (string)$id, 'AI publishing schedule deleted.', []);
+                }
+                return $result($ok, $ok ? 'Deleted. The posts it wrote stay.' : 'There is no such schedule.', 'schedules');
+        }
+        return $result(false, 'Unknown action.', 'schedules');
     }
 
     /** @return array<string, mixed> */

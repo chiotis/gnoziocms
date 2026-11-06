@@ -109,6 +109,7 @@ final class SystemDatabase
         $this->applyMigration($pdo, '202611020002_mcp_sources', fn(PDO $db) => $this->createMcpSources($db));
         $this->applyMigration($pdo, '202611060001_jobs', fn(PDO $db) => $this->createJobsTable($db));
         $this->applyMigration($pdo, '202611060002_ai_usage', fn(PDO $db) => $this->createAiTables($db));
+        $this->applyMigration($pdo, '202611060003_ai_schedules', fn(PDO $db) => $this->createAiScheduleTables($db));
     }
 
     /**
@@ -339,6 +340,37 @@ final class SystemDatabase
                 made_at INTEGER NOT NULL
             )"
         );
+    }
+
+    /**
+     * AI publishing schedules: each writes one post per run (`ai_schedules`), and each run of a time slot is written down once
+     * (`ai_schedule_slots`, primary key schedule + slot), so a slot never runs twice however often cron fires; the row also keeps
+     * the post it made, whose title the next runs are told not to repeat.
+     */
+    private function createAiScheduleTables(PDO $pdo): void
+    {
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS ai_schedules (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                enabled INTEGER NOT NULL DEFAULT 1,
+                settings TEXT NOT NULL DEFAULT '{}',
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER NOT NULL
+            )"
+        );
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS ai_schedule_slots (
+                schedule_id INTEGER NOT NULL,
+                slot TEXT NOT NULL,
+                job_id INTEGER NOT NULL DEFAULT 0,
+                entry TEXT NOT NULL DEFAULT '',
+                title TEXT NOT NULL DEFAULT '',
+                created_at INTEGER NOT NULL,
+                PRIMARY KEY (schedule_id, slot)
+            )"
+        );
+        $pdo->exec('CREATE INDEX IF NOT EXISTS idx_ai_schedule_slots_created ON ai_schedule_slots (schedule_id, created_at)');
     }
 
     private function createMcpSources(PDO $pdo): void

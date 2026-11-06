@@ -83,6 +83,60 @@ final class OpenAiProvider
     }
 
     /**
+     * Writes with the Responses API, the answer bound to a JSON schema (strict). `$instructions` go as the developer message, `$input`
+     * as the user's. Reasoning models get a low effort; others none.
+     * @param array<string, mixed> $schema
+     * @return array{ok: bool, data: array<string, mixed>|null, usage: array<string, mixed>, kind: string, error: string, retry_after: int|null,
+     *   ms: int, model_gone: bool, refusal: string, incomplete: string}
+     */
+    public function write(string $model, string $instructions, string $input, string $schemaName, array $schema, int $maxTokens = 8000): array
+    {
+        $payload = [
+            'model' => $model,
+            'input' => [['role' => 'developer', 'content' => $instructions], ['role' => 'user', 'content' => $input]],
+            'text' => ['format' => ['type' => 'json_schema', 'name' => $schemaName, 'strict' => true, 'schema' => $schema]],
+            'max_output_tokens' => $maxTokens,
+        ];
+        if (self::reasons($model)) {
+            $payload['reasoning'] = ['effort' => 'low'];
+        }
+        $r = $this->http->postJson(self::BASE . '/responses', $payload, $this->auth(), 240);
+        $result = ['ok' => false, 'data' => null, 'usage' => is_array($r['data']['usage'] ?? null) ? $r['data']['usage'] : [], 'kind' => $r['kind'], 'error' => $r['error'],
+            'retry_after' => $r['retry_after'], 'ms' => $r['ms'], 'model_gone' => self::modelGone($r), 'refusal' => '', 'incomplete' => ''];
+        if (!$r['ok']) {
+            return $result;
+        }
+        $text = '';
+        foreach ((array)($r['data']['output'] ?? []) as $item) {
+            if (!is_array($item) || ($item['type'] ?? '') !== 'message') {
+                continue;
+            }
+            foreach ((array)($item['content'] ?? []) as $part) {
+                if (($part['type'] ?? '') === 'output_text') {
+                    $text .= (string)($part['text'] ?? '');
+                } elseif (($part['type'] ?? '') === 'refusal') {
+                    $result['refusal'] = trim((string)($part['refusal'] ?? ''));
+                }
+            }
+        }
+        $result['incomplete'] = (string)($r['data']['incomplete_details']['reason'] ?? '');
+        if ($result['refusal'] !== '') {
+            return ['kind' => AiHttp::REFUSED, 'error' => 'The model declined to write it: ' . mb_substr($result['refusal'], 0, 300)] + $result;
+        }
+        $data = json_decode($text, true);
+        if (!is_array($data)) {
+            return ['kind' => AiHttp::SERVER, 'error' => $result['incomplete'] !== '' ? 'The answer was cut short (' . $result['incomplete'] . ').' : 'The answer was not the JSON asked for.'] + $result;
+        }
+        return ['ok' => true, 'data' => $data, 'kind' => '', 'error' => ''] + $result;
+    }
+
+    /** Models that take `reasoning.effort` (the gpt-5 family and o-series). */
+    public static function reasons(string $model): bool
+    {
+        return preg_match('/^(gpt-[5-9]|o\d)/', $model) === 1;
+    }
+
+    /**
      * Whether a picture model accepts `input_fidelity` (follow the reference pictures closely). Only the gpt-image-1 family does;
      * gpt-image-2 refuses the request when it is sent (invalid_input_fidelity_model, checked with a real key on 2026-11-06).
      */

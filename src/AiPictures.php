@@ -16,6 +16,7 @@ final class AiPictures
     public const KIND = 'ai_picture';
     public const PRIORITY_EDITOR = 100;
     public const PRIORITY_BULK = 10;
+    public const PRIORITY_SCHEDULE = 50;
     /** How long a finished bulk job still shows on the content list. */
     public const BULK_SHOWN = 6 * 3600;
     private const VARIANTS_KEPT = 86400;
@@ -28,6 +29,8 @@ final class AiPictures
      *   reads an entry (type, slug, lang) for bulk pictures
      * @param (\Closure(string, string, string, string, string, bool): string)|null $setMainImage sets an entry's main image (type, slug,
      *   lang, address, actor, replace) and says set, kept, missing or unreadable
+     * @param (\Closure(string, string, string, string, ?string, string): string)|null $finalize gives an entry its status once its picture is
+     *   set (type, slug, lang, status, publish_at, actor): a scheduled post waits for its picture
      */
     public function __construct(
         private JobRunner $runner,
@@ -41,6 +44,7 @@ final class AiPictures
         private ?\Closure $clock = null,
         private ?\Closure $entries = null,
         private ?\Closure $setMainImage = null,
+        private ?\Closure $finalize = null,
     ) {
     }
 
@@ -139,6 +143,25 @@ final class AiPictures
             $queued += $id > 0 ? 1 : 0;
         }
         return ['ok' => $queued > 0, 'queued' => $queued, 'skipped' => $skipped, 'error' => $queued > 0 ? '' : 'The site database is not available.'];
+    }
+
+    /**
+     * Queues the picture of a post a schedule wrote: its subject is the brief the writer gave, its avoid lines the schedule's. With
+     * `$finalize` (status, publish_at, actor) the post gets that status once the picture is set.
+     * @param string[] $avoid @param array{status: string, publish_at: ?string, actor: string}|null $finalize
+     * @return array{ok: bool, job: int, error: string}
+     */
+    public function requestForEntry(string $entry, string $subject, array $avoid, string $by, ?array $finalize): array
+    {
+        $blocked = $this->blocked(1);
+        if ($blocked !== '') {
+            return ['ok' => false, 'job' => 0, 'error' => $blocked];
+        }
+        $job = $this->runner->enqueue(self::KIND, [
+            'mode' => 'schedule', 'entry' => $entry, 'subject' => mb_substr(trim($subject), 0, 1000), 'avoid' => array_slice($avoid, 0, 20),
+            'replace' => false, 'variants' => 1, 'source' => 'schedule', 'by' => mb_substr($by, 0, 120), 'finalize' => $finalize,
+        ], self::PRIORITY_SCHEDULE, self::bulkKey($entry), 3);
+        return $job > 0 ? ['ok' => true, 'job' => $job, 'error' => ''] : ['ok' => false, 'job' => 0, 'error' => 'The site database is not available.'];
     }
 
     public static function bulkKey(string $entry): string
@@ -324,7 +347,7 @@ final class AiPictures
         if ($s['openai_key'] === '') {
             throw JobFailure::final('There is no OpenAI key. Add one in Manage > AI publishing > Settings.');
         }
-        $bulk = ($payload['mode'] ?? '') === 'bulk';
+        $bulk = in_array($payload['mode'] ?? '', ['bulk', 'schedule'], true);
         if ($bulk) {
             $payload = $this->bulkPayload($payload);
         }
@@ -398,7 +421,10 @@ final class AiPictures
         if (!($payload['replace'] ?? false) && trim($entry['main_image']) !== '') {
             throw JobFailure::final('It has a main image by now; it was left as it is.');
         }
-        $payload['subject'] = self::subjectFrom($entry['title'], $entry['excerpt'], $entry['body']);
+        // A schedule's picture comes with the brief its writer gave; a bulk one is made from the entry.
+        if (($payload['mode'] ?? '') !== 'schedule' || trim((string)($payload['subject'] ?? '')) === '') {
+            $payload['subject'] = self::subjectFrom($entry['title'], $entry['excerpt'], $entry['body']);
+        }
         if ($payload['subject'] === '') {
             throw JobFailure::final('The entry has no title or text to make a picture from.');
         }
@@ -437,6 +463,10 @@ final class AiPictures
         $outcome = $this->setMainImage !== null
             ? ($this->setMainImage)($type, $slug, $lang, $kept['path'], 'AI publishing (' . ($payload['by'] ?: 'bulk') . ')', (bool)($payload['replace'] ?? false))
             : 'missing';
+        $finalize = is_array($payload['finalize'] ?? null) ? $payload['finalize'] : null;
+        if ($finalize !== null && $outcome === 'set' && $this->finalize !== null && ($finalize['status'] ?? 'draft') !== 'draft') {
+            ($this->finalize)($type, $slug, $lang, (string)$finalize['status'], isset($finalize['publish_at']) ? (string)$finalize['publish_at'] : null, (string)($finalize['actor'] ?? 'AI publishing'));
+        }
         return ['path' => $kept['path'], 'outcome' => $outcome];
     }
 
