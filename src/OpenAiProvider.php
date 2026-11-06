@@ -59,10 +59,11 @@ final class OpenAiProvider
                 'output_format' => $format, 'background' => 'opaque', 'moderation' => 'auto',
             ], $this->auth(), 300);
         } else {
-            $r = $this->http->postMultipart(self::BASE . '/images/edits', [
-                'model' => $model, 'prompt' => $prompt, 'n' => (string)$n, 'size' => $size, 'quality' => $quality,
-                'output_format' => $format, 'background' => 'opaque', 'input_fidelity' => 'high',
-            ], ['image[]' => $references], $this->auth(), 300);
+            $fields = ['model' => $model, 'prompt' => $prompt, 'n' => (string)$n, 'size' => $size, 'quality' => $quality, 'output_format' => $format, 'background' => 'opaque'];
+            if (self::takesInputFidelity($model)) {
+                $fields['input_fidelity'] = 'high';
+            }
+            $r = $this->http->postMultipart(self::BASE . '/images/edits', $fields, ['image[]' => $references], $this->auth(), 300);
         }
         $result = ['ok' => $r['ok'], 'images' => [], 'usage' => is_array($r['data']['usage'] ?? null) ? $r['data']['usage'] : [], 'kind' => $r['kind'],
             'error' => $r['error'], 'retry_after' => $r['retry_after'], 'ms' => $r['ms'], 'model_gone' => self::modelGone($r)];
@@ -79,6 +80,15 @@ final class OpenAiProvider
             return ['ok' => false, 'kind' => AiHttp::SERVER, 'error' => 'The provider answered without a picture.'] + $result;
         }
         return $result;
+    }
+
+    /**
+     * Whether a picture model accepts `input_fidelity` (follow the reference pictures closely). Only the gpt-image-1 family does;
+     * gpt-image-2 refuses the request when it is sent (invalid_input_fidelity_model, checked with a real key on 2026-11-06).
+     */
+    public static function takesInputFidelity(string $model): bool
+    {
+        return preg_match('/^gpt-image-1(\.|-|$)/', $model) === 1;
     }
 
     /** @param array<string, mixed> $r an AiHttp result */

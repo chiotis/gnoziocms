@@ -143,7 +143,9 @@ $req = $pictures->request('A calm harbour.', [], 1, 'test', 'chris');
 $replies[] = $okReply(1);
 $calls = [];
 $runner->work($soon());
-check('with references: images/edits, multipart, only the files that exist', [$calls[0]['url'], substr_count((string)$calls[0]['body'], 'name="image[]"'), str_contains((string)$calls[0]['body'], 'name="input_fidelity"')], ['https://api.openai.com/v1/images/edits', 1, true]);
+check('with references: images/edits, multipart, only the files that exist', [$calls[0]['url'], substr_count((string)$calls[0]['body'], 'name="image[]"')], ['https://api.openai.com/v1/images/edits', 1]);
+check('no input_fidelity for gpt-image-2, which refuses it', str_contains((string)$calls[0]['body'], 'name="input_fidelity"'), false);
+check('input_fidelity only for the gpt-image-1 family', array_map(OpenAiProvider::takesInputFidelity(...), ['gpt-image-1', 'gpt-image-1.5', 'gpt-image-1-mini', 'gpt-image-2', 'gpt-image-2.5-flare', 'chatgpt-image-latest']), [true, true, true, false, false, false]);
 check('16:9 from a 3:2 picture', getimagesize((string)$pictures->variantPath($req['job'], 0))[1], 169);
 
 // ---- failures

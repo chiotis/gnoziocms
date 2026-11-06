@@ -14,7 +14,8 @@
  *   --quality=low               picture quality (low, medium, high, auto)
  *   --size=1536x1024            picture size
  *   --format=webp               picture format (webp, jpeg, png)
- *   --ref=a.jpg,b.png           reference pictures (sent to the edits endpoint with input_fidelity high)
+ *   --ref=a.jpg,b.png           reference pictures (sent to the edits endpoint; input_fidelity high for gpt-image-1 models only)
+ *   --subject="..."             what the picture shows (default: a shop sign with a clock)
  *   --out=/path                 where the picture and the raw answers are saved (default: a folder in the system temp)
  *   --skip-text, --skip-image   leave one out
  *
@@ -32,7 +33,7 @@ require dirname(__DIR__) . '/vendor/autoload.php';
 
 use GnozioCMS\AiHttp;
 
-$options = getopt('', ['text-model:', 'image-model:', 'effort:', 'quality:', 'size:', 'format:', 'ref:', 'out:', 'skip-text', 'skip-image', 'help']);
+$options = getopt('', ['text-model:', 'image-model:', 'effort:', 'quality:', 'size:', 'format:', 'ref:', 'subject:', 'out:', 'skip-text', 'skip-image', 'help']);
 if (isset($options['help'])) {
     preg_match('#/\*(.*?)\*/#s', (string)file_get_contents(__FILE__), $m);
     echo trim((string)preg_replace('/^\s*\* ?/m', '', $m[1] ?? '')) . PHP_EOL;
@@ -197,7 +198,7 @@ if (!isset($options['skip-text'])) {
 // ---- 3. one picture
 if (!isset($options['skip-image'])) {
     $prompt = "Flat editorial illustration, soft muted palette of teal and warm sand, generous empty space, one subject in the centre, gentle morning light.\n"
-        . "Subject: a wooden shop sign with a small clock hanging from it, seen from the front.\n"
+        . 'Subject: ' . (trim((string)($options['subject'] ?? '')) ?: 'a wooden shop sign with a small clock hanging from it, seen from the front.') . "\n"
         . "Do not show: text, letters or numbers; logos; watermarks; people.";
     if ($refs === []) {
         $r = $http->postJson($base . '/images/generations', [
@@ -207,8 +208,8 @@ if (!isset($options['skip-image'])) {
     } else {
         $r = $http->postMultipart($base . '/images/edits', [
             'model' => $imageModel, 'prompt' => "Match the style of the reference pictures; do not copy their subjects.\n" . $prompt, 'n' => '1', 'size' => $size,
-            'quality' => $quality, 'output_format' => $format, 'background' => 'opaque', 'input_fidelity' => 'high',
-        ], ['image[]' => $refs], $auth, 300);
+            'quality' => $quality, 'output_format' => $format, 'background' => 'opaque',
+        ] + (GnozioCMS\OpenAiProvider::takesInputFidelity($imageModel) ? ['input_fidelity' => 'high'] : []), ['image[]' => $refs], $auth, 300);
         $title = 'Picture (images/edits, ' . count($refs) . ' reference pictures)';
     }
     $report($title, $r);
