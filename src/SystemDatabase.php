@@ -110,6 +110,14 @@ final class SystemDatabase
         $this->applyMigration($pdo, '202611060001_jobs', fn(PDO $db) => $this->createJobsTable($db));
         $this->applyMigration($pdo, '202611060002_ai_usage', fn(PDO $db) => $this->createAiTables($db));
         $this->applyMigration($pdo, '202611060003_ai_schedules', fn(PDO $db) => $this->createAiScheduleTables($db));
+        $this->applyMigration($pdo, '202611070001_ai_material', fn(PDO $db) => $pdo->exec(
+            'CREATE TABLE IF NOT EXISTS ai_material_used (
+                schedule_id INTEGER NOT NULL,
+                item_key TEXT NOT NULL,
+                used_at INTEGER NOT NULL,
+                PRIMARY KEY (schedule_id, item_key)
+            )'
+        ));
     }
 
     /**

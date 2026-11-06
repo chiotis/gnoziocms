@@ -131,6 +131,7 @@ final class AiSchedules
         $stmt = $pdo->prepare('DELETE FROM ai_schedules WHERE id = ?');
         $stmt->execute([$id]);
         $pdo->prepare('DELETE FROM ai_schedule_slots WHERE schedule_id = ?')->execute([$id]);
+        $pdo->prepare('DELETE FROM ai_material_used WHERE schedule_id = ?')->execute([$id]);
         return $stmt->rowCount() === 1;
     }
 
@@ -279,7 +280,59 @@ final class AiSchedules
             'status' => in_array($in['status'] ?? null, self::STATUS_MODES, true) ? (string)$in['status'] : 'at_time',
             'byline' => $text($in['byline'] ?? '', 80),
             'model' => AiSettings::modelName($in['model'] ?? ''),
+            'web_search' => $flag($in['web_search'] ?? null, true),
+            'search_focus' => $text($in['search_focus'] ?? '', 500),
+            'feeds' => self::urls($in['feeds'] ?? [], 10),
+            'pages' => self::urls($in['pages'] ?? [], 5),
+            'items_per_run' => max(1, min(20, (int)($in['items_per_run'] ?? 6) ?: 6)),
+            'max_age_days' => max(1, min(90, (int)($in['max_age_days'] ?? 14) ?: 14)),
+            'list_sources' => $flag($in['list_sources'] ?? null, true),
         ];
+    }
+
+    /**
+     * http and https addresses, one per line (or a list), at most `$max`.
+     * @return string[]
+     */
+    public static function urls(mixed $value, int $max): array
+    {
+        $lines = is_array($value) ? $value : (preg_split('/[\s,]+/', (string)$value, -1, PREG_SPLIT_NO_EMPTY) ?: []);
+        $out = [];
+        foreach ($lines as $line) {
+            $url = trim((string)$line);
+            if (preg_match('#^https?://[^\s/$.?\#][^\s]*$#i', $url) === 1 && strlen($url) <= 2000) {
+                $out[] = $url;
+            }
+        }
+        return array_slice(array_values(array_unique($out)), 0, $max);
+    }
+
+    /**
+     * Of the given feed items, the ones this schedule has not used.
+     * @param string[] $keys @return string[]
+     */
+    public function unused(int $scheduleId, array $keys): array
+    {
+        $pdo = $this->pdo();
+        if ($pdo === null || $keys === []) {
+            return $keys;
+        }
+        $stmt = $pdo->prepare('SELECT item_key FROM ai_material_used WHERE schedule_id = ? AND item_key IN (' . implode(', ', array_fill(0, count($keys), '?')) . ')');
+        $stmt->execute(array_merge([$scheduleId], array_values($keys)));
+        return array_values(array_diff($keys, $stmt->fetchAll(PDO::FETCH_COLUMN)));
+    }
+
+    /** @param string[] $keys feed items a post was written from: never used again by this schedule */
+    public function markUsed(int $scheduleId, array $keys): void
+    {
+        $pdo = $this->pdo();
+        if ($pdo === null) {
+            return;
+        }
+        $stmt = $pdo->prepare('INSERT OR IGNORE INTO ai_material_used (schedule_id, item_key, used_at) VALUES (?, ?, ?)');
+        foreach ($keys as $key) {
+            $stmt->execute([$scheduleId, $key, $this->now()]);
+        }
     }
 
     /** The slot of a schedule on a day (its time, in the zone), or null when the schedule does not run that day. */

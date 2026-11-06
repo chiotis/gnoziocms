@@ -3619,7 +3619,8 @@ final class App
             fn(string $type, string $lang): array => $this->aiTermsFor($type, $lang),
             fn(string $type, string $slug, string $lang, string $status, ?string $publishAt, string $actor): string => $this->aiSetStatus($type, $slug, $lang, $status, $publishAt, $actor),
             static fn(string $code): string => MenuAdmin::languageName($code),
-            SiteSettings::timeZone($this->settings)
+            SiteSettings::timeZone($this->settings),
+            reader: new FeedReader(new SafeHttp(), $this->basePath . '/storage/ai/tmp')
         );
     }
 

@@ -210,6 +210,8 @@ final class AiPublishingAdmin
                 'pictures' => count((array)($job['result']['files'] ?? [])),
                 'outcome' => (string)($job['result']['outcome'] ?? ''),
                 'post_status' => (string)($job['result']['status'] ?? ''),
+                'searches' => (int)($job['result']['searches'] ?? 0),
+                'sources' => (int)($job['result']['sources'] ?? 0),
                 'publish_at' => (string)($job['result']['publish_at'] ?? ''),
                 'path' => (string)($job['result']['path'] ?? ''),
                 'cost' => $job['result']['cost'] ?? null,

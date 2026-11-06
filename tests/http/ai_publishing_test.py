@@ -68,6 +68,8 @@ root.submit('/admin/ai-publishing?tab=instructions', has_field('writing_instruct
 st, _, html = root.get('/admin/ai-publishing?tab=instructions')
 check('writing instructions are kept', 'Warm and short.' in html and 'prices\nemojis' in html and 'A bakery in Volos.' in html and 'value="The Bakery"' in html, st)
 
+st, _, html = root.get('/admin/ai-publishing?tab=schedules&edit=new')
+check('a new schedule searches the web by default, and has feeds and pages', 'name="web_search" value="1" checked' in html and 'name="feeds"' in html and 'name="pages"' in html and 'name="list_sources" value="1" checked' in html, st)
 st, hdr, _ = root.submit('/admin/ai-publishing?tab=schedules&edit=new', has_field('content'), {'name': 'Tips', 'content': ''}, button=('ai_action', 'save_schedule'))
 loc = hdr.get('Location') or ''
 st, _, html = root.get(re.sub(r'^https?://[^/]+', '', loc))
@@ -79,6 +81,7 @@ check('a schedule is added', 'done=ok' in (hdr.get('Location') or ''), hdr.get('
 st, _, html = root.get('/admin/ai-publishing?tab=schedules')
 row = re.search(r'data-ai-schedule="(\d+)".*?</li>', html, re.S)
 check('it is listed: on, its days and time, its next run', row is not None and 'On' in row.group(0) and 'Mon Wed Fri' in row.group(0) and '08:00' in row.group(0) and 'Next:' in row.group(0), row and row.group(0)[:300])
+check('and says it searches the web', row is not None and 'web search' in row.group(0))
 sid = row.group(1) if row else '0'
 st, _, html = root.get('/admin/ai-publishing?tab=schedules&edit=' + sid)
 check('its form shows what was saved', 'One practical tip about opening hours.' in html and 'value="1" class="h-3.5 w-3.5" checked' in html, st)

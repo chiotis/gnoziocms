@@ -17,6 +17,7 @@
  *   --ref=a.jpg,b.png           reference pictures (sent to the edits endpoint; input_fidelity high for gpt-image-1 models only)
  *   --subject="..."             what the picture shows (default: a shop sign with a clock)
  *   --out=/path                 where the picture and the raw answers are saved (default: a folder in the system temp)
+ *   --search                    let the writing model search the web (the web_search tool) for a short news brief with sources
  *   --skip-text, --skip-image   leave one out
  *
  * Costs a few cents at low quality. Nothing is written to the site.
@@ -33,7 +34,7 @@ require dirname(__DIR__) . '/vendor/autoload.php';
 
 use GnozioCMS\AiHttp;
 
-$options = getopt('', ['text-model:', 'image-model:', 'effort:', 'quality:', 'size:', 'format:', 'ref:', 'subject:', 'out:', 'skip-text', 'skip-image', 'help']);
+$options = getopt('', ['text-model:', 'image-model:', 'effort:', 'quality:', 'size:', 'format:', 'ref:', 'subject:', 'out:', 'skip-text', 'skip-image', 'search', 'help']);
 if (isset($options['help'])) {
     preg_match('#/\*(.*?)\*/#s', (string)file_get_contents(__FILE__), $m);
     echo trim((string)preg_replace('/^\s*\* ?/m', '', $m[1] ?? '')) . PHP_EOL;
@@ -146,13 +147,20 @@ if (!isset($options['skip-text'])) {
             'seo_description' => ['type' => 'string'],
             'image_brief' => ['type' => 'string', 'description' => 'What the picture shows, one or two sentences, no style words'],
             'sources' => ['type' => 'array', 'items' => ['type' => 'string']],
+            'can_write' => ['type' => 'boolean'],
+            'cannot_write_reason' => ['type' => 'string'],
         ],
     ];
+    $schema['required'][] = 'can_write';
+    $schema['required'][] = 'cannot_write_reason';
+    $search = isset($options['search']);
     $payload = [
         'model' => $textModel,
         'input' => [
             ['role' => 'developer', 'content' => "You write posts for a small-business website. Plain, friendly English, short paragraphs, one heading level (##).\nNever do any of these:\n- invent facts, quotes, prices or statistics\n- use the phrase \"in today's fast-paced world\""],
-            ['role' => 'user', 'content' => 'Write one practical tip about writing clear opening hours on a website, 150 to 200 words. Choose terms only from the allowed list. image_brief: an everyday object that stands for the tip. sources: an empty list.'],
+            ['role' => 'user', 'content' => $search
+                ? 'Today is ' . date('j F Y') . '. Search the web and write a news brief of 150 to 200 words about one notable official announcement in Greece from the past seven days, with its date. Put the addresses you used in sources and end the body with them as Markdown links. Choose terms only from the allowed list (News). If you cannot confirm anything, set can_write to false and say why.'
+                : 'Write one practical tip about writing clear opening hours on a website, 150 to 200 words. Choose terms only from the allowed list. image_brief: an everyday object that stands for the tip. sources: an empty list. can_write: true.'],
         ],
         'text' => ['format' => ['type' => 'json_schema', 'name' => 'entry', 'strict' => true, 'schema' => $schema]],
         'max_output_tokens' => 4000,
@@ -160,8 +168,12 @@ if (!isset($options['skip-text'])) {
     if ($effort !== 'none') {
         $payload['reasoning'] = ['effort' => $effort];
     }
-    $r = $http->postJson($base . '/responses', $payload, $auth);
-    $report('Writing (Responses API, json_schema)', $r);
+    if ($search) {
+        $payload['tools'] = [['type' => 'web_search']];
+        $payload['max_output_tokens'] = 16000;
+    }
+    $r = $http->postJson($base . '/responses', $payload, $auth, 300);
+    $report('Writing (Responses API, json_schema' . ($search ? ', web search' : '') . ')', $r);
     if (!$r['ok'] && $r['data'] !== null) {
         $save('text-error', $r);
     }
@@ -180,6 +192,7 @@ if (!isset($options['skip-text'])) {
         $entry = json_decode($text, true);
         $line('   status in answer: ' . ($r['data']['status'] ?? '?') . (isset($r['data']['incomplete_details']['reason']) ? ' (' . $r['data']['incomplete_details']['reason'] . ')' : ''));
         $line('   output items:     ' . implode(', ', array_map(static fn(array $i): string => (string)($i['type'] ?? '?'), $r['data']['output'] ?? [])));
+        $line('   searches:         ' . count(array_filter($r['data']['output'] ?? [], static fn(array $i): bool => ($i['type'] ?? '') === 'web_search_call')));
         if (is_array($entry)) {
             $missing = array_diff($schema['required'], array_keys($entry));
             $line('   JSON:     parsed' . ($missing === [] ? ', every field present' : ', MISSING ' . implode(', ', $missing)));
@@ -187,6 +200,8 @@ if (!isset($options['skip-text'])) {
             $line('   terms:    ' . implode(', ', (array)($entry['terms'] ?? [])));
             $line('   words:    ' . str_word_count(strip_tags((string)($entry['body'] ?? ''))));
             $line('   brief:    ' . ($entry['image_brief'] ?? ''));
+            $line('   can write: ' . json_encode($entry['can_write'] ?? null) . (($entry['cannot_write_reason'] ?? '') !== '' ? ' (' . $entry['cannot_write_reason'] . ')' : ''));
+            $line('   sources:  ' . (implode(', ', (array)($entry['sources'] ?? [])) ?: '(none)'));
             $failed += $missing === [] ? 0 : 1;
         } else {
             $failed++;

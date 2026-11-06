@@ -220,12 +220,13 @@ final class AiSettings
      */
     public static function defaultPrices(): array
     {
-        $row = static fn(?float $in, ?float $cached, ?float $out, ?float $imageIn = null, ?float $imageOut = null): array
-            => ['text_input' => $in, 'cached_input' => $cached, 'text_output' => $out, 'image_input' => $imageIn, 'image_output' => $imageOut, 'search_call' => null];
+        $row = static fn(?float $in, ?float $cached, ?float $out, ?float $imageIn = null, ?float $imageOut = null, ?float $search = null): array
+            => ['text_input' => $in, 'cached_input' => $cached, 'text_output' => $out, 'image_input' => $imageIn, 'image_output' => $imageOut, 'search_call' => $search];
+        // Web search: about $10 per 1,000 calls when this was written; check it with the rest.
         return [
-            'gpt-5' => $row(1.25, 0.125, 10.0),
-            'gpt-5-mini' => $row(0.25, 0.025, 2.0),
-            'gpt-5-nano' => $row(0.05, 0.005, 0.4),
+            'gpt-5' => $row(1.25, 0.125, 10.0, null, null, 0.01),
+            'gpt-5-mini' => $row(0.25, 0.025, 2.0, null, null, 0.01),
+            'gpt-5-nano' => $row(0.05, 0.005, 0.4, null, null, 0.01),
             'gpt-image-2' => $row(null, null, null),
         ];
     }

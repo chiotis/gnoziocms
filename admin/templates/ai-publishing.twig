@@ -266,6 +266,42 @@
           </div>
         </div>
 
+        <div class="{{ card }}" data-sc-material>
+          <div class="{{ card_head }}"><h2 class="text-sm font-semibold text-slate-900">Material</h2><span class="text-xs text-slate-400">Where the facts come from</span></div>
+          <div class="grid gap-4 px-4 py-4 sm:grid-cols-2">
+            <div class="sm:col-span-2">
+              <label class="inline-flex items-center gap-2 text-sm font-medium text-slate-800"><input type="hidden" name="web_search" value="0"><input type="checkbox" name="web_search" value="1"{{ c.web_search ? ' checked' }}> Search the web while writing</label>
+              <p class="{{ note }}">For anything current: news, dates, announcements. The model searches, reads and gives the addresses it used. Each search is billed by OpenAI (counted on the Usage tab). Off, it writes from what it knows, which stops well before today.</p>
+            </div>
+            <div class="sm:col-span-2">
+              <label class="{{ label }}" for="sc-focus">What to search for <span class="font-normal text-slate-400">(optional)</span></label>
+              <input id="sc-focus" name="search_focus" value="{{ c.search_focus }}" class="{{ input }}" maxlength="500" placeholder="Official announcements on spatial planning and regional funding in Greece, last week">
+            </div>
+            <div>
+              <label class="{{ label }}" for="sc-feeds">Feeds <span class="font-normal text-slate-400">(RSS or Atom, one per line)</span></label>
+              <textarea id="sc-feeds" name="feeds" rows="3" class="{{ input }} font-mono text-xs" placeholder="https://www.example.gr/feed">{{ c.feeds|join("\n") }}</textarea>
+              <p class="{{ note }}">Each run takes the newest items this schedule has not used, so an item is written about once.</p>
+            </div>
+            <div>
+              <label class="{{ label }}" for="sc-pages">Pages <span class="font-normal text-slate-400">(read every run, one per line)</span></label>
+              <textarea id="sc-pages" name="pages" rows="3" class="{{ input }} font-mono text-xs" placeholder="https://www.example.gr/announcements">{{ c.pages|join("\n") }}</textarea>
+              <p class="{{ note }}">An announcements page, a list of events or offers.</p>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="{{ label }}" for="sc-items">Feed items per post</label>
+                <input id="sc-items" name="items_per_run" inputmode="numeric" value="{{ c.items_per_run }}" class="{{ input }}">
+              </div>
+              <div>
+                <label class="{{ label }}" for="sc-age">No older than (days)</label>
+                <input id="sc-age" name="max_age_days" inputmode="numeric" value="{{ c.max_age_days }}" class="{{ input }}">
+              </div>
+            </div>
+            <label class="inline-flex items-center gap-2 self-end text-sm"><input type="hidden" name="list_sources" value="0"><input type="checkbox" name="list_sources" value="1"{{ c.list_sources ? ' checked' }}> List the sources at the end of the post</label>
+            <p class="text-xs text-slate-500 sm:col-span-2">Material from other sites is passed to the model as quoted information, never as instructions. When it cannot write a real post from what it knows, finds and is given, nothing is saved and the run says why.</p>
+          </div>
+        </div>
+
         <div class="{{ card }}">
           <div class="{{ card_head }}"><h2 class="text-sm font-semibold text-slate-900">Picture</h2><span class="text-xs text-slate-400">In the house style of the Instructions tab</span></div>
           <div class="grid gap-4 px-4 py-4 sm:grid-cols-2">
@@ -320,7 +356,7 @@
                   </div>
                   <p class="mt-0.5 text-xs text-slate-500">
                     {% for n, d in day_names %}{% if n in s.settings.days %}{{ d }} {% endif %}{% endfor %}· {{ s.settings.time }} · {{ s.settings.type }} {{ s.settings.lang|upper }}
-                    · {{ status_modes[s.settings.status] }}{{ s.settings.no_picture ? ' · no picture' : '' }}
+                    · {{ status_modes[s.settings.status] }}{{ s.settings.no_picture ? ' · no picture' : '' }}{{ s.settings.web_search ? ' · web search' : '' }}{{ s.settings.feeds ? ' · ' ~ s.settings.feeds|length ~ ' feed' ~ (s.settings.feeds|length == 1 ? '' : 's') : '' }}{{ s.settings.pages ? ' · ' ~ s.settings.pages|length ~ ' page' ~ (s.settings.pages|length == 1 ? '' : 's') : '' }}
                   </p>
                   <p class="text-xs text-slate-500">
                     {{ s.next ? 'Next: ' ~ s.next : (s.enabled ? 'No run ahead (dates)' : 'Switched off') }}
@@ -378,7 +414,7 @@
                   </td>
                   <td class="px-2 py-2 text-xs">
                     {{ ui.status_badge(r.status) }}
-                    {% if r.kind == 'post' and r.status == 'done' %}<span class="text-slate-500">{{ r.post_status == 'scheduled' ? 'goes live ' ~ r.publish_at : r.post_status }}</span>
+                    {% if r.kind == 'post' and r.status == 'done' %}<span class="text-slate-500">{{ r.post_status == 'scheduled' ? 'goes live ' ~ r.publish_at : r.post_status }}{{ r.searches ? ' · ' ~ r.searches ~ ' search' ~ (r.searches == 1 ? '' : 'es') : '' }}{{ r.sources ? ' · ' ~ r.sources ~ ' source' ~ (r.sources == 1 ? '' : 's') : '' }}</span>
                     {% elseif r.status == 'done' and r.outcome == 'set' %}<span class="text-slate-500">set as main image</span>
                     {% elseif r.status == 'done' and r.outcome == 'kept' %}<span class="text-slate-500">in the library (it had a main image by then)</span>
                     {% elseif r.status == 'done' and r.pictures %}<span class="text-slate-500">{{ r.pictures }} picture{{ r.pictures == 1 ? '' : 's' }}</span>{% endif %}
