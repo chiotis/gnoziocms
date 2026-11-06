@@ -78,6 +78,7 @@ st, _, body = root.request('/admin/ai-picture?bulk=posts&lang=en')
 check('polling works the job; without outside calls it fails', st == 200 and '"failed":1' in body and '"waiting":0' in body, (st, body[:160]))
 st, _, html = root.get('/admin/content?type=posts&lang=en')
 check('the row says the picture failed, and why', 'Picture failed' in html and 'curl' in html, st)
+check('after the run the bar stays only because one failed', 'data-ai-bulk-progress' in html and '1 failed' in html and 'Making AI pictures' not in html, st)
 st, _, html = root.get('/admin/ai-publishing?tab=runs')
 check('the Runs tab lists it, from Bulk, with the reason and Retry', st == 200 and 'Bulk' in html and 'posts/rebrand-readiness-guide' in html and 'curl' in html and 'value="retry_job"' in html, st)
 root.submit('/admin/ai-publishing?tab=runs', lambda f: any(b[1] == 'retry_job' for b in f['buttons']), button=('ai_action', 'retry_job'))
@@ -86,6 +87,8 @@ check('Retry puts it back in the queue', 'value="cancel_job"' in html and 'Cance
 root.submit('/admin/ai-publishing?tab=runs', lambda f: any(b[1] == 'cancel_waiting' for b in f['buttons']), button=('ai_action', 'cancel_waiting'))
 st, _, html = root.get('/admin/ai-publishing?tab=runs&show=live')
 check('Cancel the waiting empties the queue', 'No pictures yet with this status' in html, st)
+st, _, html = root.get('/admin/content?type=posts&lang=el')
+check('a list with nothing waiting or failed has no bar', 'data-ai-bulk-progress' not in html, st)
 
 # Paused: nothing is queued (so no test ever calls OpenAI).
 root.submit('/admin/ai-publishing?tab=instructions', lambda f: any(b[1] == 'pause' for b in f['buttons']), button=('ai_action', 'pause'))

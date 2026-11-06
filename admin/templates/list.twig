@@ -116,12 +116,13 @@
       {% endif %}
     </div>
 
-    {% if ai_bulk and (ai_bulk.progress.waiting + ai_bulk.progress.working + ai_bulk.progress.failed + ai_bulk.progress.done) > 0 %}
+    {# Shown while pictures wait or are being made, and after a run only when some failed (to say why); a run that went well leaves only its row chips. #}
+    {% if ai_bulk and (ai_bulk.progress.waiting + ai_bulk.progress.working + ai_bulk.progress.failed) > 0 %}
       {% set p = ai_bulk.progress %}
       <div class="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-violet-100 bg-violet-50 px-4 py-2 text-sm text-violet-900" role="status" aria-live="polite"
            data-ai-bulk-progress data-ai-endpoint="{{ url('admin/ai-picture') }}" data-ai-type="{{ current_type }}" data-ai-lang="{{ lang }}" data-ai-live="{{ p.waiting + p.working }}">
         <span data-ai-bulk-line>{% if p.waiting + p.working > 0 %}Making AI pictures: {{ p.waiting + p.working }} left{% else %}AI pictures{% endif %}{% if p.done %} · {{ p.done }} done{% endif %}{% if p.failed %} · {{ p.failed }} failed{% endif %}</span>
-        <span class="text-xs text-violet-700">{{ p.waiting + p.working > 0 ? 'One at a time, about 15–60 s each. You can leave this page; the cron job goes on.' : 'From the last few hours.' }}</span>
+        <span class="text-xs text-violet-700">{{ p.waiting + p.working > 0 ? 'One at a time, about 15–60 s each. You can leave this page; the cron job goes on.' : 'In the last few hours. Retry them from the Runs tab.' }}</span>
         {% if p.failed and can('ai.manage') %}<a class="text-xs font-medium underline" href="{{ url('admin/ai-publishing?tab=runs') }}">See why</a>{% endif %}
       </div>
     {% endif %}

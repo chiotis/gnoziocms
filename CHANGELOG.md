@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.234 — 2026-11-06 — The AI pictures bar leaves when the pictures are done
+- On a content list, the purple **AI pictures** bar now shows only while pictures are waiting or being made, and afterwards only if some failed (with **See why**). A run that went well leaves just the **AI picture** chip on each row.
+- Tests: `tests/http/ai_publishing_test.py`.
+
 ## 0.1.233 — 2026-11-06 — AI pictures for many posts at once
 - **Content list > Bulk action > Generate main images (AI)**: tick posts (or select all matching) and the site makes one picture for each, in the house style of **Manage > AI publishing**, and sets it as the main image. Posts that have a main image are left as they are unless **Replace existing images** is ticked (the old picture stays in the Media library and in the history). The confirmation says how many pictures will be made and about what they cost.
 - Each picture is made from its post's **title and excerpt** (else the start of its text), as Generate in the editor does. They are made one at a time in the background: the list shows **Making AI pictures: 7 left · 5 done** and works the next one while it is open; the cron job goes on without it. Each row shows a chip: waiting, making, **AI picture**, or failed with the reason. A post that got a main image meanwhile, or was deleted, is skipped before anything is paid for.
