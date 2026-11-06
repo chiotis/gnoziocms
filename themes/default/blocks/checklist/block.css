@@ -80,6 +80,10 @@
   align-items: start;
 }
 
+.block--split .checklist-layout.is-headless {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .block--split .checklist-head {
   position: sticky;
   top: calc(var(--header-height, 4.5rem) + 2rem);

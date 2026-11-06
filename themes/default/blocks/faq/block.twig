@@ -1,9 +1,12 @@
 {% import 'components/ui.twig' as ui %}
 {% set questions = block.items|filter(q => q.question and q.answer_html) %}
-<div class="container faq-layout">
+{% set has_head = block.eyebrow|default('') or block.heading|default('') or block.intro|default('') %}
+<div class="container faq-layout{% if not has_head %} is-headless{% endif %}">
+  {% if has_head %}
   <div class="faq-head">
     {{ ui.section_header(block, heading_tag, block_uid, block.variant == 'stacked' ? 'center' : 'left') }}
   </div>
+  {% endif %}
   <div class="faq-list">
     {% for faq in questions %}
       <details class="faq-item"{% if loop.first and block.initial == 'first' %} open{% endif %}>

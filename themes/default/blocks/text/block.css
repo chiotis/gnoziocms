@@ -30,6 +30,10 @@
   align-items: start;
 }
 
+.text-split.is-headless {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .text-split-head {
   position: sticky;
   top: calc(var(--header-height, 4.5rem) + 2rem);

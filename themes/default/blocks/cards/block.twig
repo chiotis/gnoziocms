@@ -1,13 +1,16 @@
 {% import 'components/ui.twig' as ui %}
 {% set prefix = lang_prefix|default('') %}
 {% set all_href = link_url(block.link_url, prefix) %}
+{% set has_head = block.eyebrow|default('') or block.heading|default('') or block.intro|default('') %}
 <div class="container">
+  {% if has_head or (all_href and block.link_label) %}
   <div class="cards-head">
     {{ ui.section_header(block, heading_tag, block_uid, 'left') }}
     {% if all_href and block.link_label %}
       <a class="text-link cards-all" href="{{ all_href }}">{{ block.link_label }}{{ icon('arrow-right', 'btn-icon') }}</a>
     {% endif %}
   </div>
+  {% endif %}
   {% set card_sizes = block.columns == '2' ? '(min-width: 900px) 45vw, 92vw' : '(min-width: 1100px) 30vw, (min-width: 700px) 45vw, 92vw' %}
   {% set manual_cards = block.items|default([])|filter(c => c.title) %}
   {# No empty list: a list with nothing in it is announced as a list by screen readers. #}

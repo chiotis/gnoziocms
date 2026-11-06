@@ -240,5 +240,14 @@ for variant in ('image-top', 'image-bottom'):
 ti_css = open('app/themes/default/blocks/text-image/block.css', encoding='utf-8').read()
 check('its style sheet puts the picture first for "above" and keeps one column', '.block--image-top .ti-media' in ti_css and '.ti-media.ratio-wide' in ti_css)
 
+# ---- A block with no eyebrow, heading or introduction leaves no empty head above its content
+st, _, html = page('headless', {'type': 'latest', 'variant': 'list'}, {'type': 'faq', 'variant': 'split', 'items': [{'question': 'Why?', 'answer': 'Because.'}]}, {'type': 'text', 'variant': 'split', 'body': 'Only text.'}, {'type': 'checklist', 'variant': 'split', 'items': [{'text': 'One'}]})
+lt, fq, tx, cl = section(html, 'latest'), section(html, 'faq'), section(html, 'text'), section(html, 'checklist')
+check('Latest content without a heading has no head row', lt != '' and 'latest-list' in lt and 'latest-head' not in lt and 'section-header' not in lt, lt[:300])
+check('split FAQ, Text and Checklist without a heading are one column with no head', 'is-headless' in fq and 'faq-head' not in fq and 'is-headless' in tx and 'text-split-head' not in tx and 'is-headless' in cl and 'checklist-head' not in cl, [fq[:200], tx[:200], cl[:200]])
+st, _, html = page('headed', {'type': 'faq', 'variant': 'split', 'heading': 'Questions', 'items': [{'question': 'Why?', 'answer': 'Because.'}]})
+fq = section(html, 'faq')
+check('with a heading the split FAQ keeps its head column', 'faq-head' in fq and 'is-headless' not in fq and '>Questions<' in fq, fq[:300])
+
 print('\nALL PASSED' if not fails else '\n%d FAILED: %s' % (len(fails), fails))
 sys.exit(1 if fails else 0)

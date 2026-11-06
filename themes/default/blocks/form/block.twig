@@ -1,8 +1,11 @@
 {% import 'components/ui.twig' as ui %}
-<div class="container form-block-layout">
+{% set has_head = block.eyebrow|default('') or block.heading|default('') or block.intro|default('') %}
+<div class="container form-block-layout{% if not has_head %} is-headless{% endif %}">
+  {% if has_head %}
   <div class="form-block-head">
     {{- ui.section_header(block, heading_tag, block_uid, block.variant == 'stacked' ? 'center' : 'left')|trim|raw -}}
   </div>
+  {% endif %}
   {% if block.form_html|default('') %}
     <div class="form-block-card">{{ block.form_html|raw }}</div>
   {% endif %}

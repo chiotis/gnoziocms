@@ -5,6 +5,10 @@
   align-items: start;
 }
 
+.block-form.block--split .form-block-layout.is-headless {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .block-form.block--stacked .form-block-card {
   max-width: 44rem;
   margin-inline: auto;
@@ -13,9 +17,5 @@
 @media (max-width: 860px) {
   .block-form.block--split .form-block-layout {
     grid-template-columns: 1fr;
-  }
-  /* Stacked, a form with no heading has no space above it. */
-  .block-form.block--split .form-block-head:empty {
-    display: none;
   }
 }

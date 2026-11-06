@@ -2,13 +2,16 @@
 {% set prefix = lang_prefix|default('') %}
 {% set all_href = link_url(block.link_url, prefix) %}
 {% set entries = block.entries %}
+{% set has_head = block.eyebrow|default('') or block.heading|default('') or block.intro|default('') %}
 <div class="container">
+  {% if has_head or (all_href and block.link_label) %}
   <div class="latest-head">
     {{ ui.section_header(block, heading_tag, block_uid, 'left') }}
     {% if all_href and block.link_label %}
       <a class="text-link latest-all" href="{{ all_href }}">{{ block.link_label }}{{ icon('arrow-right', 'btn-icon') }}</a>
     {% endif %}
   </div>
+  {% endif %}
 
   {% include 'components/entry-list.twig' with {entries: entries, variant: block.variant, columns: block.columns, show_image: block.show_image, show_excerpt: block.show_excerpt, show_meta: block.show_meta, prefix: prefix, lang: lang|default(''), heading_tag: item_heading_tag, label: block.heading ?: t('latest.label', 'Latest content')} only %}
 </div>

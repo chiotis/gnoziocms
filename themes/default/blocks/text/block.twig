@@ -1,10 +1,13 @@
 {% import 'components/ui.twig' as ui %}
 {% if block.variant == 'split' %}
-  <div class="container text-split">
+  {% set has_head = block.eyebrow or block.heading %}
+  <div class="container text-split{% if not has_head %} is-headless{% endif %}">
+    {% if has_head %}
     <div class="text-split-head">
       {% if block.eyebrow %}<p class="eyebrow">{{ block.eyebrow }}</p>{% endif %}
       {% if block.heading %}<{{ heading_tag }} class="section-title" id="{{ block_uid }}-title">{{ block.heading }}</{{ heading_tag }}>{% endif %}
     </div>
+    {% endif %}
     <div class="text-split-body">
       <div class="prose">{{ block.body_html|raw }}</div>
       {{ ui.actions(block.actions, lang_prefix|default('')) }}

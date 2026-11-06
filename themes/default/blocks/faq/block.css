@@ -10,6 +10,10 @@
   align-items: start;
 }
 
+.block-faq.block--split .faq-layout.is-headless {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .block-faq.block--split .faq-head {
   position: sticky;
   top: calc(var(--header-height, 4.5rem) + 2rem);

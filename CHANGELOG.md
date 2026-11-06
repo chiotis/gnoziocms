@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.223 — 2026-11-06 — No empty space above a block without a heading
+- A block with no **eyebrow**, **heading** or **introduction** now starts right at its content. **Latest content** and **Cards** drop their head row (kept when a "view all" link is set), so the list no longer sits under an empty gap.
+- The split layouts of **FAQ**, **Checklist**, **Form**, **Video** and **Text** become one full-width column when there is nothing for the side column, instead of leaving it empty. With a heading they look as before.
+- Tests: `tests/http/blocks_pack_test.py`.
+
 ## 0.1.222 — 2026-11-05 — Related posts in the sidebar
 - New sidebar part **Related entries**, chosen for each content type in **Theme > Single Layouts** (row "Related entries" under "In the sidebar"): **Same category**, **Same tags** or **Latest**, 3 to 6 of them, with or without **Thumbnails**. Off by default.
 - Compact rows: a small square picture, the title and the date. Entries sharing more terms come first, then the newest; an entry filed under no term gets the newest. Never the entry itself, a draft, a hidden entry, another type or another language. Read from the content index, no entry file is opened.

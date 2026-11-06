@@ -1,9 +1,12 @@
 {% import 'components/ui.twig' as ui %}
 {% set columns = block.variant == 'split' ? '1' : block.columns %}
-<div class="container checklist-layout">
+{% set has_head = block.eyebrow|default('') or block.heading|default('') or block.intro|default('') %}
+<div class="container checklist-layout{% if not has_head %} is-headless{% endif %}">
+  {% if has_head %}
   <div class="checklist-head">
     {{ ui.section_header(block, heading_tag, block_uid, 'left') }}
   </div>
+  {% endif %}
   <ul class="check-points cols-{{ columns }}" role="list">
     {% for point in block.items %}
       <li class="check-item{% if point.excluded %} is-excluded{% endif %}">
