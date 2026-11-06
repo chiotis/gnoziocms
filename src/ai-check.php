@@ -5,7 +5,8 @@
  * (Responses API) and makes one picture (with reference pictures when given), and prints how long each took, how big each answer
  * was, the rate-limit headers and the exact `usage` fields. The key is read from the environment and never printed.
  *
- *   OPENAI_API_KEY=sk-... php src/ai-check.php [options]
+ *   read -s OPENAI_API_KEY && export OPENAI_API_KEY    (paste the key; nothing is shown, so it stays off the screen)
+ *   php src/ai-check.php [options]
  *
  *   --text-model=gpt-5-mini     the model that writes
  *   --image-model=gpt-image-1   the model that paints
@@ -39,7 +40,7 @@ if (isset($options['help'])) {
 }
 $key = trim((string)getenv('OPENAI_API_KEY'));
 if ($key === '') {
-    fwrite(STDERR, "Set OPENAI_API_KEY in the environment first, for example:\n  OPENAI_API_KEY=sk-... php src/ai-check.php\n");
+    fwrite(STDERR, "Set OPENAI_API_KEY in the environment first, without showing it on screen:\n  read -s OPENAI_API_KEY && export OPENAI_API_KEY\n  (paste the key, press Enter), then: php src/ai-check.php\n");
     exit(2);
 }
 $textModel = (string)($options['text-model'] ?? 'gpt-5-mini');
@@ -80,6 +81,10 @@ $report = static function (string $title, array $r) use ($line, $json, &$failed)
     if (!$r['ok']) {
         $failed++;
         $line('   error:    ' . $r['error']);
+        $error = is_array($r['data']['error'] ?? null) ? $r['data']['error'] : [];
+        if ($error !== []) {
+            $line('   type:     ' . json_encode($error['type'] ?? null) . ', code: ' . json_encode($error['code'] ?? null) . ', param: ' . json_encode($error['param'] ?? null));
+        }
         if ($r['retry_after'] !== null) {
             $line('   retry in: ' . $r['retry_after'] . ' s');
         }
@@ -106,6 +111,17 @@ $line('Text model ' . $textModel . ($effort !== 'none' ? ' (effort ' . $effort .
 $line('Answers are saved in ' . $out);
 
 // ---- 1. the key and the models
+$r = $http->get($base . '/models', $auth);
+$report('Models this key can see', $r);
+if ($r['ok']) {
+    $ids = array_map(static fn(array $m): string => (string)($m['id'] ?? ''), $r['data']['data'] ?? []);
+    sort($ids);
+    $pictures = array_values(array_filter($ids, static fn(string $id): bool => preg_match('/image|dall-e/i', $id) === 1));
+    $writers = array_values(array_filter($ids, static fn(string $id): bool => preg_match('/^(gpt-|o\d)/i', $id) === 1 && preg_match('/image|audio|realtime|transcribe|tts|search|embedding/i', $id) !== 1));
+    $line('   pictures: ' . ($pictures === [] ? '(none)' : implode(', ', $pictures)));
+    $line('   writing:  ' . ($writers === [] ? '(none)' : implode(', ', $writers)));
+    $line('   in all:   ' . count($ids) . ' models');
+}
 foreach (array_unique(array_filter([isset($options['skip-text']) ? '' : $textModel, isset($options['skip-image']) ? '' : $imageModel])) as $model) {
     $r = $http->get($base . '/models/' . rawurlencode($model), $auth);
     $report('Key and model ' . $model, $r);
@@ -145,6 +161,9 @@ if (!isset($options['skip-text'])) {
     }
     $r = $http->postJson($base . '/responses', $payload, $auth);
     $report('Writing (Responses API, json_schema)', $r);
+    if (!$r['ok'] && $r['data'] !== null) {
+        $save('text-error', $r);
+    }
     if ($r['ok']) {
         $save('text-answer', $r);
         $text = '';
@@ -193,6 +212,9 @@ if (!isset($options['skip-image'])) {
         $title = 'Picture (images/edits, ' . count($refs) . ' reference pictures)';
     }
     $report($title, $r);
+    if (!$r['ok'] && $r['data'] !== null) {
+        $save('image-error', $r);
+    }
     if ($r['ok']) {
         $b64 = (string)($r['data']['data'][0]['b64_json'] ?? '');
         if ($b64 !== '') {

@@ -32,7 +32,7 @@ final class AiHttp
     private const AGENT = 'GnozioCMS (+https://github.com/chiotis/gnoziocms)';
 
     /** Provider error codes that mean the prompt or picture was refused by its safety system (not worth retrying). */
-    private const REFUSAL_CODES = ['content_policy_violation', 'moderation_blocked', 'safety_violation', 'image_generation_user_error', 'content_filter'];
+    private const REFUSAL_CODES = ['content_policy_violation', 'moderation_blocked', 'safety_violation', 'content_filter'];
 
     /**
      * @param string[] $hosts the only hosts this client may call (exact names)
@@ -145,11 +145,14 @@ final class AiHttp
             || ($status === 400 && str_contains(strtolower((string)($error['message'] ?? '')), 'credit balance is too low'))) {
             return self::NO_CREDIT;
         }
-        if ($has(self::REFUSAL_CODES)) {
+        $message = strtolower((string)($error['message'] ?? ''));
+        // OpenAI's picture endpoints call every mistake in a request image_generation_user_error (an unknown model too); only the
+        // message tells a safety refusal apart.
+        if ($has(self::REFUSAL_CODES) || ($has(['image_generation_user_error']) && preg_match('/safety|moderation|rejected|policy/', $message) === 1)) {
             return self::REFUSED;
         }
         // Google answers a wrong key with 400 INVALID_ARGUMENT; its message is the only sign.
-        if (str_contains(strtolower((string)($error['message'] ?? '')), 'api key not valid')) {
+        if (str_contains($message, 'api key not valid')) {
             return self::AUTH;
         }
         return match (true) {
