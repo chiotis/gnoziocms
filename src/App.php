@@ -3644,7 +3644,7 @@ final class App
         });
         usort($items, static fn(ContentItem $a, ContentItem $b): int => $b->createdTime() <=> $a->createdTime());
         return array_map(static fn(ContentItem $item): array => [
-            'title' => (string)($item->meta['title'] ?? $item->slug),
+            'title' => (string)($item->meta['ai_title'] ?? $item->meta['title'] ?? $item->slug),
             'entry' => $item->type . '/' . $item->slug . '/' . $item->lang,
             'sources' => array_values(array_filter(array_map('strval', (array)($item->meta['ai_sources'] ?? [])))),
         ], array_slice(array_values($items), 0, max(1, $limit)));

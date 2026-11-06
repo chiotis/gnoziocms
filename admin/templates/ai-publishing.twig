@@ -259,6 +259,11 @@
               <textarea id="sc-content" name="content" rows="4" class="{{ input }}" maxlength="4000" placeholder="One practical tip for small-business owners about online marketing, 300–400 words." required>{{ c.content }}</textarea>
               <p class="{{ note }}">The topic, the angle, and length or structure if they differ from the writing instructions. Each run is told the titles this schedule wrote before, so it does not repeat them.</p>
             </div>
+            <div class="sm:col-span-2">
+              <label class="{{ label }}" for="sc-title-pattern">Title pattern <span class="font-normal text-slate-400">(optional)</span></label>
+              <input id="sc-title-pattern" name="title_pattern" value="{{ c.title_pattern }}" class="{{ input }}" maxlength="200" placeholder="Weekly news: {title} – {date}">
+              <p class="{{ note }}">Empty, the model writes the title. Tags: {% for tag in sc.title_tags %}<code class="rounded bg-slate-100 px-1 text-[11px] text-slate-700">{{ tag }}</code>{{ not loop.last ? ' ' }}{% endfor %}. <code class="rounded bg-slate-100 px-1 text-[11px]">{title}</code> is the model's title, <code class="rounded bg-slate-100 px-1 text-[11px]">{term}</code> the first term's name (<code class="rounded bg-slate-100 px-1 text-[11px]">{term:category}</code> of one taxonomy), the dates are the post's, in its language. Without <code class="rounded bg-slate-100 px-1 text-[11px]">{title}</code> every post gets the same fixed words.</p>
+            </div>
             <div>
               <label class="{{ label }}" for="sc-text-avoid">Avoid in the text <span class="font-normal text-slate-400">(added to the site's list)</span></label>
               <textarea id="sc-text-avoid" name="text_avoid" rows="2" class="{{ input }}" placeholder="One per line">{{ c.text_avoid|join("\n") }}</textarea>

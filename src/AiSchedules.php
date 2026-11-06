@@ -386,6 +386,7 @@ final class AiSchedules
             'terms' => $terms,
             'choose' => $choose,
             'content' => $text($in['content'] ?? '', 4000),
+            'title_pattern' => $text(str_replace("\n", ' ', (string)($in['title_pattern'] ?? '')), 200),
             'text_avoid' => AiSettings::lines($in['text_avoid'] ?? '', 20),
             'image' => $text($in['image'] ?? '', 1000),
             'picture_avoid' => AiSettings::lines($in['picture_avoid'] ?? '', 20),

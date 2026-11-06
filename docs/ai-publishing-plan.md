@@ -173,6 +173,7 @@ The list: one compact row per schedule with its name, on/off switch, days as chi
 **What**
 - **Content type**, **language**, **taxonomy terms**: fixed terms (always *Tips*), or "let the model choose from the existing terms" (never new ones), or both.
 - **Content instructions** (a few lines): the topic, the angle, length or structure if they differ from the general instructions.
+- **Title pattern** (optional, built after phase 5): a fixed title with tags, for example `Weekly news: {title} – {date}`. `{title}` is the model's title, `{term}` the first term's name (`{term:category}` of one taxonomy), `{date}` the post's date in its language (`{date:d/m/Y}` in a PHP date format), `{weekday}`, `{day}`, `{month}`, `{year}`, `{week}`, `{schedule}`. The model is told the pattern; its own title is kept as `ai_title` so the repeat check compares topics, not the fixed words.
 - **Avoid in the text** (optional, one line each): what this schedule's posts must not contain, on top of the general list ("no tips that need paid software").
 - **Image instructions** (one or two lines): what the picture shows for this schedule. Added to the house style as the subject's guide, never in place of it.
 - **Avoid in the picture** (optional, one line each): on top of the general list ("no laptops", "no people").

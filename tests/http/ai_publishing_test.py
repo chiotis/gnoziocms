@@ -75,7 +75,7 @@ loc = hdr.get('Location') or ''
 st, _, html = root.get(re.sub(r'^https?://[^/]+', '', loc))
 check('a schedule without content is refused, the form kept', 'done=fail' in loc and 'edit=new' in loc and 'Say what the posts are about' in html and 'value="Tips"' in html, (loc, st))
 form = {'name': 'Tips', 'days[]': ['1', '3', '5'], 'time': '08:00', 'type': 'posts', 'lang': 'el', 'content': 'One practical tip about opening hours.',
-        'image': 'An everyday object.', 'status': 'at_time', 'no_picture': '0', 'picture_required': '1'}
+        'image': 'An everyday object.', 'status': 'at_time', 'no_picture': '0', 'picture_required': '1', 'title_pattern': '{term}: {title} – {date}'}
 st, hdr, _ = root.submit('/admin/ai-publishing?tab=schedules&edit=new', has_field('content'), form, button=('ai_action', 'save_schedule'))
 check('a schedule is added', 'done=ok' in (hdr.get('Location') or ''), hdr.get('Location'))
 st, _, html = root.get('/admin/ai-publishing?tab=schedules')
@@ -97,6 +97,7 @@ check('a new schedule from the week starts on that day and hour', 'name="days[]"
 sid = row.group(1) if row else '0'
 st, _, html = root.get('/admin/ai-publishing?tab=schedules&edit=' + sid)
 check('its form shows what was saved', 'One practical tip about opening hours.' in html and 'value="1" class="h-3.5 w-3.5" checked' in html, st)
+check('and its title pattern, with the tags explained', 'name="title_pattern" value="{term}: {title} – {date}"' in html and '{term:taxonomy}' in html and '{date:d/m/Y}' in html, st)
 pick = lambda value: (lambda f: any(b[1] == value for b in f['buttons']) and any(x == ['schedule', sid] or tuple(x) == ('schedule', sid) for x in f['fields']))
 root.submit('/admin/ai-publishing?tab=schedules', pick('schedule_toggle'), button=('ai_action', 'schedule_toggle'))
 st, _, html = root.get('/admin/ai-publishing?tab=schedules')

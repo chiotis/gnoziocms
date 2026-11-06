@@ -162,6 +162,59 @@ final class AiWriter
     }
 
     /** A title reduced for comparing: lower case, without accents, punctuation and extra spaces. */
+    /** The tags a title pattern can use, for the form's help. */
+    public const TITLE_TAGS = ['{title}', '{term}', '{term:taxonomy}', '{date}', '{date:d/m/Y}', '{weekday}', '{day}', '{month}', '{year}', '{week}', '{schedule}'];
+
+    /**
+     * The post's title from a schedule's pattern: {title} the model's title, {term} the first term's name ({term:category} of one
+     * taxonomy), {date} the post's date in its language ({date:d/m/Y} in a PHP date format), {weekday}, {day}, {month}, {year},
+     * {week} (ISO week), {schedule} its name. Unknown tags stay as they are; an empty tag takes its separator with it.
+     * Without a pattern it is the model's title.
+     * @param array<string, string[]> $termNames taxonomy => names of the post's terms, in order
+     */
+    public static function titleFrom(string $pattern, string $title, array $termNames, int $at, \DateTimeZone $zone, string $lang, string $schedule): string
+    {
+        $pattern = trim($pattern);
+        if ($pattern === '') {
+            return trim($title);
+        }
+        $date = (new \DateTimeImmutable('@' . $at))->setTimezone($zone);
+        $intl = static function (string $skeleton) use ($date, $lang, $zone): ?string {
+            if (!class_exists(\IntlDateFormatter::class) || !class_exists(\IntlDatePatternGenerator::class)) {
+                return null;
+            }
+            $best = (new \IntlDatePatternGenerator($lang))->getBestPattern($skeleton);
+            $out = $best !== false ? (new \IntlDateFormatter($lang, \IntlDateFormatter::NONE, \IntlDateFormatter::NONE, $zone, null, $best))->format($date) : false;
+            return is_string($out) && $out !== '' ? $out : null;
+        };
+        $first = '';
+        foreach ($termNames as $names) {
+            if (($names[0] ?? '') !== '') {
+                $first = $names[0];
+                break;
+            }
+        }
+        $out = preg_replace_callback('/\{([a-z]+)(?::([^}]*))?\}/', static function (array $m) use ($title, $termNames, $first, $date, $intl, $schedule): string {
+            $arg = (string)($m[2] ?? '');
+            return match ($m[1]) {
+                'title' => trim($title),
+                'term' => $arg === '' ? $first : (string)($termNames[$arg][0] ?? ''),
+                'date' => $arg !== '' ? $date->format($arg) : ($intl('yMMMMd') ?? $date->format('j F Y')),
+                'weekday' => $intl('EEEE') ?? $date->format('l'),
+                'day' => $date->format('j'),
+                'month' => $intl('LLLL') ?? $date->format('F'),
+                'year' => $date->format('Y'),
+                'week' => (string)(int)$date->format('W'),
+                'schedule' => $schedule,
+                default => $m[0],
+            };
+        }, $pattern) ?? $pattern;
+        // An empty tag leaves its separator behind: "News –  – 6 November" or "News ()".
+        $out = preg_replace(['/\(\s*\)|\[\s*\]/u', '/\s+/u', '/(\s[-–—|:·,]){2,}/u'], ['', ' ', '$1'], $out) ?? $out;
+        $out = trim(preg_replace('/^[\s\-–—|:·,]+|[\s\-–—|:·,]+$/u', '', $out) ?? $out);
+        return $out !== '' ? mb_substr($out, 0, 200) : trim($title);
+    }
+
     public static function titleKey(string $title): string
     {
         $title = mb_strtolower($title);
@@ -319,8 +372,18 @@ final class AiWriter
         if ($sources !== []) {
             $front['ai_sources'] = $sources;
         }
+        $names = [];
+        foreach ($terms as $taxonomy => $ids) {
+            $labels = array_column($taxonomies[$taxonomy] ?? [], 'label', 'id');
+            $names[$taxonomy] = array_values(array_filter(array_map(static fn(string $id): string => (string)($labels[$id] ?? ''), array_map('strval', $ids))));
+        }
+        $title = self::titleFrom($c['title_pattern'], (string)$answer['title'], $names, (int)($payload['at'] ?? $this->now()), $this->zone, $lang, $schedule['name']);
+        if ($title !== trim((string)$answer['title'])) {
+            // The model's own title: what the post is about, for the repeat check of later runs.
+            $front['ai_title'] = trim((string)$answer['title']);
+        }
         $saved = ($this->saveEntry)($type, [
-            'title' => trim((string)$answer['title']),
+            'title' => $title,
             'slug' => '',
             'lang' => $lang,
             'status' => 'draft',
@@ -357,7 +420,7 @@ final class AiWriter
             ($this->setStatus)($type, $saved['slug'], $saved['lang'], $final['status'], $final['publish_at'], $actor);
         }
         return [
-            'entry' => $entry, 'title' => (string)$answer['title'], 'status' => $waiting ? 'draft until the picture is set' : $final['status'],
+            'entry' => $entry, 'title' => $title, 'status' => $waiting ? 'draft until the picture is set' : $final['status'],
             'publish_at' => $final['publish_at'], 'picture_job' => $pictureJob, 'words' => str_word_count(strip_tags((string)$answer['body'])),
             'model' => $model, 'subject' => (string)$answer['title'],
             'searches' => $found['searches'], 'queries' => $found['queries'], 'material' => count($material['items']) + count($material['pages']), 'material_errors' => $material['errors'],
@@ -398,7 +461,13 @@ final class AiWriter
             . 'give the reason in cannot_write_reason, and leave the other fields empty. Never write a note about not being able to write as if it were the post.';
 
         $user = ['Write one new post for "' . $schedule['name'] . '".', "What it is about:\n" . trim($c['content'])];
-        $user[] = 'Picture guide: ' . (trim($c['image']) !== '' ? trim($c['image']) : 'a picture that fits the post.');
+        $pattern = trim($c['title_pattern']);
+        if ($pattern !== '') {
+            $user[] = str_contains($pattern, '{title}')
+                ? 'The post\'s title is made from the pattern "' . $pattern . '", with your title in place of {title}: write a title that fits there and does not repeat what the rest of the pattern says.'
+                : 'The post\'s title is fixed by the pattern "' . $pattern . '". Still give a short title of what this post is about; it tells the posts apart.';
+        }
+        $user[] = 'Picture guide: '  . (trim($c['image']) !== '' ? trim($c['image']) : 'a picture that fits the post.');
         foreach ($choose as $taxonomy => $ids) {
             $labels = array_map(static fn(array $t): string => $t['id'] . ' (' . $t['label'] . ')', $taxonomies[$taxonomy]);
             $user[] = 'Choose one to three ' . $taxonomy . ' that fit, from: ' . implode(', ', $labels) . '.';
