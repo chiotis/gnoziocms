@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.232 — 2026-11-06 — AI publishing: pictures in the site's own style
+- **Manage > AI publishing** (new; the `ai.manage` permission, given to super admins and admins). The site makes main images itself with OpenAI, from one house style, so every post gets the same look. Three tabs:
+  - **Instructions**: the house style (sent word for word), what to avoid in the picture, up to four **reference pictures** from the Media library whose style new pictures follow, shape, quality, format, variants, and a **Test picture**.
+  - **Settings**: the OpenAI key (kept on the server only, never shown again, exported or logged), the picture and writing models read from the key's own list (**Check key**), monthly caps in estimated cost and in pictures (stop or warn only), and an editable **price table**. A short guide says how to get a key.
+  - **Usage**: the exact tokens of every call and their estimated cost, by day, source, kind and model, with last month, a month-end forecast and **Export CSV**.
+  - **Pause all / Resume** at the top. When OpenAI says there is no credit left, everything pauses with a notice.
+- **Editor > Media > Main image > Generate with AI**: say what the picture shows (filled from the title and excerpt), add something to avoid for this picture, make 1–4 variants, and **Use this** puts one in the Media library (tagged `generated`, with alt text) as the main image. Editors can use it too.
+- Pictures are made in the background and work while the editor waits, after visits, and from the **cron job**, which now also makes waiting AI pictures. A model OpenAI no longer offers, a refused key or a server without curl each fail with a plain sentence; rate limits are retried later.
+- For developers: `AiHttp` (provider calls), `JobRunner` (background jobs, `jobs` table), `OpenAiProvider`, `AiSettings`, `AiUsage` (`ai_usage`), `AiPictures` (`ai_pictures`), and `php src/ai-check.php`, a command-line check of a real key. The plan is `docs/ai-publishing-plan.md`; schedules that write posts come next.
+- Tests: `tests/unit/ai-http.php`, `tests/unit/job-runner.php`, `tests/unit/ai-pictures.php`, `tests/http/ai_publishing_test.py`; `tests/unit/site-limits.php` no longer assumes the empty system database stays under 80% of 1 MB.
+
 ## 0.1.231 — 2026-11-06 — One place for the cron job
 - **Admin > System > Cron job** now recommends the job **every 5 minutes** (`*/5 * * * * php '…/src/cron-backup.php'`), as the installer does, and says everything it does: scheduled entries, missing picture sizes and the automatic backup. It also says where to add it in CloudPanel and cPanel. The health checks are unchanged.
 - The **"When does it run?"** box on the Backups screen is gone; the cron line is on the System screen.
