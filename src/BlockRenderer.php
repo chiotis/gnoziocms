@@ -622,7 +622,7 @@ final class BlockRenderer
                 $values['_types'] = array_values(array_unique($used));
             }
         }
-        if (str_starts_with($type, 'product-') && isset($this->providers['shop'])) {
+        if ((str_starts_with($type, 'product-') || in_array($type, ['shop-the-look', 'looks'], true)) && isset($this->providers['shop'])) {
             // The shop blocks: the products a grid lists, or the product of the page with its price, options and pictures.
             $values = ($this->providers['shop'])($type, $values, $context);
             foreach (is_array($values['product']['details'] ?? null) ? $values['product']['details'] : [] as $i => $row) {

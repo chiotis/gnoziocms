@@ -56,6 +56,29 @@ final class ShopCatalogue
             $values['_empty'] = $values['products'] === [];
             return $values;
         }
+        if ($type === 'shop-the-look') {
+            // The look chosen in the block; otherwise the page's own look, or the first look of the page's product.
+            $look = $this->lookById((string)($values['look'] ?? ''), $lang);
+            if ($look === null && $item !== null && $item->type === Shop::LOOKS) {
+                $look = $item;
+            }
+            if ($look === null && $product !== null) {
+                $ids = array_map('strval', (array)($this->custom($product)['looks'] ?? []));
+                $look = $ids === [] ? null : $this->lookById($ids[0], $lang);
+            }
+            $values['look'] = $look !== null ? $this->look($look, $lang, $product) : null;
+            $values['_empty'] = $values['look'] === null || $values['look']['pieces'] === [];
+            // Drawn with the Image hotspots block's styles and script.
+            $values['_types'] = ['image-hotspots'];
+            return $values;
+        }
+        if ($type === 'looks') {
+            $limit = max(1, min(24, (int)($values['limit'] ?? 6)));
+            $looks = array_slice($this->content->getItems(Shop::LOOKS, $lang, $this->includeHidden, true), 0, $limit);
+            $values['looks'] = array_values(array_filter(array_map(fn(ContentItem $l): array => $this->look($l, $lang), $looks), static fn(array $l): bool => $l['pieces'] !== []));
+            $values['_empty'] = $values['looks'] === [];
+            return $values;
+        }
         // The other shop blocks draw the product of the page they are on (a template built with blocks for products).
         if ($product === null) {
             $values['_empty'] = true;
@@ -362,6 +385,96 @@ final class ShopCatalogue
             }
         }
         return '';
+    }
+
+    /**
+     * A look as its blocks show it: its picture, and each piece with its place on the picture, its card and the variant
+     * Add the look puts in the cart (the first that can be bought); the total of what can be bought. `$skip` is a product
+     * left out (the product of the page, in Complete the look).
+     *
+     * @return array{item: ContentItem, title: string, image: string, pieces: list<array<string, mixed>>, count: int, total: float, total_text: string}
+     */
+    public function look(ContentItem $look, string $lang, ?ContentItem $skip = null): array
+    {
+        $pieces = [];
+        $total = 0.0;
+        foreach (is_array($this->custom($look)['pieces'] ?? null) ? $this->custom($look)['pieces'] : [] as $piece) {
+            $id = is_array($piece) ? (string)(is_array($piece['product'] ?? null) ? ($piece['product'][0] ?? '') : ($piece['product'] ?? '')) : '';
+            $product = $this->product($id, $lang);
+            if ($product === null || ($skip !== null && (string)($skip->meta['translation_id'] ?? '') === $id)) {
+                continue;
+            }
+            $details = $this->details($product, $lang);
+            $variant = '';
+            foreach ($details['variants'] as $v) {
+                if ($v['available']) {
+                    $variant = $v['key'];
+                    break;
+                }
+            }
+            $buyable = $details['kind'] === 'physical' && $details['price'] !== null && $details['available'] && ($details['variants'] === [] || $variant !== '');
+            // The price of what Add the look puts in the cart: the variant's own, when it has one.
+            $price = $details['variants'] !== [] && $variant !== '' ? ($this->variantPrice($details['variants'], $variant) ?? $details['price']) : $details['price'];
+            if ($buyable && $price !== null) {
+                $total += (float)$price;
+            }
+            $pieces[] = [
+                'id' => $id,
+                'variant' => $variant,
+                'buyable' => $buyable,
+                'price_text' => $price !== null ? self::money((float)$price, $lang) : '',
+                'x' => max(0, min(100, (float)($piece['x'] ?? 50))),
+                'y' => max(0, min(100, (float)($piece['y'] ?? 50))),
+                'card' => $details,
+            ];
+        }
+        return [
+            'item' => $look,
+            'title' => (string)($look->meta['title'] ?? $look->slug),
+            'image' => (string)($look->meta['main_image'] ?? ''),
+            'pieces' => $pieces,
+            'count' => count($pieces),
+            'total' => $total,
+            'total_text' => $total > 0 ? self::money($total, $lang) : '',
+        ];
+    }
+
+    /** @param list<array<string, mixed>> $variants */
+    private function variantPrice(array $variants, string $key): ?float
+    {
+        foreach ($variants as $variant) {
+            if ($variant['key'] === $key) {
+                return $variant['price'];
+            }
+        }
+        return null;
+    }
+
+    private function lookById(string $id, string $lang): ?ContentItem
+    {
+        if ($id === '') {
+            return null;
+        }
+        foreach ($this->content->getItems(Shop::LOOKS, $lang, $this->includeHidden, true) as $look) {
+            if ((string)($look->meta['translation_id'] ?? '') === $id || $look->slug === $id) {
+                return $look;
+            }
+        }
+        return null;
+    }
+
+    public function defaultLanguage(): string
+    {
+        return ($this->defaultLanguage)();
+    }
+
+    /** A product by its translation_id, in a language, or in the site's language when it has no translation in that one. */
+    public function product(string $id, string $lang): ?ContentItem
+    {
+        if ($id === '') {
+            return null;
+        }
+        return $this->byTranslationId($id, $lang) ?? $this->byTranslationId($id, ($this->defaultLanguage)());
     }
 
     private function byTranslationId(string $id, string $lang): ?ContentItem

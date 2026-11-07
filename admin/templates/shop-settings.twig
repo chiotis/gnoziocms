@@ -2,8 +2,8 @@
 {% set page_heading = 'Shop settings' %}
 {% import '@admin/partials/ui.twig' as ui %}
 {#
-  System > Shop settings (docs/shop-plan.md, section 8). Only while the shop is on (the Products content type). The General tab
-  comes first; Payments, Shipping, Taxes, Emails and Accounts are added by the phases that use them.
+  System > Shop settings (docs/shop-plan.md, section 8). Only while the shop is on (the Products content type): General, Shipping
+  (zones with their methods; admin-shop.js adds zones and methods), Payments and Accounts.
 #}
 
 {% block content %}
@@ -18,7 +18,7 @@
   {{ ui.flash(message, done == 'ok' ? 'success' : 'error') }}
 
   <header class="mb-4 border-b border-slate-200 pb-4">
-    <p class="max-w-3xl text-xs text-slate-500">The shop is on because the <strong>Products</strong> content type is on. Products, Looks, Collections and Product categories are edited like any content; this screen holds what the shop needs besides them. Payments, shipping and emails come with the cart and checkout.</p>
+    <p class="max-w-3xl text-xs text-slate-500">The shop is on because the <strong>Products</strong> content type is on. Products, Looks, Collections and Product categories are edited like any content; this screen holds what the shop needs besides them. Orders, customers and coupons are in the <strong>Shop</strong> group of the menu.</p>
     <div class="-mb-4 mt-3">
       <nav class="flex min-w-0 gap-1 overflow-x-auto" aria-label="Shop settings">
         {% for key, name in tabs %}
@@ -82,6 +82,73 @@
         </div>
       </section>
 
+      <div><button type="submit" class="{{ primary }}">Save</button></div>
+    </form>
+  {% endif %}
+  {% if tab == 'shipping' %}
+    <form method="post" action="{{ url('admin/shop-settings?tab=shipping') }}" class="grid gap-4" data-shop-shipping>
+      {{ csrf_field() }}<input type="hidden" name="tab" value="shipping">
+      <p class="max-w-3xl text-xs text-slate-500">An address takes the <strong>first</strong> zone that matches it, so put narrower zones (the islands, by the start of their postcodes) above wider ones. <code>*</code> as a country is everywhere else. Amounts are in euros with VAT.</p>
+      <div class="grid gap-4" data-zones>
+        {% for zone in shop.shipping %}
+          {% include '@admin/partials/shop-zone.twig' with {z: loop.index0, zone: zone, tables: table_text[loop.index0]|default([])} %}
+        {% endfor %}
+      </div>
+      <template data-zone-template>{% include '@admin/partials/shop-zone.twig' with {z: '__Z__', zone: {id: '', name: '', countries: [], postcodes: [], methods: [{id: '', kind: 'flat', label: {}, cost: 0, free_over: null, table: [], stores: []}]}, tables: []} %}</template>
+      <template data-method-template>{% include '@admin/partials/shop-method.twig' with {z: '__Z__', m: '__M__', method: {id: '', kind: 'flat', label: {}, cost: 0, free_over: null, table: [], stores: []}, table: ''} %}</template>
+      <div class="flex flex-wrap items-center gap-2">
+        <button type="button" class="{{ btn }} border border-slate-300 bg-white text-slate-700 hover:bg-slate-50" data-add-zone>Add a zone</button>
+        <button type="submit" class="{{ primary }}">Save</button>
+      </div>
+    </form>
+    <script src="{{ asset('js/admin-shop.js') }}" defer></script>
+  {% endif %}
+
+  {% if tab == 'payments' %}
+    <form method="post" action="{{ url('admin/shop-settings?tab=payments') }}" class="grid gap-4">
+      {{ csrf_field() }}<input type="hidden" name="tab" value="payments">
+      <section class="{{ card }}" aria-labelledby="pay-bank">
+        <div class="{{ card_head }}"><h2 id="pay-bank" class="text-sm font-semibold text-slate-900">Bank transfer</h2>
+          <label class="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" name="bank_transfer[enabled]" value="1" class="h-4 w-4 rounded border-slate-300" {% if shop.payments.bank_transfer.enabled %}checked{% endif %}> Offered</label>
+        </div>
+        <div class="grid gap-3 px-4 py-4">
+          <div><label class="{{ label }}" for="pay-accounts">The shop's accounts, one per line</label>
+            <textarea id="pay-accounts" name="bank_transfer[accounts]" rows="4" class="{{ input }} font-mono" maxlength="2000" placeholder="Eurobank · GR16 0260 … · Company name">{{ shop.payments.bank_transfer.accounts }}</textarea>
+            <p class="{{ note }}">Shown on the order's page and in its email, with the order number as the reference. The order waits, on hold with its stock kept, until you mark it paid.</p>
+          </div>
+        </div>
+      </section>
+      <section class="{{ card }}" aria-labelledby="pay-cod">
+        <div class="{{ card_head }}"><h2 id="pay-cod" class="text-sm font-semibold text-slate-900">Cash on delivery</h2>
+          <label class="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" name="cod[enabled]" value="1" class="h-4 w-4 rounded border-slate-300" {% if shop.payments.cod.enabled %}checked{% endif %}> Offered</label>
+        </div>
+        <div class="grid gap-4 px-4 py-4 sm:grid-cols-2">
+          <div><label class="{{ label }}" for="pay-cod-fee">Fee (€, with VAT)</label><input id="pay-cod-fee" type="number" name="cod[fee]" value="{{ (shop.payments.cod.fee / 100)|number_format(2, '.', '') }}" min="0" max="100" step="0.01" class="{{ input }}"></div>
+          <fieldset><legend class="{{ label }}">Only in these zones</legend>
+            {% for zone in shop.shipping %}
+              <label class="mr-3 inline-flex items-center gap-1.5 text-sm text-slate-700"><input type="checkbox" name="cod[zones][]" value="{{ zone.id }}" class="h-4 w-4 rounded border-slate-300" {% if zone.id in shop.payments.cod.zones %}checked{% endif %}> {{ zone.name }}</label>
+            {% else %}
+              <p class="{{ note }}">Add shipping zones first.</p>
+            {% endfor %}
+            <p class="{{ note }}">None ticked: everywhere.</p>
+          </fieldset>
+        </div>
+      </section>
+      <p class="max-w-3xl text-xs text-slate-500">Cards through Viva Wallet and Cardlink (Eurobank, Alpha, Cardlink) come next; their keys will be set here.</p>
+      <div><button type="submit" class="{{ primary }}">Save</button></div>
+    </form>
+  {% endif %}
+
+  {% if tab == 'accounts' %}
+    <form method="post" action="{{ url('admin/shop-settings?tab=accounts') }}" class="grid gap-4">
+      {{ csrf_field() }}<input type="hidden" name="tab" value="accounts">
+      <section class="{{ card }}" aria-labelledby="shop-accounts">
+        <div class="{{ card_head }}"><h2 id="shop-accounts" class="text-sm font-semibold text-slate-900">Customers' accounts</h2><span class="text-xs text-slate-400">At /account, apart from the admin's users</span></div>
+        <div class="grid gap-3 px-4 py-4">
+          <label class="flex items-start gap-2 text-sm text-slate-700"><input type="checkbox" name="signup" value="1" class="mt-0.5 h-4 w-4 rounded border-slate-300" {% if shop.accounts.signup %}checked{% endif %}><span>Customers can create an account<span class="block text-xs text-slate-500">They see their orders, keep their address and order faster.</span></span></label>
+          <label class="flex items-start gap-2 text-sm text-slate-700"><input type="checkbox" name="verify" value="1" class="mt-0.5 h-4 w-4 rounded border-slate-300" {% if shop.accounts.verify %}checked{% endif %}><span>Confirm the email address before the first sign-in<span class="block text-xs text-slate-500">Off: they sign in at once; the link still confirms the address, and only then do earlier guest orders with it join the account.</span></span></label>
+        </div>
+      </section>
       <div><button type="submit" class="{{ primary }}">Save</button></div>
     </form>
   {% endif %}

@@ -1,0 +1,65 @@
+{% extends 'layouts/base.twig' %}
+{#
+  An order's page (docs/shop-plan.md, section 3): right after it is placed (thank you), from the link in its email, or from the
+  customer's account. For a bank transfer on hold it shows the shop's accounts and the reference to use.
+#}
+{% set prefix = lang_prefix|default('') %}
+{% block content %}
+  <section class="shop-page">
+    <div class="site-wrap shop-narrow">
+      {% include 'templates/shop/_flash.twig' %}
+      <header class="shop-head">
+        {% if just_placed %}
+          <p class="eyebrow">{{ t('shop.thank_you', 'Thank you') }}</p>
+          <h1>{{ t('shop.order_received', 'We have your order') }}</h1>
+          <p class="shop-muted">{{ t('shop.order_received_text', 'A copy is on its way to {email}.')|replace({'{email}': order.email}) }}</p>
+        {% else %}
+          <h1>{{ t('shop.order', 'Order') }} {{ order.number }}</h1>
+        {% endif %}
+      </header>
+
+      <dl class="shop-facts">
+        <div><dt>{{ t('shop.order_number', 'Order number') }}</dt><dd class="shop-code">{{ order.number }}</dd></div>
+        <div><dt>{{ t('shop.date', 'Date') }}</dt><dd>{{ order.date }}</dd></div>
+        <div><dt>{{ t('shop.status', 'Status') }}</dt><dd><span class="shop-status is-{{ order.status }}">{{ order.status_label }}</span></dd></div>
+        <div><dt>{{ t('shop.total', 'Total') }}</dt><dd>{{ order.total }}</dd></div>
+      </dl>
+
+      {% if order.instructions is not empty %}
+        <div class="shop-box shop-bank">
+          <h2 class="shop-box-title">{{ t('shop.bank_title', 'Pay by bank transfer') }}</h2>
+          <p>{{ t('shop.bank_intro', 'Send {total} to one of these accounts, with {number} as the reference. We send your order as soon as the money arrives.')|replace({'{total}': order.total, '{number}': order.number}) }}</p>
+          <ul class="shop-accounts">{% for line in order.instructions %}<li>{{ line }}</li>{% endfor %}</ul>
+        </div>
+      {% endif %}
+      {% if order.tracking %}
+        <p class="shop-box">{{ t('shop.tracking', 'Tracking') }}: {{ order.carrier }} <span class="shop-code">{{ order.tracking }}</span></p>
+      {% endif %}
+
+      <div class="shop-box">
+        <ul class="shop-mini-lines">
+          {% for line in order.lines %}
+            <li><span>{{ line.quantity }} × {{ line.title }}{% if line.variant %} <span class="shop-muted">{{ line.variant }}</span>{% endif %}</span><span>{{ line.total }}</span></li>
+          {% endfor %}
+        </ul>
+        {% set totals = {items: order.items, discount: order.discount, coupon_code: order.coupon, shipping: order.shipping, shipping_label: order.shipping_label, fee: order.fee, total: order.total, tax: order.tax} %}
+        {% include 'templates/shop/_totals.twig' %}
+      </div>
+
+      <div class="shop-columns">
+        {% if order.ship_to is not empty %}
+          <div><h2 class="shop-box-title">{{ t('shop.ship_to', 'Shipping to') }}</h2><p>{{ order.ship_to|join('\n')|nl2br }}</p></div>
+        {% else %}
+          <div><h2 class="shop-box-title">{{ t('shop.shipping', 'Shipping') }}</h2><p>{{ order.shipping_label }}</p></div>
+        {% endif %}
+        <div><h2 class="shop-box-title">{{ t('shop.billing', 'Billing') }}</h2><p>{{ order.billing|join('\n')|nl2br }}</p></div>
+        <div><h2 class="shop-box-title">{{ t('shop.payment', 'Payment') }}</h2><p>{{ order.payment }}</p></div>
+      </div>
+
+      <div class="shop-actions">
+        {% if customer %}<a class="btn btn-secondary" href="{{ url(prefix ~ 'account') }}">{{ t('shop.your_orders', 'Your orders') }}</a>{% endif %}
+        <a class="btn btn-primary" href="{{ url(prefix ~ 'products') }}">{{ t('shop.continue', 'Continue shopping') }}</a>
+      </div>
+    </div>
+  </section>
+{% endblock %}

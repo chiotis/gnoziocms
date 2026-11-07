@@ -1,0 +1,15 @@
+label: Mini cart
+description: 'A link to the cart with how many pieces are in it, for a footer or a page. The header has one already while the shop is on.'
+category: Shop
+requires: shop
+variants:
+  default: Default
+fields:
+  label:
+    type: text
+    label: Text
+    placeholder: Cart
+  show_account:
+    type: toggle
+    label: Also the link to the account
+    default: false

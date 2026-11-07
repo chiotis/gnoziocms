@@ -1,0 +1,44 @@
+{#
+  An address's fields, named {{ name }}[…]: billing at the checkout, shipping when it goes elsewhere, the account's own.
+  Fields with a mistake are marked; the country, the postcode and the city change what shipping costs (data-shop-refresh).
+#}
+{% set errs = error_fields|default([]) %}
+{% set field = name %}
+<div class="shop-fields">
+  {% for key, info in {
+    first_name: {label: t('shop.first_name', 'First name'), auto: 'given-name', half: true},
+    last_name: {label: t('shop.last_name', 'Last name'), auto: 'family-name', half: true},
+    address: {label: t('shop.street', 'Street and number'), auto: 'address-line1'},
+    address_2: {label: t('shop.street_2', 'Floor, apartment (optional)'), auto: 'address-line2', optional: true},
+    postcode: {label: t('shop.postcode', 'Postcode'), auto: 'postal-code', half: true, refresh: true},
+    city: {label: t('shop.city', 'City'), auto: 'address-level2', half: true},
+  } %}
+    {% set bad = (field ~ '_' ~ key) in errs %}
+    <div class="shop-field{% if info.half|default(false) %} is-half{% endif %}{% if bad %} is-invalid{% endif %}">
+      <label for="{{ name }}-{{ key }}">{{ info.label }}</label>
+      <input id="{{ name }}-{{ key }}" name="{{ name }}[{{ key }}]" value="{{ values[key]|default('') }}" autocomplete="{{ prefix_auto|default('') }}{{ info.auto }}"{% if not info.optional|default(false) and required|default(true) %} required{% endif %}{% if bad %} aria-invalid="true"{% endif %}{% if info.refresh|default(false) %} data-shop-refresh{% endif %}>
+    </div>
+  {% endfor %}
+  <div class="shop-field is-half{% if (field ~ '_country') in errs %} is-invalid{% endif %}">
+    <label for="{{ name }}-country">{{ t('shop.country', 'Country') }}</label>
+    <select id="{{ name }}-country" name="{{ name }}[country]" autocomplete="{{ prefix_auto|default('') }}country" data-shop-refresh{% if required|default(true) %} required{% endif %}>
+      <option value="">—</option>
+      {% for code, country in countries %}<option value="{{ code }}"{% if values.country|default('') == code %} selected{% endif %}>{{ country }}</option>{% endfor %}
+    </select>
+  </div>
+  {% if with_phone|default(false) %}
+    <div class="shop-field is-half{% if (field ~ '_phone') in errs %} is-invalid{% endif %}">
+      <label for="{{ name }}-phone">{{ t('shop.phone', 'Phone') }}</label>
+      <input id="{{ name }}-phone" type="tel" name="{{ name }}[phone]" value="{{ values.phone|default('') }}" autocomplete="tel"{% if required|default(true) %} required{% endif %}>
+    </div>
+  {% endif %}
+  {% if with_company|default(false) %}
+    <details class="shop-field shop-invoice"{% if values.company|default('') or values.vat_number|default('') %} open{% endif %}>
+      <summary>{{ t('shop.invoice', 'I need an invoice') }}</summary>
+      <div class="shop-fields">
+        <div class="shop-field is-half"><label for="{{ name }}-company">{{ t('shop.company', 'Company') }}</label><input id="{{ name }}-company" name="{{ name }}[company]" value="{{ values.company|default('') }}" autocomplete="organization"></div>
+        <div class="shop-field is-half"><label for="{{ name }}-vat">{{ t('shop.vat_number', 'VAT number') }}</label><input id="{{ name }}-vat" name="{{ name }}[vat_number]" value="{{ values.vat_number|default('') }}" autocomplete="off"></div>
+      </div>
+    </details>
+  {% endif %}
+</div>

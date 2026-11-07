@@ -1,0 +1,106 @@
+{% extends 'layouts/base.twig' %}
+{#
+  The customer's account (docs/shop-plan.md, section 4). Signed out: sign in, create an account, a new password. Signed in: the
+  orders, the details and the address, the password, and deleting the account.
+#}
+{% set prefix = lang_prefix|default('') %}
+{% block content %}
+  <section class="shop-page">
+    <div class="site-wrap shop-narrow">
+      <header class="shop-head">
+        <h1>{{ view == 'home' ? t('shop.account', 'Your account') : (view == 'forgot' or view == 'reset' ? t('shop.new_password', 'A new password') : t('shop.sign_in', 'Sign in')) }}</h1>
+        {% if view == 'home' %}
+          <form method="post" action="{{ url(prefix ~ 'account/signout') }}">{{ csrf_field() }}<button class="text-link" type="submit">{{ t('shop.sign_out', 'Sign out') }}</button></form>
+        {% endif %}
+      </header>
+      {% include 'templates/shop/_flash.twig' %}
+
+      {% if view == 'signin' %}
+        <div class="shop-columns">
+          <form class="shop-box" method="post" action="{{ url(prefix ~ 'account/signin') }}">
+            {{ csrf_field() }}<input type="hidden" name="return" value="{{ return }}">
+            <h2 class="shop-box-title">{{ t('shop.sign_in', 'Sign in') }}</h2>
+            <div class="shop-field"><label for="in-email">{{ t('shop.email', 'Email') }}</label><input id="in-email" type="email" name="email" autocomplete="email" required></div>
+            <div class="shop-field"><label for="in-password">{{ t('shop.password', 'Password') }}</label><input id="in-password" type="password" name="password" autocomplete="current-password" required></div>
+            <button class="btn btn-primary shop-wide" type="submit">{{ t('shop.sign_in', 'Sign in') }}</button>
+            <a class="text-link" href="{{ url(prefix ~ 'account/forgot') }}">{{ t('shop.forgot', 'Forgot your password?') }}</a>
+          </form>
+          {% if signup %}
+            <form class="shop-box" id="signup" method="post" action="{{ url(prefix ~ 'account/signup') }}">
+              {{ csrf_field() }}<input type="hidden" name="return" value="{{ return }}">
+              <h2 class="shop-box-title">{{ t('shop.create_account', 'Create an account') }}</h2>
+              <div class="shop-field"><label for="up-name">{{ t('shop.name', 'Name') }}</label><input id="up-name" name="name" autocomplete="name"></div>
+              <div class="shop-field"><label for="up-email">{{ t('shop.email', 'Email') }}</label><input id="up-email" type="email" name="email" autocomplete="email" required></div>
+              <div class="shop-field"><label for="up-password">{{ t('shop.password', 'Password') }}</label><input id="up-password" type="password" name="password" autocomplete="new-password" minlength="8" required><p class="shop-muted">{{ t('shop.password_hint', 'At least 8 characters.') }}</p></div>
+              <button class="btn btn-secondary shop-wide" type="submit">{{ t('shop.create_account', 'Create an account') }}</button>
+            </form>
+          {% endif %}
+        </div>
+        {% if return == 'checkout' %}<p class="shop-muted">{{ t('shop.sign_in_to_order', 'Sign in or create an account to place your order.') }}</p>{% endif %}
+
+      {% elseif view == 'forgot' %}
+        <form class="shop-box" method="post" action="{{ url(prefix ~ 'account/forgot') }}">
+          {{ csrf_field() }}
+          <p>{{ t('shop.forgot_text', 'Write the email of your account and we will send you a link to set a new password.') }}</p>
+          <div class="shop-field"><label for="f-email">{{ t('shop.email', 'Email') }}</label><input id="f-email" type="email" name="email" autocomplete="email" required></div>
+          <button class="btn btn-primary" type="submit">{{ t('shop.send_link', 'Send the link') }}</button>
+        </form>
+
+      {% elseif view == 'reset' %}
+        <form class="shop-box" method="post" action="{{ url(prefix ~ 'account/reset') }}">
+          {{ csrf_field() }}<input type="hidden" name="token" value="{{ token }}">
+          <div class="shop-field"><label for="r-password">{{ t('shop.new_password', 'A new password') }}</label><input id="r-password" type="password" name="password" autocomplete="new-password" minlength="8" required><p class="shop-muted">{{ t('shop.password_hint', 'At least 8 characters.') }}</p></div>
+          <button class="btn btn-primary" type="submit">{{ t('shop.save', 'Save') }}</button>
+        </form>
+
+      {% else %}
+        {% if verify_pending %}
+          <form class="shop-flash is-info" method="post" action="{{ url(prefix ~ 'account/verify-again') }}">
+            {{ csrf_field() }}{{ t('shop.verify_pending', 'Confirm your email address with the link we sent you, so the orders you placed with it come to your account.') }}
+            <button class="text-link" type="submit">{{ t('shop.send_again', 'Send it again') }}</button>
+          </form>
+        {% endif %}
+        <h2 class="shop-box-title">{{ t('shop.your_orders', 'Your orders') }}</h2>
+        {% if orders is empty %}
+          <p class="shop-muted">{{ t('shop.no_orders', 'No orders yet.') }}</p>
+        {% else %}
+          <ul class="shop-orders">
+            {% for order in orders %}
+              <li><a href="{{ order.url }}"><span class="shop-code">{{ order.number }}</span><span>{{ order.date }}</span><span class="shop-status is-{{ order.status }}">{{ order.status_label }}</span><span>{{ order.total }}</span></a></li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+
+        <form class="shop-box" id="details" method="post" action="{{ url(prefix ~ 'account/details') }}">
+          {{ csrf_field() }}
+          <h2 class="shop-box-title">{{ t('shop.details', 'Your details') }}</h2>
+          <p class="shop-muted">{{ customer.email }}</p>
+          <div class="shop-fields">
+            <div class="shop-field is-half"><label for="d-name">{{ t('shop.name', 'Name') }}</label><input id="d-name" name="name" value="{{ customer.name }}" autocomplete="name"></div>
+            <div class="shop-field is-half"><label for="d-phone">{{ t('shop.phone', 'Phone') }}</label><input id="d-phone" type="tel" name="phone" value="{{ customer.phone }}" autocomplete="tel"></div>
+          </div>
+          <h3 class="shop-sub">{{ t('shop.address', 'Address') }}</h3>
+          {% include 'templates/shop/_address.twig' with {name: 'address', values: customer.address, required: false, with_company: true} %}
+          <details class="shop-field">
+            <summary>{{ t('shop.change_password', 'Change the password') }}</summary>
+            <div class="shop-fields">
+              <div class="shop-field is-half"><label for="d-current">{{ t('shop.current_password', 'Current password') }}</label><input id="d-current" type="password" name="password" autocomplete="current-password"></div>
+              <div class="shop-field is-half"><label for="d-new">{{ t('shop.new_password', 'A new password') }}</label><input id="d-new" type="password" name="new_password" autocomplete="new-password" minlength="8"></div>
+            </div>
+          </details>
+          <button class="btn btn-primary" type="submit">{{ t('shop.save', 'Save') }}</button>
+        </form>
+
+        <details class="shop-box shop-danger" id="delete">
+          <summary>{{ t('shop.delete_account', 'Delete the account') }}</summary>
+          <form method="post" action="{{ url(prefix ~ 'account/delete') }}">
+            {{ csrf_field() }}
+            <p>{{ t('shop.delete_text', 'Your account and your details are deleted. Orders stay with the shop for its accounts, no longer linked to you.') }}</p>
+            <div class="shop-field"><label for="x-password">{{ t('shop.password', 'Password') }}</label><input id="x-password" type="password" name="password" autocomplete="current-password" required></div>
+            <button class="btn btn-secondary" type="submit">{{ t('shop.delete_account', 'Delete the account') }}</button>
+          </form>
+        </details>
+      {% endif %}
+    </div>
+  </section>
+{% endblock %}

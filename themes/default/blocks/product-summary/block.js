@@ -21,6 +21,8 @@
       if (match && price && match.price) price.textContent = match.price;
       if (sku) sku.textContent = match && match.sku ? match.sku : sku.textContent;
       if (stock) stock.textContent = !match ? stock.getAttribute('data-none') : (match.available ? stock.getAttribute('data-in') : stock.getAttribute('data-out'));
+      var add = summary.querySelector('.product-add');
+      if (add) add.disabled = !match || !match.available;
     }
     summary.addEventListener('change', function (event) {
       if (event.target && event.target.matches('[data-option] input')) update();

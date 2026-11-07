@@ -1,0 +1,7 @@
+{# A message after an action (added, saved, a mistake), and what changed in the cart since it was filled. #}
+{% if flash %}
+  <p class="shop-flash is-{{ flash.level }}" role="{{ flash.level == 'error' ? 'alert' : 'status' }}">{{ flash.message }}</p>
+{% endif %}
+{% for change in changes|default([]) %}
+  <p class="shop-flash is-info" role="status">{{ change }}</p>
+{% endfor %}

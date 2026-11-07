@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace GnozioCMS;
 
 use GnozioCMS\Shop\Shop;
+use GnozioCMS\Shop\ShopAdmin;
 use GnozioCMS\Shop\ShopCatalogue;
+use GnozioCMS\Shop\ShopFront;
+use GnozioCMS\Shop\ShopServices;
 use GnozioCMS\Shop\ShopSettings;
 use GnozioCMS\Shop\ShopSettingsAdmin;
 use GnozioCMS\Shop\ShopStock;
@@ -115,6 +118,7 @@ final class App
     /** @var array<int, ShopCatalogue> without drafts (0) and with them (1) */
     private array $shopCatalogueServices = [];
     private ?ShopSettings $shopSettingsService = null;
+    private ?ShopServices $shopServicesInstance = null;
     private ?ShopSettingsAdmin $shopSettingsAdminService = null;
     private ?AiUsage $aiUsageService = null;
     private ?AiPictures $aiPicturesService = null;
@@ -209,9 +213,12 @@ final class App
         $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/';
         $path = trim($path, '/');
 
+        // The shop's pages (cart, checkout, account) have a session of their own (ShopFront), apart from the admin's.
+        $shopRoute = $this->shopRoute($path);
+
         // A visitor of the public site gets no session (and no cookie), so the page can be kept by a cache in front of the site;
         // the admin, a form that is sent and anyone who already has a session (an editor who sees drafts) get one.
-        if (session_status() !== PHP_SESSION_ACTIVE && $this->needsSession($path)) {
+        if (session_status() !== PHP_SESSION_ACTIVE && $shopRoute === null && $this->needsSession($path)) {
             $this->configureSession();
             session_start();
             // Whatever asks later whether someone is signed in (drafts on the public site, the admin bar) sees the account as it is
@@ -281,6 +288,11 @@ final class App
         // The MCP server and its OAuth, for AI assistants (docs/mcp.md). Off: the addresses are ordinary ones, a page may use them.
         if (in_array($path, self::MCP_PATHS, true) && $this->mcpAdmin()->isEnabled()) {
             $this->handleMcp($path);
+            return;
+        }
+
+        if ($shopRoute !== null) {
+            $this->handleShop($shopRoute['rest'], $shopRoute['lang']);
             return;
         }
 
@@ -1265,6 +1277,9 @@ final class App
         'mcp' => 'handleMcpAdmin',
         'ai-publishing' => 'handleAiPublishing',
         'shop-settings' => 'handleShopSettings',
+        'shop-orders' => 'handleShopOrders',
+        'shop-customers' => 'handleShopCustomers',
+        'shop-coupons' => 'handleShopCoupons',
         'ai-picture' => 'handleAiPicture',
         'mcp-authorize' => 'handleMcpAuthorize',
         'notification-read' => 'handleNotificationRead',
@@ -3804,8 +3819,204 @@ final class App
                 }
                 asort($pages);
                 return $pages;
-            }
+            },
+            array_values(array_unique([$this->defaultLanguage(), ...($this->settings['languages']['available'] ?? [])]))
         );
+    }
+
+    /** The shop's parts (src/Shop/ShopServices.php). */
+    private function shopServices(): ShopServices
+    {
+        return $this->shopServicesInstance ??= new ShopServices(
+            $this->systemDatabase,
+            $this->shopStock(),
+            $this->shopSettings(),
+            fn(): ShopCatalogue => $this->shopCatalogue(),
+            fn(ContentItem $product): string => '/' . ContentPaths::build($product->type, $product->slug, $product->lang, (string)(($this->settings['home_page'] ?? '') !== '' ? $this->settings['home_page'] : 'index'), $this->defaultLanguage()),
+            fn(string $key, string $lang, array $values = []): string => $this->shopText($key, $lang, $values),
+            fn(string $to, string $subject, string $body, array $headers): bool => $this->sendEmailMessage($to, $subject, $body, $headers),
+            fn(): array => $this->settings,
+            $this->defaultLanguage()
+        );
+    }
+
+    /**
+     * The shop's page an address is, while the shop is on: the address after its language prefix, and the language.
+     *
+     * @return array{rest: string, lang: string}|null
+     */
+    private function shopRoute(string $path): ?array
+    {
+        if (!Shop::enabled($this->content->getTypes())) {
+            return null;
+        }
+        $parts = explode('/', $path, 2);
+        $lang = $this->defaultLanguage();
+        $rest = $path;
+        if (in_array($parts[0], $this->settings['languages']['available'] ?? [], true) && $parts[0] !== $lang) {
+            $lang = $parts[0];
+            $rest = $parts[1] ?? '';
+        }
+        return ShopFront::owns($rest) ? ['rest' => $rest, 'lang' => $lang] : null;
+    }
+
+    /** The cart, the checkout and the customer's account (src/Shop/ShopFront.php). */
+    private function handleShop(string $rest, string $lang): void
+    {
+        if (ShopFront::needsSession($rest) && session_status() !== PHP_SESSION_ACTIVE) {
+            session_name(ShopFront::SESSION_NAME);
+            $this->configureSession();
+            session_start();
+        }
+        FrontCache::doNotKeep();
+        $this->sendSecurityHeaders(false);
+        $this->setLanguage($lang);
+        $prefix = $this->langPrefix($lang);
+        $services = $this->shopServices();
+        $front = new ShopFront(
+            $services->cart(),
+            $services->pricing(),
+            $services->checkout(),
+            $services->orders(),
+            $services->customers(),
+            $services->settings(),
+            $services->mail(),
+            $this->loginThrottle,
+            function (string $template, string $pageLang, array $data) use ($rest, $prefix): void {
+                $this->render($template, $data + [
+                    'lang' => $pageLang,
+                    'lang_prefix' => $prefix,
+                    'current_lang' => $pageLang,
+                    'path_no_lang' => $rest,
+                    'canonical_url' => $this->buildAbsoluteUrl($prefix . $rest),
+                    'theme_menus' => $this->menus()->forTheme($pageLang, $rest, $this->visitorRole()),
+                    'noindex_page' => true,
+                    'shop_page' => explode('/', $rest)[0],
+                ]);
+            },
+            fn(string $key, string $textLang, array $values = []): string => $this->shopText($key, $textLang, $values),
+            fn(string $path): string => $this->buildAbsoluteUrl($path),
+            fn(string $forLang): string => $this->langPrefix($forLang),
+            fn(): bool => $this->isValidCsrfRequest(),
+            fn() => $this->render404(),
+            fn(string $slug): string => '/' . $prefix . $slug,
+            $this->isHttpsRequest()
+        );
+        $front->handle($rest, $lang);
+    }
+
+    private function shopAdmin(): ShopAdmin
+    {
+        return new ShopAdmin(
+            $this->shopServices(),
+            fn(string $action, string $level, ?string $type, ?string $id, string $message, array $context) => $this->logActivity($action, $level, $type, $id, $message, $context),
+            fn(array $order): string => $this->buildAbsoluteUrl($this->langPrefix((string)$order['lang']) . 'checkout/order/' . rawurlencode((string)$order['number']) . '?key=' . $order['view_key'])
+        );
+    }
+
+    /** The data every Shop screen of the admin is drawn with. */
+    private function shopScreen(string $section, string $title): array
+    {
+        return ['title' => $title, 'types' => $this->content->getTypes(), 'user' => $this->auth->user(), 'admin_section' => $section, 'current_type' => 'pages'];
+    }
+
+    /** Shop > Orders (docs/shop-plan.md, section 8): the list, one order, its packing slip, the CSV. */
+    private function handleShopOrders(): void
+    {
+        if (!Shop::enabled($this->content->getTypes())) {
+            $this->redirect('/admin/content-types?shop=off');
+            return;
+        }
+        $admin = $this->shopAdmin();
+        $id = (int)($_GET['id'] ?? 0);
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && $id > 0) {
+            $result = $admin->orderAction($id, $_POST, $this->currentUsername());
+            $this->redirect('/admin/shop-orders?' . http_build_query(['id' => $id, 'done' => $result['ok'] ? 'ok' : 'fail', 'msg' => $result['message']]));
+            return;
+        }
+        if (($_GET['export'] ?? '') === 'csv') {
+            header('Content-Type: text/csv; charset=utf-8');
+            header('Content-Disposition: attachment; filename="orders-' . date('Y-m-d') . '.csv"');
+            echo $admin->csv($_GET);
+            return;
+        }
+        if ($id > 0) {
+            $order = $admin->order($id);
+            if ($order === null) {
+                $this->redirect('/admin/shop-orders');
+                return;
+            }
+            $template = isset($_GET['print']) ? '@admin/shop-packing-slip.twig' : '@admin/shop-order.twig';
+            $this->render($template, $order + $this->shopScreen('shop-orders', 'Order ' . $order['order']['number']) + [
+                'done' => (string)($_GET['done'] ?? ''),
+                'message' => mb_substr((string)($_GET['msg'] ?? ''), 0, 300),
+            ]);
+            return;
+        }
+        $this->render('@admin/shop-orders.twig', $admin->orders($_GET) + $this->shopScreen('shop-orders', 'Orders'));
+    }
+
+    /** Shop > Customers. */
+    private function handleShopCustomers(): void
+    {
+        if (!Shop::enabled($this->content->getTypes())) {
+            $this->redirect('/admin/content-types?shop=off');
+            return;
+        }
+        $admin = $this->shopAdmin();
+        $id = (int)($_GET['id'] ?? 0);
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && ($_POST['action'] ?? '') === 'delete') {
+            $ok = $admin->deleteCustomer((int)($_POST['id'] ?? 0));
+            $this->redirect('/admin/shop-customers?' . http_build_query(['done' => $ok ? 'ok' : 'fail', 'msg' => $ok ? 'The customer\'s account is deleted. Their orders stay.' : 'There is no such customer.']));
+            return;
+        }
+        $view = $id > 0 ? $admin->customer($id) : $admin->customers($_GET);
+        if ($view === null) {
+            $this->redirect('/admin/shop-customers');
+            return;
+        }
+        $this->render('@admin/shop-customers.twig', $view + $this->shopScreen('shop-customers', 'Customers') + [
+            'done' => (string)($_GET['done'] ?? ''),
+            'message' => mb_substr((string)($_GET['msg'] ?? ''), 0, 300),
+        ]);
+    }
+
+    /** Shop > Coupons. */
+    private function handleShopCoupons(): void
+    {
+        if (!Shop::enabled($this->content->getTypes())) {
+            $this->redirect('/admin/content-types?shop=off');
+            return;
+        }
+        $admin = $this->shopAdmin();
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
+            $result = $admin->couponAction($_POST);
+            $query = ['done' => $result['ok'] ? 'ok' : 'fail', 'msg' => $result['message']];
+            if (!$result['ok'] && ($_POST['action'] ?? '') !== 'delete') {
+                $query += (string)($_POST['original'] ?? '') !== '' ? ['code' => (string)$_POST['original']] : ['new' => 1];
+            }
+            $this->redirect('/admin/shop-coupons?' . http_build_query($query));
+            return;
+        }
+        $collections = [];
+        foreach ($this->taxonomies()->load(Shop::COLLECTIONS)['terms'] as $term) {
+            $collections[$term['id']] = $this->taxonomies()->label(Shop::COLLECTIONS, $term['id'], $this->defaultLanguage());
+        }
+        $this->render('@admin/shop-coupons.twig', $admin->coupons($_GET, $collections) + $this->shopScreen('shop-coupons', 'Coupons') + [
+            'done' => (string)($_GET['done'] ?? ''),
+            'message' => mb_substr((string)($_GET['msg'] ?? ''), 0, 300),
+        ]);
+    }
+
+    /** A string of the theme's in a language, with its {placeholders} filled: the shop's pages and emails. */
+    private function shopText(string $key, string $lang, array $values = []): string
+    {
+        $this->menuStrings[$lang] ??= $this->loadTranslations($lang);
+        $text = (string)($this->menuStrings[$lang][$key] ?? $key);
+        foreach ($values as $name => $value) {
+            $text = str_replace('{' . $name . '}', (string)$value, $text);
+        }
+        return $text;
     }
 
     /** System > Shop settings (docs/shop-plan.md): there only while the shop is on. */
@@ -4526,6 +4737,23 @@ final class App
             $this->siteSettings()->setContentType(Shop::LOOKS, $on);
             if ($on) {
                 Shop::ensureTaxonomies($this->taxonomies());
+                // The pages of products and looks are drawn from their starting templates (gallery, price, Add to cart; the look with its
+                // pieces), unless the site has already chosen for them (Admin > Theme > Single Layouts).
+                $current = $this->loadThemeSettings();
+                $choices = [];
+                foreach ([Shop::TYPE, Shop::LOOKS] as $shopType) {
+                    $entry = SingleTemplates::entry($current, $shopType);
+                    if (!$entry['use'] && $entry['blocks'] === []) {
+                        $choices[$shopType] = 'built';
+                    }
+                }
+                if ($choices !== []) {
+                    // The blocks of this request still see the shop off (it was switched on a moment ago): these see it on.
+                    $starting = new StartingTemplates($this->theme, $this->contentTypes(), new BlockRegistry($this->theme, [], fn(): array => ['shop' => true]), fn(): string => $this->defaultLanguage());
+                    $data = SingleTemplates::withChoices($current, $choices, array_keys($choices), fn(string $shopType): array => $starting->sets($shopType));
+                    $this->setSystemMeta('theme_settings', Yaml::dump($data, 6, 2));
+                    $this->themeSettings = $this->loadThemeSettings();
+                }
             }
         }
         return true;

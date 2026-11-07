@@ -114,6 +114,8 @@
   {% endif %}
   {% endif %}
   <link rel="stylesheet" href="{{ theme_asset('css/site.css') }}">
+  {# The shop's cart, checkout and account, the header's cart and the cart drawer (docs/shop-plan.md): only while the shop is on. #}
+  {% if shop_enabled|default(false) %}<link rel="stylesheet" href="{{ theme_asset('css/shop.css') }}">{% endif %}
   {# A small block stylesheet goes into the page: one request fewer before the page can be drawn. #}
   {% for href in block_styles|default([]) %}
   {% set inline = inline_style(href) %}
@@ -158,6 +160,7 @@
 
   {% block scripts %}
   <script src="{{ theme_asset('js/site.js') }}"></script>
+  {% if shop_enabled|default(false) %}<script src="{{ theme_asset('js/shop.js') }}" defer></script>{% endif %}
   {% for src in block_scripts|default([]) %}
   <script src="{{ src }}" defer></script>
   {% endfor %}

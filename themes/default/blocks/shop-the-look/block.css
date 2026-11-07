@@ -1,0 +1,86 @@
+/* Shop the look: the look's picture (Image hotspots' styles) beside its pieces, the total and Add the look. */
+.look {
+  display: grid;
+  gap: var(--space-l);
+  align-items: start;
+}
+
+@media (min-width: 900px) {
+  .look-split {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  }
+}
+
+.look-side {
+  display: grid;
+  gap: var(--space-s);
+}
+
+.look-title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: var(--step-2);
+  font-weight: var(--heading-weight);
+}
+
+.look-pieces {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--color-border);
+}
+
+.look-piece {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-s);
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.look-piece-picture {
+  display: block;
+  width: 3.5rem;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  border-radius: var(--radius-s);
+  background: var(--color-surface-2);
+}
+
+.look-piece-picture picture,
+.look-piece-picture img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.look-piece-title {
+  color: inherit;
+  text-decoration: none;
+}
+
+.look-piece-title:hover {
+  text-decoration: underline;
+}
+
+.look-piece-price {
+  font-variant-numeric: tabular-nums;
+}
+
+.look-buy {
+  display: grid;
+  gap: var(--space-xs);
+}
+
+.look-total {
+  display: flex;
+  justify-content: space-between;
+  margin: 0;
+}
+
+.look-buy .btn {
+  justify-content: center;
+}

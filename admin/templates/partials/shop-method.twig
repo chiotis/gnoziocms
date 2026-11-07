@@ -1,0 +1,24 @@
+{# One shipping method of a zone: its kind, its name in each language, its cost; a weight table or the stores when its kind has them. #}
+{% set input = 'block w-full rounded-md border border-slate-300 px-2.5 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500' %}
+{% set label = 'block text-xs font-medium text-slate-600 mb-1' %}
+{% set base = 'zones[' ~ z ~ '][methods][' ~ m ~ ']' %}
+<div class="grid gap-3 rounded-md border border-slate-200 bg-slate-50/60 p-3" data-method>
+  <input type="hidden" name="{{ base }}[id]" value="{{ method.id }}">
+  <div class="grid gap-3 sm:grid-cols-[10rem_1fr_7rem_7rem_auto] sm:items-end">
+    <div><label class="{{ label }}">Kind</label>
+      <select name="{{ base }}[kind]" class="{{ input }}" data-method-kind>
+        {% for key, name in ship_kinds %}<option value="{{ key }}" {% if method.kind == key %}selected{% endif %}>{{ name }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="grid gap-2 {{ languages|length > 1 ? 'sm:grid-cols-2' : '' }}">
+      {% for lang in languages %}
+        <div><label class="{{ label }}">Name{% if languages|length > 1 %} ({{ lang|upper }}){% endif %}</label><input name="{{ base }}[label][{{ lang }}]" value="{{ method.label[lang]|default('') }}" class="{{ input }}" maxlength="80" placeholder="Courier"></div>
+      {% endfor %}
+    </div>
+    <div data-show-for="flat pickup"><label class="{{ label }}">Cost (€)</label><input type="number" name="{{ base }}[cost]" value="{{ method.cost ? (method.cost / 100)|number_format(2, '.', '') : '' }}" min="0" step="0.01" class="{{ input }}" placeholder="0"></div>
+    <div data-show-for="flat free"><label class="{{ label }}">Free over (€)</label><input type="number" name="{{ base }}[free_over]" value="{{ method.free_over is not null ? (method.free_over / 100)|number_format(2, '.', '') : '' }}" min="0" step="0.01" class="{{ input }}"></div>
+    <button type="button" class="rounded-md px-2 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50" data-remove-method aria-label="Remove the method">Remove</button>
+  </div>
+  <div data-show-for="weight"><label class="{{ label }}">Rates by weight: up to grams = cost, one per line</label><textarea name="{{ base }}[table]" rows="3" class="{{ input }} font-mono" placeholder="500 = 4.50&#10;2000 = 7">{{ table }}</textarea></div>
+  <div data-show-for="pickup"><label class="{{ label }}">Stores, one per line</label><textarea name="{{ base }}[stores]" rows="3" class="{{ input }}" placeholder="Athens, Kolonaki&#10;Glyfada">{{ method.stores|join('\n') }}</textarea></div>
+</div>

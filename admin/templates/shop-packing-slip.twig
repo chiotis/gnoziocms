@@ -1,0 +1,52 @@
+{#
+  An order's packing slip: what goes in the parcel and where it goes, for printing. Its own page, without the admin around it.
+#}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Packing slip {{ order.number }}</title>
+  <style>
+    body { font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; color: #111; margin: 32px; }
+    h1 { font-size: 20px; margin: 0 0 4px; }
+    .muted { color: #666; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 24px 0; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid #ddd; vertical-align: top; }
+    th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: #666; }
+    .num { text-align: right; white-space: nowrap; }
+    .box { border: 1px solid #ddd; padding: 12px; margin-top: 16px; }
+    @media print { body { margin: 12mm; } .noprint { display: none; } }
+  </style>
+</head>
+<body>
+  <p class="noprint"><button onclick="window.print()">Print</button></p>
+  <h1>{{ store.store_name ?: 'Packing slip' }}</h1>
+  <p class="muted">{{ store.store_address|nl2br }}{% if store.store_phone %}<br>{{ store.store_phone }}{% endif %}{% if store.vat_number %}<br>ΑΦΜ {{ store.vat_number }}{% endif %}</p>
+  <div class="grid">
+    <div>
+      <strong>{{ order.shipping_lines ? 'Ship to' : 'Pickup' }}</strong><br>
+      {{ (order.shipping_lines ? order.shipping_lines : order.billing_lines)|join('\n')|nl2br }}
+      {% if not order.shipping_lines %}<br><em>{{ order.shipping_label }}</em>{% endif %}
+    </div>
+    <div>
+      <strong>Order {{ order.number }}</strong><br>
+      {{ order.created_at|date('d/m/Y') }}<br>
+      {{ order.shipping_label }}<br>
+      {{ order.payment_label }}{% if order.payment_method == 'cod' %}: collect {{ order.money.total }}{% endif %}
+    </div>
+  </div>
+  <table>
+    <thead><tr><th>Item</th><th>SKU</th><th class="num">Qty</th></tr></thead>
+    <tbody>
+      {% for line in lines %}
+        <tr><td>{{ line.title }}{% if line.variant %} · {{ line.variant }}{% endif %}</td><td>{{ line.sku }}</td><td class="num">{{ line.quantity }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if order.gift_wrap or order.gift_note %}
+    <div class="box"><strong>Gift{% if order.gift_wrap %} · wrap it{% endif %}</strong>{% if order.gift_note %}<br>{{ order.gift_note|nl2br }}{% endif %}</div>
+  {% endif %}
+  {% if order.customer_note %}<div class="box"><strong>Note</strong><br>{{ order.customer_note|nl2br }}</div>{% endif %}
+</body>
+</html>
