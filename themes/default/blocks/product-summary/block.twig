@@ -1,6 +1,7 @@
 {#
   Product summary (docs/shop-plan.md, section 9): collection, name, price, options and stock. Choosing options picks the
-  variant and shows its price and stock (block.js). The Add to cart button comes with the cart.
+  variant and shows its price and stock (block.js). Add to cart sends the product and its options to /_shop/cart: the shop's
+  script adds it without leaving the page and opens the cart; without the script, the form goes to the cart.
 #}
 {% set product = block.product %}
 {% set prefix = lang_prefix|default('') %}
@@ -20,6 +21,9 @@
     {% endif %}
     {% if product.short_description %}<p class="product-summary-text">{{ product.short_description|nl2br }}</p>{% endif %}
 
+    {% set sellable = product.kind == 'physical' and product.price_text %}
+    <form class="product-buy" method="post" action="{{ url(prefix ~ '_shop/cart') }}" data-shop-add>
+    <input type="hidden" name="product" value="{{ product.id }}">
     {% if product.options is not empty %}
       <div class="product-options">
         {% for option in product.options %}
@@ -28,7 +32,7 @@
             <div class="product-option-choices">
               {% for choice in option.choices %}
                 <label class="product-chip">
-                  <input type="radio" name="{{ block_uid }}-option-{{ option.index }}" value="{{ choice.value }}"{% if loop.first %} checked{% endif %}>
+                  <input type="radio" name="options[{{ option.index }}]" value="{{ choice.value }}"{% if loop.first %} checked{% endif %}>
                   <span>{{ choice.label }}</span>
                 </label>
               {% endfor %}
@@ -42,6 +46,14 @@
        data-in="{{ t('shop.in_stock', 'In stock') }}" data-out="{{ t('shop.sold_out', 'Sold out') }}" data-none="{{ t('shop.no_variant', 'Not available in this combination') }}">
       {{ product.available ? t('shop.in_stock', 'In stock') : t('shop.sold_out', 'Sold out') }}
     </p>
+    {% if sellable %}
+      <div class="product-buy-row">
+        <label class="product-qty"><span class="visually-hidden">{{ t('shop.quantity', 'Quantity') }}</span><input type="number" name="quantity" value="1" min="1" max="99" inputmode="numeric"></label>
+        <button class="btn btn-primary product-add" type="submit" data-add-label="{{ t('shop.add_to_cart', 'Add to cart') }}" data-adding="{{ t('shop.adding', 'Adding…') }}"{% if not product.available %} disabled{% endif %}>{{ t('shop.add_to_cart', 'Add to cart') }}</button>
+      </div>
+      <p class="product-buy-message" data-shop-message role="status" aria-live="polite"></p>
+    {% endif %}
+    </form>
     {% if block.note|default('') %}<p class="product-summary-note">{{ block.note }}</p>{% endif %}
     {% if block.show_sku and product.sku %}<p class="product-summary-sku">SKU <span data-sku>{{ product.sku }}</span></p>{% endif %}
     {% if product.variants is not empty %}

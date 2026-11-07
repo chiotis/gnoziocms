@@ -1,0 +1,129 @@
+{% extends 'layouts/base.twig' %}
+{#
+  The checkout (docs/shop-plan.md, section 3), one page: contact, the address, shipping, a gift, the way to pay, the terms,
+  then Place order. Changing the country, the postcode, the shipping or the payment works out the totals again (shop.js presses
+  Update the totals); everything is priced again on the server when the order is placed.
+#}
+{% set prefix = lang_prefix|default('') %}
+{% block content %}
+  <section class="shop-page">
+    <div class="site-wrap">
+      <header class="shop-head">
+        <h1>{{ t('shop.checkout', 'Checkout') }}</h1>
+        <a class="text-link" href="{{ url(prefix ~ 'cart') }}">{{ t('shop.back_to_cart', 'Back to the cart') }}</a>
+      </header>
+      {% include 'templates/shop/_flash.twig' %}
+      {% if errors is not empty %}
+        <div class="shop-flash is-error" role="alert">
+          <ul>{% for error in errors %}<li>{{ error }}</li>{% endfor %}</ul>
+        </div>
+      {% endif %}
+
+      <form class="shop-layout shop-checkout" method="post" action="{{ url(prefix ~ 'checkout') }}" data-shop-checkout novalidate>
+        {{ csrf_field() }}
+        <div class="shop-main">
+          <fieldset class="shop-step">
+            <legend><span class="shop-step-n">1</span>{{ t('shop.contact', 'Contact') }}</legend>
+            {% if customer %}
+              <p>{{ customer.email }} · <a class="text-link" href="{{ url(prefix ~ 'account') }}">{{ t('shop.account', 'Your account') }}</a></p>
+            {% else %}
+              <div class="shop-field{% if 'email' in error_fields %} is-invalid{% endif %}">
+                <label for="shop-email">{{ t('shop.email', 'Email') }}</label>
+                <input id="shop-email" type="email" name="email" value="{{ input.email }}" autocomplete="email" required{% if 'email' in error_fields %} aria-invalid="true"{% endif %}>
+              </div>
+              <p class="shop-muted">{{ t('shop.have_account', 'Have an account?') }} <a class="text-link" href="{{ sign_in_url }}">{{ t('shop.sign_in', 'Sign in') }}</a></p>
+            {% endif %}
+          </fieldset>
+
+          <fieldset class="shop-step">
+            <legend><span class="shop-step-n">2</span>{{ t('shop.address', 'Address') }}</legend>
+            {% include 'templates/shop/_address.twig' with {name: 'billing', values: input.billing, with_phone: true, with_company: true} %}
+            <label class="shop-check"><input type="checkbox" name="ship_elsewhere" value="1"{% if input.ship_elsewhere %} checked{% endif %} data-shop-refresh> {{ t('shop.ship_elsewhere', 'Send it to another address') }}</label>
+            <div class="shop-ship-else">
+              {% include 'templates/shop/_address.twig' with {name: 'shipping', values: input.shipping, prefix_auto: 'shipping ', required: input.ship_elsewhere} %}
+            </div>
+          </fieldset>
+
+          <fieldset class="shop-step">
+            <legend><span class="shop-step-n">3</span>{{ t('shop.shipping', 'Shipping') }}</legend>
+            {% if not cart.has_zone %}
+              <p class="shop-muted">{{ t('shop.no_zone', 'Choose the country it goes to, to see the ways it can be sent.') }}</p>
+            {% elseif cart.methods is empty %}
+              <p class="shop-flash is-error">{{ t('shop.err_no_shipping', 'We cannot send this order to that address.') }}</p>
+            {% else %}
+              <div class="shop-choices">
+                {% for method in cart.methods %}
+                  <label class="shop-choice">
+                    <input type="radio" name="method" value="{{ method.id }}"{% if cart.method and cart.method.id == method.id %} checked{% endif %} data-shop-refresh>
+                    <span class="shop-choice-label">{{ method.label }}</span>
+                    <span class="shop-choice-price">{{ method.price ?: t('shop.free', 'Free') }}</span>
+                  </label>
+                  {% if method.kind == 'pickup' and method.stores is not empty and cart.method and cart.method.id == method.id %}
+                    <div class="shop-field{% if 'store' in error_fields %} is-invalid{% endif %}">
+                      <label for="shop-store">{{ t('shop.store', 'Pick it up at') }}</label>
+                      <select id="shop-store" name="store" required>
+                        <option value="">—</option>
+                        {% for store in method.stores %}<option value="{{ store }}"{% if input.store == store %} selected{% endif %}>{{ store }}</option>{% endfor %}
+                      </select>
+                    </div>
+                  {% endif %}
+                {% endfor %}
+              </div>
+            {% endif %}
+            {% if cart.gift_wrap %}
+              <label class="shop-check"><input type="checkbox" name="gift_wrap" value="1"{% if input.gift_wrap %} checked{% endif %}> {{ t('shop.gift_wrap', 'Gift wrapping') }}</label>
+            {% endif %}
+            <details class="shop-field"{% if input.gift_note %} open{% endif %}>
+              <summary>{{ t('shop.gift_note_add', 'Add a gift note') }}</summary>
+              <label class="visually-hidden" for="shop-gift-note">{{ t('shop.gift_note', 'Gift note') }}</label>
+              <textarea id="shop-gift-note" name="gift_note" rows="3" maxlength="500">{{ input.gift_note }}</textarea>
+            </details>
+          </fieldset>
+
+          <fieldset class="shop-step">
+            <legend><span class="shop-step-n">4</span>{{ t('shop.payment', 'Payment') }}</legend>
+            {% if cart.payments is empty %}
+              <p class="shop-flash is-error">{{ t('shop.err_payment', 'Choose a way to pay.') }}</p>
+            {% else %}
+              <div class="shop-choices">
+                {% for payment in cart.payments %}
+                  <label class="shop-choice">
+                    <input type="radio" name="payment" value="{{ payment.id }}"{% if cart.payment and cart.payment.id == payment.id %} checked{% endif %} data-shop-refresh>
+                    <span class="shop-choice-label">{{ payment.label }}<span class="shop-muted">{{ t('shop.pay_' ~ payment.id ~ '_note', '') }}</span></span>
+                    {% if payment.price %}<span class="shop-choice-price">+ {{ payment.price }}</span>{% endif %}
+                  </label>
+                {% endfor %}
+              </div>
+            {% endif %}
+            <div class="shop-field">
+              <label for="shop-note">{{ t('shop.order_note', 'A note about the order (optional)') }}</label>
+              <textarea id="shop-note" name="note" rows="2" maxlength="1000">{{ input.note }}</textarea>
+            </div>
+          </fieldset>
+        </div>
+
+        <aside class="shop-side">
+          <div class="shop-box">
+            <h2 class="shop-box-title">{{ t('shop.your_order', 'Your order') }}</h2>
+            <ul class="shop-mini-lines">
+              {% for line in cart.lines %}
+                <li><span>{{ line.quantity }} × {{ line.title }}{% if line.variant %} <span class="shop-muted">{{ line.variant }}</span>{% endif %}</span><span>{{ line.total }}</span></li>
+              {% endfor %}
+            </ul>
+            <div class="shop-field shop-coupon{% if error_fields|filter(e => e starts with 'coupon_') is not empty %} is-invalid{% endif %}">
+              <label for="shop-coupon">{{ t('shop.coupon', 'Coupon') }}</label>
+              <div class="shop-inline"><input id="shop-coupon" name="coupon" value="{{ input.coupon }}" autocomplete="off" spellcheck="false"><button class="btn btn-secondary" type="submit" name="refresh" value="1">{{ t('shop.apply', 'Apply') }}</button></div>
+            </div>
+            {% set totals = {items: cart.items, discount: cart.discount, coupon_code: cart.coupon and cart.coupon.ok ? cart.coupon.code : '', shipping: cart.shipping, shipping_label: cart.method.label|default(''), fee: cart.fee, total: cart.total, tax: cart.tax} %}
+            {% include 'templates/shop/_totals.twig' %}
+            {% if terms_url %}
+              <label class="shop-check{% if 'terms' in error_fields %} is-invalid{% endif %}"><input type="checkbox" name="terms" value="1"{% if input.terms %} checked{% endif %} required> <span>{{ t('shop.terms_agree', 'I have read and agree to the') }} <a class="text-link" href="{{ terms_url }}" target="_blank" rel="noopener">{{ t('shop.terms', 'terms of sale') }}</a>{% if returns_url %} · <a class="text-link" href="{{ returns_url }}" target="_blank" rel="noopener">{{ t('shop.returns', 'shipping and returns') }}</a>{% endif %}</span></label>
+            {% endif %}
+            <button class="btn btn-secondary shop-wide" type="submit" name="refresh" value="1" data-shop-refresh-button>{{ t('shop.update_totals', 'Update the totals') }}</button>
+            <button class="btn btn-primary shop-wide" type="submit" name="place" value="1">{{ t('shop.place_order', 'Place order') }} · {{ cart.total }}</button>
+          </div>
+        </aside>
+      </form>
+    </div>
+  </section>
+{% endblock %}

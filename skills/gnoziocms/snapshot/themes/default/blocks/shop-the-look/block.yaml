@@ -1,0 +1,23 @@
+label: Shop the look
+description: 'A look: its picture with a point on each piece, the pieces with their prices, the total and Add the look, which puts them all in the cart. On a product''s page, Complete the look lists the other pieces of the product''s look.'
+category: Shop
+requires: shop
+variants:
+  split: Picture and pieces side by side
+  complete: Complete the look (a short list)
+fields:
+  eyebrow:
+    type: text
+    label: Eyebrow
+  heading:
+    type: text
+    label: Heading
+    placeholder: Shop the look
+  intro:
+    type: textarea
+    label: Introduction
+  look:
+    type: select
+    label: Look
+    options_from: looks
+    help: Empty on a look's own page, or on a product's page for its first look.

@@ -1,0 +1,28 @@
+label: Looks
+description: 'The looks as cards: the picture, the name and how many pieces it has with what they cost together. Each leads to the look''s page.'
+category: Shop
+requires: shop
+variants:
+  grid: Grid
+fields:
+  eyebrow:
+    type: text
+    label: Eyebrow
+  heading:
+    type: text
+    label: Heading
+    placeholder: Wear it together
+  intro:
+    type: textarea
+    label: Introduction
+  limit:
+    type: number
+    label: How many
+    default: 3
+    min: 1
+    max: 24
+  columns:
+    type: select
+    label: Columns
+    default: '3'
+    options: { '2': '2', '3': '3', '4': '4' }

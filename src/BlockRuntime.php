@@ -89,6 +89,19 @@ final class BlockRuntime
                 }
                 return $options;
             },
+            // The looks, for the Shop the look block (only while the shop is on).
+            'looks' => function (): array {
+                $options = ['' => 'The page\'s own look, or its product\'s first'];
+                if (in_array(Shop::LOOKS, $this->content->getTypes(), true)) {
+                    foreach ($this->content->getItems(Shop::LOOKS, null, true) as $look) {
+                        $id = (string)($look->meta['translation_id'] ?? '');
+                        if ($id !== '' && !isset($options[$id])) {
+                            $options[$id] = (string)($look->meta['title'] ?? $look->slug);
+                        }
+                    }
+                }
+                return $options;
+            },
         ], fn(): array => Shop::features($this->content->getTypes()));
     }
 

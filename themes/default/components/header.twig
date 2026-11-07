@@ -113,6 +113,11 @@
           </svg>
         </a>
       {% endif %}
+      {# The shop's account and cart (docs/shop-plan.md). The count is the page's script's, read from a cookie, so the page stays the same for everyone. #}
+      {% if shop_enabled|default(false) %}
+        <a class="shop-header-link" href="{{ url(prefix ~ 'account') }}" aria-label="{{ t('shop.account', 'Your account') }}">{{ icon('user') }}</a>
+        <a class="shop-header-link" href="{{ url(prefix ~ 'cart') }}" aria-label="{{ t('shop.cart', 'Cart') }}" data-shop-cart-link data-shop-strings="{{ {title: t('shop.cart', 'Cart'), view: t('shop.view_cart', 'View the cart'), checkout: t('shop.to_checkout', 'Checkout'), close: t('shop.close', 'Close'), subtotal: t('shop.subtotal', 'Subtotal'), empty: t('shop.cart_empty', 'Your cart is empty.')}|json_encode }}">{{ icon('bag') }}<span class="shop-count" data-shop-count hidden></span></a>
+      {% endif %}
       {% if show_language %}{% include 'components/language-links.twig' with {links_class: 'lang-switcher'} %}{% endif %}
       {% if show_mode %}
         <button type="button" class="mode-switch" data-theme-toggle role="switch" aria-checked="false" aria-label="{{ t('theme.switch_mode', 'Dark mode') }}">

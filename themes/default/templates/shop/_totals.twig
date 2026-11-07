@@ -1,0 +1,9 @@
+{# The totals of a cart or an order: items, discount, shipping, fee, total with the VAT in it. #}
+<dl class="shop-totals">
+  <div><dt>{{ t('shop.subtotal', 'Subtotal') }}</dt><dd>{{ totals.items }}</dd></div>
+  {% if totals.discount %}<div class="is-discount"><dt>{{ t('shop.discount', 'Discount') }}{% if totals.coupon_code|default('') %} <span class="shop-code">{{ totals.coupon_code }}</span>{% endif %}</dt><dd>{{ totals.discount }}</dd></div>{% endif %}
+  {% if totals.shipping %}<div><dt>{{ t('shop.shipping', 'Shipping') }}{% if totals.shipping_label|default('') %} <span class="shop-muted">{{ totals.shipping_label }}</span>{% endif %}</dt><dd>{{ totals.shipping }}</dd></div>{% endif %}
+  {% if totals.fee %}<div><dt>{{ t('shop.fee', 'Fee') }}</dt><dd>{{ totals.fee }}</dd></div>{% endif %}
+  <div class="is-total"><dt>{{ t('shop.total', 'Total') }}</dt><dd>{{ totals.total }}</dd></div>
+  <div class="is-vat"><dt>{{ t('shop.vat_in_total', 'VAT included') }}</dt><dd>{{ totals.tax }}</dd></div>
+</dl>

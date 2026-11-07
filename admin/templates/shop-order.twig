@@ -1,0 +1,129 @@
+{% extends '@admin/base.twig' %}
+{% set page_heading = 'Order ' ~ order.number %}
+{% import '@admin/partials/ui.twig' as ui %}
+{#
+  One order (docs/shop-plan.md, section 8): what was sold, the totals and VAT, the addresses, how it is paid and sent, its
+  timeline, and what can be done next: a status, shipping with tracking, a note, its email again, the packing slip.
+#}
+{% block content %}
+  {% set input = 'block w-full rounded-md border border-slate-300 px-2.5 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500' %}
+  {% set card = 'rounded-lg border border-slate-200 bg-white' %}
+  {% set head = 'flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3' %}
+  {% set btn = 'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium shadow-sm' %}
+  {% set tones = {pending_payment: 'amber', on_hold: 'amber', paid: 'blue', processing: 'violet', shipped: 'blue', completed: 'green', cancelled: 'slate', refunded: 'red'} %}
+  {{ ui.flash(message, done == 'ok' ? 'success' : 'error') }}
+
+  <div class="mb-4 flex flex-wrap items-center gap-2">
+    <a href="{{ url('admin/shop-orders') }}" class="text-sm text-slate-500 hover:text-slate-800">← Orders</a>
+    {{ ui.badge(order.status_label, tones[order.status] ?? 'slate') }}
+    <span class="text-xs text-slate-400">{{ order.created_at|date('d/m/Y H:i') }}{% if order.paid_at %} · paid {{ order.paid_at|date('d/m/Y') }}{% endif %} · {{ order.lang|upper }}</span>
+    <span class="grow"></span>
+    <a href="{{ url('admin/shop-orders?id=' ~ order.id ~ '&print=1') }}" target="_blank" class="{{ btn }} border border-slate-300 bg-white text-slate-700 hover:bg-slate-50">Packing slip</a>
+    <a href="{{ order.public_url }}" target="_blank" rel="noopener" class="{{ btn }} border border-slate-300 bg-white text-slate-700 hover:bg-slate-50">Customer's page</a>
+  </div>
+
+  <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+    <div class="grid content-start gap-4">
+      <section class="{{ card }}">
+        <div class="{{ head }}"><h2 class="text-sm font-semibold text-slate-900">Items</h2><span class="text-xs text-slate-400">{{ order.payment_label }} · {{ order.shipping_label }}</span></div>
+        <table class="w-full text-sm">
+          <tbody class="divide-y divide-slate-100">
+            {% for line in lines %}
+              <tr>
+                <td class="px-4 py-2"><span class="text-slate-900">{{ line.title }}</span>{% if line.variant %} <span class="text-slate-500">· {{ line.variant }}</span>{% endif %}{% if line.sku %}<span class="block font-mono text-xs text-slate-400">{{ line.sku }}</span>{% endif %}</td>
+                <td class="whitespace-nowrap px-4 py-2 text-slate-500">{{ line.quantity }} × {{ line.unit }}</td>
+                <td class="whitespace-nowrap px-4 py-2 text-xs text-slate-400">VAT {{ line.tax_rate }}%</td>
+                <td class="whitespace-nowrap px-4 py-2 text-right tabular-nums">{{ line.total }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        <dl class="grid gap-1 border-t border-slate-200 px-4 py-3 text-sm">
+          <div class="flex justify-between"><dt class="text-slate-500">Subtotal</dt><dd class="tabular-nums">{{ order.money.items }}</dd></div>
+          {% if order.discount_cents %}<div class="flex justify-between"><dt class="text-slate-500">Discount {% if order.coupon %}<span class="font-mono">{{ order.coupon }}</span>{% endif %}</dt><dd class="tabular-nums text-emerald-700">{{ order.money.discount }}</dd></div>{% endif %}
+          <div class="flex justify-between"><dt class="text-slate-500">Shipping</dt><dd class="tabular-nums">{{ order.money.shipping }}</dd></div>
+          {% if order.fee_cents %}<div class="flex justify-between"><dt class="text-slate-500">Fee</dt><dd class="tabular-nums">{{ order.money.fee }}</dd></div>{% endif %}
+          <div class="flex justify-between font-semibold"><dt>Total</dt><dd class="tabular-nums">{{ order.money.total }}</dd></div>
+          <div class="flex justify-between text-xs text-slate-400"><dt>VAT included</dt><dd class="tabular-nums">{{ order.money.tax }}</dd></div>
+        </dl>
+      </section>
+
+      <div class="grid gap-4 sm:grid-cols-2">
+        <section class="{{ card }} px-4 py-3 text-sm">
+          <h2 class="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Billing</h2>
+          <p class="whitespace-pre-line text-slate-800">{{ order.billing_lines|join('\n') }}</p>
+          <p class="mt-1"><a class="text-blue-700 hover:underline" href="mailto:{{ order.email }}">{{ order.email }}</a></p>
+          {% if customer %}<p class="mt-1 text-xs"><a class="text-blue-700 hover:underline" href="{{ url('admin/shop-customers?id=' ~ customer.id) }}">Customer's account</a></p>{% else %}<p class="mt-1 text-xs text-slate-400">Guest</p>{% endif %}
+        </section>
+        <section class="{{ card }} px-4 py-3 text-sm">
+          <h2 class="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">{{ order.shipping_lines ? 'Shipping to' : 'Pickup' }}</h2>
+          <p class="whitespace-pre-line text-slate-800">{{ order.shipping_lines ? order.shipping_lines|join('\n') : order.shipping_label }}</p>
+          {% if order.tracking %}<p class="mt-1 text-xs text-slate-500">Tracking: {{ order.carrier }} <span class="font-mono">{{ order.tracking }}</span></p>{% endif %}
+        </section>
+      </div>
+      {% if order.gift_wrap or order.gift_note or order.customer_note %}
+        <section class="{{ card }} px-4 py-3 text-sm">
+          {% if order.gift_wrap %}<p>🎁 Gift wrapping</p>{% endif %}
+          {% if order.gift_note %}<p class="mt-1"><span class="text-xs font-semibold uppercase tracking-wide text-slate-500">Gift note</span><br>{{ order.gift_note|nl2br }}</p>{% endif %}
+          {% if order.customer_note %}<p class="mt-1"><span class="text-xs font-semibold uppercase tracking-wide text-slate-500">Customer's note</span><br>{{ order.customer_note|nl2br }}</p>{% endif %}
+        </section>
+      {% endif %}
+
+      <section class="{{ card }}">
+        <div class="{{ head }}"><h2 class="text-sm font-semibold text-slate-900">Timeline</h2></div>
+        <ol class="divide-y divide-slate-100 text-sm">
+          {% for event in events %}
+            <li class="flex gap-3 px-4 py-2"><span class="whitespace-nowrap text-xs text-slate-400">{{ event.at|date('d/m H:i') }}</span><span class="grow text-slate-700">{{ event.message }}</span><span class="text-xs text-slate-400">{{ event.actor }}</span></li>
+          {% endfor %}
+        </ol>
+        <form method="post" action="{{ url('admin/shop-orders?id=' ~ order.id) }}" class="flex gap-2 border-t border-slate-200 px-4 py-3">
+          {{ csrf_field() }}<input type="hidden" name="action" value="note">
+          <input name="text" class="{{ input }}" placeholder="Add a note to the timeline" maxlength="2000">
+          <button class="{{ btn }} border border-slate-300 bg-white text-slate-700 hover:bg-slate-50">Add</button>
+        </form>
+      </section>
+    </div>
+
+    <aside class="grid content-start gap-4">
+      {% if next is not empty %}
+        <section class="{{ card }}">
+          <div class="{{ head }}"><h2 class="text-sm font-semibold text-slate-900">Status</h2></div>
+          <form method="post" action="{{ url('admin/shop-orders?id=' ~ order.id) }}" class="grid gap-2 px-4 py-3">
+            {{ csrf_field() }}<input type="hidden" name="action" value="status">
+            <select name="to" class="{{ input }}">
+              {% for key, name in next %}{% if key != 'shipped' %}<option value="{{ key }}">{{ name }}</option>{% endif %}{% endfor %}
+            </select>
+            <input name="note" class="{{ input }}" placeholder="Why (optional, for the timeline)" maxlength="500">
+            <label class="flex items-center gap-2 text-xs text-slate-600"><input type="checkbox" name="notify" value="1" checked class="h-4 w-4 rounded border-slate-300"> Tell the customer (paid, cancelled, refunded)</label>
+            <button class="{{ btn }} justify-center bg-blue-600 text-white hover:bg-blue-700">Change the status</button>
+            <p class="text-xs text-slate-400">Cancelling puts the pieces back in stock and gives back the coupon's use.</p>
+          </form>
+        </section>
+      {% endif %}
+      {% if 'shipped' in next|keys or order.status == 'shipped' %}
+        <section class="{{ card }}">
+          <div class="{{ head }}"><h2 class="text-sm font-semibold text-slate-900">{{ order.status == 'shipped' ? 'Tracking' : 'Ship it' }}</h2></div>
+          <form method="post" action="{{ url('admin/shop-orders?id=' ~ order.id) }}" class="grid gap-2 px-4 py-3">
+            {{ csrf_field() }}<input type="hidden" name="action" value="ship">
+            <input name="carrier" value="{{ order.carrier }}" class="{{ input }}" placeholder="Carrier (ACS, ELTA, Geniki, BoxNow)" list="shop-carriers" maxlength="60">
+            <datalist id="shop-carriers"><option>ACS</option><option>ELTA Courier</option><option>Geniki Taxydromiki</option><option>BoxNow</option><option>Speedex</option><option>DHL</option></datalist>
+            <input name="tracking" value="{{ order.tracking }}" class="{{ input }} font-mono" placeholder="Tracking number" maxlength="80">
+            <label class="flex items-center gap-2 text-xs text-slate-600"><input type="checkbox" name="notify" value="1" checked class="h-4 w-4 rounded border-slate-300"> Email the customer</label>
+            <button class="{{ btn }} justify-center bg-blue-600 text-white hover:bg-blue-700">{{ order.status == 'shipped' ? 'Save the tracking' : 'Mark shipped' }}</button>
+          </form>
+        </section>
+      {% endif %}
+      {% if instructions is not empty and order.status == 'on_hold' %}
+        <section class="{{ card }} px-4 py-3 text-xs text-slate-600">
+          <p class="mb-1 font-semibold text-slate-800">Waiting for a transfer of {{ order.money.total }}</p>
+          <p>Reference: <span class="font-mono">{{ order.number }}</span>. Mark it <strong>Paid</strong> once the money is in the account.</p>
+        </section>
+      {% endif %}
+      <form method="post" action="{{ url('admin/shop-orders?id=' ~ order.id) }}" class="{{ card }} px-4 py-3">
+        {{ csrf_field() }}<input type="hidden" name="action" value="resend">
+        <button class="text-sm font-medium text-blue-700 hover:underline">Send the order's email again</button>
+        <p class="mt-1 text-xs text-slate-400">To {{ order.email }}, as it was sent when it was placed.</p>
+      </form>
+    </aside>
+  </div>
+{% endblock %}

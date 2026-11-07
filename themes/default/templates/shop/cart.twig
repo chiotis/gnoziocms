@@ -1,0 +1,69 @@
+{% extends 'layouts/base.twig' %}
+{#
+  The cart (docs/shop-plan.md, section 3): its pieces with their quantities, a coupon, and the way to the checkout. Prices are
+  those of the products now (ShopPricing); shipping is worked out at the checkout, from the address.
+#}
+{% set prefix = lang_prefix|default('') %}
+{% block content %}
+  <section class="shop-page">
+    <div class="site-wrap">
+      <header class="shop-head">
+        <h1>{{ t('shop.cart', 'Cart') }}</h1>
+        {% if cart.count %}<p class="shop-muted">{{ cart.count == 1 ? t('shop.piece', '1 piece') : t('shop.pieces', '{count} pieces')|replace({'{count}': cart.count}) }}</p>{% endif %}
+      </header>
+      {% include 'templates/shop/_flash.twig' %}
+
+      {% if cart.lines is empty %}
+        <div class="shop-empty">
+          <p>{{ t('shop.cart_empty', 'Your cart is empty.') }}</p>
+          <a class="btn btn-primary" href="{{ url(prefix ~ 'products') }}">{{ t('shop.continue', 'Continue shopping') }}</a>
+        </div>
+      {% else %}
+        <div class="shop-layout">
+          <form class="shop-main" method="post" action="{{ url(prefix ~ 'cart') }}" data-shop-cart>
+            {{ csrf_field() }}
+            <ul class="shop-lines">
+              {% for line in cart.lines %}
+                <li class="shop-line">
+                  <a class="shop-line-picture" href="{{ line.url }}" tabindex="-1" aria-hidden="true">{% if line.image %}{{ image(line.image, {alt: '', sizes: '96px', max_width: 320, loading: 'lazy'}) }}{% endif %}</a>
+                  <div class="shop-line-text">
+                    <a class="shop-line-title" href="{{ line.url }}">{{ line.title }}</a>
+                    {% if line.variant %}<span class="shop-muted">{{ line.variant }}</span>{% endif %}
+                    <span class="shop-muted">{{ line.unit }}</span>
+                  </div>
+                  <label class="shop-qty"><span class="visually-hidden">{{ t('shop.quantity', 'Quantity') }}</span>
+                    <input type="number" name="qty[{{ line.key }}]" value="{{ line.quantity }}" min="0" max="{{ line.max ?? 99 }}" inputmode="numeric" data-shop-qty>
+                  </label>
+                  <span class="shop-line-total">{{ line.total }}</span>
+                  <button class="shop-remove" type="submit" name="remove" value="{{ line.key }}" aria-label="{{ t('shop.remove', 'Remove') }}: {{ line.title }}">{{ icon('x') }}</button>
+                </li>
+              {% endfor %}
+            </ul>
+            <div class="shop-actions">
+              <button class="btn btn-secondary" type="submit" name="update" value="1" data-shop-update>{{ t('shop.update', 'Update the cart') }}</button>
+              <a class="text-link" href="{{ url(prefix ~ 'products') }}">{{ t('shop.continue', 'Continue shopping') }}</a>
+            </div>
+          </form>
+
+          <aside class="shop-side">
+            <div class="shop-box">
+              {% set totals = {items: cart.items, discount: cart.discount, coupon_code: cart.coupon and cart.coupon.ok ? cart.coupon.code : '', total: cart.total, tax: cart.tax} %}
+              {% include 'templates/shop/_totals.twig' %}
+              <p class="shop-muted shop-note">{{ t('shop.shipping_at_checkout', 'Shipping is worked out at the checkout, from your address.') }}</p>
+              <form class="shop-coupon" method="post" action="{{ url(prefix ~ 'cart') }}">
+                {{ csrf_field() }}
+                {% if coupon %}
+                  <p>{{ t('shop.coupon', 'Coupon') }} <span class="shop-code">{{ coupon }}</span> <button class="text-link" type="submit" name="coupon_remove" value="1">{{ t('shop.remove', 'Remove') }}</button></p>
+                {% else %}
+                  <label for="shop-coupon">{{ t('shop.coupon', 'Coupon') }}</label>
+                  <div class="shop-inline"><input id="shop-coupon" name="coupon" autocomplete="off" spellcheck="false"><button class="btn btn-secondary" type="submit">{{ t('shop.apply', 'Apply') }}</button></div>
+                {% endif %}
+              </form>
+              <a class="btn btn-primary shop-wide" href="{{ url(prefix ~ 'checkout') }}">{{ t('shop.to_checkout', 'Checkout') }}{{ icon('arrow-right', 'btn-icon') }}</a>
+            </div>
+          </aside>
+        </div>
+      {% endif %}
+    </div>
+  </section>
+{% endblock %}

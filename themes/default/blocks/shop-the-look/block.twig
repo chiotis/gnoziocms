@@ -1,0 +1,53 @@
+{#
+  Shop the look (docs/shop-plan.md, section 9): a look's picture with a point on each piece (the Image hotspots block's styles and
+  script), its pieces with their prices, the total, and Add the look, one form that sends every piece that can be bought to the
+  cart (shop.js adds them without leaving the page). Complete the look is the short list, for a product's page.
+#}
+{% import 'components/ui.twig' as ui %}
+{% set prefix = lang_prefix|default('') %}
+{% set look = block.look %}
+{% set buyable = look.pieces|filter(p => p.buyable) %}
+<div class="container">
+  {{ ui.section_header(block, heading_tag, block_uid, 'left') }}
+  <div class="look look-{{ block.variant }}">
+    {% if block.variant != 'complete' and look.image %}
+      <div class="hotspots-figure ratio-portrait" data-hotspots>
+        {{ image(look.image, {alt: look.title, sizes: '(min-width: 900px) 50vw, 92vw', max_width: 1600}) }}
+        {% for piece in look.pieces %}
+          <div class="hotspot" style="left: {{ piece.x }}%; top: {{ piece.y }}%">
+            <button type="button" class="hotspot-dot" aria-expanded="false" aria-controls="{{ block_uid }}-piece-{{ loop.index }}" aria-label="{{ piece.card.title }}">{{ loop.index }}</button>
+            <div class="hotspot-card" id="{{ block_uid }}-piece-{{ loop.index }}" hidden>
+              <strong>{{ piece.card.title }}</strong>
+              {% if piece.price_text %}<span>{{ piece.price_text }}</span>{% endif %}
+              <a class="text-link" href="{{ url(item_path(piece.card.item, prefix)) }}">{{ t('blocks.see', 'See') }}</a>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+    <div class="look-side">
+      {% if block.variant != 'complete' %}<p class="look-title">{{ look.title }}</p>{% endif %}
+      <ol class="look-pieces" role="list">
+        {% for piece in look.pieces %}
+          <li class="look-piece">
+            {% if block.variant != 'complete' %}<span class="hotspots-number" aria-hidden="true">{{ loop.index }}</span>{% endif %}
+            {% if block.variant == 'complete' and piece.card.image %}<span class="look-piece-picture">{{ image(piece.card.image, {alt: '', sizes: '64px', max_width: 240, loading: 'lazy'}) }}</span>{% endif %}
+            <a class="look-piece-title" href="{{ url(item_path(piece.card.item, prefix)) }}">{{ piece.card.title }}</a>
+            <span class="look-piece-price">{{ piece.buyable ? piece.price_text : t('shop.sold_out', 'Sold out') }}</span>
+          </li>
+        {% endfor %}
+      </ol>
+      {% if buyable is not empty %}
+        <form class="look-buy" method="post" action="{{ url(prefix ~ '_shop/cart') }}" data-shop-add>
+          {% for piece in buyable %}
+            <input type="hidden" name="items[{{ loop.index0 }}][product]" value="{{ piece.id }}">
+            <input type="hidden" name="items[{{ loop.index0 }}][variant]" value="{{ piece.variant }}">
+          {% endfor %}
+          {% if look.total_text %}<p class="look-total"><span>{{ t('shop.look_pieces', '{count} pieces')|replace({'{count}': buyable|length}) }}</span><strong>{{ look.total_text }}</strong></p>{% endif %}
+          <button class="btn btn-primary" type="submit" data-add-label="{{ t('shop.add_look', 'Add the look') }}" data-adding="{{ t('shop.adding', 'Adding…') }}">{{ t('shop.add_look', 'Add the look') }}</button>
+          <p class="product-buy-message" data-shop-message role="status" aria-live="polite"></p>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+</div>

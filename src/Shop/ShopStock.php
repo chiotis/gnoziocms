@@ -151,6 +151,16 @@ final class ShopStock
         $stmt->execute(['q' => $quantity, 'held' => $quantity, 'now' => time(), 'id' => $productId, 'key' => $variantKey]);
     }
 
+    /** Puts pieces back on hand: an order that had taken them was cancelled. A product no longer stocked is left as it is. */
+    public function restock(string $productId, string $variantKey, int $quantity): void
+    {
+        if (!$this->database->isAvailable() || $quantity < 1) {
+            return;
+        }
+        $stmt = $this->pdo()->prepare('UPDATE shop_stock SET on_hand = MIN(' . self::MAX . ', on_hand + CAST(:q AS INTEGER)), updated_at = :now WHERE product_id = :id AND variant_key = :key');
+        $stmt->execute(['q' => $quantity, 'now' => time(), 'id' => $productId, 'key' => $variantKey]);
+    }
+
     private function pdo(): PDO
     {
         return $this->database->connection();

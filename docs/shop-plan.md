@@ -249,6 +249,21 @@ All blocks use the theme tokens. Collection tones only change the CSS variables.
    - orders and customers admin, emails with the HTML part;
    - bank transfer and cash on delivery; Shop the look, Looks and Mini cart.
    - The shop works end to end with offline payments.
+   - **As built (phase 3):**
+     - **Pages:** `/cart`, `/checkout`, `/checkout/order/{number}?key=…` and `/account/…`, under each language's prefix (`src/Shop/ShopFront.php`, `templates/shop/*.twig`). While the shop is on these addresses are the shop's, even when a page has the same slug. They have their own session (cookie `gz_shop`), so a shopper's other pages stay cacheable. The cart is found by its own cookie (`gz_cart`, 30 days); the header's count comes from `gz_cart_n` through `shop.js`.
+     - **Adding to the cart:** `POST /_shop/cart` is answered as JSON for the script and as a redirect without it. It is checked by its Origin (or Referer), not by a session token, because product pages are cached.
+     - **Product pages:** switching the shop on gives Products and Looks their starting templates, unless the site already chose a layout for them; otherwise a product page would have no Add to cart.
+     - **Pricing:** prices, variants and stock rules always come from the product in the site's own language; a translation gives only its name, address and option names. Everything is priced again on every view and when the order is placed (`ShopPricing`). A line whose product is gone, not sold or sold out leaves the cart, and a quantity above what is free is lowered; the cart says which. Only physical products are sold until the payment providers arrive.
+     - **Money and VAT:** money is in cents (`ShopMoney`). VAT is per line, of what was paid after the line's share of the discount; shipping and fees carry the standard rate.
+     - **Shipping:** zones are matched first-come by country, optionally narrowed by postcode prefix. Methods are flat (optionally free over an amount), free over an amount, by weight, or pickup at a store (`ShopShipping`). Free-over thresholds compare the items before the discount.
+     - **Stock and statuses:** placing an order holds its stock. An offline payment takes it at once (`on_hold` for a transfer, `processing` for cash on delivery). Cancelling gives the stock back, and the coupon's use too. Orders waiting for an online payment are cancelled when their hold runs out; this is checked whenever Orders is opened (the job comes with phase 4).
+     - **Order numbers:** they follow on within a year after the prefix, through `shop_sequences`.
+     - **Emails:** plain text in the order's language: order received (with the bank accounts), the shop's notice, paid, shipped (with tracking), cancelled, refunded, confirm the address, a new password. **The HTML part and the Emails tab are deferred**; the texts are theme strings (`shop.mail_*`), editable in Translations.
+     - **Accounts:** guest orders join an account only once its address is confirmed by a link (sign-up sends one; setting a new password also confirms). "Confirm before the first sign-in" is a setting, off by default. Sign-in is throttled like the admin's, in its own bucket.
+     - **Admin:** the Shop group holds Orders (status chips, search, dates, a CSV with a row per line and its VAT; each order with its timeline, status changes, shipping with tracking, notes, its email again and a packing slip), Customers (with their orders; deleting an account leaves its orders, unlinked) and Coupons.
+     - **Shop settings:** gains Shipping, Payments and Accounts.
+     - **Payments:** bank transfer and cash on delivery implement `Payments/PaymentProvider`, the shape Viva and Cardlink will fill.
+     - **Blocks:** Shop the look (a look's picture with its pieces, Image hotspots' styles, the total and Add the look) and its Complete the look list; Looks; Mini cart. The header shows the account and the cart while the shop is on.
 4. **Viva Wallet:** payments, the webhook, refunds and installments.
 5. **Cardlink:** the three acquirers, the digest, the pending-order status job, capture and refund via XML, installments. Then a dry run of the client's WooCommerce import on a copy of their site.
 6. **Digital products:** private files and download tokens.

@@ -1,0 +1,19 @@
+{#
+  Looks (docs/shop-plan.md, section 9): the looks as cards, "3 pieces · €460", each leading to its page (where Shop the look draws it).
+#}
+{% import 'components/ui.twig' as ui %}
+{% set prefix = lang_prefix|default('') %}
+<div class="container">
+  {{ ui.section_header(block, heading_tag, block_uid, 'left') }}
+  <ul class="looks-grid" style="--cols: {{ block.columns|default('3') }}" role="list">
+    {% for look in block.looks %}
+      <li class="looks-card">
+        <a href="{{ url(item_path(look.item, prefix)) }}">
+          <span class="looks-picture">{% if look.image %}{{ image(look.image, {alt: '', sizes: '(min-width: 900px) 30vw, 92vw', max_width: 1200, loading: 'lazy'}) }}{% endif %}</span>
+          <span class="looks-name">{{ look.title }}</span>
+          <span class="looks-meta">{{ t('shop.look_pieces', '{count} pieces')|replace({'{count}': look.count}) }}{% if look.total_text %} · {{ look.total_text }}{% endif %}</span>
+        </a>
+      </li>
+    {% endfor %}
+  </ul>
+</div>

@@ -77,6 +77,23 @@
           </a>
         {% endif %}
 
+        {# The shop's group (docs/shop-plan.md, section 8): only while the shop is on. #}
+        {% if shop_enabled and (can('shop.orders') or can('shop.manage')) %}
+          <p class="px-2 pb-1.5 pt-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400">Shop</p>
+          {% for key, item in {
+            'shop-orders': {cap: 'shop.orders', label: 'Orders', icon: '<path stroke-linecap="round" stroke-linejoin="round" d="M6 7h12l-1 13H7L6 7zM9 7a3 3 0 016 0"/>'},
+            'shop-customers': {cap: 'shop.orders', label: 'Customers', icon: '<circle cx="12" cy="8.5" r="3.5"/><path stroke-linecap="round" d="M5 20c.8-3.4 3.6-5.5 7-5.5s6.2 2.1 7 5.5"/>'},
+            'shop-coupons': {cap: 'shop.manage', label: 'Coupons', icon: '<path stroke-linecap="round" stroke-linejoin="round" d="M4 8a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 000 4v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2a2 2 0 000-4V8zM10 9v1M10 14v1"/>'}
+          } %}
+            {% if can(item.cap) %}
+              <a href="{{ url('admin/' ~ key) }}" class="{{ nav_base }} {{ section == key ? nav_active : nav_idle }}"{% if section == key %} aria-current="page"{% endif %}>
+                <svg class="h-4 w-4 {{ section == key ? 'text-white/80' : 'text-slate-400 group-hover:text-slate-600' }}" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true">{{ item.icon|raw }}</svg>
+                {{ item.label }}
+              </a>
+            {% endif %}
+          {% endfor %}
+        {% endif %}
+
         <p class="px-2 pb-1.5 pt-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400">Manage</p>
         {% if can('forms.manage') %}
           <a href="{{ url('admin/forms') }}" class="{{ nav_base }} {{ section == 'forms' ? nav_active : nav_idle }}"{% if section == 'forms' %} aria-current="page"{% endif %}>

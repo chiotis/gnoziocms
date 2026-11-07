@@ -1,4 +1,4 @@
-# Blocks of this installation (GnozioCMS 0.1.241)
+# Blocks of this installation (GnozioCMS 0.1.242)
 
 ## Fields every block has
 
@@ -581,6 +581,19 @@ Client or partner logos, spread over the whole width of the content however many
 | &nbsp;&nbsp;`items[].image` | image |  |
 | &nbsp;&nbsp;`items[].url` | link |  |
 
+### `looks` — Looks
+The looks as cards: the picture, the name and how many pieces it has with what they cost together. Each leads to the look's page.
+
+**Layouts** (`variant`): `grid` (Grid). First is the default.
+
+| field | kind and choices | notes |
+|---|---|---|
+| `eyebrow` | text |  |
+| `heading` | text |  |
+| `intro` | text (several lines) |  |
+| `limit` | whole number; 1 to 24; default `3` |  |
+| `columns` | choice; one of `2`, `3`, `4`; default `3` |  |
+
 ### `map` — Map
 An OpenStreetMap map with a marker, or a map of the points, routes and businesses of the site with filters and a list. By default a map loads only after the visitor asks for it, so no third-party request is made on page load.
 
@@ -620,6 +633,16 @@ A band that scrolls by itself, with big words or logos. It stops for people who 
 | &nbsp;&nbsp;`items[].text` | text | The word, or the name of the logo (used when there is no image). |
 | &nbsp;&nbsp;`items[].image` | image |  |
 | &nbsp;&nbsp;`items[].url` | link |  |
+
+### `mini-cart` — Mini cart
+A link to the cart with how many pieces are in it, for a footer or a page. The header has one already while the shop is on.
+
+**Layouts** (`variant`): `default` (Default). First is the default.
+
+| field | kind and choices | notes |
+|---|---|---|
+| `label` | text |  |
+| `show_account` | true / false; default `false` |  |
 
 ### `newsletter` — Newsletter
 A quiet invitation to sign up, like a letter: a heading, a few words and one of the site's forms (an email field and a button, made in Admin > Forms).
@@ -812,6 +835,18 @@ How many entries the list has. By default it appears only when filters are appli
 | field | kind and choices | notes |
 |---|---|---|
 | `always` | true / false; default `false` |  |
+
+### `shop-the-look` — Shop the look
+A look: its picture with a point on each piece, the pieces with their prices, the total and Add the look, which puts them all in the cart. On a product's page, Complete the look lists the other pieces of the product's look.
+
+**Layouts** (`variant`): `split` (Picture and pieces side by side), `complete` (Complete the look (a short list)). First is the default.
+
+| field | kind and choices | notes |
+|---|---|---|
+| `eyebrow` | text |  |
+| `heading` | text |  |
+| `intro` | text (several lines) |  |
+| `look` | choice; a choice the site offers | Empty on a look's own page, or on a product's page for its first look. |
 
 ### `stats` — Stats
 Key numbers with a short label, e.g. years of experience or completed projects.

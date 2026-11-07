@@ -1,0 +1,11 @@
+{#
+  Mini cart (docs/shop-plan.md, section 9): the link to the cart with its count, which the shop's script fills from a cookie, so the
+  page stays the same for everyone.
+#}
+{% set prefix = lang_prefix|default('') %}
+<div class="container">
+  <p class="mini-cart">
+    <a class="mini-cart-link" href="{{ url(prefix ~ 'cart') }}">{{ icon('bag') }}<span>{{ block.label ?: t('shop.cart', 'Cart') }}</span><span class="shop-count" data-shop-count hidden></span></a>
+    {% if block.show_account %}<a class="mini-cart-link" href="{{ url(prefix ~ 'account') }}">{{ icon('user') }}<span>{{ t('shop.account', 'Your account') }}</span></a>{% endif %}
+  </p>
+</div>

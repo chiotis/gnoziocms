@@ -119,6 +119,7 @@ final class SystemDatabase
             )'
         ));
         $this->applyMigration($pdo, '202611070002_shop_stock', fn(PDO $db) => $this->createShopStockTable($db));
+        $this->applyMigration($pdo, '202611070003_shop_orders', fn(PDO $db) => $this->createShopOrderTables($db));
     }
 
     /**
@@ -137,6 +138,131 @@ final class SystemDatabase
                 reserved INTEGER NOT NULL DEFAULT 0,
                 updated_at INTEGER NOT NULL,
                 PRIMARY KEY (product_id, variant_key)
+            )"
+        );
+    }
+
+    /**
+     * The shop's carts, orders, customers and coupons (docs/shop-plan.md, sections 3 and 4). Money is in cents. A cart is found by
+     * the hash of its cookie, never the cookie itself. An order keeps what was sold as it was sold (title, price, VAT of each line),
+     * so a product changed or removed later changes no order. Customers are the shop's, never admin users.
+     */
+    private function createShopOrderTables(PDO $pdo): void
+    {
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS shop_carts (
+                id TEXT PRIMARY KEY,
+                customer_id INTEGER,
+                lines TEXT NOT NULL DEFAULT '[]',
+                coupon TEXT NOT NULL DEFAULT '',
+                updated_at INTEGER NOT NULL
+            )"
+        );
+        $pdo->exec('CREATE INDEX IF NOT EXISTS shop_carts_customer ON shop_carts (customer_id)');
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS shop_customers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email TEXT NOT NULL UNIQUE COLLATE NOCASE,
+                password_hash TEXT NOT NULL DEFAULT '',
+                name TEXT NOT NULL DEFAULT '',
+                phone TEXT NOT NULL DEFAULT '',
+                lang TEXT NOT NULL DEFAULT '',
+                address TEXT NOT NULL DEFAULT '{}',
+                verified_at INTEGER,
+                token_hash TEXT NOT NULL DEFAULT '',
+                token_kind TEXT NOT NULL DEFAULT '',
+                token_expires INTEGER NOT NULL DEFAULT 0,
+                created_at INTEGER NOT NULL,
+                last_login_at INTEGER
+            )"
+        );
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS shop_orders (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                number TEXT NOT NULL UNIQUE,
+                view_key TEXT NOT NULL,
+                status TEXT NOT NULL,
+                customer_id INTEGER,
+                email TEXT NOT NULL COLLATE NOCASE,
+                lang TEXT NOT NULL DEFAULT '',
+                currency TEXT NOT NULL DEFAULT 'EUR',
+                items_cents INTEGER NOT NULL DEFAULT 0,
+                discount_cents INTEGER NOT NULL DEFAULT 0,
+                shipping_cents INTEGER NOT NULL DEFAULT 0,
+                fee_cents INTEGER NOT NULL DEFAULT 0,
+                tax_cents INTEGER NOT NULL DEFAULT 0,
+                total_cents INTEGER NOT NULL DEFAULT 0,
+                coupon TEXT NOT NULL DEFAULT '',
+                payment_method TEXT NOT NULL DEFAULT '',
+                shipping_method TEXT NOT NULL DEFAULT '',
+                shipping_label TEXT NOT NULL DEFAULT '',
+                billing TEXT NOT NULL DEFAULT '{}',
+                shipping TEXT NOT NULL DEFAULT '{}',
+                gift_wrap INTEGER NOT NULL DEFAULT 0,
+                gift_note TEXT NOT NULL DEFAULT '',
+                customer_note TEXT NOT NULL DEFAULT '',
+                carrier TEXT NOT NULL DEFAULT '',
+                tracking TEXT NOT NULL DEFAULT '',
+                stock_held INTEGER NOT NULL DEFAULT 0,
+                reserve_until INTEGER NOT NULL DEFAULT 0,
+                created_at INTEGER NOT NULL,
+                paid_at INTEGER,
+                updated_at INTEGER NOT NULL
+            )"
+        );
+        $pdo->exec('CREATE INDEX IF NOT EXISTS shop_orders_customer ON shop_orders (customer_id)');
+        $pdo->exec('CREATE INDEX IF NOT EXISTS shop_orders_email ON shop_orders (email)');
+        $pdo->exec('CREATE INDEX IF NOT EXISTS shop_orders_status ON shop_orders (status, created_at)');
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS shop_order_lines (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                order_id INTEGER NOT NULL,
+                product_id TEXT NOT NULL,
+                variant_key TEXT NOT NULL DEFAULT '',
+                title TEXT NOT NULL,
+                variant TEXT NOT NULL DEFAULT '',
+                sku TEXT NOT NULL DEFAULT '',
+                quantity INTEGER NOT NULL,
+                unit_cents INTEGER NOT NULL,
+                total_cents INTEGER NOT NULL,
+                tax_rate REAL NOT NULL DEFAULT 0,
+                tax_cents INTEGER NOT NULL DEFAULT 0,
+                tracked INTEGER NOT NULL DEFAULT 0
+            )"
+        );
+        $pdo->exec('CREATE INDEX IF NOT EXISTS shop_order_lines_order ON shop_order_lines (order_id)');
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS shop_order_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                order_id INTEGER NOT NULL,
+                at INTEGER NOT NULL,
+                kind TEXT NOT NULL,
+                message TEXT NOT NULL DEFAULT '',
+                actor TEXT NOT NULL DEFAULT ''
+            )"
+        );
+        $pdo->exec('CREATE INDEX IF NOT EXISTS shop_order_events_order ON shop_order_events (order_id)');
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS shop_sequences (
+                name TEXT PRIMARY KEY,
+                value INTEGER NOT NULL
+            )"
+        );
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS shop_coupons (
+                code TEXT PRIMARY KEY COLLATE NOCASE,
+                kind TEXT NOT NULL,
+                amount REAL NOT NULL DEFAULT 0,
+                min_cents INTEGER NOT NULL DEFAULT 0,
+                starts_at TEXT NOT NULL DEFAULT '',
+                ends_at TEXT NOT NULL DEFAULT '',
+                usage_limit INTEGER NOT NULL DEFAULT 0,
+                per_customer INTEGER NOT NULL DEFAULT 0,
+                collections TEXT NOT NULL DEFAULT '',
+                active INTEGER NOT NULL DEFAULT 1,
+                used INTEGER NOT NULL DEFAULT 0,
+                note TEXT NOT NULL DEFAULT '',
+                created_at INTEGER NOT NULL
             )"
         );
     }

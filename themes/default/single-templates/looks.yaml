@@ -1,0 +1,8 @@
+# Starting template for the page of a look when it is "Built with blocks" (Admin > Theme > Single Layouts). Data, not code: blocks in the
+# shape they are stored in. A site overrides it with custom/single-templates/looks.yaml. See docs/theming.md, "Starting templates".
+# The look's page of docs/shop-plan.md: its title, the picture with its pieces and Add the look, then its text and its blocks.
+blocks:
+  - { type: entry-title }
+  - { type: shop-the-look, variant: split }
+  - { type: content }
+  - { type: entry-blocks }
