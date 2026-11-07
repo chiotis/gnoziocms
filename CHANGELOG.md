@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.242 — 2026-11-07 — The shop's catalogue and design blocks
+The first two phases of the shop (`docs/shop-plan.md`). Nothing changes on a site until the **Products** content type is switched on.
+- **Products** (a catalogue type, off by default): price, old price, VAT rate, SKU, barcode, brand, pictures, a picture on hover, options and variants, Details sections and "Complete the look". Switching it on turns the shop on: **Looks** comes with it, the **Collections** and **Product categories** taxonomies are written, and **System › Shop settings** appears (General: store, currency, VAT rates with the Greek defaults, order number prefix, how long unpaid orders hold stock, guest checkout, terms and returns pages). Two new permissions: `shop.orders` and `shop.manage`.
+- **Shared fields**: a field marked `shared: true` in a type's YAML has one value for every translation; saving one language writes it into the others. Products share their price, SKU, options and variants; a translation names the options in its own words ("Gold = Χρυσό").
+- **Stock** is kept in the database (`shop_stock`), edited in the product's **Stock** box, one row per variant; holding pieces for an unpaid order can never sell the same last one twice.
+- **Collections** have a chapter number, three tones (background, surface, deep, with a contrast warning) and an intro quote. A collection's page and its products' pages take its tones in light mode.
+- **Shop blocks**, there only while the shop is on (`requires: shop` in a block.yaml): Product grid (with a picture between the cards), Product gallery, Product summary (options pick the variant's price and stock), Product details and Product price. Starting templates for the product page and the list. Products have Product structured data with their Offer.
+- **Design blocks for every site**, from the ALALEON design: Divider › Band of colours, Quote › Statement, Hero › Mosaic, Text and image › Story, Features › Strip, Archive title › Chapter, Filters › Chips, and new blocks **Term tiles**, **Next term**, **Newsletter** and **Image hotspots**. Header › Band of colours puts the collections' colours above the header.
+- The cart, checkout and payments (Viva Wallet, Cardlink) come in the next phases.
+- Tests: `tests/unit/shop-catalogue.php`, `tests/http/shop_test.py`, `tests/http/design_blocks_test.py`.
+
 ## 0.1.241 — 2026-11-06 — AI publishing in dark mode
 - **Dark mode fixes** in Manage > AI publishing, made in the admin's shared dark styles so other screens benefit: dark violet text on violet (the week view's writing chips, the Runs tab's *Working* line, the posts list's AI pictures bar) is now light violet; violet borders are toned down; chosen day, content-type and term chips get a soft blue tint instead of staying light blue; pink badges have a dark version.
 - The leftover "(used from phase 3)" note is gone from the *Writing model* label in Settings.
