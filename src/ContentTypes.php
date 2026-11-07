@@ -240,6 +240,10 @@ final class ContentTypes
             $normalized['filterable'] = ($definition['filterable'] ?? false) === true && in_array($normalized['type'], ['select', 'relation'], true);
             $normalized['card'] = ($definition['card'] ?? false) === true;
             $normalized['show'] = ($definition['show'] ?? true) !== false;
+            // One value for every translation of an entry (SharedFields): a product's price, its SKU, its variants.
+            if (($definition['shared'] ?? false) === true) {
+                $normalized['shared'] = true;
+            }
             $fields[(string)$fieldKey] = $normalized;
         }
 
@@ -669,6 +673,12 @@ final class ContentTypes
     public function declaredKeys(string $type): array
     {
         return array_map('strval', array_keys($this->definition($type)['fields']));
+    }
+
+    /** @return string[] the fields of a type that have one value for every translation (`shared: true`) */
+    public function sharedKeys(string $type): array
+    {
+        return SharedFields::keys($this->definition($type)['fields']);
     }
 
     /**

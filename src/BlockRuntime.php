@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace GnozioCMS;
 
+use GnozioCMS\Shop\Shop;
+use GnozioCMS\Shop\ShopCatalogue;
 use Twig\Environment;
 
 /**
@@ -35,6 +37,7 @@ final class BlockRuntime
      * @param \Closure(string, string, string): string $formEmbed the form of a slug, ready to place: slug, language, path of the page
      * @param (\Closure(): Taxonomies)|null $taxonomies the site's taxonomies (without them the bar of a map offers its categories only)
      * @param (\Closure(): ArchiveQuery)|null $archiveQuery the content index, which answers the Latest content block without reading every entry of the type
+     * @param (\Closure(bool): ShopCatalogue)|null $shopCatalogue the products as the shop blocks show them (with drafts or without)
      */
     public function __construct(
         private string $basePath,
@@ -53,7 +56,8 @@ final class BlockRuntime
         private \Closure $formEmbed,
         private ?\Closure $relations = null,
         private ?\Closure $taxonomies = null,
-        private ?\Closure $archiveQuery = null
+        private ?\Closure $archiveQuery = null,
+        private ?\Closure $shopCatalogue = null
     ) {
     }
 
@@ -85,7 +89,7 @@ final class BlockRuntime
                 }
                 return $options;
             },
-        ]);
+        ], fn(): array => Shop::features($this->content->getTypes()));
     }
 
     /**
@@ -158,6 +162,10 @@ final class BlockRuntime
                     return array_slice($items, $offset, $limit);
                 },
                 'form' => fn(string $slug): string => $slug === '' ? '' : ($this->formEmbed)(Slug::plain($slug), $lang, $path),
+                // The shop blocks (Product grid, gallery, summary, details): their products, while the shop is on.
+                'shop' => fn(string $type, array $values, array $context): array => $this->shopCatalogue !== null && Shop::enabled($this->content->getTypes())
+                    ? ($this->shopCatalogue)($includeHidden)->blockData($type, $values, $context)
+                    : ['_empty' => true] + $values,
                 'youtube' => function (string $playlistId, string $thumbs): array {
                     $result = $this->youtubePlaylist()->fetch($playlistId);
                     foreach ($result['items'] as $i => $video) {

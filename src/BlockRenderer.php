@@ -27,7 +27,7 @@ final class BlockRenderer
 
     /**
      * @param \Closure(string): string $markdown
-     * @param array<string, \Closure> $providers dynamic data: 'items' (type, lang, limit, category or tag, how many of the first to skip, order), 'form' (slug), 'youtube' (playlist id, picture source), 'file' (a site file's size in bytes), 'term' (a category's name), 'geo' (entries as a map draws them), 'geo_items' (given entries as a map draws them), 'geo_load' (when maps load), 'gallery' (the pictures of an entry's gallery field: entry, field key or '' for its gallery, language) and 'admin' (whether someone is signed in)
+     * @param array<string, \Closure> $providers dynamic data: 'items' (type, lang, limit, category or tag, how many of the first to skip, order), 'form' (slug), 'youtube' (playlist id, picture source), 'file' (a site file's size in bytes), 'term' (a category's name), 'geo' (entries as a map draws them), 'geo_items' (given entries as a map draws them), 'geo_load' (when maps load), 'gallery' (the pictures of an entry's gallery field: entry, field key or '' for its gallery, language), 'shop' (the data of a shop block: type, values, context) and 'admin' (whether someone is signed in)
      */
     public function __construct(
         private BlockRegistry $registry,
@@ -620,6 +620,13 @@ final class BlockRenderer
                 }
                 $values['cards'] = $cards;
                 $values['_types'] = array_values(array_unique($used));
+            }
+        }
+        if (str_starts_with($type, 'product-') && isset($this->providers['shop'])) {
+            // The shop blocks: the products a grid lists, or the product of the page with its price, options and pictures.
+            $values = ($this->providers['shop'])($type, $values, $context);
+            foreach (is_array($values['product']['details'] ?? null) ? $values['product']['details'] : [] as $i => $row) {
+                $values['product']['details'][$i]['html'] = $this->markdownHtml((string)$row['text']);
             }
         }
         if ($type === 'latest') {

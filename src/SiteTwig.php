@@ -41,6 +41,7 @@ final class SiteTwig
      * @param \Closure(): bool $hasSiteFeed
      * @param \Closure(): array<int, string> $siteLanguages
      * @param (\Closure(): Relations)|null $relations
+     * @param (\Closure(): bool)|null $shopEnabled whether the shop is on (Shop::enabled()): the `shop_enabled` global
      */
     public function __construct(
         private string $basePath,
@@ -64,7 +65,8 @@ final class SiteTwig
         private \Closure $blockRuntime,
         private \Closure $hasSiteFeed,
         private \Closure $siteLanguages,
-        private ?\Closure $relations = null
+        private ?\Closure $relations = null,
+        private ?\Closure $shopEnabled = null
     ) {
     }
 
@@ -324,6 +326,7 @@ final class SiteTwig
         $twig->addGlobal('theme_settings', $themeSettings());
         $twig->addGlobal('theme', ['name' => $this->theme->name(), 'version' => $this->theme->version()]);
         $twig->addGlobal('is_admin', ($this->signedIn)());
+        $twig->addGlobal('shop_enabled', $this->shopEnabled !== null && ($this->shopEnabled)());
 
         return $twig;
     }

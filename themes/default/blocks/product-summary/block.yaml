@@ -1,0 +1,25 @@
+label: Product summary
+description: 'The product''s collection, name and price, its options as choices (finish, size), whether it is in stock, and a short note. Only in a template built with blocks for products.'
+category: Shop
+scope: template
+requires: shop
+variants:
+  default: Default
+fields:
+  show_title:
+    type: toggle
+    label: Show the name as the page title
+    default: true
+    help: Turn it off when the template already starts with the title.
+  show_collection:
+    type: toggle
+    label: Show the collection above the name
+    default: true
+  show_sku:
+    type: toggle
+    label: Show the SKU
+    default: false
+  note:
+    type: text
+    label: Note under the price
+    placeholder: Handmade in Greece · Gift wrapping

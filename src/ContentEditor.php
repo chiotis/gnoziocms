@@ -502,6 +502,14 @@ final class ContentEditor
         }
         file_put_contents($path, $payload);
         $this->index($type, $path);
+        // Fields with one value for every translation (a product's price) are written into the other translations too.
+        if ($type !== 'forms') {
+            SharedFields::spread($this->content, $type, $translationId, $lang, is_array($data['custom_fields'] ?? null) ? $data['custom_fields'] : [], $this->types->sharedKeys($type),
+                function (string $written, string $writtenLang, string $text) use ($type, $actor): void {
+                    $this->index($type, $written);
+                    $this->revisions?->capture($type, $this->content->parseFile($type, $written)->slug, $writtenLang, $text, 'save', $actor);
+                });
+        }
 
         if ($oldPath !== '' && $oldPath !== $path && file_exists($oldPath)) {
             unlink($oldPath);

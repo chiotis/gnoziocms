@@ -14,6 +14,9 @@ use Symfony\Component\Yaml\Yaml;
  * block.yaml keys: label, description, variants (value: label), tone, spacing, fields.
  * Field extras understood here: `type: icon` (select from the icon set) and
  * `options_from: <source>` (select options supplied by the application, e.g. content types).
+ *
+ * `requires: shop` (or `requires: {feature: shop}`) makes a block exist only while that feature is on: while it is off the block
+ * is left out of every list, so no editor offers it and a page that holds one draws nothing for it (its settings stay in the file).
  */
 final class BlockRegistry
 {
@@ -27,9 +30,17 @@ final class BlockRegistry
 
     /**
      * @param array<string, \Closure(): array<string, string>> $optionSources
+     * @param (\Closure(): array<string, bool>)|null $features the features that are on, by name (Shop::features()); none given: all off
      */
-    public function __construct(private Theme $theme, private array $optionSources = [])
+    public function __construct(private Theme $theme, private array $optionSources = [], private ?\Closure $features = null)
     {
+    }
+
+    /** The feature a block.yaml asks for (`requires: shop` or `requires: {feature: shop}`), or '' for none. */
+    public static function requiredFeature(mixed $requires): string
+    {
+        $name = is_array($requires) ? ($requires['feature'] ?? '') : $requires;
+        return is_string($name) && preg_match('/^[a-z][a-z0-9_-]*$/', $name) ? $name : '';
     }
 
     /** @return array<string, array<string, mixed>> */
@@ -39,6 +50,7 @@ final class BlockRegistry
             return $this->definitions;
         }
         $definitions = [];
+        $features = $this->features !== null ? ($this->features)() : [];
         foreach ($this->theme->blockRoots() as $origin => $root) {
             foreach (glob($root . '/*/block.yaml') ?: [] as $file) {
                 $type = basename(dirname($file));
@@ -46,6 +58,9 @@ final class BlockRegistry
                     continue;
                 }
                 $definition = $this->load($type, $file, $origin);
+                if ($definition !== null && $definition['requires'] !== '' && ($features[$definition['requires']] ?? false) !== true) {
+                    continue;
+                }
                 if ($definition !== null) {
                     $definitions[$type] = $definition;
                 }
@@ -460,6 +475,7 @@ final class BlockRegistry
             'category' => trim((string)($raw['category'] ?? '')),
             // `scope: template` marks a block that only a template built with blocks offers (it draws a part of the entry the template is for).
             'scope' => in_array($raw['scope'] ?? '', ['template', 'archive'], true) ? (string)$raw['scope'] : '',
+            'requires' => self::requiredFeature($raw['requires'] ?? ''),
             'preview' => self::previewMarkup((string)@file_get_contents(dirname($file) . '/preview.svg')),
             'variants' => $variants,
             'variant_when' => $variantWhen,

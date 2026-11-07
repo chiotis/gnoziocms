@@ -1,0 +1,26 @@
+{# Product gallery: the product's pictures (its gallery, or its main image). Data from ShopCatalogue::details(). #}
+{% set product = block.product %}
+<div class="container">
+  <div class="product-gallery product-gallery-{{ block.ratio|default('portrait') }}" data-product-gallery>
+    {% if block.variant == 'thumbs' %}
+      <div class="product-gallery-main">
+        {{ image(product.images[0], {alt: product.title, sizes: '(min-width: 900px) 55vw, 92vw', max_width: 1800, priority: true, class: 'product-gallery-current'}) }}
+      </div>
+      {% if product.images|length > 1 %}
+        <ul class="product-gallery-thumbs" role="list">
+          {% for src in product.images %}
+            <li><button type="button" class="product-gallery-thumb" data-src="{{ src }}"{% if loop.first %} aria-current="true"{% endif %} aria-label="{{ t('shop.picture', 'Picture') }} {{ loop.index }}">
+              {{ image(src, {alt: '', sizes: '96px', max_width: 320}) }}
+            </button></li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% else %}
+      <ul class="product-gallery-stack" role="list">
+        {% for src in product.images %}
+          <li>{{ image(src, {alt: loop.first ? product.title : '', sizes: '(min-width: 900px) 55vw, 92vw', max_width: 1800, priority: loop.first}) }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  </div>
+</div>

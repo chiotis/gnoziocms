@@ -1,0 +1,41 @@
+# Looks: a picture of pieces worn together, the products in it and where each sits on the picture (docs/shop-plan.md).
+# It comes with the shop: switching Products on switches it on. The Shop the look and Looks blocks draw them.
+# Never rename a field key: content refers to it by name. Retire a field with `hidden: true`.
+label: { el: Looks, en: Looks }
+singular: { el: Look, en: Look }
+description: { el: 'Συνδυασμοί προϊόντων πάνω σε μια φωτογραφία, για το «Shop the look».', en: 'Products worn together on one picture, for "Shop the look".' }
+fields:
+  pieces:
+    type: repeater
+    label: { el: Κομμάτια, en: Pieces }
+    item_label: { el: Κομμάτι, en: Piece }
+    max: 8
+    shared: true
+    show: false
+    help: { el: 'Κάθε προϊόν του look και πού βρίσκεται στη φωτογραφία (από πάνω αριστερά, σε %).', en: 'Each product of the look and where it sits on the picture (from the top left, in %).' }
+    fields:
+      product:
+        type: relation
+        types: [products]
+        label: { el: Προϊόν, en: Product }
+      x:
+        type: number
+        label: { el: 'Θέση οριζόντια (%)', en: 'Across (%)' }
+        min: 0
+        max: 100
+      'y':
+        type: number
+        label: { el: 'Θέση κάθετα (%)', en: 'Down (%)' }
+        min: 0
+        max: 100
+single:
+  sidebar: false
+  header: false
+archive:
+  title: Looks
+  layout: cards
+  columns: '3'
+  per_page: 12
+  order: date_desc
+  show_excerpt: false
+  show_meta: false

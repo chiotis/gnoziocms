@@ -1,0 +1,59 @@
+{#
+  Product grid (docs/shop-plan.md, section 9): cards with the picture, a second picture on hover, the name and the price.
+  An editorial picture can take the place of a card after every N. The data comes from ShopCatalogue::blockData().
+#}
+{% import 'components/ui.twig' as ui %}
+{% set prefix = lang_prefix|default('') %}
+{% set all_href = link_url(block.link_url, prefix) %}
+{% set every = block.editorial_every|default(0) %}
+{% set editorial_href = link_url(block.editorial_url|default(''), prefix) %}
+{% set has_head = block.eyebrow|default('') or block.heading|default('') or block.intro|default('') %}
+<div class="container">
+  {% if has_head or (all_href and block.link_label) %}
+    <div class="product-grid-head">
+      {{ ui.section_header(block, heading_tag, block_uid, 'left') }}
+      {% if all_href and block.link_label %}
+        <a class="text-link" href="{{ all_href }}">{{ block.link_label }}{{ icon('arrow-right', 'btn-icon') }}</a>
+      {% endif %}
+    </div>
+  {% endif %}
+  <ul class="product-grid-list" style="--cols: {{ block.columns|default('4') }}" role="list">
+    {% for card in block.products %}
+      <li class="product-card">
+        {% set path = item_path(card.item, prefix) %}
+        <div class="product-card-media{% if block.hover_image and card.hover_image %} has-hover{% endif %}">
+          {% if card.image %}
+            {{ image(card.image, {alt: '', sizes: '(min-width: 1100px) 320px, (min-width: 700px) 30vw, 46vw', max_width: 1280, class: 'product-card-still'}) }}
+          {% else %}
+            <span class="product-card-blank" aria-hidden="true"></span>
+          {% endif %}
+          {% if block.hover_image and card.hover_image %}
+            {{ image(card.hover_image, {alt: '', sizes: '(min-width: 1100px) 320px, (min-width: 700px) 30vw, 46vw', max_width: 1280, class: 'product-card-hover', loading: 'lazy'}) }}
+          {% endif %}
+          {% if not card.available %}<span class="product-card-badge">{{ t('shop.sold_out', 'Sold out') }}</span>{% endif %}
+        </div>
+        <div class="product-card-body">
+          <{{ item_heading_tag }} class="product-card-title"><a href="{{ url(path) }}">{{ card.title }}</a></{{ item_heading_tag }}>
+          {% if block.show_collection and card.collection %}
+            <p class="product-card-collection"><span class="shop-dot"{% if card.collection.tones.deep %} style="--dot: {{ card.collection.tones.deep }}"{% endif %} aria-hidden="true"></span>{{ card.collection.label }}</p>
+          {% endif %}
+          {% if card.price_text %}
+            <p class="product-card-price">
+              {% if card.from %}<span class="product-card-from">{{ t('shop.from', 'from') }}</span> {% endif %}
+              {% if card.was_text %}<span class="visually-hidden">{{ t('shop.now', 'Now') }}</span>{% endif %}<span class="product-price">{{ card.price_text }}</span>
+              {% if card.was_text %}<s class="product-was"><span class="visually-hidden">{{ t('shop.was', 'was') }}</span> {{ card.was_text }}</s>{% endif %}
+            </p>
+          {% endif %}
+        </div>
+      </li>
+      {% if every > 0 and block.editorial_image|default('') and loop.index is divisible by(every) and not loop.last %}
+        <li class="product-grid-editorial">
+          {% if editorial_href %}<a href="{{ editorial_href }}" class="product-grid-editorial-link">{% endif %}
+            {{ image(block.editorial_image, {alt: '', sizes: '(min-width: 1100px) 660px, 92vw', max_width: 1600}) }}
+            {% if block.editorial_text|default('') %}<span class="product-grid-editorial-text">{{ block.editorial_text }}</span>{% endif %}
+          {% if editorial_href %}</a>{% endif %}
+        </li>
+      {% endif %}
+    {% endfor %}
+  </ul>
+</div>

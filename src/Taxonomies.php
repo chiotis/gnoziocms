@@ -21,7 +21,9 @@ use Symfony\Component\Yaml\Yaml;
  *             the term on the old site, kept so the import finds it again). A term's address is its parents' slugs and its own:
  *             /category/books/english. A slug is unique among the terms of one parent. A term can also have a picture
  *             (`image`: an address in the library, or a full link; `image_alt` per language) and its own text for search
- *             engines per language (`seo_title`, `seo_description`), each kept only when written.
+ *             engines per language (`seo_title`, `seo_description`), each kept only when written. A collection of the shop
+ *             (docs/shop-plan.md) also has a chapter `number`, three `tones` (bg, surface, deep: hex colours its pages and blocks
+ *             use) and an intro `quote` per language with its `quote_author`, each kept only when written.
  *   archive:  only the layout choices that differ from the defaults, the same ones a content type has
  *             (layout, columns, per_page, order, show_*, title, subtitle, taxonomies), plus `types`: the
  *             content types listed on its pages (none chosen means all of them), `include_children` and
@@ -245,10 +247,20 @@ final class Taxonomies
                 if ($term['image'] === '') {
                     unset($term['image']);
                 }
-                foreach (['image_alt', 'seo_title', 'seo_description'] as $text) {
+                foreach (['image_alt', 'seo_title', 'seo_description', 'quote'] as $text) {
                     if (implode('', $term[$text]) === '') {
                         unset($term[$text]);
                     }
+                }
+                if ($term['number'] === 0) {
+                    unset($term['number']);
+                }
+                $term['tones'] = array_filter($term['tones'], static fn(string $hex): bool => $hex !== '');
+                if ($term['tones'] === []) {
+                    unset($term['tones']);
+                }
+                if ($term['quote_author'] === '') {
+                    unset($term['quote_author']);
                 }
                 return $term;
             }, $this->normalizeTerms($terms, $hierarchical)),
@@ -312,6 +324,8 @@ final class Taxonomies
                 'hero_layout' => self::heroChoice($term['hero_layout'] ?? ''), 'imported_from' => is_string($term['imported_from'] ?? null) ? trim($term['imported_from']) : '',
                 'image' => self::imageChoice($term['image'] ?? ''), 'image_alt' => $this->textsByLanguage($term['image_alt'] ?? null),
                 'seo_title' => $this->textsByLanguage($term['seo_title'] ?? null), 'seo_description' => $this->textsByLanguage($term['seo_description'] ?? null),
+                'number' => self::numberChoice($term['number'] ?? null), 'tones' => self::tonesChoice($term['tones'] ?? null),
+                'quote' => $this->textsByLanguage($term['quote'] ?? null), 'quote_author' => self::lineChoice($term['quote_author'] ?? ''),
             ];
             $seen[$id] = true;
         }
@@ -521,6 +535,31 @@ final class Taxonomies
         return preg_match('#^(/[^\s"\'<>]*|https?://[^\s"\'<>]+)$#', $value) === 1 ? $value : '';
     }
 
+    /** A collection's chapter number, 1 to 999, or 0 for none. */
+    private static function numberChoice(mixed $value): int
+    {
+        return is_numeric($value) && (int)$value >= 1 && (int)$value <= 999 ? (int)$value : 0;
+    }
+
+    /** The three tones of a collection, each a hex colour (#rrggbb) or '' for none. @return array{bg: string, surface: string, deep: string} */
+    public static function tonesChoice(mixed $value): array
+    {
+        $value = is_array($value) ? $value : [];
+        $tones = [];
+        foreach (['bg', 'surface', 'deep'] as $key) {
+            $hex = strtolower(trim((string)(is_scalar($value[$key] ?? null) ? $value[$key] : '')));
+            $tones[$key] = preg_match('/^#[0-9a-f]{6}$/', $hex) === 1 ? $hex : '';
+        }
+        return $tones;
+    }
+
+    /** One short line (a name), or '' for none. */
+    private static function lineChoice(mixed $value): string
+    {
+        $value = is_string($value) ? trim(preg_replace('/\s+/', ' ', $value) ?? '') : '';
+        return mb_substr($value, 0, 120);
+    }
+
     /** One line of text for each language of the site, trimmed; what is not a list of texts is taken as none. @return array<string, string> */
     private function textsByLanguage(mixed $source): array
     {
@@ -652,7 +691,11 @@ final class Taxonomies
             $imageAlt = is_array($row['image_alt'] ?? null) ? $row['image_alt'] : ($existing['image_alt'] ?? []);
             $seoTitle = is_array($row['seo_title'] ?? null) ? $row['seo_title'] : ($existing['seo_title'] ?? []);
             $seoDescription = is_array($row['seo_description'] ?? null) ? $row['seo_description'] : ($existing['seo_description'] ?? []);
-            $drafts[$id] = ['index' => $index, 'id' => $id, 'slug' => $slug !== '' ? $slug : 'term', 'parent' => $parent, 'labels' => $row['labels'], 'descriptions' => $descriptions, 'hero_layout' => $hero, 'imported_from' => (string)($existing['imported_from'] ?? ''), 'new' => $existing === null, 'image' => $image, 'image_alt' => $imageAlt, 'seo_title' => $seoTitle, 'seo_description' => $seoDescription];
+            $number = array_key_exists('number', $row) && $row['number'] !== null ? self::numberChoice($row['number']) : ($existing['number'] ?? 0);
+            $tones = is_array($row['tones'] ?? null) ? self::tonesChoice($row['tones']) : ($existing['tones'] ?? self::tonesChoice(null));
+            $quote = is_array($row['quote'] ?? null) ? $row['quote'] : ($existing['quote'] ?? []);
+            $quoteAuthor = is_string($row['quote_author'] ?? null) ? self::lineChoice($row['quote_author']) : ($existing['quote_author'] ?? '');
+            $drafts[$id] = ['index' => $index, 'id' => $id, 'slug' => $slug !== '' ? $slug : 'term', 'parent' => $parent, 'labels' => $row['labels'], 'descriptions' => $descriptions, 'hero_layout' => $hero, 'imported_from' => (string)($existing['imported_from'] ?? ''), 'new' => $existing === null, 'image' => $image, 'image_alt' => $imageAlt, 'seo_title' => $seoTitle, 'seo_description' => $seoDescription, 'number' => $number, 'tones' => $tones, 'quote' => $quote, 'quote_author' => $quoteAuthor];
         }
 
         // The parents: a removed parent hands its children to its own parent; a loop is refused.
@@ -687,7 +730,7 @@ final class Taxonomies
         uasort($drafts, static fn(array $a, array $b): int => $a['index'] <=> $b['index']);
         $terms = [];
         foreach ($drafts as $draft) {
-            $terms[] = ['id' => $draft['id'], 'slug' => $draft['slug'], 'parent' => $draft['parent'], 'labels' => $draft['labels'], 'descriptions' => $draft['descriptions'], 'hero_layout' => $draft['hero_layout'], 'imported_from' => $draft['imported_from'], 'image' => $draft['image'], 'image_alt' => $draft['image_alt'], 'seo_title' => $draft['seo_title'], 'seo_description' => $draft['seo_description']];
+            $terms[] = ['id' => $draft['id'], 'slug' => $draft['slug'], 'parent' => $draft['parent'], 'labels' => $draft['labels'], 'descriptions' => $draft['descriptions'], 'hero_layout' => $draft['hero_layout'], 'imported_from' => $draft['imported_from'], 'image' => $draft['image'], 'image_alt' => $draft['image_alt'], 'seo_title' => $draft['seo_title'], 'seo_description' => $draft['seo_description'], 'number' => $draft['number'], 'tones' => $draft['tones'], 'quote' => $draft['quote'], 'quote_author' => $draft['quote_author']];
         }
 
         $moved = [];

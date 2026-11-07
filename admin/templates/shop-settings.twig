@@ -1,0 +1,88 @@
+{% extends '@admin/base.twig' %}
+{% set page_heading = 'Shop settings' %}
+{% import '@admin/partials/ui.twig' as ui %}
+{#
+  System > Shop settings (docs/shop-plan.md, section 8). Only while the shop is on (the Products content type). The General tab
+  comes first; Payments, Shipping, Taxes, Emails and Accounts are added by the phases that use them.
+#}
+
+{% block content %}
+  {% set btn = 'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium shadow-sm' %}
+  {% set primary = btn ~ ' bg-blue-600 text-white hover:bg-blue-700' %}
+  {% set input = 'block w-full rounded-md border border-slate-300 px-2.5 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500' %}
+  {% set card = 'rounded-lg border border-slate-200 bg-white' %}
+  {% set card_head = 'flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3' %}
+  {% set label = 'block text-xs font-medium text-slate-600 mb-1' %}
+  {% set note = 'mt-1 text-xs text-slate-500' %}
+
+  {{ ui.flash(message, done == 'ok' ? 'success' : 'error') }}
+
+  <header class="mb-4 border-b border-slate-200 pb-4">
+    <p class="max-w-3xl text-xs text-slate-500">The shop is on because the <strong>Products</strong> content type is on. Products, Looks, Collections and Product categories are edited like any content; this screen holds what the shop needs besides them. Payments, shipping and emails come with the cart and checkout.</p>
+    <div class="-mb-4 mt-3">
+      <nav class="flex min-w-0 gap-1 overflow-x-auto" aria-label="Shop settings">
+        {% for key, name in tabs %}
+          <a href="{{ url('admin/shop-settings?tab=' ~ key) }}" class="shrink-0 border-b-2 px-3 py-2 text-sm font-medium {{ tab == key ? 'border-blue-600 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-800' }}"{% if tab == key %} aria-current="page"{% endif %}>{{ name }}</a>
+        {% endfor %}
+      </nav>
+    </div>
+  </header>
+
+  {% if tab == 'general' %}
+    <form method="post" action="{{ url('admin/shop-settings?tab=general') }}" class="grid gap-4" data-shop-general>
+      {{ csrf_field() }}<input type="hidden" name="tab" value="general">
+
+      <section class="{{ card }}" aria-labelledby="shop-store">
+        <div class="{{ card_head }}"><h2 id="shop-store" class="text-sm font-semibold text-slate-900">Store</h2><span class="text-xs text-slate-400">On receipts, emails and the packing slip</span></div>
+        <div class="grid gap-4 px-4 py-4 sm:grid-cols-2">
+          <div><label class="{{ label }}" for="shop-name">Store name</label><input id="shop-name" name="store_name" value="{{ shop.store_name }}" class="{{ input }}" maxlength="200" placeholder="{{ site.title|default('') }}"></div>
+          <div><label class="{{ label }}" for="shop-vat">VAT number (ΑΦΜ)</label><input id="shop-vat" name="vat_number" value="{{ shop.vat_number }}" class="{{ input }}" maxlength="30" autocomplete="off"></div>
+          <div><label class="{{ label }}" for="shop-email">Email for orders</label><input id="shop-email" type="email" name="store_email" value="{{ shop.store_email }}" class="{{ input }}" maxlength="190"><p class="{{ note }}">New orders are sent here, and customers' replies come back to it.</p></div>
+          <div><label class="{{ label }}" for="shop-phone">Phone</label><input id="shop-phone" type="tel" name="store_phone" value="{{ shop.store_phone }}" class="{{ input }}" maxlength="40"></div>
+          <div class="sm:col-span-2"><label class="{{ label }}" for="shop-address">Address</label><textarea id="shop-address" name="store_address" rows="3" class="{{ input }}" maxlength="500">{{ shop.store_address }}</textarea></div>
+        </div>
+      </section>
+
+      <section class="{{ card }}" aria-labelledby="shop-money">
+        <div class="{{ card_head }}"><h2 id="shop-money" class="text-sm font-semibold text-slate-900">Money and VAT</h2><span class="text-xs text-slate-400">Prices are written with VAT in them</span></div>
+        <div class="grid gap-4 px-4 py-4">
+          <div class="max-w-xs"><label class="{{ label }}" for="shop-currency">Currency</label>
+            <select id="shop-currency" name="currency" class="{{ input }}">
+              {% for code, name in currencies %}<option value="{{ code }}" {% if shop.currency == code %}selected{% endif %}>{{ name }}</option>{% endfor %}
+            </select>
+          </div>
+          <fieldset>
+            <legend class="{{ label }}">VAT rate of each class (%)</legend>
+            <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {% for class, name in tax_labels %}
+                <label class="block text-xs text-slate-600"><span class="mb-1 block">{{ name }}</span>
+                  <input type="number" name="tax_rates[{{ class }}]" value="{{ shop.tax_rates[class] }}" min="0" max="100" step="0.01" inputmode="decimal" class="{{ input }}">
+                </label>
+              {% endfor %}
+            </div>
+            <p class="{{ note }}">Each product chooses its class. The Greek rates are the defaults; each order keeps the VAT it was sold with.</p>
+          </fieldset>
+        </div>
+      </section>
+
+      <section class="{{ card }}" aria-labelledby="shop-orders">
+        <div class="{{ card_head }}"><h2 id="shop-orders" class="text-sm font-semibold text-slate-900">Orders and checkout</h2></div>
+        <div class="grid gap-4 px-4 py-4 sm:grid-cols-2">
+          <div><label class="{{ label }}" for="shop-prefix">Order number prefix</label><input id="shop-prefix" name="order_prefix" value="{{ shop.order_prefix }}" class="{{ input }} font-mono uppercase" maxlength="12" placeholder="AL" spellcheck="false" autocomplete="off"><p class="{{ note }}">Letters, digits and dashes, e.g. AL gives AL-2026-00042. A prefix keeps new numbers apart from an old shop's.</p></div>
+          <div><label class="{{ label }}" for="shop-reserve">Hold stock for unpaid orders (minutes)</label><input id="shop-reserve" type="number" name="reserve_minutes" value="{{ shop.reserve_minutes }}" min="5" max="240" class="{{ input }}"><p class="{{ note }}">While a customer pays, their pieces are kept for them; after this they are free again.</p></div>
+          <label class="flex items-start gap-2 text-sm text-slate-700 sm:col-span-2"><input type="checkbox" name="guest_checkout" value="1" class="mt-0.5 h-4 w-4 rounded border-slate-300" {% if shop.guest_checkout %}checked{% endif %}><span>Customers can order without an account<span class="block text-xs text-slate-500">Subscriptions always need one.</span></span></label>
+          {% for key, name in {terms_page: 'Terms of sale', returns_page: 'Shipping and returns'} %}
+            <div><label class="{{ label }}" for="shop-{{ key }}">{{ name }} page</label>
+              <select id="shop-{{ key }}" name="{{ key }}" class="{{ input }}">
+                <option value="">—</option>
+                {% for slug, page_title in pages %}<option value="{{ slug }}" {% if shop[key] == slug %}selected{% endif %}>{{ page_title }}</option>{% endfor %}
+              </select>
+            </div>
+          {% endfor %}
+        </div>
+      </section>
+
+      <div><button type="submit" class="{{ primary }}">Save</button></div>
+    </form>
+  {% endif %}
+{% endblock %}

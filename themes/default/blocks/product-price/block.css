@@ -1,0 +1,20 @@
+/* Product price: one line under a product's name. */
+.product-price-line {
+  margin: 0;
+  font-size: var(--step--1);
+  color: var(--color-muted);
+}
+
+.product-price-line .product-price {
+  color: var(--c-deep, var(--color-text));
+}
+
+.product-price-line .product-was {
+  margin-left: 0.4em;
+}
+
+.product-price-out {
+  margin-left: 0.6em;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}

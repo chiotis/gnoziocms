@@ -210,4 +210,12 @@ return [
     'place.near.other' => 'Other',
     'route.season' => 'Best season',
     'route.profile_hint' => 'Move along the profile to see the place on the map',
+    // The shop (docs/shop-plan.md).
+    'shop.from' => 'from',
+    'shop.now' => 'Now',
+    'shop.was' => 'was',
+    'shop.sold_out' => 'Sold out',
+    'shop.in_stock' => 'In stock',
+    'shop.no_variant' => 'Not available in this combination',
+    'shop.picture' => 'Picture',
 ];

@@ -392,6 +392,51 @@
   var dlgNote = dialog.querySelector('[data-dialog-slug-note]');
   var dlgOld = dialog.querySelector('[data-dialog-old-slug]');
   var dlgImage = dialog.querySelector('[data-dialog-image]');
+  // A collection of the shop (Collections only): chapter number, three tones and intro quote.
+  var dlgCollection = dialog.querySelector('[data-dialog-collection]');
+  var dlgNumber = dialog.querySelector('[data-dialog-number]');
+  var dlgQuoteAuthor = dialog.querySelector('[data-dialog-quote-author]');
+  var dlgToneNote = dialog.querySelector('[data-dialog-tone-note]');
+  var TONES = ['bg', 'surface', 'deep'];
+  var HEX = /^#[0-9a-f]{6}$/;
+  function toneInput(key) { return dialog.querySelector('[data-dialog-tone="' + key + '"]'); }
+  function tonePick(key) { return dialog.querySelector('[data-dialog-tone-pick="' + key + '"]'); }
+  function luminance(hex) {
+    var c = [1, 3, 5].map(function (i) {
+      var v = parseInt(hex.substr(i, 2), 16) / 255;
+      return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  }
+  function ratio(a, b) {
+    var x = luminance(a), y = luminance(b);
+    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+  }
+  // The deep tone is the text and the buttons on the other two: it needs 4.5:1 on both to be read.
+  function checkTones() {
+    if (!dlgToneNote) return;
+    var deep = toneInput('deep').value.trim().toLowerCase();
+    var notes = [];
+    ['bg', 'surface'].forEach(function (key) {
+      var other = toneInput(key).value.trim().toLowerCase();
+      if (HEX.test(deep) && HEX.test(other)) {
+        var r = ratio(deep, other);
+        if (r < 4.5) notes.push('The deep tone on the ' + (key === 'bg' ? 'background' : 'surface') + ' is ' + r.toFixed(1) + ':1; text needs 4.5:1.');
+      }
+    });
+    dlgToneNote.textContent = notes.join(' ');
+    dlgToneNote.classList.toggle('hidden', notes.length === 0);
+  }
+  if (dlgCollection) {
+    TONES.forEach(function (key) {
+      tonePick(key).addEventListener('input', function () { toneInput(key).value = tonePick(key).value; checkTones(); });
+      toneInput(key).addEventListener('input', function () {
+        var v = toneInput(key).value.trim().toLowerCase();
+        if (HEX.test(v)) tonePick(key).value = v;
+        checkTones();
+      });
+    });
+  }
 
   function dialogInput(kindName, lang) { return dialog.querySelector('[data-dialog-' + kindName + '="' + lang + '"]'); }
 
@@ -450,6 +495,17 @@
       dialogInput('seo-description', lang).value = row ? field(row, 'seo_description', lang).value : '';
     });
     if (dlgHero) dlgHero.value = row && field(row, 'hero_layout') ? field(row, 'hero_layout').value : '';
+    if (dlgCollection) {
+      dlgNumber.value = row ? field(row, 'number').value : '';
+      dlgQuoteAuthor.value = row ? field(row, 'quote_author').value : '';
+      TONES.forEach(function (key) {
+        var v = row ? field(row, 'tone_' + key).value : '';
+        toneInput(key).value = v;
+        tonePick(key).value = HEX.test(v) ? v : '#ffffff';
+      });
+      langs().forEach(function (lang) { dialogInput('quote', lang).value = row ? field(row, 'quote', lang).value : ''; });
+      checkTones();
+    }
     fillParents(row);
     dlgTitle.textContent = row ? 'Edit term' : 'Add term';
     dlgSub.textContent = row ? 'Changes are applied when you press Save on the page.' : 'Give it a name in each language you use.';
@@ -513,6 +569,17 @@
         if (target.value !== value) { target.value = value; changed = true; }
       });
     });
+    if (dlgCollection) {
+      var put = function (target, value) { if (target.value !== value) { target.value = value; changed = true; } };
+      var number = parseInt(dlgNumber.value, 10);
+      put(field(row, 'number'), number >= 1 && number <= 999 ? String(number) : '');
+      put(field(row, 'quote_author'), dlgQuoteAuthor.value.trim());
+      TONES.forEach(function (key) {
+        var v = toneInput(key).value.trim().toLowerCase();
+        put(field(row, 'tone_' + key), HEX.test(v) ? v : '');
+      });
+      langs().forEach(function (lang) { put(field(row, 'quote', lang), dialogInput('quote', lang).value.trim()); });
+    }
     var parentField = field(row, 'parent');
     if (parentField && dlgParent && parentField.value !== dlgParent.value) { parentField.value = dlgParent.value; changed = true; }
     var slugField = field(row, 'slug');

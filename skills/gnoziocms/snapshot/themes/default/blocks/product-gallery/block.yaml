@@ -1,0 +1,17 @@
+label: Product gallery
+description: 'The pictures of the product: one under the other beside its details, or a large one with small ones to choose from. Only in a template built with blocks for products.'
+category: Shop
+scope: template
+requires: shop
+variants:
+  stack: Pictures one under the other
+  thumbs: Large picture and thumbnails
+fields:
+  ratio:
+    type: select
+    label: Shape of the pictures
+    default: portrait
+    options:
+      portrait: Portrait (4:5)
+      square: Square
+      natural: As they are

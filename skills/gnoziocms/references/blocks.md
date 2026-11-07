@@ -1,4 +1,4 @@
-# Blocks of this installation (GnozioCMS 0.1.228)
+# Blocks of this installation (GnozioCMS 0.1.241)
 
 ## Fields every block has
 
@@ -667,6 +667,71 @@ Plans or price lists, as cards side by side or as clean rows. One plan can be hi
 | &nbsp;&nbsp;`items[].button_label` | text |  |
 | &nbsp;&nbsp;`items[].button_url` | link |  |
 | &nbsp;&nbsp;`items[].highlight` | true / false; default `false` |  |
+
+### `product-details` — Product details
+The product's Details sections (Details, Care, Shipping & returns, Warranty) as sections that open one at a time. Only in a template built with blocks for products.
+
+**Layouts** (`variant`): `default` (Default). First is the default.
+
+| field | kind and choices | notes |
+|---|---|---|
+| `heading` | text |  |
+| `initial` | choice; one of `none`, `first`; default `none` |  |
+
+### `product-gallery` — Product gallery
+The pictures of the product: one under the other beside its details, or a large one with small ones to choose from. Only in a template built with blocks for products.
+
+**Layouts** (`variant`): `stack` (Pictures one under the other), `thumbs` (Large picture and thumbnails). First is the default.
+
+| field | kind and choices | notes |
+|---|---|---|
+| `ratio` | choice; one of `portrait`, `square`, `natural`; default `portrait` |  |
+
+### `product-grid` — Product grid
+Products as cards with their price: all of them, one collection or kind, a list you choose, or (on a product's page) more from its collection. A picture with a few words can sit between the cards.
+
+**Layouts** (`variant`): `grid` (Grid), `strip` (Scrolling strip). First is the default.
+
+| field | kind and choices | notes |
+|---|---|---|
+| `eyebrow` | text |  |
+| `heading` | text |  |
+| `intro` | text (several lines) |  |
+| `source` | choice; one of `all`, `collection`, `category`, `picked`, `related`, `complete`; default `all` |  |
+| `term` | text; only when `source` is `collection` or `category` | The address (slug) of the collection or the product category, as in Taxonomies. |
+| `picked` | text (several lines); only when `source` is `p` or `i` or `c` or `k` or `e` or `d` | The address (slug) of each product, one per line, in the order to show them. |
+| `order` | choice; one of `date_desc`, `date_asc`, `title_asc`, `price_asc`, `price_desc`; default `date_desc` |  |
+| `limit` | whole number; 1 to 48; default `8` |  |
+| `columns` | choice; one of `2`, `3`, `4`; default `4` |  |
+| `hover_image` | true / false; default `true` | The product's "Picture on hover", for example the piece worn. |
+| `show_collection` | true / false; default `false` |  |
+| `editorial_every` | whole number; 0 to 12; default `0` | 0 for none. The picture takes the place of one card, as a break in the grid. |
+| `editorial_image` | image; only when `editorial_every` is `1` or `2` or `3` or `4` or `5` or `6` or `7` or `8` or `9` or `10` or `11` or `12` |  |
+| `editorial_text` | text; only when `editorial_every` is `1` or `2` or `3` or `4` or `5` or `6` or `7` or `8` or `9` or `10` or `11` or `12` |  |
+| `editorial_url` | link; only when `editorial_every` is `1` or `2` or `3` or `4` or `5` or `6` or `7` or `8` or `9` or `10` or `11` or `12` |  |
+| `link_label` | text |  |
+| `link_url` | link |  |
+
+### `product-price` — Product price
+The product's price, with the old price struck through when it is on sale, and "Sold out" when nothing is left. For the card of a list of products and a product's template; elsewhere it shows nothing.
+
+**Layouts** (`variant`): `default` (Default). First is the default.
+
+| field | kind and choices | notes |
+|---|---|---|
+| `show_stock` | true / false; default `true` |  |
+
+### `product-summary` — Product summary
+The product's collection, name and price, its options as choices (finish, size), whether it is in stock, and a short note. Only in a template built with blocks for products.
+
+**Layouts** (`variant`): `default` (Default). First is the default.
+
+| field | kind and choices | notes |
+|---|---|---|
+| `show_title` | true / false; default `true` | Turn it off when the template already starts with the title. |
+| `show_collection` | true / false; default `true` |  |
+| `show_sku` | true / false; default `false` |  |
+| `note` | text |  |
 
 ### `quote` — Quote
 One large quotation, with who said it and an optional photo.
