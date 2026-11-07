@@ -19,6 +19,7 @@
   steps: block.items,
   image: block.image,
   image_alt: block.image_alt,
+  more_images: block.variant == 'mosaic' and not entry ? [block.image_2|default(''), block.image_3|default('')]|filter(i => i) : [],
   video: block._video|default(null),
   video_poster: block.video_poster,
   first: block_first,

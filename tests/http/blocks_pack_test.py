@@ -214,7 +214,7 @@ check('the other layouts are not centred', 'is-centered' not in h.split('<main')
 st, _, edit = root.get('/admin/edit?type=pages&slug=about&lang=en')
 data = json.loads(re.search(r'id="block-editor-data"[^>]*>(.*?)</script>', edit, re.S).group(1))
 hero_def = next(d for d in data['definitions'] if d['type'] == 'hero')
-check('the editor gets a drawing of each layout, the two centred ones included', sorted(hero_def['variant_previews']) == ['centered', 'cover', 'cover-centered', 'minimal', 'split', 'steps', 'steps-centered'], sorted(hero_def['variant_previews']))
+check('the editor gets a drawing of each layout, the two centred ones included', sorted(hero_def['variant_previews']) == ['centered', 'cover', 'cover-centered', 'minimal', 'mosaic', 'split', 'steps', 'steps-centered'], sorted(hero_def['variant_previews']))
 check('and the labels of the two new layouts', [o[1] for o in next(f for f in hero_def['common'] if f['key'] == 'variant')['options'] if o[0].endswith('-centered')] == ['Centered text over a full-width image', 'Centered text over a full-width image, with numbered steps'])
 app_css = root.get('/assets/css/app.css')[2]
 check('the admin style sheet has the drawn layout choice', '.bk-vtiles' in app_css)
@@ -232,7 +232,7 @@ check('the narrow picture column applies only to columns that are not bare', ':n
 
 # ---- Text and image: the picture can also sit above or below the text
 ti = defs['text-image']
-check('Text and image offers the picture above and below, drawn, and a wide shape', [o[0] for o in next(f for f in ti['common'] if f['key'] == 'variant')['options']] == ['image-right', 'image-left', 'image-top', 'image-bottom'] and sorted(ti['variant_previews']) == ['image-bottom', 'image-left', 'image-right', 'image-top'] and 'wide' in [o[0] for o in next(f for f in ti['fields'] if f['key'] == 'image_ratio')['options']], sorted(ti['variant_previews']))
+check('Text and image offers the picture above and below, drawn, and a wide shape', [o[0] for o in next(f for f in ti['common'] if f['key'] == 'variant')['options']] == ['image-right', 'image-left', 'image-top', 'image-bottom', 'story'] and sorted(ti['variant_previews']) == ['image-bottom', 'image-left', 'image-right', 'image-top', 'story'] and 'wide' in [o[0] for o in next(f for f in ti['fields'] if f['key'] == 'image_ratio')['options']], sorted(ti['variant_previews']))
 for variant in ('image-top', 'image-bottom'):
     st, _, html = page('ti-' + variant, {'type': 'text-image', 'variant': variant, 'heading': 'Above or below', 'image': '/uploads/a.png', 'image_ratio': 'wide'})
     t = section(html, 'text-image')

@@ -1,0 +1,39 @@
+label: Image hotspots
+description: 'A picture with numbered points on it; each opens a short note with a link (the pieces of a look, the rooms of a house, the parts of a product). Beside the picture, the same notes as a list.'
+category: Showcase
+variants:
+  beside: List beside the picture
+  below: List below the picture
+fields:
+  eyebrow:
+    type: text
+    label: Eyebrow
+  heading:
+    type: text
+    label: Heading
+  intro:
+    type: textarea
+    label: Introduction
+  image:
+    type: image
+    label: Picture
+  image_alt:
+    type: text
+    label: Picture description
+  ratio:
+    type: select
+    label: Shape of the picture
+    default: portrait
+    options: { portrait: 'Portrait (4:5)', square: Square, landscape: 'Landscape (4:3)', natural: As it is }
+  points:
+    type: repeater
+    label: Points
+    item_label: Point
+    max: 12
+    fields:
+      x: { type: number, label: 'Across (%)', min: 0, max: 100, default: 50 }
+      'y': { type: number, label: 'Down (%)', min: 0, max: 100, default: 50 }
+      title: { type: text, label: Title }
+      text: { type: text, label: Short text, placeholder: '€145' }
+      link: { type: link, label: Link }
+      link_label: { type: text, label: Link text, placeholder: See it }

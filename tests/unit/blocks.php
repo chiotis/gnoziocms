@@ -93,8 +93,8 @@ check('video non-video file', BlockRenderer::videoInfo('/uploads/media/a.docx'),
 // ---- the blocks of the second family: image, divider, quote, downloads, checklist, portfolio, table, marquee
 foreach (['image', 'divider', 'quote', 'downloads', 'checklist', 'portfolio', 'table', 'marquee'] as $t) check("$t registered", $registry->get($t) !== null, true);
 check('image variants and shape default', [array_keys($registry->get('image')['variants']), $registry->get('image')['fields']['ratio']['default']], [['wide', 'narrow', 'full'], 'original']);
-check('divider variants', array_keys($registry->get('divider')['variants']), ['space', 'line', 'label']);
-check('quote variants', array_keys($registry->get('quote')['variants']), ['centered', 'bar', 'photo']);
+check('divider variants', array_keys($registry->get('divider')['variants']), ['space', 'line', 'label', 'thread']);
+check('quote variants', array_keys($registry->get('quote')['variants']), ['centered', 'bar', 'photo', 'statement']);
 check('downloads variants, and a field that is a file', [array_keys($registry->get('downloads')['variants']), $registry->get('downloads')['fields']['items']['fields']['file']['type']], [['list', 'cards'], 'file']);
 check('a file is kept as a safe address, empty or not', [FieldSchema::clean($registry->get('downloads')['fields']['items']['fields']['file'], ' /uploads/media/a.pdf '), FieldSchema::clean($registry->get('downloads')['fields']['items']['fields']['file'], 'javascript:alert(1)'), FieldSchema::clean($registry->get('downloads')['fields']['items']['fields']['file'], 'https://x.test/a b.pdf')], ['/uploads/media/a.pdf', '', '']);
 check('checklist variants, and its mark', [array_keys($registry->get('checklist')['variants']), $registry->get('checklist')['fields']['icon']['default']], [['plain', 'cards', 'split'], 'check']);
@@ -227,11 +227,11 @@ check('hero steps keep their steps', [count($heroSteps['items']), $heroSteps['it
 check('hero has at most four steps', $registry->get('hero')['fields']['items']['max'], 4);
 // ---- the hero: centred text over a picture is a layout of its own, and each layout is drawn
 $heroDef = array_column($registry->editorDefinitions(), null, 'type')['hero'];
-check('the hero has the two centred layouts over a picture, after the ones they follow', array_keys($registry->get('hero')['variants']), ['split', 'centered', 'cover', 'cover-centered', 'steps', 'steps-centered', 'minimal']);
-check('a centred layout is styled as the one it follows', $registry->get('hero')['variant_extends'], ['cover-centered' => 'cover', 'steps-centered' => 'steps']);
+check('the hero has the two centred layouts over a picture, after the ones they follow', array_keys($registry->get('hero')['variants']), ['split', 'centered', 'cover', 'cover-centered', 'steps', 'steps-centered', 'minimal', 'mosaic']);
+check('a centred layout (and the Mosaic) is styled as the one it follows', $registry->get('hero')['variant_extends'], ['cover-centered' => 'cover', 'steps-centered' => 'steps', 'mosaic' => 'split']);
 $drawn = array_keys((array)$heroDef['variant_previews']);
 sort($drawn);
-check('every layout of the hero is drawn', $drawn, ['centered', 'cover', 'cover-centered', 'minimal', 'split', 'steps', 'steps-centered']);
+check('every layout of the hero is drawn', $drawn, ['centered', 'cover', 'cover-centered', 'minimal', 'mosaic', 'split', 'steps', 'steps-centered']);
 check('a drawing is the sanitised markup of its file', str_contains($heroDef['variant_previews']['cover-centered'], '<rect') && !str_contains(implode('', (array)$heroDef['variant_previews']), 'script'), true);
 check('the hero has no text alignment field any more', [isset($registry->get('hero')['fields']['align']), $heroDef['design_fields']], [false, []]);
 $bannerDef = array_column($registry->editorDefinitions(), null, 'type')['banner'];

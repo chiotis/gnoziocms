@@ -5,6 +5,7 @@ scope: archive
 spacing: compact
 variants:
   default: Default
+  chips: Chips (one tap per choice)
 fields:
   show_count:
     type: toggle

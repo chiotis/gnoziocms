@@ -127,6 +127,7 @@ final class TaxonomyPage
             'archive' => $page,
             'type' => $key,
             'taxonomy' => $key,
+            'term_id' => $termId,
             'archive_title' => $archive['title'] !== '' ? $fill($archive['title']) : $titlePrefix . ': ' . $label,
             'archive_subtitle' => $archive['subtitle'] !== '' ? $fill($archive['subtitle']) : $description,
             'term_description' => $description,

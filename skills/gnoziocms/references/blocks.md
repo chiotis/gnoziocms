@@ -59,11 +59,11 @@ Compact titles that open and close, made to sit in a narrow column. Smaller than
 ### `archive-title` — Archive title
 The title area of a list of entries: its title and subtitle (for a category or tag, its name and description), a picture, and the trail. Only in an archive template built with blocks.
 
-**Layouts** (`variant`): `auto` (As set for the list), `default` (Default), `centered` (Centered), `split` (Split), `cover` (Cover), `minimal` (Minimal). First is the default.
+**Layouts** (`variant`): `auto` (As set for the list), `default` (Default), `centered` (Centered), `split` (Split), `cover` (Cover), `minimal` (Minimal), `chapter` (Chapter (a collection's number, title and quote)). First is the default.
 
 | field | kind and choices | notes |
 |---|---|---|
-| `image` | image | Optional. Leave empty to use the picture chosen for the list in Archive Layouts. |
+| `image` | image | Optional. Leave empty to use the picture chosen for the list in Archive Layouts (in the Chapter layout, the term's own picture first). |
 | `breadcrumbs` | true / false; default `false` |  |
 
 ### `banner` — Banner
@@ -239,9 +239,9 @@ A short, focused invitation with one or two buttons.
 | &nbsp;&nbsp;`actions[].style` | choice; one of `primary`, `secondary`, `text`; default `primary` |  |
 
 ### `divider` — Divider
-Space between two sections, or a line, optionally with a short label in the middle.
+Space between two sections, a line (optionally with a short label in the middle), or a thin band of colours.
 
-**Layouts** (`variant`): `space` (Empty space), `line` (Line), `label` (Line with a label). First is the default.
+**Layouts** (`variant`): `space` (Empty space), `line` (Line), `label` (Line with a label), `thread` (Band of colours). First is the default.
 
 | field | kind and choices | notes |
 |---|---|---|
@@ -249,6 +249,15 @@ Space between two sections, or a line, optionally with a short label in the midd
 | `height` | choice; one of `s`, `m`, `l`, `xl`; default `m`; only when `variant` is `s` or `p` or `a` or `c` or `e` |  |
 | `style` | choice; one of `solid`, `dashed`, `dotted`; default `solid`; only when `variant` is `line` or `label` |  |
 | `line_width` | choice; one of `page`, `narrow`, `short`; default `narrow`; only when `variant` is `line` or `label` |  |
+| `thread_from` | choice; one of `colours`, `terms`; default `colours`; only when `variant` is `t` or `h` or `r` or `e` or `a` or `d` |  |
+| `thread_taxonomy` | text; default `collections`; only when `variant` is `t` or `h` or `r` or `e` or `a` or `d` and `thread_from` is `t` or `e` or `r` or `m` or `s` | The address of the taxonomy whose terms give the colours (their deep tone, in their order), for example collections. |
+| `colour_1` | colour; only when `variant` is `t` or `h` or `r` or `e` or `a` or `d` and `thread_from` is `c` or `o` or `l` or `o` or `u` or `r` or `s` |  |
+| `colour_2` | colour; only when `variant` is `t` or `h` or `r` or `e` or `a` or `d` and `thread_from` is `c` or `o` or `l` or `o` or `u` or `r` or `s` |  |
+| `colour_3` | colour; only when `variant` is `t` or `h` or `r` or `e` or `a` or `d` and `thread_from` is `c` or `o` or `l` or `o` or `u` or `r` or `s` |  |
+| `colour_4` | colour; only when `variant` is `t` or `h` or `r` or `e` or `a` or `d` and `thread_from` is `c` or `o` or `l` or `o` or `u` or `r` or `s` |  |
+| `colour_5` | colour; only when `variant` is `t` or `h` or `r` or `e` or `a` or `d` and `thread_from` is `c` or `o` or `l` or `o` or `u` or `r` or `s` |  |
+| `colour_6` | colour; only when `variant` is `t` or `h` or `r` or `e` or `a` or `d` and `thread_from` is `c` or `o` or `l` or `o` or `u` or `r` or `s` |  |
+| `thread_height` | choice; one of `xs`, `s`, `m`; default `s`; only when `variant` is `t` or `h` or `r` or `e` or `a` or `d` |  |
 
 ### `downloads` — Downloads
 Documents to download, each with its kind of file and size. Pick the files from the media library; the size is read from the file.
@@ -350,7 +359,7 @@ Questions and answers that open one at a time. Adds FAQ structured data for sear
 ### `features` — Features
 A grid of features or services, each with an icon, a title, a short text, and an optional link.
 
-**Layouts** (`variant`): `cards` (Cards), `plain` (Plain, no cards), `numbered` (Numbered steps). First is the default.
+**Layouts** (`variant`): `cards` (Cards), `plain` (Plain, no cards), `numbered` (Numbered steps), `strip` (A strip of short points). First is the default.
 
 | field | kind and choices | notes |
 |---|---|---|
@@ -369,7 +378,7 @@ A grid of features or services, each with an icon, a title, a short text, and an
 ### `filter-bar` — Filters
 The filters of a list of entries (the taxonomies and the select fields chosen for it), as a form with no script. Only values that some entry has are offered. Only in an archive template built with blocks.
 
-**Layouts** (`variant`): `default` (Default). First is the default.
+**Layouts** (`variant`): `default` (Default), `chips` (Chips (one tap per choice)). First is the default.
 
 | field | kind and choices | notes |
 |---|---|---|
@@ -410,7 +419,7 @@ A set of images in a grid, a masonry layout, or a scrolling strip. Images open l
 ### `hero` — Hero
 Opening section with a strong heading, supporting text, buttons, and an image or a video behind it. The steps layout adds up to four numbered steps over the image. It can show the newest entry of a content type (a post, a project) instead of typed text. As the first block of a page it becomes the page title (h1).
 
-**Layouts** (`variant`): `split` (Text and image side by side), `centered` (Centered text, wide image below), `cover` (Text over a full-width image), `cover-centered` (Centered text over a full-width image), `steps` (Text over a full-width image, with numbered steps), `steps-centered` (Centered text over a full-width image, with numbered steps), `minimal` (Large heading, no image). First is the default.
+**Layouts** (`variant`): `split` (Text and image side by side), `centered` (Centered text, wide image below), `cover` (Text over a full-width image), `cover-centered` (Centered text over a full-width image), `steps` (Text over a full-width image, with numbered steps), `steps-centered` (Centered text over a full-width image, with numbered steps), `minimal` (Large heading, no image), `mosaic` (Text beside three pictures). First is the default.
 
 | field | kind and choices | notes |
 |---|---|---|
@@ -437,6 +446,8 @@ Opening section with a strong heading, supporting text, buttons, and an image or
 | `background` | choice; one of `image`, `video`; default `image`; only when `source` is `m` or `a` or `n` or `u` or `a` or `l` |  |
 | `image` | image; only when `background` is `i` or `m` or `a` or `g` or `e` and `source` is `m` or `a` or `n` or `u` or `a` or `l` |  |
 | `image_alt` | text; only when `background` is `i` or `m` or `a` or `g` or `e` and `source` is `m` or `a` or `n` or `u` or `a` or `l` | What the image shows, for people who cannot see it. Leave empty if it is purely decorative. |
+| `image_2` | image; only when `variant` is `m` or `o` or `s` or `a` or `i` or `c` and `source` is `m` or `a` or `n` or `u` or `a` or `l` | The smaller pictures of the mosaic, beside and under the first, for example a detail and a texture. |
+| `image_3` | image; only when `variant` is `m` or `o` or `s` or `a` or `i` or `c` and `source` is `m` or `a` or `n` or `u` or `a` or `l` |  |
 | `video` | video; only when `background` is `v` or `i` or `d` or `e` or `o` and `source` is `m` or `a` or `n` or `u` or `a` or `l` | Choose a video from the media library (.mp4 or .webm), or paste a YouTube or Vimeo link, or the address of a video file elsewhere. It plays silently, in a loop, with a pause button. A YouTube or Vimeo video is loaded from them when the page opens. |
 | `video_poster` | image; only when `background` is `v` or `i` or `d` or `e` or `o` and `source` is `m` or `a` or `n` or `u` or `a` or `l` | Shown while the video loads, when the visitor has asked their device for less motion, and under a video that is paused. Recommended, and it is the share image of the page when it has none. |
 
@@ -510,6 +521,27 @@ One image with a caption, an optional link, and the shape you choose. It can be 
 | `image_width_unit` | choice; one of `%`, `px`; default `%` | % of the column, or px. |
 | `image_align` | choice; one of `left`, `center`, `right`; default `center` | Where a picture narrower than its column sits. The caption follows. |
 | `image_full_mobile` | true / false; default `true` | A narrower picture fills the column on a phone, so small columns stay readable. |
+
+### `image-hotspots` — Image hotspots
+A picture with numbered points on it; each opens a short note with a link (the pieces of a look, the rooms of a house, the parts of a product). Beside the picture, the same notes as a list.
+
+**Layouts** (`variant`): `beside` (List beside the picture), `below` (List below the picture). First is the default.
+
+| field | kind and choices | notes |
+|---|---|---|
+| `eyebrow` | text |  |
+| `heading` | text |  |
+| `intro` | text (several lines) |  |
+| `image` | image |  |
+| `image_alt` | text |  |
+| `ratio` | choice; one of `portrait`, `square`, `landscape`, `natural`; default `portrait` |  |
+| `points` | list of rows; at most 12 rows |  |
+| &nbsp;&nbsp;`points[].x` | whole number; 0 to 100; default `50` |  |
+| &nbsp;&nbsp;`points[].y` | whole number; 0 to 100; default `50` |  |
+| &nbsp;&nbsp;`points[].title` | text |  |
+| &nbsp;&nbsp;`points[].text` | text |  |
+| &nbsp;&nbsp;`points[].link` | link |  |
+| &nbsp;&nbsp;`points[].link_label` | text |  |
 
 ### `latest` — Latest content
 The newest posts, projects, or any content type, shown from a quiet text list to a magazine layout. Updates by itself when you publish.
@@ -588,6 +620,30 @@ A band that scrolls by itself, with big words or logos. It stops for people who 
 | &nbsp;&nbsp;`items[].text` | text | The word, or the name of the logo (used when there is no image). |
 | &nbsp;&nbsp;`items[].image` | image |  |
 | &nbsp;&nbsp;`items[].url` | link |  |
+
+### `newsletter` — Newsletter
+A quiet invitation to sign up, like a letter: a heading, a few words and one of the site's forms (an email field and a button, made in Admin > Forms).
+
+**Layouts** (`variant`): `centered` (Centred), `inline` (Text beside the form). First is the default.
+
+| field | kind and choices | notes |
+|---|---|---|
+| `eyebrow` | text |  |
+| `heading` | text |  |
+| `intro` | text (several lines) |  |
+| `form` | choice; the slug of a form of the site (content/forms) | The form people sign up with. Keep it short (an email field and a button); its messages and storage are the form's own. |
+| `dots` | true / false; default `false` |  |
+
+### `next-term` — Next term
+On the page of a term (a collection, a category), a link to the next term of its taxonomy, in their order, as "Next chapter: Kampos →". Only in an archive template built with blocks.
+
+**Layouts** (`variant`): `next` (The next one), `both` (The previous and the next). First is the default.
+
+| field | kind and choices | notes |
+|---|---|---|
+| `label` | text |  |
+| `previous_label` | text; only when `variant` is `b` or `o` or `t` or `h` |  |
+| `loop` | true / false; default `true` |  |
 
 ### `playlist` — YouTube playlist
 The videos of a YouTube playlist, drawn by the site as a grid, a list, a strip, or a player with the list beside it. Nothing is loaded from YouTube until a visitor plays a video. The playlist must be public or unlisted.
@@ -736,15 +792,17 @@ The product's collection, name and price, its options as choices (finish, size),
 ### `quote` — Quote
 One large quotation, with who said it and an optional photo.
 
-**Layouts** (`variant`): `centered` (Centered), `bar` (Left, with a bar), `photo` (Photo beside the quote). First is the default.
+**Layouts** (`variant`): `centered` (Centered), `bar` (Left, with a bar), `photo` (Photo beside the quote), `statement` (Statement (large, with a second line)). First is the default.
 
 | field | kind and choices | notes |
 |---|---|---|
 | `quote` | text (several lines) |  |
+| `translation` | text (several lines); only when `variant` is `s` or `t` or `a` or `t` or `e` or `m` or `e` or `n` or `t` | Under the quote, smaller, for example the same words in another language. |
 | `name` | text |  |
 | `role` | text |  |
 | `image` | image; only when `variant` is `p` or `h` or `o` or `t` or `o` |  |
 | `mark` | true / false; default `true` |  |
+| `dots` | true / false; default `false` | A small row of dots in the accent colour, as a quiet mark. |
 
 ### `result-count` — Result count
 How many entries the list has. By default it appears only when filters are applied. Only in an archive template built with blocks.
@@ -823,6 +881,24 @@ People with photo, role, a short bio, and contact links. Initials are shown when
 | &nbsp;&nbsp;`members[].email` | email |  |
 | &nbsp;&nbsp;`members[].linkedin` | web address |  |
 
+### `term-tiles` — Term tiles
+The terms of a taxonomy (collections, categories, any taxonomy of the site) as numbered tiles with their pictures, or as a list whose picture changes as you move over it. Each leads to the term's page.
+
+**Layouts** (`variant`): `grid` (Tiles), `list` (List with a picture that changes). First is the default.
+
+| field | kind and choices | notes |
+|---|---|---|
+| `eyebrow` | text |  |
+| `heading` | text |  |
+| `intro` | text (several lines) |  |
+| `taxonomy` | text; default `categories` | The address of the taxonomy, as in Taxonomies (categories, tags, collections…). Its terms are shown in their order. |
+| `parent` | text | Optional. The address of a term, to show the terms under it instead of the top ones. |
+| `limit` | whole number; 1 to 24; default `6` |  |
+| `numbers` | true / false; default `true` | A collection's own chapter number, or the term's place in the list. |
+| `ratio` | choice; one of `portrait`, `square`, `landscape`; default `portrait`; only when `variant` is `g` or `r` or `i` or `d` |  |
+| `link_label` | text |  |
+| `link_url` | link |  |
+
 ### `testimonials` — Testimonials
 Quotes from clients or partners, with name, role, and an optional photo.
 
@@ -858,12 +934,13 @@ A heading with rich text. Use it for introductions, statements, and longer copy.
 ### `text-image` — Text and image
 Text with an image beside it, above it or below it. Alternate left and right to give long pages a rhythm.
 
-**Layouts** (`variant`): `image-right` (Image on the right), `image-left` (Image on the left), `image-top` (Image above the text), `image-bottom` (Image below the text). First is the default.
+**Layouts** (`variant`): `image-right` (Image on the right), `image-left` (Image on the left), `image-top` (Image above the text), `image-bottom` (Image below the text), `story` (Story (a large quote, the text, a portrait on the right)). First is the default.
 
 | field | kind and choices | notes |
 |---|---|---|
 | `eyebrow` | text |  |
 | `heading` | text |  |
+| `pull_quote` | text (several lines); only when `variant` is `s` or `t` or `o` or `r` or `y` | Large, above the text. |
 | `body` | Markdown | Bullet lists are shown with check marks. |
 | `actions` | list of rows; at most 2 rows |  |
 | &nbsp;&nbsp;`actions[].label` | text |  |
@@ -872,6 +949,7 @@ Text with an image beside it, above it or below it. Alternate left and right to 
 | `image` | image |  |
 | `image_alt` | text | What the image shows. Leave empty if it is purely decorative. |
 | `image_ratio` | choice; one of `landscape`, `wide`, `portrait`, `square`; default `landscape` |  |
+| `dots` | true / false; default `false` |  |
 
 ### `timeline` — Timeline
 Milestones or process steps in order, each with a date or label, a title, and text.

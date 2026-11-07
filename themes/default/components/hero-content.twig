@@ -1,6 +1,6 @@
 {#
   The content of a Hero, shared by the Hero block and by each slide of the Hero slider, so a slide is a hero in every detail.
-  macro body(h) takes: variant, eyebrow, heading, heading_tag, heading_id, heading_url (the heading links there: an entry's page), text, actions, highlights, steps, image, image_alt,
+  macro body(h) takes: variant, eyebrow, heading, heading_tag, heading_id, heading_url (the heading links there: an entry's page), text, actions, highlights, steps, image, image_alt, more_images (the Mosaic's other pictures),
   video (a playable video or null), video_poster, first (opens the page: its picture loads first), defer (a slide after the first: its picture
   waits for the slider's script, so the page does not fetch it), item_heading_tag, prefix.
 #}
@@ -28,7 +28,7 @@
   {% set has_picture = has_image or has_video %}
   {# The opening hero image is the largest thing on screen: load it first, never lazily. #}
   {% set is_cover = variant in ['cover', 'cover-centered', 'steps', 'steps-centered'] %}
-  {% set media_sizes = variant == 'split' ? '(min-width: 960px) 46vw, 92vw' : (is_cover ? '100vw' : '(min-width: 1280px) 1216px, 92vw') %}
+  {% set media_sizes = variant in ['split', 'mosaic'] ? '(min-width: 960px) 46vw, 92vw' : (is_cover ? '100vw' : '(min-width: 1280px) 1216px, 92vw') %}
   {# The two centred layouts over a picture (split, centered and minimal have their own alignment). #}
   {% set centred_cover = variant in ['cover-centered', 'steps-centered'] %}
   {% if is_cover and has_picture %}
@@ -74,12 +74,15 @@
       </ol>
     {% endif %}
     {% if has_picture and not is_cover %}
-      <div class="hero-media media-frame">
+      {% set more_images = has_video ? [] : h.more_images|default([]) %}
+      <div class="hero-media media-frame{% if more_images is not empty %} hero-mosaic has-{{ more_images|length + 1 }}{% endif %}">
         {% if has_video %}
           {{ hero.video(video, h.video_poster, media_sizes, h.first) }}
           {{ hero.toggle(false) }}
         {% else %}
-          {{ image(h.image, {alt: h.image_alt, sizes: media_sizes, priority: h.first, defer: h.defer|default(false)}) }}
+          {{ image(h.image, {alt: h.image_alt, sizes: media_sizes, priority: h.first, defer: h.defer|default(false), class: more_images is not empty ? 'hero-mosaic-main' : ''}) }}
+          {# The Mosaic layout: the first picture large, the others smaller beside and under it. #}
+          {% for more in more_images %}{{ image(more, {alt: '', sizes: '(min-width: 960px) 20vw, 45vw', class: 'hero-mosaic-more'}) }}{% endfor %}
         {% endif %}
       </div>
     {% endif %}

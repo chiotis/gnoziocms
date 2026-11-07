@@ -1,0 +1,22 @@
+label: Next term
+description: 'On the page of a term (a collection, a category), a link to the next term of its taxonomy, in their order, as "Next chapter: Kampos →". Only in an archive template built with blocks.'
+category: Archive
+scope: archive
+spacing: compact
+variants:
+  next: The next one
+  both: The previous and the next
+fields:
+  label:
+    type: text
+    label: Words before the name
+    placeholder: Next chapter
+  previous_label:
+    type: text
+    label: Words before the previous one
+    placeholder: Previous chapter
+    when: { variant: both }
+  loop:
+    type: toggle
+    label: After the last, the first again
+    default: true

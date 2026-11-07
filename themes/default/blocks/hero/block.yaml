@@ -9,8 +9,9 @@ variants:
   steps: Text over a full-width image, with numbered steps
   steps-centered: Centered text over a full-width image, with numbered steps
   minimal: Large heading, no image
+  mosaic: Text beside three pictures
 # A centred layout is styled as the layout it is a variant of (the section also gets that layout's class).
-variant_extends: { cover-centered: cover, steps-centered: steps }
+variant_extends: { cover-centered: cover, steps-centered: steps, mosaic: split }
 # Version 0.1.86 had a text alignment field for these two layouts; a block that used it becomes the layout it means.
 variant_migrations:
   - { when: { variant: cover, align: center }, to: cover-centered, drop: [align] }
@@ -119,6 +120,15 @@ fields:
     label: Image description
     help: What the image shows, for people who cannot see it. Leave empty if it is purely decorative.
     when: { background: image, source: manual }
+  image_2:
+    type: image
+    label: Second picture
+    help: The smaller pictures of the mosaic, beside and under the first, for example a detail and a texture.
+    when: { variant: mosaic, source: manual }
+  image_3:
+    type: image
+    label: Third picture
+    when: { variant: mosaic, source: manual }
   video:
     type: video
     label: Video

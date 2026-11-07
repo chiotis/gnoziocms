@@ -218,4 +218,10 @@ return [
     'shop.in_stock' => 'In stock',
     'shop.no_variant' => 'Not available in this combination',
     'shop.picture' => 'Picture',
+    // The design blocks (term tiles, next term, chapter title).
+    'archive.chapter' => 'Chapter',
+    'blocks.see' => 'See',
+    'blocks.next' => 'Next',
+    'blocks.previous' => 'Previous',
+    'blocks.more_terms' => 'More',
 ];

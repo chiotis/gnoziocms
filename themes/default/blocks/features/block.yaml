@@ -5,6 +5,7 @@ variants:
   cards: Cards
   plain: Plain, no cards
   numbered: Numbered steps
+  strip: A strip of short points
 fields:
   eyebrow:
     type: text

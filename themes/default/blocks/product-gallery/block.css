@@ -75,3 +75,8 @@
   aspect-ratio: 1;
   object-fit: cover;
 }
+
+/* image() may wrap a picture in <picture>: it fills its frame like the <img>. */
+.product-gallery picture {
+  display: block;
+}

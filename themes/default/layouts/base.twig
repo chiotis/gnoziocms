@@ -139,7 +139,9 @@
   {% block head %}{% endblock %}
 </head>
 
-<body class="theme-body{% if transparent_header %} has-transparent-header{% endif %}{% if header_overlay %} has-header-overlay{% endif %}{% if header_settings.mobile_bar|default(false) %} has-mobile-bar{% endif %}">
+{# A collection's page, or a product in a collection, takes the collection's tones (docs/shop-plan.md). #}
+{% set page_tone_style = page_tones() %}
+<body class="theme-body{% if transparent_header %} has-transparent-header{% endif %}{% if header_overlay %} has-header-overlay{% endif %}{% if header_settings.mobile_bar|default(false) %} has-mobile-bar{% endif %}{% if page_tone_style %} has-tones{% endif %}"{% if page_tone_style %} style="{{ page_tone_style }}"{% endif %}>
   {{ analytics_body() }}
   {% set prefix = lang_prefix|default('') %}
   <a class="skip-link" href="#main">{{ t('a11y.skip_to_content', 'Skip to content') }}</a>

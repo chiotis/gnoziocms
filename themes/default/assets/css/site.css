@@ -4389,3 +4389,70 @@ p.form-error {
 p[align="center"], h1[align="center"], h2[align="center"], h3[align="center"], h4[align="center"], h5[align="center"], h6[align="center"] { text-align: center; }
 p[align="right"], h1[align="right"], h2[align="right"], h3[align="right"], h4[align="right"], h5[align="right"], h6[align="right"] { text-align: right; }
 p[align="justify"] { text-align: justify; hyphens: auto; }
+
+/* A collection's tones (docs/shop-plan.md): its page and its products' pages take its background, surface and deep tone for the
+   content, in light mode; the header, the footer and dark mode keep the site's own colours. */
+:root:not(.dark) .has-tones .main-shell {
+  --color-bg: var(--c-bg);
+  --color-surface: var(--c-surface);
+  --card-bg: var(--c-surface);
+  --accent: var(--c-deep);
+  --accent-hover: var(--c-deep);
+  --accent-soft: var(--c-surface);
+  --accent-contrast: #fff;
+  background-color: var(--c-bg);
+}
+:root.dark .has-tones {
+  --c-bg: var(--d-bg);
+  --c-surface: var(--d-surface);
+  --c-deep: var(--d-text);
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-mode="system"]:not(.light) .has-tones .main-shell {
+    --color-bg: var(--d-bg);
+    --color-surface: var(--d-surface);
+    --card-bg: var(--d-surface);
+    --accent: var(--accent-d);
+    --accent-hover: var(--accent-d-hover);
+    --accent-soft: var(--accent-d-soft);
+    --accent-contrast: var(--accent-contrast-d);
+    background-color: var(--d-bg);
+  }
+  :root[data-mode="system"]:not(.light) .has-tones {
+    --c-bg: var(--d-bg);
+    --c-surface: var(--d-surface);
+    --c-deep: var(--d-text);
+  }
+}
+
+/* Five small dots in a row (components/dots.twig): a quiet mark above a quote, a heading or a newsletter. */
+.dots {
+  display: inline-flex;
+  gap: 0.35em;
+  align-items: center;
+  vertical-align: middle;
+}
+
+.dots > span {
+  width: 0.45em;
+  height: 0.45em;
+  border-radius: 50%;
+  background: var(--dot, var(--accent));
+}
+
+.dots > span:nth-child(2) { opacity: 0.85; }
+.dots > span:nth-child(3) { opacity: 0.7; }
+.dots > span:nth-child(4) { opacity: 0.55; }
+.dots > span:nth-child(5) { opacity: 0.4; }
+.dots.has-colours > span { opacity: 1; }
+
+/* The band of colours above the header (Header > Band of colours): the same stripes as the Divider's Band of colours. */
+.header-thread {
+  display: flex;
+  width: 100%;
+  height: 3px;
+}
+
+.header-thread > span {
+  flex: 1 1 0;
+}

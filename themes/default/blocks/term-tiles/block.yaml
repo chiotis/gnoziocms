@@ -1,0 +1,51 @@
+label: Term tiles
+description: 'The terms of a taxonomy (collections, categories, any taxonomy of the site) as numbered tiles with their pictures, or as a list whose picture changes as you move over it. Each leads to the term''s page.'
+category: Showcase
+variants:
+  grid: Tiles
+  list: List with a picture that changes
+fields:
+  eyebrow:
+    type: text
+    label: Eyebrow
+  heading:
+    type: text
+    label: Heading
+  intro:
+    type: textarea
+    label: Introduction
+  taxonomy:
+    type: text
+    searchable: false
+    label: Taxonomy
+    default: categories
+    placeholder: collections
+    help: The address of the taxonomy, as in Taxonomies (categories, tags, collections…). Its terms are shown in their order.
+  parent:
+    type: text
+    searchable: false
+    label: Only the terms under
+    help: Optional. The address of a term, to show the terms under it instead of the top ones.
+  limit:
+    type: number
+    label: At most
+    default: 6
+    min: 1
+    max: 24
+  numbers:
+    type: toggle
+    label: Show numbers (01, 02…)
+    default: true
+    help: A collection's own chapter number, or the term's place in the list.
+  ratio:
+    type: select
+    label: Shape of the tiles
+    default: portrait
+    options: { portrait: 'Portrait (3:4)', square: Square, landscape: 'Landscape (4:3)' }
+    when: { variant: grid }
+  link_label:
+    type: text
+    label: "'View all' text"
+  link_url:
+    type: link
+    label: "'View all' link"

@@ -1,0 +1,45 @@
+/* Newsletter: a sign-up that reads like a letter, centred or beside its text. */
+.newsletter {
+  display: grid;
+  gap: var(--space-m);
+}
+
+.newsletter-centered {
+  justify-items: center;
+  text-align: center;
+}
+
+.newsletter-centered .newsletter-form {
+  width: min(100%, 32rem);
+}
+
+.newsletter-dots {
+  display: flex;
+  justify-content: center;
+  margin-bottom: var(--space-s);
+}
+
+.newsletter-inline .newsletter-dots {
+  justify-content: flex-start;
+}
+
+@media (min-width: 900px) {
+  .newsletter-inline {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+  }
+}
+
+.newsletter .section-header {
+  margin-bottom: 0;
+}
+
+.newsletter .section-title {
+  font-family: var(--font-heading);
+  font-weight: var(--heading-weight-custom, 400);
+}
+
+/* An email and a button on one line where there is room. */
+.newsletter-form form {
+  text-align: left;
+}

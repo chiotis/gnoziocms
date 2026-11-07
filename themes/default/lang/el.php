@@ -218,4 +218,10 @@ return [
     'shop.in_stock' => 'Διαθέσιμο',
     'shop.no_variant' => 'Δεν υπάρχει σε αυτόν τον συνδυασμό',
     'shop.picture' => 'Φωτογραφία',
+    // The design blocks (term tiles, next term, chapter title).
+    'archive.chapter' => 'Κεφάλαιο',
+    'blocks.see' => 'Δείτε',
+    'blocks.next' => 'Επόμενο',
+    'blocks.previous' => 'Προηγούμενο',
+    'blocks.more_terms' => 'Περισσότερα',
 ];

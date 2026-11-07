@@ -689,6 +689,18 @@ final class BlockRenderer
             }, array_filter($values['items'], static fn(array $slide): bool => $slide['image'] !== '' || $slide['heading'] !== '' || $slide['text'] !== '' || $slide['video'] !== '')));
             $values['_empty'] = $values['items'] === [];
         }
+        if ($type === 'newsletter') {
+            // A sign-up drawn with one of the site's forms; without a form there is nothing to sign up with.
+            $values['form_html'] = isset($this->providers['form']) ? ($this->providers['form'])((string)($values['form'] ?? '')) : '';
+            $values['_empty'] = trim((string)$values['form_html']) === '';
+        }
+        if ($type === 'next-term') {
+            // The next term of a taxonomy, from the page of a term; any other page has none.
+            $values['_empty'] = !is_string($context['taxonomy'] ?? null) || !is_string($context['term_id'] ?? null) || $context['term_id'] === '';
+        }
+        if ($type === 'image-hotspots') {
+            $values['_empty'] = (string)($values['image'] ?? '') === '';
+        }
         if (($type === 'form' || $type === 'contact') && isset($this->providers['form'])) {
             $values['form_html'] = ($this->providers['form'])((string)($values['form'] ?? ''));
         }

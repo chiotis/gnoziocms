@@ -1,0 +1,117 @@
+/* Image hotspots: numbered points on a picture, each with a small note, and the notes as a list. */
+.hotspots {
+  display: grid;
+  gap: var(--space-l);
+}
+
+@media (min-width: 900px) {
+  .hotspots-beside {
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    align-items: center;
+  }
+}
+
+.hotspots-figure {
+  position: relative;
+  background: var(--c-surface, var(--color-surface));
+}
+
+.hotspots-figure picture,
+.hotspots-figure img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.hotspots-figure img {
+  object-fit: cover;
+}
+
+.hotspots-figure.ratio-portrait { aspect-ratio: 4 / 5; }
+.hotspots-figure.ratio-square { aspect-ratio: 1; }
+.hotspots-figure.ratio-landscape { aspect-ratio: 4 / 3; }
+
+.hotspot {
+  position: absolute;
+  transform: translate(-50%, -50%);
+}
+
+.hotspot-dot {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--c-deep, var(--accent));
+  color: #fff;
+  font-size: var(--step--1);
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgb(0 0 0 / 0.25);
+}
+
+.hotspot-dot:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+
+.hotspot-card {
+  position: absolute;
+  z-index: 2;
+  top: calc(100% + 0.5rem);
+  left: 50%;
+  display: grid;
+  gap: 0.2rem;
+  width: max-content;
+  max-width: 14rem;
+  padding: var(--space-xs) var(--space-s);
+  transform: translateX(-50%);
+  border-radius: var(--radius-m);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: var(--step--1);
+  box-shadow: var(--shadow-m);
+}
+
+.hotspot-card[hidden] {
+  display: none;
+}
+
+.hotspots-list {
+  display: grid;
+  gap: var(--space-s);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hotspots-list li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--space-s);
+  align-items: baseline;
+  padding-bottom: var(--space-s);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.hotspots-number {
+  display: grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  background: var(--c-deep, var(--accent));
+  color: #fff;
+  font-size: var(--step--2);
+}
+
+.hotspots-title a {
+  color: inherit;
+}
+
+.hotspots-text {
+  color: var(--color-muted);
+  font-size: var(--step--1);
+}

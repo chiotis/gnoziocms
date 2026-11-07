@@ -1,6 +1,6 @@
 # Shop: plan
 
-Status: approved by the owner on 2026-11-07. Each phase (section 11) is one branch, one merge and one VERSION bump. **Phase 1 (catalogue) is built** on branch `shop-catalogue`; what differs from this plan is noted in section 11.
+Status: approved by the owner on 2026-11-07. Each phase (section 11) is one branch, one merge and one VERSION bump. **Phase 1 (catalogue) is built** on branch `shop-catalogue` and **phase 2 (design blocks)** on `design-blocks`, which starts from it; what differs from this plan is noted in section 11.
 
 ## Why
 
@@ -243,6 +243,7 @@ All blocks use the theme tokens. Collection tones only change the CSS variables.
    - Product JSON-LD.
    - **As built:** the Shop sidebar group waits for phase 3, when Orders and Customers exist; phase 1 adds only System › Shop settings (General). Switching Products on also switches Looks on and writes the two taxonomies; switching it off switches Looks off. Options and variants are written in the site's language and shared; a translation names them in its own `option_labels` ("Gold = Χρυσό"). A sixth block, **Product price**, draws the price on a list's card. Stock is keyed by the product's translation_id and the variant's combination (`ShopStock`). The digital and subscription fields arrive with phases 6 and 7; collection tones are stored and exposed as `--c-bg/--c-surface/--c-deep` (`ShopCatalogue::toneStyle()`), applied to pages with the design blocks of phase 2.
 2. **Design blocks (generic):** Thread, Statement, Term tiles, Mosaic hero, Story, Strip, Newsletter, Chapter, Next term, Chips, Image hotspots, the Centred logo header and the top line. These can run in parallel with phase 3, because they touch theme blocks, not shop code.
+   - **As built (phase 2):** Thread, Statement, Mosaic, Story, Strip, Chapter, Chips, Term tiles (tiles and a list with a changing picture), Next term, Newsletter and Image hotspots, plus a `components/dots.twig` partial. The header already had both pieces: its *Split* layout is the centred logo, and its top bar text is the announcement line; it gains a **band of colours** above everything (Header › Band of colours). A collection's page and a product in a collection take the collection's tones in light mode (`page_tones()`, `.has-tones`): the content only, never the header, the footer or dark mode, and only when all three tones are set. Twig gains `term_info()` and `taxonomy_terms()`. Image hotspots link to any address; tying a point to a product and its price comes with Shop the look in phase 3.
 3. **Cart, checkout, orders, accounts:**
    - sessions on shop paths, carts, checkout, shipping, taxes, coupons;
    - orders and customers admin, emails with the HTML part;

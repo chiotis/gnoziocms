@@ -9,11 +9,13 @@
       <li class="feature{% if href %} has-link{% endif %}">
         {% if block.variant == 'numbered' %}
           <span class="feature-number" aria-hidden="true">{{ '%02d'|format(loop.index) }}</span>
+        {% elseif block.variant == 'strip' %}
+          {# A strip of short points: a dot in place of the icon, the title and a line beside it. #}
         {% elseif feature.icon %}
           <span class="icon-badge feature-icon">{{ icon(feature.icon) }}</span>
         {% endif %}
         {% if feature.title %}
-          <{{ item_heading_tag }} class="feature-title">
+          <{{ item_heading_tag }} class="feature-title">{% if block.variant == 'strip' %}<span class="feature-dot" aria-hidden="true"></span>{% endif %}
             {% if href %}<a href="{{ href }}">{{ feature.title }}</a>{% else %}{{ feature.title }}{% endif %}
           </{{ item_heading_tag }}>
         {% endif %}

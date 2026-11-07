@@ -1,11 +1,13 @@
 <div class="{{ block.variant == 'photo' ? 'container' : 'container-narrow' }}">
   <figure class="quote-figure{% if block.mark %} has-mark{% endif %}">
+    {% if block.dots %}{% include 'components/dots.twig' with {extra_class: 'quote-dots'} only %}{% endif %}
     {% if block.variant == 'photo' and block.image %}
       <div class="quote-photo">{{ image(block.image, {alt: block.name ?: '', sizes: '(min-width: 800px) 28rem, 92vw', max_width: 900}) }}</div>
     {% endif %}
     <div class="quote-main">
       {% if block.mark %}<span class="quote-mark" aria-hidden="true">&ldquo;</span>{% endif %}
       <blockquote class="quote-text"><p>{{ block.quote|nl2br }}</p></blockquote>
+      {% if block.variant == 'statement' and block.translation|default('') %}<p class="quote-second">{{ block.translation|nl2br }}</p>{% endif %}
       {% if block.name or block.role %}
         <figcaption class="quote-by">
           {% if block.name %}<span class="quote-name">{{ block.name }}</span>{% endif %}
