@@ -1,0 +1,24 @@
+{# Next term: on a term's page (context taxonomy and term_id), the term after it in the taxonomy's order, and the one before. #}
+{% set prefix = lang_prefix|default('') %}
+{% set siblings = taxonomy_terms(taxonomy, prefix) %}
+{% set position = null %}
+{% for term in siblings %}{% if term.id == term_id %}{% set position = loop.index0 %}{% endif %}{% endfor %}
+{% if position is not null and siblings|length > 1 %}
+  {% set count = siblings|length %}
+  {% set next = position + 1 < count ? siblings[position + 1] : (block.loop ? siblings[0] : null) %}
+  {% set previous = position > 0 ? siblings[position - 1] : (block.loop ? siblings[count - 1] : null) %}
+  <nav class="container next-term" aria-label="{{ t('blocks.more_terms', 'More') }}">
+    {% if block.variant == 'both' and previous %}
+      <a class="next-term-link is-previous" href="{{ previous.url }}" rel="prev"{% if previous.tone_style %} style="{{ previous.tone_style }}"{% endif %}>
+        <span class="next-term-label">← {{ block.previous_label ?: t('blocks.previous', 'Previous') }}</span>
+        <span class="next-term-name">{{ previous.label }}</span>
+      </a>
+    {% endif %}
+    {% if next %}
+      <a class="next-term-link is-next" href="{{ next.url }}" rel="next"{% if next.tone_style %} style="{{ next.tone_style }}"{% endif %}>
+        <span class="next-term-label">{{ block.label ?: t('blocks.next', 'Next') }}</span>
+        <span class="next-term-name">{{ next.label }} →</span>
+      </a>
+    {% endif %}
+  </nav>
+{% endif %}

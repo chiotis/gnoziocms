@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace GnozioCMS;
 
+use GnozioCMS\Shop\Shop;
+use GnozioCMS\Shop\ShopCatalogue;
+
 /**
  * The JSON-LD that describes a page to search engines: who the site is (an organization, a local business or a person,
  * as Admin > SEO > Identity says), the website and its search, the article or page itself, its breadcrumb, all as one
@@ -17,8 +20,9 @@ final class StructuredData
      * @param callable(string, ?string): string $translate a theme string
      * @param callable(string): string $absoluteUrl a path of the site as a full address
      * @param callable(string): string $langPrefix "" for the default language, "en/" for another
+     * @param (\Closure(ContentItem): bool)|null $productAvailable whether a product can be bought now (the shop's stock), for its Offer
      */
-    public function __construct(private $settings, private $themeSettings, private $translate, private $absoluteUrl, private $langPrefix)
+    public function __construct(private $settings, private $themeSettings, private $translate, private $absoluteUrl, private $langPrefix, private ?\Closure $productAvailable = null)
     {
     }
 
@@ -192,6 +196,10 @@ final class StructuredData
             if ($place !== null) {
                 $graph[] = $place;
             }
+            $product = $this->product($item, $title, $description, $canonical, $absolute);
+            if ($product !== null) {
+                $graph[] = $product;
+            }
         }
 
         if (!$siteSeo['schema']['breadcrumbs']) {
@@ -258,6 +266,63 @@ final class StructuredData
     }
 
     /** A date from front matter as a Unix time: a `2026-03-04` string, a timestamp the YAML reader made of it, or nothing. */
+    /**
+     * A product of the shop (docs/shop-plan.md) as search engines read one: its name, pictures, SKU, barcode and brand, and its
+     * Offer (price in euro, VAT included, and whether it is in stock). A product whose variants differ in price has an AggregateOffer.
+     * No price: no Product, since search engines refuse an offer without one.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function product(ContentItem $item, string $title, string $description, string $canonical, \Closure $absolute): ?array
+    {
+        if ($item->type !== Shop::TYPE || $this->productAvailable === null) {
+            return null;
+        }
+        $fields = is_array($item->meta['custom_fields'] ?? null) ? $item->meta['custom_fields'] : [];
+        $prices = [];
+        foreach (is_array($fields['variants'] ?? null) ? $fields['variants'] : [] as $variant) {
+            $price = is_array($variant) && is_numeric($variant['price'] ?? null) ? (float)$variant['price'] : ShopCatalogue::priceOf(['price' => $fields['price'] ?? null]);
+            if ($price !== null) {
+                $prices[] = $price;
+            }
+        }
+        $base = ShopCatalogue::priceOf($fields);
+        if ($prices === [] && $base !== null) {
+            $prices = [$base];
+        }
+        if ($prices === []) {
+            return null;
+        }
+        $images = [];
+        foreach (array_merge([(string)($item->meta['main_image'] ?? '')], is_array($fields['gallery'] ?? null) ? $fields['gallery'] : []) as $picture) {
+            $picture = trim(is_array($picture) ? (string)($picture['image'] ?? '') : (string)$picture);
+            if ($picture !== '' && !in_array($absolute($picture), $images, true)) {
+                $images[] = $absolute($picture);
+            }
+        }
+        $short = trim((string)($fields['short_description'] ?? ''));
+        $product = array_filter([
+            '@type' => 'Product',
+            '@id' => $canonical . '#product',
+            'name' => $title,
+            'url' => $canonical,
+            'description' => $short !== '' ? $short : $description,
+            'image' => $images,
+            'sku' => trim((string)($fields['sku'] ?? '')),
+            'gtin' => preg_match('/^\d{8,14}$/', trim((string)($fields['barcode'] ?? ''))) === 1 ? trim((string)$fields['barcode']) : '',
+        ], static fn(mixed $value): bool => $value !== '' && $value !== []);
+        $brand = trim((string)($fields['brand'] ?? '')) ?: (string)($this->settings()['title'] ?? '');
+        if ($brand !== '') {
+            $product['brand'] = ['@type' => 'Brand', 'name' => $brand];
+        }
+        $availability = 'https://schema.org/' . (($this->productAvailable)($item) ? 'InStock' : 'OutOfStock');
+        $money = static fn(float $amount): string => number_format($amount, 2, '.', '');
+        $product['offers'] = count(array_unique(array_map($money, $prices))) > 1
+            ? ['@type' => 'AggregateOffer', 'lowPrice' => $money(min($prices)), 'highPrice' => $money(max($prices)), 'offerCount' => count($prices), 'priceCurrency' => 'EUR', 'availability' => $availability]
+            : ['@type' => 'Offer', 'price' => $money($prices[0]), 'priceCurrency' => 'EUR', 'availability' => $availability, 'url' => $canonical, 'itemCondition' => 'https://schema.org/NewCondition'];
+        return $product;
+    }
+
     private function time(mixed $value): ?int
     {
         if (is_int($value) || (is_string($value) && ctype_digit($value) && strlen($value) >= 9)) {

@@ -306,6 +306,11 @@ final class TaxonomyEditor
         $imageAlts = $list('term_image_alt');
         $seoTitles = $list('term_seo_title');
         $seoDescriptions = $list('term_seo_description');
+        // A collection of the shop: its chapter number, three tones and intro quote (sent only by the Collections screen).
+        $numbers = $list('term_number');
+        $tones = ['bg' => $list('term_tone_bg'), 'surface' => $list('term_tone_surface'), 'deep' => $list('term_tone_deep')];
+        $quotes = $list('term_quote');
+        $quoteAuthors = $list('term_quote_author');
         $rows = [];
         for ($i = 0, $count = max(count($ids), count($slugs)); $i < $count; $i++) {
             $row = [
@@ -314,6 +319,10 @@ final class TaxonomyEditor
                 'parent' => $parents === [] ? null : trim((string)($parents[$i] ?? '')),
                 'image' => $images === [] ? null : trim((string)($images[$i] ?? '')),
                 'image_alt' => $imageAlts === [] ? null : [], 'seo_title' => $seoTitles === [] ? null : [], 'seo_description' => $seoDescriptions === [] ? null : [],
+                'number' => $numbers === [] ? null : trim((string)($numbers[$i] ?? '')),
+                'tones' => $tones['bg'] === [] ? null : array_map(static fn(array $column): string => trim((string)($column[$i] ?? '')), $tones),
+                'quote' => $quotes === [] ? null : [],
+                'quote_author' => $quoteAuthors === [] ? null : trim((string)($quoteAuthors[$i] ?? '')),
             ];
             foreach ($languages as $lang) {
                 $row['labels'][$lang] = trim((string)($labels[$lang][$i] ?? ''));
@@ -328,6 +337,9 @@ final class TaxonomyEditor
                 }
                 if ($seoDescriptions !== []) {
                     $row['seo_description'][$lang] = trim((string)($seoDescriptions[$lang][$i] ?? ''));
+                }
+                if ($quotes !== []) {
+                    $row['quote'][$lang] = trim(str_replace("\r\n", "\n", (string)($quotes[$lang][$i] ?? '')));
                 }
             }
             $rows[] = $row;

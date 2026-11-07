@@ -1,0 +1,18 @@
+# Starting template for the page of products when it is "Built with blocks" (Admin > Theme > Single Layouts). Data, not code: blocks in the
+# shape they are stored in. A site overrides it with custom/single-templates/products.yaml. See docs/theming.md, "Starting templates".
+# The product page of docs/shop-plan.md: the pictures beside the collection, name, price, options and the Details sections, then
+# the text, more from the same collection, and the blocks of the product.
+blocks:
+  - type: container
+    settings: { gap: l }
+    columns:
+      - settings: { width: 55% }
+        blocks:
+          - { type: product-gallery, variant: stack }
+      - settings: { width: fill }
+        blocks:
+          - { type: product-summary }
+          - { type: product-details }
+  - { type: content }
+  - { type: product-grid, source: related, heading: 'More from the collection', limit: 4, columns: '4' }
+  - { type: entry-blocks }

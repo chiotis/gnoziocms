@@ -229,6 +229,26 @@
             <label class="lc-chip en-visible" title="Show this entry in listings and navigation-aware views"><input type="checkbox" name="visible" value="1" {% if meta_form.visible %}checked{% endif %}><span>Visible in lists and menus</span></label>
           </div>
         </section>
+        {% if shop_stock|default(null) %}
+          {# A product's stock, kept by the shop apart from the file (docs/shop-plan.md); saved with the entry. #}
+          <section class="{{ card }}" aria-labelledby="en-h-stock">
+            <h2 id="en-h-stock" class="en-card-title">Stock</h2>
+            {% if not shop_stock.tracked %}
+              <p class="en-help m-0">Turn on “Track stock” in the product’s details to count what is on hand. Until then the product is always available.</p>
+            {% endif %}
+            <div class="en-fields">
+              {% for row in shop_stock.rows %}
+                <label class="en-field{% if row.key == '' %} is-wide{% endif %}"><span>{{ row.key == '' ? 'On hand' : row.label }}</span>
+                  <input type="number" min="0" max="1000000" step="1" inputmode="numeric" name="shop_stock[{{ row.key }}]" value="{{ row.on_hand }}" class="lc-input">
+                  {% if row.reserved > 0 %}<small>{{ row.reserved }} held for orders waiting to be paid.</small>{% endif %}
+                </label>
+              {% endfor %}
+            </div>
+            {% if shop_stock.rows|length > 1 or shop_stock.rows[0].key != '' %}
+              <p class="en-help m-0">One row per variant. A variant you add appears here after you save.</p>
+            {% endif %}
+          </section>
+        {% endif %}
         {% if opening.layouts|default([]) is not empty or opening.transparent|default([]) is not empty or opening.parallax|default([]) is not empty %}
           <section class="{{ card }}" data-opening aria-labelledby="en-h-opening">
             <h2 id="en-h-opening" class="en-card-title">Title area</h2>

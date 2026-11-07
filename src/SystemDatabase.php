@@ -118,6 +118,27 @@ final class SystemDatabase
                 PRIMARY KEY (schedule_id, item_key)
             )'
         ));
+        $this->applyMigration($pdo, '202611070002_shop_stock', fn(PDO $db) => $this->createShopStockTable($db));
+    }
+
+    /**
+     * The stock of the shop (docs/shop-plan.md): how many of a product, or of one of its variants, are on hand, and how many are held
+     * for orders waiting to be paid. A product is its translation_id, so a new address or language changes nothing; a variant is its
+     * combination of options as a key (ShopStock::variantKey()), '' for a product without variants. Kept here, not in the product's
+     * file, so two orders at the same moment can never sell the same last piece.
+     */
+    private function createShopStockTable(PDO $pdo): void
+    {
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS shop_stock (
+                product_id TEXT NOT NULL,
+                variant_key TEXT NOT NULL DEFAULT '',
+                on_hand INTEGER NOT NULL DEFAULT 0,
+                reserved INTEGER NOT NULL DEFAULT 0,
+                updated_at INTEGER NOT NULL,
+                PRIMARY KEY (product_id, variant_key)
+            )"
+        );
     }
 
     /**

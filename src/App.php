@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace GnozioCMS;
 
+use GnozioCMS\Shop\Shop;
+use GnozioCMS\Shop\ShopCatalogue;
+use GnozioCMS\Shop\ShopSettings;
+use GnozioCMS\Shop\ShopSettingsAdmin;
+use GnozioCMS\Shop\ShopStock;
 use League\CommonMark\Environment\Environment;
 use League\CommonMark\Extension\Attributes\AttributesExtension;
 use League\CommonMark\Extension\CommonMark\CommonMarkCoreExtension;
@@ -106,6 +111,11 @@ final class App
     private ?McpAdmin $mcpAdminService = null;
     private ?JobRunner $jobRunnerService = null;
     private ?AiSettings $aiSettingsService = null;
+    private ?ShopStock $shopStockService = null;
+    /** @var array<int, ShopCatalogue> without drafts (0) and with them (1) */
+    private array $shopCatalogueServices = [];
+    private ?ShopSettings $shopSettingsService = null;
+    private ?ShopSettingsAdmin $shopSettingsAdminService = null;
     private ?AiUsage $aiUsageService = null;
     private ?AiPictures $aiPicturesService = null;
     private ?AiPublishingAdmin $aiPublishingAdminService = null;
@@ -1217,7 +1227,21 @@ final class App
             fn(string $slug, string $lang, string $path): string => $this->renderFormEmbedBySlug($slug, $lang, $path),
             fn(): Relations => $this->relations(),
             fn(): Taxonomies => $this->taxonomies(),
-            fn(): ArchiveQuery => $this->archiveQuery()
+            fn(): ArchiveQuery => $this->archiveQuery(),
+            fn(bool $includeHidden): ShopCatalogue => $this->shopCatalogue($includeHidden)
+        );
+    }
+
+    /** The products as the shop blocks and the product page show them; with drafts for someone signed in. */
+    private function shopCatalogue(bool $includeHidden = false): ShopCatalogue
+    {
+        return $this->shopCatalogueServices[$includeHidden ? 1 : 0] ??= new ShopCatalogue(
+            $this->content,
+            fn(): Taxonomies => $this->taxonomies(),
+            fn(): ContentTypes => $this->contentTypes(),
+            $this->shopStock(),
+            fn(): string => $this->defaultLanguage(),
+            $includeHidden
         );
     }
 
@@ -1240,6 +1264,7 @@ final class App
         'omni' => 'handleOmni',
         'mcp' => 'handleMcpAdmin',
         'ai-publishing' => 'handleAiPublishing',
+        'shop-settings' => 'handleShopSettings',
         'ai-picture' => 'handleAiPicture',
         'mcp-authorize' => 'handleMcpAuthorize',
         'notification-read' => 'handleNotificationRead',
@@ -2192,7 +2217,14 @@ final class App
             $aiPicture = ['variants' => (int)$this->aiSettings()->all()['variants'], 'blocked' => $this->aiPictures()->blocked(), 'entry' => $type . '/' . $slug . '/' . $lang,
                 'cost' => $slug !== '' ? $this->aiUsage()->forEntry($type . '/' . $slug . '/' . $lang) : null];
         }
-        $this->render($type === 'forms' ? '@admin/form-edit.twig' : '@admin/edit.twig', $this->entryForm()->form($type, $slug, $lang, $_GET, $this->permissions->can($user, 'redirects.manage')) + ['user' => $user, 'ai_picture' => $aiPicture]);
+        $form = $this->entryForm()->form($type, $slug, $lang, $_GET, $this->permissions->can($user, 'redirects.manage'));
+        // A product's Stock box: what is on hand of it, or of each of its variants (docs/shop-plan.md).
+        $shopStock = null;
+        if ($type === Shop::TYPE && Shop::enabled($this->content->getTypes())) {
+            $values = is_array($form['type_values'] ?? null) ? $form['type_values'] : [];
+            $shopStock = ['tracked' => !empty($values['track_stock']), 'rows' => $this->shopStock()->rowsFor((string)($form['meta_form']['translation_id'] ?? ''), $values)];
+        }
+        $this->render($type === 'forms' ? '@admin/form-edit.twig' : '@admin/edit.twig', $form + ['user' => $user, 'ai_picture' => $aiPicture, 'shop_stock' => $shopStock]);
     }
 
     /**
@@ -2423,6 +2455,9 @@ final class App
         ]);
         if ($type !== 'forms') {
             $this->aiAutoPicture($type, $slug, $lang, $this->currentUsername());
+        }
+        if ($type === Shop::TYPE && is_array($_POST['shop_stock'] ?? null)) {
+            $this->saveShopStock($slug, $lang, $_POST['shop_stock']);
         }
         $this->redirect('/admin/edit?type=' . urlencode($type) . '&slug=' . urlencode($slug) . '&lang=' . urlencode($lang) . '&saved=1'
             . ($type === 'forms' && Slug::plain((string)($_POST['translate_lang'] ?? '')) !== '' ? '&translate=' . urlencode(Slug::plain((string)$_POST['translate_lang'])) : '')
@@ -3545,6 +3580,38 @@ final class App
         return $this->jobRunnerService;
     }
 
+    private function shopStock(): ShopStock
+    {
+        return $this->shopStockService ??= new ShopStock($this->systemDatabase);
+    }
+
+    private function shopSettings(): ShopSettings
+    {
+        return $this->shopSettingsService ??= new ShopSettings($this->systemMeta);
+    }
+
+    /**
+     * The quantities of a product's Stock box, for the product as it was just saved (its variants decide which rows count).
+     *
+     * @param array<string, mixed> $quantities variant key => quantity
+     */
+    private function saveShopStock(string $slug, string $lang, array $quantities): void
+    {
+        // Read from its file: the list of entries this request already read does not have a product saved for the first time.
+        $path = $this->contentDir . '/' . Shop::TYPE . '/' . (new ContentPaths($this->settings))->filename($slug, $lang);
+        $product = is_file($path) ? $this->content->parseFile(Shop::TYPE, $path) : null;
+        $id = $product !== null ? (string)($product->meta['translation_id'] ?? '') : '';
+        if ($id === '') {
+            return;
+        }
+        $custom = is_array($product->meta['custom_fields'] ?? null) ? $product->meta['custom_fields'] : [];
+        try {
+            $this->shopStock()->setOnHand($id, $quantities, array_map('strval', array_keys(ShopStock::variantLabels($custom))));
+        } catch (\Throwable $e) {
+            $this->logActivity('shop.stock', 'error', Shop::TYPE, $slug . ':' . $lang, 'The stock could not be saved.', ['error' => $e->getMessage()]);
+        }
+    }
+
     private function aiSettings(): AiSettings
     {
         return $this->aiSettingsService ??= new AiSettings($this->systemMeta);
@@ -3723,6 +3790,43 @@ final class App
                 },
             ]
         );
+    }
+
+    private function shopSettingsAdmin(): ShopSettingsAdmin
+    {
+        return $this->shopSettingsAdminService ??= new ShopSettingsAdmin(
+            $this->shopSettings(),
+            fn(string $action, string $level, ?string $type, ?string $id, string $message, array $context) => $this->logActivity($action, $level, $type, $id, $message, $context),
+            function (): array {
+                $pages = [];
+                foreach ($this->content->getItems('pages', $this->defaultLanguage(), true) as $page) {
+                    $pages[$page->slug] = (string)($page->meta['title'] ?? $page->slug);
+                }
+                asort($pages);
+                return $pages;
+            }
+        );
+    }
+
+    /** System > Shop settings (docs/shop-plan.md): there only while the shop is on. */
+    private function handleShopSettings(): void
+    {
+        if (!Shop::enabled($this->content->getTypes())) {
+            $this->redirect('/admin/content-types?shop=off');
+            return;
+        }
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
+            $result = $this->shopSettingsAdmin()->act($_POST);
+            $this->redirect('/admin/shop-settings?' . http_build_query(['tab' => $result['tab'], 'done' => $result['ok'] ? 'ok' : 'fail', 'msg' => $result['message']]));
+            return;
+        }
+        $this->render('@admin/shop-settings.twig', $this->shopSettingsAdmin()->screen($_GET) + [
+            'title' => 'Shop settings',
+            'types' => $this->content->getTypes(),
+            'user' => $this->auth->user(),
+            'admin_section' => 'shop-settings',
+            'current_type' => 'pages',
+        ]);
     }
 
     /** Manage > AI publishing (docs/ai-publishing-plan.md). */
@@ -4405,8 +4509,26 @@ final class App
             fn(): array => $this->taxonomies()->names(),
             fn(string $key): bool => $this->isReservedFrontmatterKey($key),
             fn(string $action, string $level, ?string $type, ?string $id, string $message, array $context) => $this->logActivity($action, $level, $type, $id, $message, $context),
-            fn(string $type, bool $on): bool => $this->siteSettings()->setContentType($type, $on)
+            fn(string $type, bool $on): bool => $this->switchContentType($type, $on)
         );
+    }
+
+    /**
+     * Switches a type of the catalogue on or off. Products is the shop (docs/shop-plan.md): its Looks go with it, and switching
+     * it on writes the shop's taxonomies when they are missing.
+     */
+    private function switchContentType(string $type, bool $on): bool
+    {
+        if (!$this->siteSettings()->setContentType($type, $on)) {
+            return false;
+        }
+        if ($type === Shop::TYPE) {
+            $this->siteSettings()->setContentType(Shop::LOOKS, $on);
+            if ($on) {
+                Shop::ensureTaxonomies($this->taxonomies());
+            }
+        }
+        return true;
     }
 
     private function handleTranslations(): void
@@ -4517,7 +4639,8 @@ final class App
             fn(): BlockRuntime => $this->blockRuntime(),
             fn(): bool => $this->feed()->hasSiteFeed(),
             fn(): array => $this->siteLanguageCodes(),
-            fn(): Relations => $this->relations()
+            fn(): Relations => $this->relations(),
+            fn(): bool => Shop::enabled($this->content->getTypes())
         );
     }
 
@@ -5124,7 +5247,8 @@ final class App
             fn(): array => $this->themeSettings,
             fn(string $key, ?string $fallback = null): string => $this->translate($key, $fallback),
             fn(string $path): string => $this->buildAbsoluteUrl($path),
-            fn(string $lang): string => $this->langPrefix($lang)
+            fn(string $lang): string => $this->langPrefix($lang),
+            fn(ContentItem $product): bool => Shop::enabled($this->content->getTypes()) && $this->shopCatalogue()->available($product)
         );
     }
 

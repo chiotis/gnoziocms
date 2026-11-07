@@ -1,0 +1,4 @@
+/* Product details: drawn with the Accordion block's styles, which the page loads with it (ShopCatalogue::blockData). */
+.product-details .accordion-list {
+  max-width: 34rem;
+}

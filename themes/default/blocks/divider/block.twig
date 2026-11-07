@@ -1,4 +1,14 @@
-{% if block.variant == 'space' %}
+{% if block.variant == 'thread' %}
+  {# A band of colours across the page: the colours chosen, or the deep tone of each term of a taxonomy. Without any, the accent. #}
+  {% if block.thread_from == 'terms' %}
+    {% set thread = taxonomy_terms(block.thread_taxonomy|default('collections'))|map(t => t.tones.deep)|filter(c => c) %}
+  {% else %}
+    {% set thread = [block.colour_1, block.colour_2, block.colour_3, block.colour_4, block.colour_5, block.colour_6]|filter(c => c) %}
+  {% endif %}
+  <div class="divider-thread size-{{ block.thread_height|default('s') }}" aria-hidden="true">
+    {% for c in thread|default([])|slice(0, 12) %}<span style="background: {{ c }}"></span>{% else %}<span></span>{% endfor %}
+  </div>
+{% elseif block.variant == 'space' %}
   <div class="divider-space size-{{ block.height }}" aria-hidden="true"></div>
 {% else %}
   <div class="{{ block.line_width == 'page' ? 'container' : 'container-narrow' }}">

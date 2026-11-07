@@ -1,0 +1,97 @@
+label: Product grid
+description: 'Products as cards with their price: all of them, one collection or kind, a list you choose, or (on a product''s page) more from its collection. A picture with a few words can sit between the cards.'
+category: Shop
+requires: shop
+variants:
+  grid: Grid
+  strip: Scrolling strip
+fields:
+  eyebrow:
+    type: text
+    label: Eyebrow
+  heading:
+    type: text
+    label: Heading
+  intro:
+    type: textarea
+    label: Introduction
+  source:
+    type: select
+    label: Show
+    default: all
+    options:
+      all: All products
+      collection: One collection
+      category: One product category
+      picked: Products I choose
+      related: More from the product's collection (on a product's page)
+      complete: The product's "Complete the look" (on a product's page)
+  term:
+    type: text
+    searchable: false
+    label: Collection or category
+    placeholder: balos
+    help: The address (slug) of the collection or the product category, as in Taxonomies.
+    when: { source: [collection, category] }
+  picked:
+    type: textarea
+    searchable: false
+    label: Products
+    placeholder: "balos-earrings\nmeloi-necklace"
+    help: The address (slug) of each product, one per line, in the order to show them.
+    when: { source: picked }
+  order:
+    type: select
+    label: Order
+    default: date_desc
+    options:
+      date_desc: Newest first
+      date_asc: Oldest first
+      title_asc: 'Name A–Z'
+      price_asc: Price, lowest first
+      price_desc: Price, highest first
+  limit:
+    type: number
+    label: Number of products
+    default: 8
+    min: 1
+    max: 48
+  columns:
+    type: select
+    label: Columns
+    default: '4'
+    options: { '2': '2', '3': '3', '4': '4' }
+  hover_image:
+    type: toggle
+    label: Second picture on hover
+    default: true
+    help: The product's "Picture on hover", for example the piece worn.
+  show_collection:
+    type: toggle
+    label: Show the collection
+    default: false
+  editorial_every:
+    type: number
+    label: A picture between the cards after every
+    default: 0
+    min: 0
+    max: 12
+    help: '0 for none. The picture takes the place of one card, as a break in the grid.'
+  editorial_image:
+    type: image
+    label: Picture between the cards
+    when: { editorial_every: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'] }
+  editorial_text:
+    type: text
+    label: Words on the picture
+    when: { editorial_every: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'] }
+  editorial_url:
+    type: link
+    label: Link of the picture
+    when: { editorial_every: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'] }
+  link_label:
+    type: text
+    label: "'View all' text"
+  link_url:
+    type: link
+    label: "'View all' link"

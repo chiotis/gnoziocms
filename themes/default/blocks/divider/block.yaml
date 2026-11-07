@@ -1,11 +1,12 @@
 label: Divider
-description: Space between two sections, or a line, optionally with a short label in the middle.
+description: Space between two sections, a line (optionally with a short label in the middle), or a thin band of colours.
 category: Content
 spacing: compact
 variants:
   space: Empty space
   line: Line
   label: Line with a label
+  thread: Band of colours
 width_moved_to: line_width
 fields:
   label:
@@ -31,3 +32,30 @@ fields:
     default: narrow
     options: { page: Page, narrow: Text, short: Short }
     when: { variant: [line, label] }
+  thread_from:
+    type: select
+    label: Colours
+    default: colours
+    options:
+      colours: The colours below
+      terms: The tones of a taxonomy's terms
+    when: { variant: thread }
+  thread_taxonomy:
+    type: text
+    searchable: false
+    label: Taxonomy
+    default: collections
+    help: The address of the taxonomy whose terms give the colours (their deep tone, in their order), for example collections.
+    when: { variant: thread, thread_from: terms }
+  colour_1: { type: color, label: Colour 1, when: { variant: thread, thread_from: colours } }
+  colour_2: { type: color, label: Colour 2, when: { variant: thread, thread_from: colours } }
+  colour_3: { type: color, label: Colour 3, when: { variant: thread, thread_from: colours } }
+  colour_4: { type: color, label: Colour 4, when: { variant: thread, thread_from: colours } }
+  colour_5: { type: color, label: Colour 5, when: { variant: thread, thread_from: colours } }
+  colour_6: { type: color, label: Colour 6, when: { variant: thread, thread_from: colours } }
+  thread_height:
+    type: select
+    label: Thickness
+    default: s
+    options: { xs: Hairline, s: Thin, m: Medium }
+    when: { variant: thread }

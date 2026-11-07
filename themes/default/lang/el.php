@@ -210,4 +210,18 @@ return [
     'place.near.other' => 'Άλλα',
     'route.season' => 'Καλύτερη περίοδος',
     'route.profile_hint' => 'Κινηθείτε στο προφίλ για να δείτε το σημείο στον χάρτη',
+    // The shop (docs/shop-plan.md).
+    'shop.from' => 'από',
+    'shop.now' => 'Τώρα',
+    'shop.was' => 'πριν',
+    'shop.sold_out' => 'Εξαντλήθηκε',
+    'shop.in_stock' => 'Διαθέσιμο',
+    'shop.no_variant' => 'Δεν υπάρχει σε αυτόν τον συνδυασμό',
+    'shop.picture' => 'Φωτογραφία',
+    // The design blocks (term tiles, next term, chapter title).
+    'archive.chapter' => 'Κεφάλαιο',
+    'blocks.see' => 'Δείτε',
+    'blocks.next' => 'Επόμενο',
+    'blocks.previous' => 'Προηγούμενο',
+    'blocks.more_terms' => 'Περισσότερα',
 ];

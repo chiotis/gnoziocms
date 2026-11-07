@@ -10,11 +10,12 @@ variants:
   split: Split
   cover: Cover
   minimal: Minimal
+  chapter: Chapter (a collection's number, title and quote)
 fields:
   image:
     type: image
     label: Picture
-    help: Optional. Leave empty to use the picture chosen for the list in Archive Layouts.
+    help: Optional. Leave empty to use the picture chosen for the list in Archive Layouts (in the Chapter layout, the term's own picture first).
   breadcrumbs:
     type: toggle
     label: Show the trail above the title

@@ -1,0 +1,28 @@
+label: Newsletter
+description: 'A quiet invitation to sign up, like a letter: a heading, a few words and one of the site''s forms (an email field and a button, made in Admin > Forms).'
+category: Convert
+variants:
+  centered: Centred
+  inline: Text beside the form
+fields:
+  eyebrow:
+    type: text
+    label: Eyebrow
+    placeholder: Newsletter
+  heading:
+    type: text
+    label: Heading
+    placeholder: Letters from the Aegean
+  intro:
+    type: textarea
+    label: Text
+  form:
+    type: select
+    label: Form
+    default: ''
+    options_from: forms
+    help: The form people sign up with. Keep it short (an email field and a button); its messages and storage are the form's own.
+  dots:
+    type: toggle
+    label: Five dots above
+    default: false

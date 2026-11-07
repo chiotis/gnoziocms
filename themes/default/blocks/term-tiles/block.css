@@ -1,0 +1,179 @@
+/* Term tiles: the terms of a taxonomy as tiles, or as a list beside a picture that changes. */
+.term-tiles-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--space-s) var(--space-l);
+  margin-bottom: clamp(1.5rem, 1rem + 2vw, 3rem);
+}
+
+.term-tiles-head .section-header {
+  margin-bottom: 0;
+}
+
+.term-tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-s);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 900px) {
+  .term-tiles {
+    grid-template-columns: repeat(min(var(--count, 4), 5), minmax(0, 1fr));
+  }
+}
+
+.term-tile a {
+  display: grid;
+  gap: 0.15rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.term-tile-media {
+  display: block;
+  overflow: hidden;
+  aspect-ratio: 3 / 4;
+  margin-bottom: var(--space-xs);
+  background: var(--c-surface, var(--color-surface));
+}
+
+.ratio-square .term-tile-media { aspect-ratio: 1; }
+.ratio-landscape .term-tile-media { aspect-ratio: 4 / 3; }
+
+.term-tile-media img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.6s var(--ease, ease);
+}
+
+.term-tile a:hover img,
+.term-tile a:focus-visible img {
+  transform: scale(1.03);
+}
+
+.term-number {
+  color: var(--color-muted);
+  font-size: var(--step--1);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.06em;
+}
+
+.term-tile-name {
+  font-family: var(--font-heading);
+  font-size: var(--step-1);
+  color: var(--c-deep, var(--color-text));
+}
+
+/* List with a picture that changes */
+.term-list {
+  display: grid;
+  gap: var(--space-l);
+  align-items: center;
+}
+
+@media (min-width: 900px) {
+  .term-list {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+.term-list-items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--color-border);
+}
+
+.term-list-items li {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.term-list-link {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-s);
+  padding: var(--space-s) 0;
+  color: inherit;
+  text-decoration: none;
+  transition: padding-left 0.3s var(--ease, ease);
+}
+
+.term-list-link:hover,
+.term-list-link:focus-visible {
+  padding-left: 0.75rem;
+}
+
+.term-list-name {
+  flex: 1;
+  font-family: var(--font-heading);
+  font-size: var(--step-2);
+}
+
+.term-list-more {
+  color: var(--color-muted);
+  font-size: var(--step--1);
+}
+
+.term-dot {
+  display: inline-block;
+  width: 0.5em;
+  height: 0.5em;
+  margin-right: 0.4em;
+  border-radius: 50%;
+  background: var(--c-deep, var(--accent));
+}
+
+.term-list-pictures {
+  position: relative;
+  display: none;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+}
+
+@media (min-width: 900px) {
+  .term-list-pictures {
+    display: block;
+  }
+}
+
+.term-list-picture {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  background: var(--c-surface, var(--color-surface));
+  transition: opacity 0.4s var(--ease, ease);
+}
+
+.term-list-picture.is-current {
+  opacity: 1;
+}
+
+.term-list-picture img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .term-list-link,
+  .term-list-picture,
+  .term-tile-media img {
+    transition: none;
+  }
+}
+
+/* image() may wrap a picture in <picture>: it fills its frame like the <img>. */
+.term-tile-media picture,
+.term-list-picture picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+}

@@ -27,7 +27,7 @@ final class BlockRenderer
 
     /**
      * @param \Closure(string): string $markdown
-     * @param array<string, \Closure> $providers dynamic data: 'items' (type, lang, limit, category or tag, how many of the first to skip, order), 'form' (slug), 'youtube' (playlist id, picture source), 'file' (a site file's size in bytes), 'term' (a category's name), 'geo' (entries as a map draws them), 'geo_items' (given entries as a map draws them), 'geo_load' (when maps load), 'gallery' (the pictures of an entry's gallery field: entry, field key or '' for its gallery, language) and 'admin' (whether someone is signed in)
+     * @param array<string, \Closure> $providers dynamic data: 'items' (type, lang, limit, category or tag, how many of the first to skip, order), 'form' (slug), 'youtube' (playlist id, picture source), 'file' (a site file's size in bytes), 'term' (a category's name), 'geo' (entries as a map draws them), 'geo_items' (given entries as a map draws them), 'geo_load' (when maps load), 'gallery' (the pictures of an entry's gallery field: entry, field key or '' for its gallery, language), 'shop' (the data of a shop block: type, values, context) and 'admin' (whether someone is signed in)
      */
     public function __construct(
         private BlockRegistry $registry,
@@ -622,6 +622,13 @@ final class BlockRenderer
                 $values['_types'] = array_values(array_unique($used));
             }
         }
+        if (str_starts_with($type, 'product-') && isset($this->providers['shop'])) {
+            // The shop blocks: the products a grid lists, or the product of the page with its price, options and pictures.
+            $values = ($this->providers['shop'])($type, $values, $context);
+            foreach (is_array($values['product']['details'] ?? null) ? $values['product']['details'] : [] as $i => $row) {
+                $values['product']['details'][$i]['html'] = $this->markdownHtml((string)$row['text']);
+            }
+        }
         if ($type === 'latest') {
             $values['entries'] = $this->entries($values, (string)($context['lang'] ?? ''), (int)$values['limit'], (string)$values['term']);
             $values['_empty'] = $values['entries'] === [];
@@ -681,6 +688,18 @@ final class BlockRenderer
                 return $slide;
             }, array_filter($values['items'], static fn(array $slide): bool => $slide['image'] !== '' || $slide['heading'] !== '' || $slide['text'] !== '' || $slide['video'] !== '')));
             $values['_empty'] = $values['items'] === [];
+        }
+        if ($type === 'newsletter') {
+            // A sign-up drawn with one of the site's forms; without a form there is nothing to sign up with.
+            $values['form_html'] = isset($this->providers['form']) ? ($this->providers['form'])((string)($values['form'] ?? '')) : '';
+            $values['_empty'] = trim((string)$values['form_html']) === '';
+        }
+        if ($type === 'next-term') {
+            // The next term of a taxonomy, from the page of a term; any other page has none.
+            $values['_empty'] = !is_string($context['taxonomy'] ?? null) || !is_string($context['term_id'] ?? null) || $context['term_id'] === '';
+        }
+        if ($type === 'image-hotspots') {
+            $values['_empty'] = (string)($values['image'] ?? '') === '';
         }
         if (($type === 'form' || $type === 'contact') && isset($this->providers['form'])) {
             $values['form_html'] = ($this->providers['form'])((string)($values['form'] ?? ''));

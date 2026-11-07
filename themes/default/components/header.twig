@@ -58,6 +58,12 @@
 {% set topbar_href = link_url(hs.topbar_url|default(''), prefix) %}
 {% set show_topbar_social = hs.topbar_social|default(false) and theme_settings.social|default({})|filter(v => v)|length > 0 %}
 <header class="site-header header--{{ layout }} size-{{ size }} edge-{{ edge }} nav-{{ nav_style }}{% if shape == 'floating' %} is-floating{% endif %}{% if hs.width|default('contained') == 'wide' %} width-wide{% endif %}{% if hs.shrink|default(false) %} is-shrinking{% endif %}{% if layout == 'stacked' and hs.bar_tone|default('default') in ['contrast', 'accent'] %} bar-dark{% endif %}{% if row_tone != 'default' %} row-{{ row_tone }}{% endif %}{% if row_tone in ['contrast', 'accent'] %} tone-{{ row_tone }}{% endif %}{% if search_field %} has-search-field{% endif %}{% if transparent_header|default(false) %} is-transparent{% endif %}{% if transparent_on_dark|default(false) %} is-on-dark{% endif %}" data-sticky="{{ sticky_mode == 'smart' ? 'always' : sticky_mode }}"{% if sticky_mode == 'smart' %} data-smart{% endif %}>
+  {% if hs.thread|default('none') == 'terms' %}
+    {% set thread = taxonomy_terms('collections')|map(t => t.tones.deep)|filter(c => c) %}
+    {% if thread is not empty %}
+      <div class="divider-thread header-thread" aria-hidden="true">{% for c in thread %}<span style="background: {{ c }}"></span>{% endfor %}</div>
+    {% endif %}
+  {% endif %}
   {% if hs.topbar_text|default('') or show_topbar_contacts or show_topbar_social %}
     <div class="topbar tone-{{ topbar_tone }}">
       <div class="site-wrap topbar-row">

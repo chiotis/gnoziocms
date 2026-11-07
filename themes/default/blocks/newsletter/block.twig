@@ -1,0 +1,9 @@
+{# Newsletter: a heading, a few words and one of the site's forms (BlockRenderer gives block.form_html). #}
+{% import 'components/ui.twig' as ui %}
+<div class="{{ block.variant == 'inline' ? 'container' : 'container-narrow' }} newsletter newsletter-{{ block.variant }}">
+  <div class="newsletter-text">
+    {% if block.dots %}{% include 'components/dots.twig' with {extra_class: 'newsletter-dots'} only %}{% endif %}
+    {{ ui.section_header(block, heading_tag, block_uid, block.variant == 'inline' ? 'left' : 'center') }}
+  </div>
+  <div class="newsletter-form">{{ block.form_html|raw }}</div>
+</div>

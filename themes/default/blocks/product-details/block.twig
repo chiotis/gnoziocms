@@ -1,0 +1,19 @@
+{# Product details: the product's Details repeater as an accordion, with the Accordion block's styles. #}
+{% import 'components/ui.twig' as ui %}
+{% set product = block.product %}
+<div class="container accordion-layout product-details">
+  {{ ui.section_header(block, heading_tag, block_uid, 'left') }}
+  <div class="accordion-list accordion-lines accordion-icon-plus" data-accordion data-single>
+    {% for row in product.details %}
+      <details class="accordion-item"{% if loop.first and block.initial == 'first' %} open{% endif %} name="{{ block_uid }}-items">
+        <summary class="accordion-summary">
+          <{{ item_heading_tag }} class="accordion-title">{{ row.title }}</{{ item_heading_tag }}>
+          <span class="accordion-icon accordion-plus" aria-hidden="true"></span>
+        </summary>
+        <div class="accordion-panel">
+          <div class="accordion-content prose">{{ row.html|raw }}</div>
+        </div>
+      </details>
+    {% endfor %}
+  </div>
+</div>

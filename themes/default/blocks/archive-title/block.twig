@@ -9,4 +9,28 @@
 {% set title_text = archive_title ?? (config.title|default('') ?: t(type_key ~ '.archive_title', '') ?: (t('type.' ~ type_key, type_key|title) ~ ' ' ~ t('archive.suffix'))) %}
 {% set subtitle_text = archive_subtitle is defined ? archive_subtitle : (config.subtitle|default('') ?: t(type_key ~ '.archive_subtitle', '') ?: t('archive.subtitle')) %}
 {% set crumbs = block.breadcrumbs ? [{label: t('nav.main.home', 'Home'), url: '/' ~ prefix}]|merge(term_trail|default([]))|merge([{label: (archive_title is defined ? title_text : t('type.' ~ type_key, type_key|title)), url: ''}]) : [] %}
+{% if block._layout == 'chapter' %}
+  {# Chapter: the term's picture across the page, then its number and name beside its quote (a collection of the shop). On a list that
+     is not a term's page, the list's title alone. #}
+  {% set term = taxonomy|default('') and term_id|default('') ? term_info(taxonomy, term_id, prefix) : null %}
+  {% set picture = block.image ?: (term.image|default('') ?: block._picture) %}
+  {% if picture %}
+    <div class="chapter-picture">{{ image(picture, {alt: term.image_alt|default(''), sizes: '100vw', priority: true, max_width: 2400}) }}</div>
+  {% endif %}
+  <div class="container chapter-head">
+    {% if block.breadcrumbs and crumbs is not empty %}{% include 'components/breadcrumbs.twig' with {crumbs: crumbs} only %}{% endif %}
+    <div class="chapter-name">
+      {% if term and term.number %}<p class="chapter-number">{{ t('archive.chapter', 'Chapter') }} {{ '%02d'|format(term.number) }}</p>{% endif %}
+      <h1 class="chapter-title">{{ term ? term.label : title_text }}</h1>
+    </div>
+    {% set words = term.quote|default('') ?: (term ? term.description : subtitle_text) %}
+    {% if words %}
+      <figure class="chapter-quote">
+        <blockquote><p>{{ words|nl2br }}</p></blockquote>
+        {% if term.quote|default('') and term.quote_author %}<figcaption>— {{ term.quote_author }}</figcaption>{% endif %}
+      </figure>
+    {% endif %}
+  </div>
+{% else %}
 {% include 'components/title-area.twig' with {layout: block._layout, title: title_text, hero_text: subtitle_text, meta_html: '', meta_inline: '', hero_image: block._picture, hero_bg: '', hero_parallax: block._behind and config.title_parallax|default(false), crumbs: crumbs} only %}
+{% endif %}

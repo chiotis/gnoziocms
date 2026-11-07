@@ -6,6 +6,8 @@ variants:
   image-left: Image on the left
   image-top: Image above the text
   image-bottom: Image below the text
+  story: Story (a large quote, the text, a portrait on the right)
+variant_extends: { story: image-right }
 fields:
   eyebrow:
     type: text
@@ -13,6 +15,12 @@ fields:
   heading:
     type: text
     label: Heading
+  pull_quote:
+    type: textarea
+    label: Quote
+    placeholder: «I make each piece the way a lioness brings a lion into the world.»
+    help: Large, above the text.
+    when: { variant: story }
   body:
     type: markdown
     label: Text
@@ -38,3 +46,7 @@ fields:
     label: Image shape
     default: landscape
     options: { landscape: 'Landscape (4:3)', wide: 'Wide (16:9)', portrait: 'Portrait (4:5)', square: 'Square' }
+  dots:
+    type: toggle
+    label: Five dots before the eyebrow
+    default: false

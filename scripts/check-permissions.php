@@ -27,6 +27,7 @@ $actions = [
     'notification-read' => [1,1,0,0], 'notifications-read-all' => [1,1,0,0],
     'users' => [1,0,0,0], 'users-delete' => [1,0,0,0], 'roles' => [1,0,0,0], 'redirects' => [1,1,0,0], 'seo' => [1,1,0,0], 'analytics' => [1,1,0,0],
     'users-edit' => [1,1,1,1],
+    'shop-settings' => [1,1,0,0],
     'some-future-action' => [1,1,0,0],
 ];
 foreach ($actions as $action => $expected) {

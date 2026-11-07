@@ -1,0 +1,10 @@
+{# Product price: the product's price (from …), the old price and "Sold out". Data from ShopCatalogue::details(). #}
+{% set product = block.product %}
+<div class="container">
+  <p class="product-price-line">
+    {% if product.from %}<span class="product-card-from">{{ t('shop.from', 'from') }}</span> {% endif %}
+    <span class="product-price">{{ product.price_text }}</span>
+    {% if product.was_text %}<s class="product-was"><span class="visually-hidden">{{ t('shop.was', 'was') }}</span> {{ product.was_text }}</s>{% endif %}
+    {% if block.show_stock and not product.available %}<span class="product-price-out">{{ t('shop.sold_out', 'Sold out') }}</span>{% endif %}
+  </p>
+</div>

@@ -52,6 +52,8 @@ final class PermissionService
             'omni.manage',
             'mcp.manage',
             'ai.manage',
+            'shop.orders',
+            'shop.manage',
         ],
         'admin' => [
             'admin.access',
@@ -76,6 +78,8 @@ final class PermissionService
             'backups.manage',
             'updates.manage',
             'ai.manage',
+            'shop.orders',
+            'shop.manage',
         ],
         // Writes and publishes content and manages media and taxonomies. No forms (their submissions hold
         // visitors' personal data), menus, settings, users, logs, backups, updates, or import/export, and no
@@ -233,6 +237,8 @@ final class PermissionService
             'roles.manage' => $c('System', 'Roles and permissions', 'Changes what each role can do. Super admin only.', 'critical', false),
             'limits.manage' => $c('System', 'Site limits', 'Sets how much storage the site may use. Super admin only.', 'critical', false),
             'ai.manage' => $c('Site', 'AI publishing', 'Sets the instructions for pictures (and later posts) made by AI, makes test pictures, pauses and resumes, and sees what AI costs. The provider key and prices also need Settings.', 'sensitive'),
+            'shop.orders' => $c('Shop', 'Orders and customers', 'Sees and handles the shop\'s orders, customers and subscriptions, which hold shoppers\' personal data. Only while the shop is on.', 'sensitive'),
+            'shop.manage' => $c('Shop', 'Shop settings', 'Changes the shop\'s settings, payment providers and their keys. Only while the shop is on.', 'critical'),
             'mcp.manage' => $c('System', 'MCP (AI assistants)', 'Lets AI assistants such as Claude or ChatGPT read and write content as an account of the site, and removes those connections. Super admin only.', 'critical', false),
             'omni.manage' => $c('System', 'Omni', 'Connects the site to an Omni, which then sees its health, storage, backups and updates. Super admin only.', 'critical', false),
         ];
@@ -367,6 +373,7 @@ final class PermissionService
             'omni' => 'omni.manage',
             'mcp', 'mcp-authorize' => 'mcp.manage',
             'ai-publishing' => 'ai.manage',
+            'shop-settings' => 'shop.manage',
             'users', 'users-delete' => 'users.manage',
             'roles' => 'roles.manage',
             'redirects' => 'redirects.manage',

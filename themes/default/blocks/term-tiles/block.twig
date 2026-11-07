@@ -1,0 +1,50 @@
+{#
+  Term tiles: the terms of a taxonomy, in their order, as tiles (picture, number, name) or as a list whose large picture follows the
+  term the visitor points at (block.js). A collection of the shop brings its own tones (--c-surface behind a tile without a picture).
+#}
+{% import 'components/ui.twig' as ui %}
+{% set prefix = lang_prefix|default('') %}
+{% set terms = taxonomy_terms(block.taxonomy|default('categories'), prefix, block.parent|default(''))|slice(0, block.limit|default(6)) %}
+{% set all_href = link_url(block.link_url, prefix) %}
+<div class="container">
+  {% if block.eyebrow or block.heading or block.intro or (all_href and block.link_label) %}
+    <div class="term-tiles-head">
+      {{ ui.section_header(block, heading_tag, block_uid, 'left') }}
+      {% if all_href and block.link_label %}<a class="text-link" href="{{ all_href }}">{{ block.link_label }}{{ icon('arrow-right', 'btn-icon') }}</a>{% endif %}
+    </div>
+  {% endif %}
+  {% if block.variant == 'list' %}
+    <div class="term-list" data-term-list>
+      <ul class="term-list-items" role="list">
+        {% for term in terms %}
+          <li>
+            <a class="term-list-link" href="{{ term.url }}" data-picture="{{ loop.index0 }}"{% if term.tone_style %} style="{{ term.tone_style }}"{% endif %}>
+              {% if block.numbers %}<span class="term-number">{{ '%02d'|format(term.number ?: loop.index) }}</span>{% endif %}
+              <span class="term-list-name">{{ term.label }}</span>
+              <span class="term-list-more" aria-hidden="true"><span class="term-dot"></span>{{ t('blocks.see', 'See') }} →</span>
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+      <div class="term-list-pictures" aria-hidden="true">
+        {% for term in terms %}
+          <div class="term-list-picture{% if loop.first %} is-current{% endif %}" data-picture="{{ loop.index0 }}"{% if term.tone_style %} style="{{ term.tone_style }}"{% endif %}>
+            {% if term.image %}{{ image(term.image, {alt: '', sizes: '(min-width: 900px) 50vw, 92vw', max_width: 1600}) }}{% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% else %}
+    <ul class="term-tiles ratio-{{ block.ratio|default('portrait') }}" style="--count: {{ terms|length }}" role="list">
+      {% for term in terms %}
+        <li class="term-tile"{% if term.tone_style %} style="{{ term.tone_style }}"{% endif %}>
+          <a href="{{ term.url }}">
+            <span class="term-tile-media">{% if term.image %}{{ image(term.image, {alt: term.image_alt, sizes: '(min-width: 900px) 20vw, 46vw', max_width: 900}) }}{% endif %}</span>
+            {% if block.numbers %}<span class="term-number">{{ '%02d'|format(term.number ?: loop.index) }}</span>{% endif %}
+            <span class="term-tile-name">{{ term.label }}</span>
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+</div>

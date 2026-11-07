@@ -268,6 +268,18 @@ final class EntryForm
             }
         }
 
+        // A translation that lacks the fields every translation shares (a product's price) shows those of the others.
+        if (is_array($meta) && $type !== 'forms') {
+            $sharedKeys = $this->types->sharedKeys($type);
+            $custom = is_array($meta['custom_fields'] ?? null) ? $meta['custom_fields'] : [];
+            $missing = array_values(array_diff($sharedKeys, array_keys($custom)));
+            if ($missing !== []) {
+                $custom += SharedFields::fromSiblings($this->content, $type, $translationId, $lang, $missing, $defaultLang);
+                if ($custom !== []) {
+                    $meta['custom_fields'] = $custom;
+                }
+            }
+        }
         $typeValues = is_array($meta) && $type !== 'forms' ? $this->types->values($type, $meta, 'en', $defaultLang) : [];
 
         return [

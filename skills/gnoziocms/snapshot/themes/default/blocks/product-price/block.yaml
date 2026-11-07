@@ -1,0 +1,11 @@
+label: Product price
+description: 'The product''s price, with the old price struck through when it is on sale, and "Sold out" when nothing is left. For the card of a list of products and a product''s template; elsewhere it shows nothing.'
+category: Shop
+requires: shop
+variants:
+  default: Default
+fields:
+  show_stock:
+    type: toggle
+    label: Say when it is sold out
+    default: true

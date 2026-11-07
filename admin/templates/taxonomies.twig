@@ -64,6 +64,17 @@
       {% if hierarchical %}<input type="hidden" name="term_parent[]" value="{{ term.parent|default('') }}" data-field="parent">{% endif %}
       {% if title_layouts|default([]) is not empty %}<input type="hidden" name="term_hero_layout[]" value="{{ term.hero_layout|default('') }}" data-field="hero_layout">{% endif %}
       <input type="hidden" name="term_image[]" value="{{ term.image|default('') }}" data-field="image">
+      {% if taxonomy == 'collections' %}
+        {# A collection of the shop: chapter number, three tones, intro quote (docs/shop-plan.md). #}
+        <input type="hidden" name="term_number[]" value="{{ term.number|default(0) ?: '' }}" data-field="number">
+        <input type="hidden" name="term_tone_bg[]" value="{{ term.tones.bg|default('') }}" data-field="tone_bg">
+        <input type="hidden" name="term_tone_surface[]" value="{{ term.tones.surface|default('') }}" data-field="tone_surface">
+        <input type="hidden" name="term_tone_deep[]" value="{{ term.tones.deep|default('') }}" data-field="tone_deep">
+        <input type="hidden" name="term_quote_author[]" value="{{ term.quote_author|default('') }}" data-field="quote_author">
+        {% for lang in languages %}
+          <input type="hidden" name="term_quote[{{ lang }}][]" value="{{ term.quote[lang]|default('') }}" data-field="quote" data-lang="{{ lang }}">
+        {% endfor %}
+      {% endif %}
       {% for lang in languages %}
         <input type="hidden" name="term_label[{{ lang }}][]" value="{{ term.labels[lang]|default('') }}" data-field="label" data-lang="{{ lang }}">
         <input type="hidden" name="term_description[{{ lang }}][]" value="{{ term.descriptions[lang]|default('') }}" data-field="description" data-lang="{{ lang }}">
@@ -384,6 +395,39 @@
             </label>
           {% endfor %}
         </div>
+
+        {% if taxonomy == 'collections' %}
+          <fieldset class="grid gap-3 border-t border-slate-100 pt-4" data-dialog-collection>
+            <legend class="text-sm font-medium text-slate-700">Collection</legend>
+            <p class="text-xs text-slate-500">The collection’s own colours: its page and the shop blocks use them for the background, the surfaces, and the text and buttons. Left empty, the site’s colours are used.</p>
+            <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <label class="grid gap-1 text-sm font-medium text-slate-700">
+                Chapter
+                <input type="number" min="1" max="999" data-dialog-number class="{{ input_class }}">
+              </label>
+              {% for key, name in {bg: 'Background', surface: 'Surface', deep: 'Deep tone'} %}
+                <label class="grid gap-1 text-sm font-medium text-slate-700">
+                  {{ name }}
+                  <span class="flex items-center gap-1.5">
+                    <input type="color" data-dialog-tone-pick="{{ key }}" class="h-9 w-9 shrink-0 cursor-pointer rounded border border-slate-300 bg-white p-0.5" aria-label="{{ name }} colour">
+                    <input type="text" data-dialog-tone="{{ key }}" placeholder="#rrggbb" maxlength="7" spellcheck="false" autocomplete="off" class="{{ input_class }} font-mono">
+                  </span>
+                </label>
+              {% endfor %}
+            </div>
+            <p class="hidden text-xs text-amber-700" data-dialog-tone-note role="status"></p>
+            {% for lang in languages %}
+              <label class="grid gap-1 text-sm font-medium text-slate-700">
+                <span>Intro quote <span class="font-normal uppercase text-slate-500">{{ lang }}</span></span>
+                <textarea data-dialog-quote="{{ lang }}" rows="2" class="{{ input_class }}"></textarea>
+              </label>
+            {% endfor %}
+            <label class="grid gap-1 text-sm font-medium text-slate-700">
+              Quote by
+              <input type="text" data-dialog-quote-author autocomplete="off" class="{{ input_class }}">
+            </label>
+          </fieldset>
+        {% endif %}
 
         <details class="rounded-md border border-slate-200 px-3 py-2">
           <summary class="cursor-pointer text-sm font-medium text-slate-700">Search engines</summary>

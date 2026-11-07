@@ -1,0 +1,18 @@
+label: Product details
+description: 'The product''s Details sections (Details, Care, Shipping & returns, Warranty) as sections that open one at a time. Only in a template built with blocks for products.'
+category: Shop
+scope: template
+requires: shop
+variants:
+  default: Default
+fields:
+  heading:
+    type: text
+    label: Heading
+  initial:
+    type: select
+    label: When the page opens
+    default: none
+    options:
+      none: All closed
+      first: The first one open

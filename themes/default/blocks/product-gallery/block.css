@@ -1,0 +1,82 @@
+/* Product gallery (docs/shop-plan.md): the product's pictures. */
+.product-gallery-stack,
+.product-gallery-thumbs {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.product-gallery-stack {
+  display: grid;
+  gap: var(--space-xs);
+}
+
+/* On a phone the pictures are swiped across, so the price and options are not below all of them. */
+@media (max-width: 899px) {
+  .product-gallery-stack {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+
+  .product-gallery-stack > li {
+    flex: 0 0 88%;
+    scroll-snap-align: start;
+  }
+
+  .product-gallery-stack > li:only-child {
+    flex-basis: 100%;
+  }
+}
+
+.product-gallery img {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: var(--c-surface, var(--color-surface));
+}
+
+.product-gallery-portrait img {
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+}
+
+.product-gallery-square img {
+  aspect-ratio: 1;
+  object-fit: cover;
+}
+
+.product-gallery-thumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2xs);
+  margin-top: var(--space-xs);
+}
+
+.product-gallery-thumb {
+  width: 4.5rem;
+  padding: 0;
+  border: 1px solid transparent;
+  background: none;
+  cursor: pointer;
+}
+
+.product-gallery-thumb[aria-current="true"] {
+  border-color: var(--c-deep, var(--color-text));
+}
+
+.product-gallery-thumb:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.product-gallery-thumb img {
+  aspect-ratio: 1;
+  object-fit: cover;
+}
+
+/* image() may wrap a picture in <picture>: it fills its frame like the <img>. */
+.product-gallery picture {
+  display: block;
+}

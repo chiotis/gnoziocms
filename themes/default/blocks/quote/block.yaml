@@ -5,10 +5,17 @@ variants:
   centered: Centered
   bar: Left, with a bar
   photo: Photo beside the quote
+  statement: Statement (large, with a second line)
 fields:
   quote:
     type: textarea
     label: Quote
+  translation:
+    type: textarea
+    label: Second line
+    placeholder: The value is in the worth, not in the number.
+    help: Under the quote, smaller, for example the same words in another language.
+    when: { variant: statement }
   name:
     type: text
     label: Name
@@ -24,3 +31,8 @@ fields:
     type: toggle
     label: Show the quotation mark
     default: true
+  dots:
+    type: toggle
+    label: Five dots above
+    default: false
+    help: A small row of dots in the accent colour, as a quiet mark.

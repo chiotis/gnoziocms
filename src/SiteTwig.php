@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace GnozioCMS;
 
+use GnozioCMS\Shop\Shop;
+use GnozioCMS\Shop\ShopCatalogue;
+
 use Twig\Environment;
 use Twig\Loader\FilesystemLoader;
 use Twig\TwigFilter;
@@ -41,6 +44,7 @@ final class SiteTwig
      * @param \Closure(): bool $hasSiteFeed
      * @param \Closure(): array<int, string> $siteLanguages
      * @param (\Closure(): Relations)|null $relations
+     * @param (\Closure(): bool)|null $shopEnabled whether the shop is on (Shop::enabled()): the `shop_enabled` global
      */
     public function __construct(
         private string $basePath,
@@ -64,7 +68,8 @@ final class SiteTwig
         private \Closure $blockRuntime,
         private \Closure $hasSiteFeed,
         private \Closure $siteLanguages,
-        private ?\Closure $relations = null
+        private ?\Closure $relations = null,
+        private ?\Closure $shopEnabled = null
     ) {
     }
 
@@ -225,6 +230,71 @@ final class SiteTwig
             return $absoluteUrl($path);
         }));
 
+        // One term as the design blocks show it (Term tiles, Next term, the Chapter title): name, address, picture, description,
+        // and what a collection of the shop adds (chapter number, tones, quote). Null for a term that does not exist.
+        $termInfo = function (string $taxonomy, array $term, string $lang, string $prefix) use ($termLabel, $termPath, $absoluteUrl): array {
+            $taxonomies = ($this->taxonomies)();
+            return [
+                'id' => $term['id'], 'slug' => $term['slug'], 'label' => $termLabel($taxonomy, $term['id'], $lang),
+                'url' => $absoluteUrl($termPath($taxonomy, $term['id'], $prefix)),
+                'image' => (string)($term['image'] ?? ''), 'image_alt' => (string)($term['image_alt'][$lang] ?? ''),
+                'description' => $taxonomies->description($taxonomy, $term['id'], $lang, ($this->defaultLanguage)()),
+                'number' => (int)($term['number'] ?? 0), 'tones' => $term['tones'] ?? Taxonomies::tonesChoice(null),
+                'tone_style' => ShopCatalogue::toneStyle($term['tones'] ?? null),
+                'quote' => (string)($term['quote'][$lang] ?? ''), 'quote_author' => (string)($term['quote_author'] ?? ''),
+            ];
+        };
+        $twig->addFunction(new TwigFunction('term_info', function (string $taxonomy, string $termId, string $prefix = '') use ($termInfo): ?array {
+            $taxonomy = Slug::plain($taxonomy);
+            if ($taxonomy === '' || !in_array($taxonomy, ($this->taxonomies)()->names(), true)) {
+                return null;
+            }
+            foreach (($this->taxonomies)()->load($taxonomy)['terms'] as $term) {
+                if ($term['id'] === $termId || $term['slug'] === $termId) {
+                    return $termInfo($taxonomy, $term, ($this->language)(), $prefix);
+                }
+            }
+            return null;
+        }));
+        // The top-level terms of a taxonomy in their order (or the children of one term), as term_info gives them.
+        $twig->addFunction(new TwigFunction('taxonomy_terms', function (string $taxonomy, string $prefix = '', string $parent = '') use ($termInfo): array {
+            $taxonomy = Slug::plain($taxonomy);
+            if ($taxonomy === '' || !in_array($taxonomy, ($this->taxonomies)()->names(), true)) {
+                return [];
+            }
+            $list = [];
+            foreach (($this->taxonomies)()->load($taxonomy)['terms'] as $term) {
+                if (($term['parent'] ?? '') === Slug::plain($parent)) {
+                    $list[] = $termInfo($taxonomy, $term, ($this->language)(), $prefix);
+                }
+            }
+            return $list;
+        }));
+        // The tones of the page: a collection's page, or a product filed under a collection, takes the collection's colours (--c-bg,
+        // --c-surface, --c-deep) when it has all three; '' for any other page.
+        $twig->addFunction(new TwigFunction('page_tones', function (array $context): string {
+            $taxonomies = ($this->taxonomies)();
+            $find = static function (string $taxonomy, string $id) use ($taxonomies): string {
+                if ($id === '' || !in_array($taxonomy, $taxonomies->names(), true)) {
+                    return '';
+                }
+                foreach ($taxonomies->load($taxonomy)['terms'] as $term) {
+                    // All three tones, or none: the page's colours are replaced together.
+                    if ($term['id'] === $id && count(array_filter($term['tones'] ?? [])) === 3) {
+                        return ShopCatalogue::toneStyle($term['tones']);
+                    }
+                }
+                return '';
+            };
+            if (is_string($context['taxonomy'] ?? null) && is_string($context['term_id'] ?? null)) {
+                return $find($context['taxonomy'], $context['term_id']);
+            }
+            $item = $context['item'] ?? null;
+            $meta = is_object($item) && isset($item->meta) && is_array($item->meta) ? $item->meta : [];
+            $first = array_values(array_map('strval', (array)($meta[Shop::COLLECTIONS] ?? [])))[0] ?? '';
+            return $first === '' ? '' : $find(Shop::COLLECTIONS, $first);
+        }, ['needs_context' => true]));
+
         // The terms an entry has in the taxonomies a site added (categories and tags are drawn by the templates themselves):
         // [{name, title, terms: [{label, url}]}], each term with a page.
         $twig->addFunction(new TwigFunction('item_terms', function (mixed $item, string $prefix = '') use ($termLabel, $termPath, $absoluteUrl): array {
@@ -324,6 +394,7 @@ final class SiteTwig
         $twig->addGlobal('theme_settings', $themeSettings());
         $twig->addGlobal('theme', ['name' => $this->theme->name(), 'version' => $this->theme->version()]);
         $twig->addGlobal('is_admin', ($this->signedIn)());
+        $twig->addGlobal('shop_enabled', $this->shopEnabled !== null && ($this->shopEnabled)());
 
         return $twig;
     }

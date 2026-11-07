@@ -24,10 +24,14 @@ final class ArchiveBlocks
         if ($choice === 'auto') {
             $choice = (string)($settings['title_layout'] ?? 'default');
         }
+        $picture = (string)($values['image'] ?? '') !== '' ? (string)$values['image'] : (string)($settings['title_image'] ?? '');
+        if ($choice === 'chapter') {
+            // A chapter (a collection's page): the picture across the page above the title, never under the header.
+            return ['layout' => 'chapter', 'picture' => $picture, 'behind' => false];
+        }
         if (!in_array($choice, ['default', 'centered', 'split', 'cover', 'minimal'], true)) {
             $choice = 'default';
         }
-        $picture = (string)($values['image'] ?? '') !== '' ? (string)$values['image'] : (string)($settings['title_image'] ?? '');
         // A cover needs its picture.
         $layout = $choice === 'cover' && $picture === '' ? 'default' : $choice;
         // The picture is the background of the area in the default and cover layouts: the header can sit over it.

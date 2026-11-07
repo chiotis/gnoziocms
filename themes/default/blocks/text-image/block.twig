@@ -1,8 +1,9 @@
 {% import 'components/ui.twig' as ui %}
 <div class="container ti-grid">
   <div class="ti-text">
-    {% if block.eyebrow %}<p class="eyebrow">{{ block.eyebrow }}</p>{% endif %}
+    {% if block.eyebrow %}<p class="eyebrow">{% if block.dots %}{% include 'components/dots.twig' with {extra_class: 'eyebrow-dots'} only %} {% endif %}{{ block.eyebrow }}</p>{% endif %}
     {% if block.heading %}<{{ heading_tag }} class="section-title" id="{{ block_uid }}-title">{{ block.heading }}</{{ heading_tag }}>{% endif %}
+    {% if block.variant == 'story' and block.pull_quote|default('') %}<p class="ti-pull">{{ block.pull_quote|nl2br }}</p>{% endif %}
     {% if block.body_html %}<div class="prose checklist">{{ block.body_html|raw }}</div>{% endif %}
     {{ ui.actions(block.actions, lang_prefix|default('')) }}
   </div>

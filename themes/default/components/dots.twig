@@ -1,0 +1,12 @@
+{#
+  Five dots in a row, a quiet mark (the ALALEON design's "five dots"). `colours`: up to six hex colours, one per dot (the collections'
+  deep tones, for example); none: the accent, fading. `extra_class` adds to the wrapper.
+#}
+{% set dot_colours = colours|default([])|filter(c => c matches '/^#[0-9a-fA-F]{6}$/')|slice(0, 6) %}
+<span class="dots{% if dot_colours is not empty %} has-colours{% endif %}{% if extra_class|default('') %} {{ extra_class }}{% endif %}" aria-hidden="true">
+  {%- if dot_colours is not empty -%}
+    {%- for c in dot_colours %}<span style="--dot: {{ c }}"></span>{% endfor -%}
+  {%- else -%}
+    {%- for i in 1..5 %}<span></span>{% endfor -%}
+  {%- endif -%}
+</span>

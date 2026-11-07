@@ -1,0 +1,204 @@
+# Products: what the shop sells (docs/shop-plan.md). Switching it on in Admin > Content types turns the shop on: Looks, the
+# Collections and Product categories taxonomies, System > Shop settings and the shop blocks come with it.
+# Sites can add fields or change the archive in custom/content-types/products.yaml (kept across updates).
+# Never rename a field key: content and orders refer to it by name. Retire a field with `hidden: true`.
+# `shared: true`: one value for every translation of the product (SharedFields), so the price is never different by language.
+label: { el: Προϊόντα, en: Products }
+singular: { el: Προϊόν, en: Product }
+description: { el: 'Τα προϊόντα του καταστήματος, με τιμή, παραλλαγές και απόθεμα. Ανοίγει το κατάστημα.', en: 'What the shop sells, with prices, variants and stock. Switches the shop on.' }
+fields:
+  kind:
+    type: select
+    label: { el: Είδος, en: Kind }
+    shared: true
+    show: false
+    default: physical
+    options:
+      physical: { el: Φυσικό προϊόν, en: Physical product }
+      digital: { el: Ψηφιακό προϊόν, en: Digital product }
+      subscription: { el: Συνδρομή, en: Subscription }
+    help: { el: 'Τα ψηφιακά προϊόντα και οι συνδρομές πωλούνται όταν έρθουν οι πληρωμές.', en: 'Digital products and subscriptions are sold once payments arrive.' }
+  price:
+    type: decimal
+    label: { el: Τιμή (€), en: Price (€) }
+    min: 0
+    shared: true
+    card: true
+    show: false
+    help: { el: 'Με τον ΦΠΑ.', en: 'VAT included.' }
+  compare_at_price:
+    type: decimal
+    label: { el: 'Αρχική τιμή (€)', en: 'Was (€)' }
+    min: 0
+    shared: true
+    show: false
+    help: { el: 'Δείχνεται διαγραμμένη δίπλα στην τιμή, όταν είναι μεγαλύτερη.', en: 'Shown struck through beside the price when it is higher.' }
+  tax_class:
+    type: select
+    label: { el: ΦΠΑ, en: VAT rate }
+    shared: true
+    show: false
+    default: standard
+    options:
+      standard: { el: 'Κανονικός (24%)', en: 'Standard (24%)' }
+      reduced: { el: 'Μειωμένος (13%)', en: 'Reduced (13%)' }
+      super_reduced: { el: 'Υπερμειωμένος (6%)', en: 'Super-reduced (6%)' }
+      zero: { el: 'Μηδενικός', en: 'Zero' }
+  sku:
+    type: text
+    label: SKU
+    shared: true
+    show: false
+  barcode:
+    type: text
+    label: { el: 'Barcode (GTIN, EAN)', en: 'Barcode (GTIN, EAN)' }
+    shared: true
+    show: false
+  brand:
+    type: text
+    label: { el: Μάρκα, en: Brand }
+    shared: true
+    show: false
+  short_description:
+    type: textarea
+    label: { el: Σύντομη περιγραφή, en: Short description }
+    help: { el: 'Μία ή δύο προτάσεις δίπλα στην τιμή.', en: 'One or two sentences beside the price.' }
+    show: false
+  gallery:
+    type: gallery
+    label: { el: Φωτογραφίες, en: Pictures }
+    shared: true
+    show: false
+    help: { el: 'Η κύρια φωτογραφία πρώτα. Η εικόνα της σελίδας παραμένει η κάρτα του προϊόντος.', en: 'The main picture first. The entry''s main image stays the product''s card.' }
+  hover_image:
+    type: image
+    label: { el: 'Φωτογραφία στο πέρασμα', en: 'Picture on hover' }
+    shared: true
+    show: false
+    help: { el: 'Η κάρτα του προϊόντος τη δείχνει όταν περνά το ποντίκι, π.χ. το κόσμημα φορεμένο.', en: 'The product card shows it on hover, for example the piece worn.' }
+  options:
+    type: repeater
+    label: { el: Επιλογές, en: Options }
+    item_label: { el: Επιλογή, en: Option }
+    max: 3
+    shared: true
+    show: false
+    help: { el: 'Π.χ. Φινίρισμα: Χρυσό, Ασήμι. Γράφονται στη γλώσσα του site· οι μεταφράσεις τους μπαίνουν στο «Ονόματα επιλογών».', en: 'For example Finish: Gold, Silver. Written in the site''s language; their translations go in "Option names".' }
+    fields:
+      name:
+        type: text
+        label: { el: Όνομα, en: Name }
+        placeholder: Finish
+      values:
+        type: textarea
+        label: { el: Τιμές, en: Values }
+        help: { el: 'Μία ανά γραμμή.', en: 'One per line.' }
+  variants:
+    type: repeater
+    label: { el: Παραλλαγές, en: Variants }
+    item_label: { el: Παραλλαγή, en: Variant }
+    max: 100
+    shared: true
+    show: false
+    help: { el: 'Ένας συνδυασμός των επιλογών ανά γραμμή, π.χ. «Χρυσό / M». Κενή τιμή: η τιμή του προϊόντος.', en: 'One combination of the options per row, for example "Gold / M". An empty price: the product''s price.' }
+    fields:
+      values:
+        type: text
+        label: { el: Συνδυασμός, en: Combination }
+        placeholder: Gold / M
+      sku:
+        type: text
+        label: SKU
+      price:
+        type: decimal
+        label: { el: Τιμή (€), en: Price (€) }
+        min: 0
+      image:
+        type: image
+        label: { el: Φωτογραφία, en: Picture }
+      weight_g:
+        type: number
+        label: { el: Βάρος (g), en: Weight (g) }
+        min: 0
+  option_labels:
+    type: textarea
+    label: { el: Ονόματα επιλογών σε αυτή τη γλώσσα, en: Option names in this language }
+    show: false
+    placeholder: "Finish = Φινίρισμα\nGold = Χρυσό"
+    help: { el: 'Για μια μετάφραση: «όνομα στη γλώσσα του site = όνομα εδώ», ένα ανά γραμμή.', en: 'For a translation: "name in the site''s language = name here", one per line.' }
+  weight_g:
+    type: number
+    label: { el: Βάρος (g), en: Weight (g) }
+    min: 0
+    shared: true
+    show: false
+  gift_wrap:
+    type: toggle
+    label: { el: Συσκευασία δώρου, en: Gift wrapping }
+    shared: true
+    show: false
+  track_stock:
+    type: toggle
+    label: { el: Παρακολούθηση αποθέματος, en: Track stock }
+    shared: true
+    show: false
+    help: { el: 'Οι ποσότητες γράφονται στην καρτέλα «Απόθεμα» του προϊόντος.', en: 'Quantities are set in the product''s Stock box.' }
+  allow_backorder:
+    type: toggle
+    label: { el: 'Παραγγελία και χωρίς απόθεμα', en: 'Sell when out of stock' }
+    shared: true
+    show: false
+    when: { track_stock: ['1', 'true'] }
+  low_stock_at:
+    type: number
+    label: { el: 'Χαμηλό απόθεμα στα', en: 'Low stock at' }
+    min: 0
+    shared: true
+    show: false
+    when: { track_stock: ['1', 'true'] }
+  details:
+    type: repeater
+    label: { el: Λεπτομέρειες, en: Details }
+    item_label: { el: Ενότητα, en: Section }
+    max: 8
+    show: false
+    help: { el: 'Ανοιγόμενες ενότητες κάτω από την τιμή: Λεπτομέρειες, Φροντίδα, Αποστολή & επιστροφές, Εγγύηση.', en: 'Sections that open under the price: Details, Care, Shipping & returns, Warranty.' }
+    fields:
+      title:
+        type: text
+        label: { el: Τίτλος, en: Title }
+        placeholder: Care
+      text:
+        type: markdown
+        label: { el: Κείμενο, en: Text }
+  complete_the_look:
+    type: relation
+    types: [products]
+    multiple: true
+    max: 6
+    shared: true
+    show: false
+    label: { el: 'Ολοκληρώστε το look', en: 'Complete the look' }
+    reverse_label: Goes with
+  looks:
+    type: relation
+    types: [looks]
+    multiple: true
+    max: 6
+    shared: true
+    show: false
+    label: Looks
+    reverse_label: Products
+single:
+  sidebar: false
+  header: false
+archive:
+  title: { el: Κατάστημα, en: Shop }
+  subtitle: { el: 'Όλα τα προϊόντα του καταστήματος.', en: 'Everything in the shop.' }
+  layout: cards
+  columns: '4'
+  per_page: 24
+  order: date_desc
+  show_excerpt: false
+  show_meta: false
+  taxonomies: [collections, product-categories]

@@ -1,0 +1,38 @@
+{#
+  Image hotspots: numbered points on a picture. Each point is a button that opens its note (block.js); the same notes are a list beside
+  or below, so the points are never the only way to reach them.
+#}
+{% import 'components/ui.twig' as ui %}
+{% set prefix = lang_prefix|default('') %}
+{% set points = block.points|filter(p => p.title or p.text) %}
+<div class="container">
+  {{ ui.section_header(block, heading_tag, block_uid, 'left') }}
+  <div class="hotspots hotspots-{{ block.variant }}">
+    <div class="hotspots-figure ratio-{{ block.ratio|default('portrait') }}" data-hotspots>
+      {{ image(block.image, {alt: block.image_alt, sizes: block.variant == 'beside' ? '(min-width: 900px) 58vw, 92vw' : '(min-width: 1280px) 1216px, 92vw', max_width: 2000}) }}
+      {% for point in points %}
+        {% set href = link_url(point.link|default(''), prefix) %}
+        <div class="hotspot" style="left: {{ point.x|default(50) }}%; top: {{ point.y|default(50) }}%">
+          <button type="button" class="hotspot-dot" aria-expanded="false" aria-controls="{{ block_uid }}-spot-{{ loop.index }}" aria-label="{{ point.title ?: loop.index }}">{{ loop.index }}</button>
+          <div class="hotspot-card" id="{{ block_uid }}-spot-{{ loop.index }}" hidden>
+            {% if point.title %}<strong>{{ point.title }}</strong>{% endif %}
+            {% if point.text %}<span>{{ point.text }}</span>{% endif %}
+            {% if href %}<a class="text-link" href="{{ href }}">{{ point.link_label ?: t('blocks.learn_more', 'Learn more') }}</a>{% endif %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+    {% if points is not empty %}
+      <ol class="hotspots-list" role="list">
+        {% for point in points %}
+          {% set href = link_url(point.link|default(''), prefix) %}
+          <li>
+            <span class="hotspots-number" aria-hidden="true">{{ loop.index }}</span>
+            <span class="hotspots-title">{% if href %}<a href="{{ href }}">{{ point.title ?: point.text }}</a>{% else %}{{ point.title ?: point.text }}{% endif %}</span>
+            {% if point.title and point.text %}<span class="hotspots-text">{{ point.text }}</span>{% endif %}
+          </li>
+        {% endfor %}
+      </ol>
+    {% endif %}
+  </div>
+</div>

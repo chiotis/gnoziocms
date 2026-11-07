@@ -358,6 +358,14 @@ settings:
           muted: Muted
           contrast: Dark
           accent: Palette colour
+      thread:
+        type: select
+        label: Band of colours at the very top
+        default: none
+        options:
+          none: None
+          terms: The tones of the collections
+        help: A thin band, one stripe for each collection of the shop in its deep tone, above the top bar and the header.
       topbar_social:
         type: toggle
         label: Social icons in the top bar

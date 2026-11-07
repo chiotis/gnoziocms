@@ -1,4 +1,4 @@
-# Theme settings of this installation (GnozioCMS 0.1.228)
+# Theme settings of this installation (GnozioCMS 0.1.241)
 
 Set with `python3 scripts/site_settings.py set theme section.field=value`. A text marked *translatable* takes a plain text or a map `{default: …, en: …}`.
 
@@ -40,6 +40,7 @@ Set with `python3 scripts/site_settings.py set theme section.field=value`. A tex
 | `topbar_text` | text; translatable | (empty) | Top bar message |
 | `topbar_url` | link | (empty) | Top bar message link |
 | `topbar_tone` | select; one of `muted`, `contrast`, `accent` | muted | Top bar background |
+| `thread` | select; one of `none`, `terms` | none | Band of colours at the very top. A thin band, one stripe for each collection of the shop in its deep tone, above the top bar and the header. |
 | `topbar_social` | toggle | false | Social icons in the top bar. Uses the profiles in Social profiles. |
 
 ## `sidebar` — Sidebar card
