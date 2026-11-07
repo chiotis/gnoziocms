@@ -47,6 +47,7 @@ Saved working drafts for published pages are not a current priority.
 - **Import UX**: dry-run preview, row-level undo, resumable imports.
 - **Theme**: a switcher in settings with a preview mode; draft preview links; admin-level user management with limits; updates for private repositories. Style references from the owner can refine the design system at any point (tokens and block CSS).
 - **Backups**: a one-click restore-to-staging drill with a periodic restore report; Google Drive as a remote target.
+- **"Add as preferred source on Google" button** (for magazine and news sites): a link to `https://www.google.com/preferences/source?q=<the site's domain>`, which lets a signed-in reader pick the site as a preferred source for Top Stories (published as a button by Google in August 2026; only domains and subdomains qualify, not subfolders). A setting with places to show it: after the article (on by default), the article header (off), the footer (on), with a content-type filter so it stays on articles and news; a block for any other place (an About or "Follow us" page). A plain link, no third-party script; labels translated, the theme's colours and dark mode; no popups or sticky bars. Check the link format and the terms of Google's button artwork against Search Central before building.
 - **Settings > APIs**: credentials for services the site may use for generated excerpts and content (nothing uses them yet); other map providers' presets.
 
 ## Caching
