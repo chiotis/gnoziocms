@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.243 — 2026-11-07 — The shop's cart, checkout, orders and accounts
+Phase 3 of the shop (`docs/shop-plan.md`). Nothing changes on a site until the **Products** content type is switched on.
+- **Cart and checkout** at `/cart` and `/checkout` (under each language's prefix): Add to cart on the product page opens a cart drawer without leaving the page; the header shows the account and the cart with its count. The checkout is one page: contact, address (with an invoice's company and VAT number), shipping worked out from the country and postcode, gift wrapping and a gift note, the way to pay, the terms. Everything is priced again on the server; product pages stay cacheable (the shop's pages have their own session).
+- **Payments:** bank transfer (the order waits on hold, its page and email show the shop's accounts with the order number as the reference) and cash on delivery (with a fee, limited to some zones). Viva Wallet and Cardlink come next.
+- **Orders:** numbers follow on within a year after the prefix (AL-2026-00001); stock is taken when the order is placed and put back when it is cancelled, with the coupon's use; VAT is kept on each line. **Shop › Orders**: status chips, search, dates, a CSV with a row per line and its VAT; each order with its timeline, status changes, shipping with tracking, notes, its email again and a packing slip.
+- **Customers' accounts** at `/account`: sign up, sign in (throttled), a new password by email, confirming the address (guest orders with it then join the account), the orders, details and address, deleting the account. **Shop › Customers** lists them with their orders.
+- **Coupons** (**Shop › Coupons**): a percentage or an amount off, or free shipping; a minimum, dates, uses in all and per customer, only some collections.
+- **Shop settings** gains **Shipping** (zones by country and postcode prefix; flat, free over an amount, by weight, pickup at a store), **Payments** and **Accounts**.
+- **Emails** in the order's language, plain text: order received, the shop's notice, paid, shipped, cancelled, refunded, confirm the address, a new password. Their texts are theme strings (Translations). The HTML version and an Emails tab come later.
+- **Blocks:** **Shop the look** (a look's picture with its pieces, the total and Add the look; Complete the look on a product's page), **Looks** and **Mini cart**. Switching the shop on gives the product and look pages their starting templates, unless the site already chose a layout.
+- Tests: `tests/unit/shop-checkout.php`, `tests/http/shop_checkout_test.py`.
+
 ## 0.1.242 — 2026-11-07 — The shop's catalogue and design blocks
 The first two phases of the shop (`docs/shop-plan.md`). Nothing changes on a site until the **Products** content type is switched on.
 - **Products** (a catalogue type, off by default): price, old price, VAT rate, SKU, barcode, brand, pictures, a picture on hover, options and variants, Details sections and "Complete the look". Switching it on turns the shop on: **Looks** comes with it, the **Collections** and **Product categories** taxonomies are written, and **System › Shop settings** appears (General: store, currency, VAT rates with the Greek defaults, order number prefix, how long unpaid orders hold stock, guest checkout, terms and returns pages). Two new permissions: `shop.orders` and `shop.manage`.
