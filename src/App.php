@@ -3850,7 +3850,9 @@ final class App
             $this->shopServices()->secrets(),
             $this->shopServices()->viva(),
             $this->getBaseUrl(),
-            $this->shopServices()->cardlink()
+            $this->shopServices()->cardlink(),
+            $this->shopServices()->mail(),
+            fn(string $key, string $lang): string => $this->shopText($key, $lang)
         );
     }
 
@@ -3864,7 +3866,7 @@ final class App
             fn(): ShopCatalogue => $this->shopCatalogue(),
             fn(ContentItem $product): string => '/' . ContentPaths::build($product->type, $product->slug, $product->lang, (string)(($this->settings['home_page'] ?? '') !== '' ? $this->settings['home_page'] : 'index'), $this->defaultLanguage()),
             fn(string $key, string $lang, array $values = []): string => $this->shopText($key, $lang, $values),
-            fn(string $to, string $subject, string $body, array $headers): bool => $this->sendEmailMessage($to, $subject, $body, $headers),
+            fn(string $to, string $subject, string $body, array $headers, ?string $html = null): bool => $this->sendEmailMessage($to, $subject, $body, $headers, [], $html),
             fn(): array => $this->settings,
             $this->defaultLanguage(),
             $this->systemMeta,
@@ -4117,6 +4119,24 @@ final class App
         if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             $result = $this->shopSettingsAdmin()->act($_POST);
             $this->redirect('/admin/shop-settings?' . http_build_query(['tab' => $result['tab'], 'done' => $result['ok'] ? 'ok' : 'fail', 'msg' => $result['message']]));
+            return;
+        }
+        if (isset($_GET['preview'])) {
+            $preview = $this->shopSettingsAdmin()->preview((string)$_GET['preview'], (string)($_GET['lang'] ?? ''));
+            if ($preview === null) {
+                $this->redirect('/admin/shop-settings?tab=emails');
+                return;
+            }
+            // Shown as it would arrive: on its own, without scripts.
+            header('Content-Security-Policy: default-src \'none\'; img-src https: data:; style-src \'unsafe-inline\'');
+            header('X-Frame-Options: SAMEORIGIN');
+            if (($_GET['format'] ?? '') === 'text') {
+                header('Content-Type: text/plain; charset=utf-8');
+                echo 'Subject: ' . $preview['subject'] . "\n\n" . $preview['text'];
+                return;
+            }
+            header('Content-Type: text/html; charset=utf-8');
+            echo $preview['html'];
             return;
         }
         $this->render('@admin/shop-settings.twig', $this->shopSettingsAdmin()->screen($_GET) + [
@@ -5833,9 +5853,9 @@ final class App
     }
 
     /** @param array<int, array{path: string, name: string, mime: string}> $attachments */
-    private function sendEmailMessage(string $to, string $subject, string $body, array $headers, array $attachments = []): bool
+    private function sendEmailMessage(string $to, string $subject, string $body, array $headers, array $attachments = [], ?string $html = null): bool
     {
-        $result = $this->mailer()->send($to, $subject, $body, $headers, $attachments);
+        $result = $this->mailer()->send($to, $subject, $body, $headers, $attachments, $html);
         $this->logEmailAttempt($to, $subject, $result['provider'], $result['ok'], $result['error'], [
             'driver_setting' => (string)($this->settings['forms']['notifications']['driver'] ?? ''),
             'from' => (string)($headers['From'] ?? ''),
@@ -5843,6 +5863,7 @@ final class App
             'cc' => (string)($headers['Cc'] ?? ''),
             'bcc' => (string)($headers['Bcc'] ?? ''),
             'attachments' => count($attachments),
+            'html' => $html !== null,
         ]);
         return $result['ok'];
     }

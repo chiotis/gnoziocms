@@ -60,11 +60,21 @@ final class ShopCustomers
         return (int)$this->pdo()->lastInsertId();
     }
 
-    /** The customer whose password this is, or null. A hash made with older settings is made again. */
+    /**
+     * The customer whose password this is, or null. A hash made with older settings is made again; so is one brought from a
+     * WordPress shop (wordpressVerify()), on its first sign-in here, so nobody has to choose a new password after the move.
+     */
     public function authenticate(string $email, string $password): ?array
     {
         $customer = $this->byEmail($email);
-        if ($customer === null || $customer['password_hash'] === '' || !password_verify($password, $customer['password_hash'])) {
+        $hash = $customer['password_hash'] ?? '';
+        $wordpress = $customer !== null && self::isWordPressHash($hash);
+        $ok = $customer !== null && $hash !== '' && ($wordpress ? self::wordpressVerify($password, $hash) : password_verify($password, $hash));
+        if ($ok && $wordpress) {
+            $this->pdo()->prepare('UPDATE shop_customers SET password_hash = :hash WHERE id = :id')->execute(['hash' => password_hash($password, PASSWORD_DEFAULT), 'id' => $customer['id']]);
+            return $this->authenticate($email, $password);
+        }
+        if (!$ok) {
             // The same work for an address that has no account, so the time taken tells nothing.
             if ($customer === null) {
                 password_verify($password, '$2y$12$Jmra2FH8yxdoYvp6HI1LyOsZ/6iF7k2X7LRhWV/4TeYXsTHbQRcj2');
@@ -76,6 +86,75 @@ final class ShopCustomers
         }
         $this->pdo()->prepare('UPDATE shop_customers SET last_login_at = :now WHERE id = :id')->execute(['now' => time(), 'id' => $customer['id']]);
         return $customer;
+    }
+
+    /** A hash of WordPress's: portable phpass ($P$, $H$), its newer bcrypt ($wp$2y$, 6.8 on) or a bare MD5 of very old sites. */
+    public static function isWordPressHash(string $hash): bool
+    {
+        return preg_match('/^\$[PH]\$[.\/0-9A-Za-z]{31}$/', $hash) === 1 || str_starts_with($hash, '$wp$2') || preg_match('/^[0-9a-f]{32}$/', $hash) === 1;
+    }
+
+    public static function wordpressVerify(string $password, string $hash): bool
+    {
+        if (str_starts_with($hash, '$wp$2')) {
+            return password_verify(base64_encode(hash_hmac('sha384', $password, 'wp-sha384', true)), substr($hash, 3));
+        }
+        if (preg_match('/^[0-9a-f]{32}$/', $hash) === 1) {
+            return hash_equals($hash, md5($password));
+        }
+        $itoa = './0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+        $log2 = strpos($itoa, $hash[3]);
+        if ($log2 === false || $log2 < 7 || $log2 > 30 || strlen($password) > 4096) {
+            return false;
+        }
+        $salt = substr($hash, 4, 8);
+        $digest = md5($salt . $password, true);
+        for ($count = 1 << $log2; $count > 0; $count--) {
+            $digest = md5($digest . $password, true);
+        }
+        $out = '';
+        $i = 0;
+        do {
+            $value = ord($digest[$i++]);
+            $out .= $itoa[$value & 0x3f];
+            if ($i < 16) {
+                $value |= ord($digest[$i]) << 8;
+            }
+            $out .= $itoa[($value >> 6) & 0x3f];
+            if ($i++ >= 16) {
+                break;
+            }
+            if ($i < 16) {
+                $value |= ord($digest[$i]) << 16;
+            }
+            $out .= $itoa[($value >> 12) & 0x3f];
+            if ($i++ >= 16) {
+                break;
+            }
+            $out .= $itoa[($value >> 18) & 0x3f];
+        } while ($i < 16);
+        return hash_equals($hash, substr($hash, 0, 12) . $out);
+    }
+
+    /**
+     * A customer brought from another shop, with the hash of their password as it was there (WordPress's), confirmed (they were
+     * customers already). 'new', 'exists' (an account of that address is kept as it is) or 'invalid'.
+     *
+     * @param array<string, string> $address
+     */
+    public function import(string $email, string $hash, string $name, string $phone, array $address, string $lang): string
+    {
+        $email = trim($email);
+        if (filter_var($email, FILTER_VALIDATE_EMAIL) === false || mb_strlen($email) > 190) {
+            return 'invalid';
+        }
+        if ($this->byEmail($email) !== null) {
+            return 'exists';
+        }
+        $hash = self::isWordPressHash($hash) || password_get_info($hash)['algo'] !== null ? $hash : '';
+        $this->pdo()->prepare('INSERT INTO shop_customers (email, password_hash, name, phone, lang, address, verified_at, created_at) VALUES (:email, :hash, :name, :phone, :lang, :address, :now, :now2)')
+            ->execute(['email' => $email, 'hash' => $hash, 'name' => mb_substr(trim($name), 0, 120), 'phone' => mb_substr(trim($phone), 0, 40), 'lang' => $lang, 'address' => json_encode(ShopAddress::clean($address), JSON_UNESCAPED_UNICODE), 'now' => time(), 'now2' => time()]);
+        return 'new';
     }
 
     public function setPassword(int $id, string $password): bool
