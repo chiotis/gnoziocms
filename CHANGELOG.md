@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.246 — 2026-11-08 — Digital products
+Phase 6 of the shop (`docs/shop-plan.md`). Nothing changes on a site until a product's Kind is Digital product.
+- **Digital products** are sold: two new fields, *Downloads per purchase* and *Days to download* (0: no limit).
+- **Shop › Files** uploads each digital product's files. They are kept in `storage/shop-files` under a random name, never served by the site.
+- A cart of downloads only has no shipping step, no gift and no cash on delivery; a mixed cart ships as usual.
+- When the order is paid (or completed, when paid on delivery), each file gets a signed link with its count and days: in the paid email, on the order's page and in the account. A cancel or refund turns it off; the order's screen shows the counts and can **allow it again from the start**.
+- Tests: `tests/unit/shop-downloads.php`, `tests/http/shop_downloads_test.py`.
+
 ## 0.1.245 — 2026-11-08 — Card payments through Cardlink (Eurobank, Alpha, Cardlink)
 Phase 5 of the shop (`docs/shop-plan.md`). Nothing changes on a site until the shop is on and Cardlink is set up.
 - **Cardlink** on **Shop settings › Payments**: the acquirer (Cardlink, Nexi/Alpha Bank, Worldline/Eurobank), test mode, the Merchant ID, the shared secret (kept apart, never shown again, never exported), installments by amount, and **Save and check connection**. The same keys as Cardlink's WooCommerce plugin.
