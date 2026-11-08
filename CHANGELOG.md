@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.248 — 2026-11-08 — HTML emails and the WooCommerce import
+- **HTML emails:** the shop's emails go as text and HTML (SMTP multipart/alternative, SES Html body): the shop's colour, logo, the order as a table, the bank accounts, downloads and a button, a footer line. The email log says whether one had HTML.
+- **Shop settings › Emails:** HTML on or off, the colour, a logo and a footer line, and each email's subject and opening text in each language (blank: the theme's words), with a preview per language and a test email.
+- **WooCommerce import** (`scripts/import-woocommerce.php`): a dry run by default, `--apply` to import product categories (with their tree), products with options, variants, prices, SKUs, pictures, weights and stock, downloads, drafts, the redirects from `/product/…` and `/product-category/…`, and customers from a CSV of the old site's users. Read-only REST keys in `WC_KEY`/`WC_SECRET` give everything; without them the public Store API.
+- Customers brought from WordPress sign in with their old passwords (phpass, WordPress 6.8's bcrypt, old MD5), hashed again on the first sign-in.
+- Tests: `tests/unit/shop-emails.php`, `tests/http/shop_emails_test.py`, `tests/unit/woocommerce-import.php`.
+
 ## 0.1.247 — 2026-11-08 — Subscriptions
 Phase 7 of the shop (`docs/shop-plan.md`). Nothing changes on a site until a product's Kind is Subscription.
 - **Subscription products**: charged every 1–12 weeks, months or years, with an optional sign-up fee and a number of renewals (0: until cancelled).
