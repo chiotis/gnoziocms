@@ -3820,7 +3820,10 @@ final class App
                 asort($pages);
                 return $pages;
             },
-            array_values(array_unique([$this->defaultLanguage(), ...($this->settings['languages']['available'] ?? [])]))
+            array_values(array_unique([$this->defaultLanguage(), ...($this->settings['languages']['available'] ?? [])])),
+            $this->shopServices()->secrets(),
+            $this->shopServices()->viva(),
+            $this->getBaseUrl()
         );
     }
 
@@ -3836,7 +3839,8 @@ final class App
             fn(string $key, string $lang, array $values = []): string => $this->shopText($key, $lang, $values),
             fn(string $to, string $subject, string $body, array $headers): bool => $this->sendEmailMessage($to, $subject, $body, $headers),
             fn(): array => $this->settings,
-            $this->defaultLanguage()
+            $this->defaultLanguage(),
+            $this->systemMeta
         );
     }
 
@@ -3900,8 +3904,11 @@ final class App
             fn(): bool => $this->isValidCsrfRequest(),
             fn() => $this->render404(),
             fn(string $slug): string => '/' . $prefix . $slug,
-            $this->isHttpsRequest()
+            $this->isHttpsRequest(),
+            $services->viva()
         );
+        // Orders whose time to be paid ran out give their stock back before a shopper sees it (Shop › Orders does too).
+        $services->checkout()->expire();
         $front->handle($rest, $lang);
     }
 

@@ -9,7 +9,7 @@
     <div class="site-wrap shop-narrow">
       {% include 'templates/shop/_flash.twig' %}
       <header class="shop-head">
-        {% if just_placed %}
+        {% if just_placed and order.status != 'pending_payment' %}
           <p class="eyebrow">{{ t('shop.thank_you', 'Thank you') }}</p>
           <h1>{{ t('shop.order_received', 'We have your order') }}</h1>
           <p class="shop-muted">{{ t('shop.order_received_text', 'A copy is on its way to {email}.')|replace({'{email}': order.email}) }}</p>
@@ -17,6 +17,21 @@
           <h1>{{ t('shop.order', 'Order') }} {{ order.number }}</h1>
         {% endif %}
       </header>
+
+      {% if pay_state == 'failed' and order.status == 'pending_payment' %}
+        <p class="shop-flash is-error" role="alert">{{ t('shop.pay_failed', 'The payment did not go through. Nothing was charged; you can try again.') }}</p>
+      {% elseif pay_state == 'pending' %}
+        <p class="shop-flash is-info" role="status">{{ t('shop.pay_pending', 'The bank has not confirmed the payment yet. This page will say so as soon as it does.') }}</p>
+      {% elseif pay_state == 'paid' and order.status != 'pending_payment' %}
+        <p class="shop-flash is-success" role="status">{{ t('shop.pay_paid', 'Paid. Thank you!') }}</p>
+      {% endif %}
+      {% if can_pay %}
+        <form class="shop-box" method="post" action="{{ url(pay_url) }}">
+          {{ csrf_field() }}<input type="hidden" name="key" value="{{ key }}">
+          <p>{{ t('shop.pay_waiting', 'This order waits for its payment. The pieces are kept for you for a little while.') }}</p>
+          <button class="btn btn-primary" type="submit">{{ t('shop.pay_now', 'Pay now') }} · {{ order.total }}</button>
+        </form>
+      {% endif %}
 
       <dl class="shop-facts">
         <div><dt>{{ t('shop.order_number', 'Order number') }}</dt><dd class="shop-code">{{ order.number }}</dd></div>

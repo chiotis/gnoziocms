@@ -65,7 +65,16 @@ final class ShopSettings
             return;
         }
         $stored = $this->meta->getJson(self::META) ?? [];
+        $viva = is_array($post['viva'] ?? null) ? $post['viva'] : [];
         $stored['payments'] = [
+            'viva' => [
+                'enabled' => !empty($viva['enabled']),
+                'demo' => !empty($viva['demo']),
+                'merchant_id' => (string)($viva['merchant_id'] ?? ''),
+                'client_id' => (string)($viva['client_id'] ?? ''),
+                'source_code' => (string)($viva['source_code'] ?? ''),
+                'installments' => \GnozioCMS\Shop\Payments\VivaWallet::installmentsTable((string)($viva['installments'] ?? '')),
+            ],
             'bank_transfer' => ['enabled' => !empty($post['bank_transfer']['enabled']), 'accounts' => (string)($post['bank_transfer']['accounts'] ?? '')],
             'cod' => ['enabled' => !empty($post['cod']['enabled']), 'fee' => ShopMoney::cents($post['cod']['fee'] ?? '') ?? 0, 'zones' => is_array($post['cod']['zones'] ?? null) ? $post['cod']['zones'] : []],
         ];
@@ -146,6 +155,8 @@ final class ShopSettings
         $payments = is_array($stored['payments'] ?? null) ? $stored['payments'] : [];
         $bank = is_array($payments['bank_transfer'] ?? null) ? $payments['bank_transfer'] : [];
         $cod = is_array($payments['cod'] ?? null) ? $payments['cod'] : [];
+        $viva = is_array($payments['viva'] ?? null) ? $payments['viva'] : [];
+        $code = static fn(mixed $value, string $pattern): string => preg_match($pattern, trim(is_scalar($value) ? (string)$value : '')) === 1 ? trim((string)$value) : '';
         $accounts = is_array($stored['accounts'] ?? null) ? $stored['accounts'] : [];
         $zones = ShopShipping::normalize($stored['shipping'] ?? [], [], true);
         $zoneIds = array_column($zones, 'id');
@@ -166,6 +177,14 @@ final class ShopSettings
             'returns_page' => $page($stored['returns_page'] ?? ''),
             'shipping' => $zones,
             'payments' => [
+                'viva' => [
+                    'enabled' => !empty($viva['enabled']),
+                    'demo' => array_key_exists('demo', $viva) ? (bool)$viva['demo'] : true,
+                    'merchant_id' => $code($viva['merchant_id'] ?? '', '/^[A-Za-z0-9-]{4,64}$/'),
+                    'client_id' => $code($viva['client_id'] ?? '', '/^[A-Za-z0-9._@-]{4,200}$/'),
+                    'source_code' => $code($viva['source_code'] ?? '', '/^[A-Za-z0-9_-]{1,20}$/'),
+                    'installments' => array_values(array_filter(is_array($viva['installments'] ?? null) ? $viva['installments'] : [], static fn(mixed $r): bool => is_array($r) && count($r) === 2 && is_int($r[0]) && is_int($r[1]))),
+                ],
                 'bank_transfer' => [
                     'enabled' => !empty($bank['enabled']),
                     'accounts' => mb_substr(trim(str_replace("\r\n", "\n", is_scalar($bank['accounts'] ?? null) ? (string)$bank['accounts'] : '')), 0, 2000),

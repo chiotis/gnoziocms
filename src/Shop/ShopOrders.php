@@ -29,7 +29,7 @@ final class ShopOrders
         'pending_payment' => ['paid', 'on_hold', 'processing', 'cancelled'],
         'on_hold' => ['paid', 'processing', 'cancelled'],
         'paid' => ['processing', 'shipped', 'completed', 'refunded', 'cancelled'],
-        'processing' => ['paid', 'shipped', 'completed', 'cancelled'],
+        'processing' => ['paid', 'shipped', 'completed', 'refunded', 'cancelled'],
         'shipped' => ['completed', 'refunded'],
         'completed' => ['refunded'],
         'cancelled' => [],

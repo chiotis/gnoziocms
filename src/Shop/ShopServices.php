@@ -7,7 +7,9 @@ namespace GnozioCMS\Shop;
 use GnozioCMS\Shop\Payments\BankTransfer;
 use GnozioCMS\Shop\Payments\CashOnDelivery;
 use GnozioCMS\Shop\Payments\PaymentProvider;
+use GnozioCMS\Shop\Payments\VivaWallet;
 use GnozioCMS\SystemDatabase;
+use GnozioCMS\SystemMetaRepository;
 
 /**
  * The shop's parts, each made the first time it is needed, so App only hands over what they share (the database, the
@@ -22,6 +24,9 @@ final class ShopServices
     private ?ShopCustomers $customers = null;
     private ?ShopCheckout $checkout = null;
     private ?ShopMail $mail = null;
+    private ?ShopPayments $payments = null;
+    private ?ShopSecrets $secrets = null;
+    private ?VivaWallet $viva = null;
     /** @var array<string, PaymentProvider>|null */
     private ?array $providers = null;
 
@@ -41,8 +46,25 @@ final class ShopServices
         private \Closure $t,
         private \Closure $send,
         private \Closure $siteSettings,
-        private string $defaultLang
+        private string $defaultLang,
+        private ?SystemMetaRepository $meta = null,
+        private ?\Closure $transport = null
     ) {
+    }
+
+    public function payments(): ShopPayments
+    {
+        return $this->payments ??= new ShopPayments($this->database);
+    }
+
+    public function secrets(): ShopSecrets
+    {
+        return $this->secrets ??= new ShopSecrets($this->meta ?? new SystemMetaRepository($this->database));
+    }
+
+    public function viva(): VivaWallet
+    {
+        return $this->viva ??= new VivaWallet($this->secrets(), $this->payments(), $this->meta ?? new SystemMetaRepository($this->database), $this->transport);
     }
 
     public function settings(): ShopSettings
@@ -85,7 +107,7 @@ final class ShopServices
     {
         if ($this->providers === null) {
             $this->providers = [];
-            foreach ([new BankTransfer(), new CashOnDelivery()] as $provider) {
+            foreach ([$this->viva(), new BankTransfer(), new CashOnDelivery()] as $provider) {
                 $this->providers[$provider->id()] = $provider;
             }
         }
@@ -102,7 +124,8 @@ final class ShopServices
             $this->settings,
             $this->providers(),
             fn(string $key, string $lang): string => ($this->t)($key, $lang, []),
-            $this->defaultLang
+            $this->defaultLang,
+            $this->payments()
         );
     }
 

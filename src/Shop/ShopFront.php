@@ -13,6 +13,7 @@ use GnozioCMS\LoginThrottle;
  *   /checkout/order/{number}   an order's page (with its key for a guest, or for its customer)
  *   /account …                 signing in and up, a new password, the customer's orders and details
  *   /_shop/cart                adding to the cart from a product's page (a form or a script), and /_shop/cart.json
+ *   /_shop/pay/viva/…          where Viva Wallet sends the customer back (success, failure) and calls (webhook)
  *
  * These pages have their own session (cookie gz_shop), apart from the admin's, so a shopper's other pages stay the same for
  * everyone and can be kept by a cache. The cart is found by its own cookie; the header's count is read by the page's script
@@ -49,7 +50,8 @@ final class ShopFront
         private \Closure $csrfValid,
         private \Closure $notFound,
         private \Closure $pageUrl,
-        private bool $https
+        private bool $https,
+        private ?\GnozioCMS\Shop\Payments\VivaWallet $viva = null
     ) {
     }
 
@@ -83,6 +85,9 @@ final class ShopFront
             $rest === 'cart' => $post ? $this->cartAction($lang) : $this->cartPage($lang),
             $rest === 'checkout' => $this->checkoutPage($lang, $post),
             $segments[0] === 'checkout' && ($segments[1] ?? '') === 'order' && isset($segments[2]) && count($segments) === 3 => $this->orderPage($segments[2], $lang, (string)($_GET['key'] ?? '')),
+            $segments[0] === 'checkout' && ($segments[1] ?? '') === 'order' && isset($segments[2]) && ($segments[3] ?? '') === 'pay' && $post => $this->payAgain($segments[2], $lang, (string)($_REQUEST['key'] ?? '')),
+            $rest === '_shop/pay/viva/webhook' => $this->vivaWebhook($post),
+            $rest === '_shop/pay/viva/success', $rest === '_shop/pay/viva/failure' => $this->vivaReturn($segments[3]),
             $segments[0] === 'account' => $this->account(array_slice($segments, 1), $lang, $post),
             default => ($this->notFound)(),
         };
@@ -250,7 +255,10 @@ final class ShopFront
                 if ($customer !== null && ($customer['address']['address'] ?? '') === '') {
                     $this->customers->updateProfile($customer['id'], $customer['name'] !== '' ? $customer['name'] : ShopAddress::name($order['billing']), $customer['phone'] !== '' ? $customer['phone'] : (string)($order['billing']['phone'] ?? ''), $order['billing']);
                 }
-                $this->mail->orderPlaced($order, $this->orders->lines((int)$order['id']), $this->orderUrl($order), ($this->absoluteUrl)('admin/shop-orders?id=' . $order['id']));
+                // An order sent to pay online is told about once it is paid (vivaReturn, the webhook).
+                if ($order['status'] !== 'pending_payment') {
+                    $this->mail->orderPlaced($order, $this->orders->lines((int)$order['id']), $this->orderUrl($order), ($this->absoluteUrl)('admin/shop-orders?id=' . $order['id']));
+                }
                 $_SESSION['shop_orders'] = array_slice(array_merge([(string)$order['number']], (array)($_SESSION['shop_orders'] ?? [])), 0, 10);
                 $this->go($result['redirect'] !== '' ? $result['redirect'] : $this->orderPath($order));
                 return;
@@ -304,9 +312,125 @@ final class ShopFront
             'document_title' => ($this->t)('shop.order', $lang) . ' ' . $order['number'],
             'order' => $this->orderView($order, $lang),
             'just_placed' => in_array($order['number'], (array)($_SESSION['shop_orders'] ?? []), true) && $key !== '',
+            'pay_state' => in_array((string)($_GET['pay'] ?? ''), ['paid', 'failed', 'pending'], true) ? (string)$_GET['pay'] : '',
+            // An order sent to pay online and not paid yet can be paid again while its stock is held.
+            'can_pay' => $order['status'] === 'pending_payment' && (int)$order['reserve_until'] > time() && $this->checkout->provider((string)$order['payment_method']) !== null,
+            'pay_url' => '/' . ($this->prefixFor)($lang) . 'checkout/order/' . rawurlencode((string)$order['number']) . '/pay',
+            'key' => $key,
             'customer' => $customer,
             'flash' => $this->takeFlash(),
         ]);
+    }
+
+    // ---- paying online
+
+    /** Pay now, on the page of an order still waiting for its payment: off to the provider again. */
+    private function payAgain(string $number, string $lang, string $key): void
+    {
+        $order = $this->orders->byNumber($number);
+        $customer = $this->customer();
+        $mine = $order !== null && (($key !== '' && hash_equals((string)$order['view_key'], $key)) || ($customer !== null && $order['customer_id'] === $customer['id']));
+        if (!$mine) {
+            ($this->notFound)();
+            return;
+        }
+        $result = $this->checkout->payAgain($order);
+        if (!$result['ok']) {
+            $this->flash('error', ($this->t)('shop.err_' . $result['error'], $lang));
+            $this->go($this->orderPath($order));
+            return;
+        }
+        $this->go($result['redirect']);
+    }
+
+    /**
+     * Where Viva Wallet sends the customer back: `t` the transaction, `s` the payment order. What the address says is only a hint;
+     * the transaction is asked of Viva before the order changes. The customer lands on the order's page either way.
+     */
+    private function vivaReturn(string $which): void
+    {
+        $settings = $this->vivaSettings();
+        $reference = preg_replace('/\D/', '', (string)($_GET['s'] ?? '')) ?? '';
+        $transaction = (string)($_GET['t'] ?? '');
+        $order = null;
+        $state = 'failed';
+        if ($this->viva !== null && $transaction !== '') {
+            $tx = $this->viva->transaction($settings, $transaction);
+            if ($tx['ok'] && $reference !== '' && $tx['reference'] !== $reference) {
+                $tx['ok'] = false;
+            }
+            $result = $this->checkout->confirm(Payments\VivaWallet::ID, $tx, 'viva');
+            $order = $result['order'];
+            $state = match ($result['outcome']) {
+                'paid', 'already', 'late' => 'paid',
+                'pending' => 'pending',
+                default => 'failed',
+            };
+            if ($result['outcome'] === 'paid' && $order !== null) {
+                $this->toldPaid($order);
+            }
+        }
+        if ($order === null && $reference !== '') {
+            $order = $this->checkout->orderOfPayment(Payments\VivaWallet::ID, $reference);
+            if ($order !== null && $which === 'failure') {
+                $this->checkout->paymentFailed(Payments\VivaWallet::ID, $reference, 'The customer came back without paying.');
+            }
+        }
+        if ($order === null) {
+            ($this->notFound)();
+            return;
+        }
+        $this->go($this->orderPath($order) . '&pay=' . ($which === 'failure' && $state !== 'paid' ? 'failed' : $state));
+    }
+
+    /**
+     * Viva Wallet's webhook: a GET is answered with the verification key; a POST is an event (1796 paid, 1798 failed), taken once by
+     * its id and believed only after asking Viva for the transaction.
+     */
+    private function vivaWebhook(bool $post): void
+    {
+        $settings = $this->vivaSettings();
+        if ($this->viva === null || empty($settings['enabled'])) {
+            $this->json(['error' => 'off'], 404);
+            return;
+        }
+        if (!$post) {
+            $this->json(['Key' => $this->viva->webhookKey($settings)]);
+            return;
+        }
+        $event = json_decode((string)file_get_contents('php://input'), true);
+        $type = (int)($event['EventTypeId'] ?? 0);
+        $transaction = (string)($event['EventData']['TransactionId'] ?? '');
+        if (!in_array($type, [Payments\VivaWallet::EVENT_PAID, Payments\VivaWallet::EVENT_FAILED], true) || $transaction === '') {
+            $this->json([]);
+            return;
+        }
+        $key = $type . ':' . $transaction;
+        $tx = $this->viva->transaction($settings, $transaction);
+        if (!$tx['ok']) {
+            // Viva calls again when it is not answered with 200; it is, once Viva can be asked.
+            $this->json(['error' => 'not now'], 503);
+            return;
+        }
+        $result = $this->checkout->confirm(Payments\VivaWallet::ID, $tx, 'viva webhook');
+        $this->checkout->noteEvent(Payments\VivaWallet::ID, $key, 'webhook ' . $type, $result['order'] !== null ? (int)$result['order']['id'] : null, $result['outcome']);
+        if ($result['outcome'] === 'paid' && $result['order'] !== null) {
+            $this->toldPaid($result['order']);
+        }
+        $this->json([]);
+    }
+
+    /** @param array<string, mixed> $order the order is paid: the customer gets its email, the shop its notice */
+    private function toldPaid(array $order): void
+    {
+        $this->mail->orderPlaced($order, $this->orders->lines((int)$order['id']), $this->orderUrl($order), ($this->absoluteUrl)('admin/shop-orders?id=' . $order['id']));
+    }
+
+    /** @return array<string, mixed> */
+    private function vivaSettings(): array
+    {
+        $settings = $this->settings->all()['payments']['viva'] ?? [];
+        return is_array($settings) ? $settings : [];
     }
 
     // ---- accounts
