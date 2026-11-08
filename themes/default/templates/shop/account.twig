@@ -71,6 +71,8 @@
           </ul>
         {% endif %}
 
+        {% include 'templates/shop/_downloads.twig' %}
+
         <form class="shop-box" id="details" method="post" action="{{ url(prefix ~ 'account/details') }}">
           {{ csrf_field() }}
           <h2 class="shop-box-title">{{ t('shop.details', 'Your details') }}</h2>

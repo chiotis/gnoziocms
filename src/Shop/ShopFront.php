@@ -16,6 +16,7 @@ use GnozioCMS\LoginThrottle;
  *   /_shop/pay/viva/…          where Viva Wallet sends the customer back (success, failure) and calls (webhook)
  *   /_shop/pay/cardlink/go     the step before Cardlink's page (installments), which posts the signed form to the bank
  *   /_shop/pay/cardlink/…      where Cardlink posts the result back (confirm, cancel)
+ *   /_shop/download/{id}-{sig} a paid order's file, while its count and days allow
  *
  * These pages have their own session (cookie gz_shop), apart from the admin's, so a shopper's other pages stay the same for
  * everyone and can be kept by a cache. The cart is found by its own cookie; the header's count is read by the page's script
@@ -54,7 +55,8 @@ final class ShopFront
         private \Closure $pageUrl,
         private bool $https,
         private ?\GnozioCMS\Shop\Payments\VivaWallet $viva = null,
-        private ?Payments\Cardlink $cardlink = null
+        private ?Payments\Cardlink $cardlink = null,
+        private ?ShopDownloads $downloads = null
     ) {
     }
 
@@ -93,6 +95,7 @@ final class ShopFront
             $rest === '_shop/pay/viva/success', $rest === '_shop/pay/viva/failure' => $this->vivaReturn($segments[3]),
             $rest === '_shop/pay/cardlink/go' => $this->cardlinkGo($post),
             ($rest === '_shop/pay/cardlink/confirm' || $rest === '_shop/pay/cardlink/cancel') && $post => $this->cardlinkReturn(),
+            $segments[0] === '_shop' && ($segments[1] ?? '') === 'download' && isset($segments[2]) && count($segments) === 3 => $this->download($segments[2], $lang, $method === 'HEAD'),
             $segments[0] === 'account' => $this->account(array_slice($segments, 1), $lang, $post),
             default => ($this->notFound)(),
         };
@@ -321,6 +324,7 @@ final class ShopFront
             // An order sent to pay online and not paid yet can be paid again while its stock is held.
             'can_pay' => $order['status'] === 'pending_payment' && (int)$order['reserve_until'] > time() && $this->checkout->provider((string)$order['payment_method']) !== null,
             'pay_url' => '/' . ($this->prefixFor)($lang) . 'checkout/order/' . rawurlencode((string)$order['number']) . '/pay',
+            'downloads' => $this->downloads?->forOrder((int)$order['id']) ?? [],
             'key' => $key,
             'customer' => $customer,
             'flash' => $this->takeFlash(),
@@ -501,6 +505,46 @@ final class ShopFront
     {
         $settings = $this->settings->all()['payments'][$id] ?? [];
         return is_array($settings) ? $settings : [];
+    }
+
+    /**
+     * A paid order's file, by its signed link: counted, then sent as an attachment. A link that can no longer be used says why
+     * (turned off with a cancel or refund, used up, past its days); one that never was is not found.
+     */
+    private function download(string $token, string $lang, bool $head): void
+    {
+        $open = $this->downloads?->open($token) ?? ['ok' => false, 'reason' => 'gone', 'download' => null, 'file' => null];
+        if ($open['reason'] === 'gone') {
+            ($this->notFound)();
+            return;
+        }
+        if ($open['ok'] && !$head && !$this->downloads->count($open['download']['id'])) {
+            $open = ['ok' => false, 'reason' => 'used'] + $open;
+        }
+        if (!$open['ok']) {
+            http_response_code(410);
+            ($this->render)('templates/shop/download.twig', $lang, [
+                'document_title' => ($this->t)('shop.download', $lang),
+                'reason' => $open['reason'],
+                'name' => $open['file']['name'] ?? '',
+                'account_url' => '/' . ($this->prefixFor)($lang) . 'account',
+            ]);
+            return;
+        }
+        $file = $open['file'];
+        $path = $this->downloads->path($file);
+        $ascii = (string)preg_replace('/[^A-Za-z0-9._ ()-]/', '_', (string)$file['name']);
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+        header('Content-Type: application/octet-stream');
+        header('Content-Disposition: attachment; filename="' . $ascii . '"; filename*=UTF-8\'\'' . rawurlencode((string)$file['name']));
+        header('Content-Length: ' . (string)filesize($path));
+        header('X-Content-Type-Options: nosniff');
+        header('Content-Security-Policy: default-src \'none\'; sandbox');
+        if (!$head) {
+            readfile($path);
+        }
     }
 
     /** @param array<string, mixed> $order the order is paid: the customer gets its email, the shop its notice */
@@ -690,6 +734,7 @@ final class ShopFront
         }
         $this->accountPage($lang, 'home', [
             'orders' => array_map(fn(array $o): array => $this->orderView($o, $lang, false), $this->orders->forCustomer($customer['id'])),
+            'downloads' => $this->downloads?->forOrders(array_column($this->orders->forCustomer($customer['id']), 'id')) ?? [],
             'countries' => ShopCountries::options(ShopShipping::countries($shop['shipping']) ?: array_keys(ShopCountries::NAMES), $lang),
             'verify_pending' => !$customer['verified'],
         ]);
@@ -760,6 +805,7 @@ final class ShopFront
             'payment' => $quote['payment'],
             'coupon' => $quote['coupon'],
             'has_zone' => $quote['zone'] !== null,
+            'digital_only' => !empty($quote['digital_only']),
             'gift_wrap' => array_filter($quote['priced']['lines'], static fn(array $l): bool => $l['gift_wrap']) !== [],
             'items' => $money($totals['items']),
             'discount' => $totals['discount'] > 0 ? $money(-$totals['discount']) : '',

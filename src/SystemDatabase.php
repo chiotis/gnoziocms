@@ -121,6 +121,7 @@ final class SystemDatabase
         $this->applyMigration($pdo, '202611070002_shop_stock', fn(PDO $db) => $this->createShopStockTable($db));
         $this->applyMigration($pdo, '202611070003_shop_orders', fn(PDO $db) => $this->createShopOrderTables($db));
         $this->applyMigration($pdo, '202611080001_shop_payments', fn(PDO $db) => $this->createShopPaymentTables($db));
+        $this->applyMigration($pdo, '202611080002_shop_downloads', fn(PDO $db) => $this->createShopDownloadTables($db));
     }
 
     /**
@@ -302,6 +303,42 @@ final class SystemDatabase
                 outcome TEXT NOT NULL DEFAULT '',
                 at INTEGER NOT NULL,
                 UNIQUE (provider, event_key)
+            )"
+        );
+    }
+
+    /**
+     * Digital products (docs/shop-plan.md, section 6): the private files a product sells, kept under storage/shop-files with a
+     * random name and never under public/; and what each paid order may download, by a signed link, with a count and an end.
+     */
+    private function createShopDownloadTables(PDO $pdo): void
+    {
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS shop_files (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                product_id TEXT NOT NULL,
+                name TEXT NOT NULL,
+                stored TEXT NOT NULL,
+                size INTEGER NOT NULL DEFAULT 0,
+                mime TEXT NOT NULL DEFAULT 'application/octet-stream',
+                created_at INTEGER NOT NULL
+            )"
+        );
+        $pdo->exec('CREATE INDEX IF NOT EXISTS shop_files_product ON shop_files (product_id)');
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS shop_downloads (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                order_id INTEGER NOT NULL,
+                file_id INTEGER NOT NULL,
+                title TEXT NOT NULL DEFAULT '',
+                name TEXT NOT NULL DEFAULT '',
+                downloads INTEGER NOT NULL DEFAULT 0,
+                max_downloads INTEGER NOT NULL DEFAULT 0,
+                expires_at INTEGER NOT NULL DEFAULT 0,
+                active INTEGER NOT NULL DEFAULT 1,
+                last_at INTEGER NOT NULL DEFAULT 0,
+                created_at INTEGER NOT NULL,
+                UNIQUE (order_id, file_id)
             )"
         );
     }

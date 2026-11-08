@@ -29,6 +29,7 @@ final class ShopServices
     private ?ShopSecrets $secrets = null;
     private ?VivaWallet $viva = null;
     private ?Cardlink $cardlink = null;
+    private ?ShopDownloads $downloads = null;
     /** @var array<string, PaymentProvider>|null */
     private ?array $providers = null;
 
@@ -73,6 +74,22 @@ final class ShopServices
     public function cardlink(): Cardlink
     {
         return $this->cardlink ??= new Cardlink($this->secrets(), $this->payments(), $this->orders(), $this->siteUrl, $this->transport);
+    }
+
+    public function downloads(): ShopDownloads
+    {
+        return $this->downloads ??= new ShopDownloads(
+            $this->database,
+            $this->meta ?? new SystemMetaRepository($this->database),
+            dirname($this->database->path(), 2) . '/shop-files',
+            $this->siteUrl,
+            function (string $productId): array {
+                $catalogue = ($this->catalogue)();
+                $product = $catalogue->product($productId, $catalogue->defaultLanguage());
+                $custom = is_array($product?->meta['custom_fields'] ?? null) ? $product->meta['custom_fields'] : [];
+                return ['limit' => max(0, (int)($custom['download_limit'] ?? 5)), 'days' => max(0, (int)($custom['download_days'] ?? 30))];
+            }
+        );
     }
 
     public function settings(): ShopSettings
@@ -133,7 +150,8 @@ final class ShopServices
             $this->providers(),
             fn(string $key, string $lang): string => ($this->t)($key, $lang, []),
             $this->defaultLang,
-            $this->payments()
+            $this->payments(),
+            $this->downloads()
         );
     }
 
@@ -144,7 +162,8 @@ final class ShopServices
             $this->siteSettings,
             $this->t,
             $this->send,
-            fn(string $id): ?PaymentProvider => $this->providers()[$id] ?? null
+            fn(string $id): ?PaymentProvider => $this->providers()[$id] ?? null,
+            fn(int $orderId): array => $this->downloads()->forOrder($orderId)
         );
     }
 }

@@ -1,0 +1,18 @@
+{% extends 'layouts/base.twig' %}
+{# A download's link that can no longer be used (docs/shop-plan.md, section 6): why, and where to find the order. #}
+{% block content %}
+  <section class="shop-page">
+    <div class="site-wrap shop-narrow">
+      <header class="shop-head">
+        <h1>{{ t('shop.download', 'Download') }}{% if name %} · {{ name }}{% endif %}</h1>
+      </header>
+      <p class="shop-flash is-error" role="alert">
+        {% if reason == 'used' %}{{ t('shop.download_used_text', 'This file has been downloaded as many times as it can be.') }}
+        {% elseif reason == 'expired' %}{{ t('shop.download_expired_text', 'The days this file could be downloaded have passed.') }}
+        {% else %}{{ t('shop.download_off_text', 'This file can no longer be downloaded.') }}{% endif %}
+        {{ t('shop.download_ask', 'Write to us if you need it again.') }}
+      </p>
+      <p class="shop-muted"><a class="text-link" href="{{ account_url }}">{{ t('shop.your_orders', 'Your orders') }}</a></p>
+    </div>
+  </section>
+{% endblock %}

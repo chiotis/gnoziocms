@@ -98,6 +98,7 @@ final class ShopAdmin
             ],
             'lines' => array_map(static fn(array $l): array => $l + ['unit' => ShopMoney::format($l['unit_cents'], 'en'), 'total' => ShopMoney::format($l['total_cents'], 'en')], $lines),
             'events' => $this->shop->orders()->events($id),
+            'downloads' => $this->shop->downloads()->forOrder($id),
             'payments' => array_map(static fn(array $p): array => $p + ['amount' => ShopMoney::format($p['amount_cents'], 'en'), 'refunded' => ShopMoney::format($p['refunded_cents'], 'en'), 'left' => ShopMoney::plain($p['amount_cents'] - $p['refunded_cents'])], $this->shop->payments()->forOrder($id)),
             'next' => array_intersect_key(ShopOrders::STATUSES, array_flip(ShopOrders::NEXT[$order['status']] ?? [])),
             'customer' => $customer,
@@ -156,6 +157,13 @@ final class ShopAdmin
             }
             $this->shop->orders()->addEvent($id, 'note', $text, $actor);
             return ['ok' => true, 'message' => 'The note is added.'];
+        }
+        if ($action === 'download_reset') {
+            $ok = $this->shop->downloads()->reset($id, (int)($post['download'] ?? 0));
+            if ($ok) {
+                $this->shop->orders()->addEvent($id, 'download', 'A download was allowed again from the start.', $actor);
+            }
+            return ['ok' => $ok, 'message' => $ok ? 'The download can be had again from the start.' : 'There is no such download on this order.'];
         }
         if ($action === 'resend') {
             $sent = $this->shop->mail()->orderPlaced($order, $this->shop->orders()->lines($id), ($this->orderUrl)($order), '');
@@ -227,6 +235,60 @@ final class ShopAdmin
      * @param array<string, mixed> $get
      * @return array<string, mixed>
      */
+    /**
+     * Shop > Files: the digital products and the files each one sells.
+     *
+     * @param array<string, string> $products digital products, id => title
+     * @return array<string, mixed>
+     */
+    public function files(array $products): array
+    {
+        $all = $this->shop->downloads()->allFiles();
+        $rows = [];
+        foreach ($products as $id => $title) {
+            $rows[] = ['id' => $id, 'title' => $title, 'files' => $all[$id] ?? []];
+        }
+        $orphans = array_diff_key($all, $products);
+        return ['products' => $rows, 'orphans' => $orphans, 'max_mb' => intdiv(ShopDownloads::MAX_BYTES, 1024 * 1024)];
+    }
+
+    /**
+     * An upload or a removal on Shop > Files.
+     *
+     * @param array<string, mixed> $post action: upload (product), remove (id)
+     * @param array<string, mixed>|null $upload the file from $_FILES
+     * @param array<string, string> $products digital products, id => title
+     * @return array{ok: bool, message: string}
+     */
+    public function fileAction(array $post, ?array $upload, array $products, string $actor): array
+    {
+        $action = (string)($post['action'] ?? '');
+        if ($action === 'remove') {
+            $file = $this->shop->downloads()->file((int)($post['id'] ?? 0));
+            if ($file === null || !$this->shop->downloads()->remove($file['id'])) {
+                return ['ok' => false, 'message' => 'There is no such file.'];
+            }
+            ($this->log)('shop.file_removed', 'info', 'shop', 'file:' . $file['id'], 'Removed the file ' . $file['name'] . '.', []);
+            return ['ok' => true, 'message' => $file['name'] . ' is removed. Links already given for it stop working.'];
+        }
+        if ($action === 'upload') {
+            $product = (string)($post['product'] ?? '');
+            if (!isset($products[$product])) {
+                return ['ok' => false, 'message' => 'Choose one of the digital products.'];
+            }
+            $error = (int)($upload['error'] ?? UPLOAD_ERR_NO_FILE);
+            if ($error !== UPLOAD_ERR_OK) {
+                return ['ok' => false, 'message' => in_array($error, [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true) ? 'The file is larger than the server takes; see System status for the upload limit.' : 'Choose a file to upload.'];
+            }
+            $result = $this->shop->downloads()->add($product, (string)$upload['tmp_name'], (string)($upload['name'] ?? 'file'));
+            if ($result['ok']) {
+                ($this->log)('shop.file_added', 'info', 'shop', 'product:' . $product, 'Added a file to ' . $products[$product] . '.', ['by' => $actor]);
+            }
+            return $result;
+        }
+        return ['ok' => false, 'message' => 'Nothing was done.'];
+    }
+
     public function customers(array $get): array
     {
         $page = max(1, (int)($get['page'] ?? 1));

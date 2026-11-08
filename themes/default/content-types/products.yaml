@@ -17,7 +17,7 @@ fields:
       physical: { el: Φυσικό προϊόν, en: Physical product }
       digital: { el: Ψηφιακό προϊόν, en: Digital product }
       subscription: { el: Συνδρομή, en: Subscription }
-    help: { el: 'Τα ψηφιακά προϊόντα και οι συνδρομές πωλούνται όταν έρθουν οι πληρωμές.', en: 'Digital products and subscriptions are sold once payments arrive.' }
+    help: { el: 'Ένα ψηφιακό προϊόν πωλεί αρχεία, που ανεβαίνουν στο Κατάστημα › Αρχεία. Οι συνδρομές έρχονται αργότερα.', en: 'A digital product sells files, uploaded on Shop › Files. Subscriptions come later.' }
   price:
     type: decimal
     label: { el: Τιμή (€), en: Price (€) }
@@ -132,6 +132,24 @@ fields:
     min: 0
     shared: true
     show: false
+  download_limit:
+    type: number
+    label: { el: Λήψεις ανά αγορά, en: Downloads per purchase }
+    min: 0
+    default: 5
+    shared: true
+    show: false
+    when: { kind: [digital] }
+    help: { el: '0: χωρίς όριο.', en: '0: no limit.' }
+  download_days:
+    type: number
+    label: { el: Μέρες για λήψη, en: Days to download }
+    min: 0
+    default: 30
+    shared: true
+    show: false
+    when: { kind: [digital] }
+    help: { el: 'Από την πληρωμή. 0: χωρίς λήξη.', en: 'From the payment. 0: never ends.' }
   gift_wrap:
     type: toggle
     label: { el: Συσκευασία δώρου, en: Gift wrapping }
