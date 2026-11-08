@@ -125,7 +125,7 @@
           <ul class="divide-y divide-slate-100 text-xs">
             {% for p in payments %}
               <li class="px-4 py-2">
-                <div class="flex items-center justify-between gap-2"><span class="font-medium text-slate-800">{{ p.provider == 'viva' ? 'Viva Wallet' : p.provider }} · {{ p.amount }}</span>{{ ui.badge(p.status, {paid: 'green', started: 'amber', failed: 'red'}[p.status] ?? 'slate') }}</div>
+                <div class="flex items-center justify-between gap-2"><span class="font-medium text-slate-800">{{ {viva: 'Viva Wallet', cardlink: 'Cardlink'}[p.provider] ?? p.provider }} · {{ p.amount }}</span>{{ ui.badge(p.status, {paid: 'green', started: 'amber', failed: 'red'}[p.status] ?? 'slate') }}</div>
                 <div class="mt-0.5 font-mono text-slate-400">{{ p.reference }}{% if p.transaction_id %} · {{ p.transaction_id }}{% endif %}</div>
                 {% if p.refunded_cents > 0 %}<div class="mt-0.5 text-red-600">Refunded {{ p.refunded }}</div>{% endif %}
               </li>
@@ -133,11 +133,11 @@
           </ul>
           {% set paid = payments|filter(p => p.status == 'paid' and p.amount_cents > p.refunded_cents)|first %}
           {% if paid %}
-            <form method="post" action="{{ url('admin/shop-orders?id=' ~ order.id) }}" class="grid gap-2 border-t border-slate-200 px-4 py-3" data-confirm="Give the money back through Viva Wallet? This cannot be undone.">
+            <form method="post" action="{{ url('admin/shop-orders?id=' ~ order.id) }}" class="grid gap-2 border-t border-slate-200 px-4 py-3" data-confirm="Give the money back through {{ paid.provider == 'cardlink' ? 'Cardlink' : 'Viva Wallet' }}? This cannot be undone.">
               {{ csrf_field() }}<input type="hidden" name="action" value="refund">
               <label class="text-xs text-slate-600">Refund (€) <input type="number" name="amount" value="{{ paid.left }}" min="0.01" max="{{ paid.left }}" step="0.01" class="{{ input }} mt-1"></label>
               <label class="flex items-center gap-2 text-xs text-slate-600"><input type="checkbox" name="notify" value="1" checked class="h-4 w-4 rounded border-slate-300"> Tell the customer when all of it is given back</label>
-              <button class="{{ btn }} justify-center border border-red-200 bg-white text-red-700 hover:bg-red-50">Refund through Viva</button>
+              <button class="{{ btn }} justify-center border border-red-200 bg-white text-red-700 hover:bg-red-50">Refund through {{ paid.provider == 'cardlink' ? 'Cardlink' : 'Viva' }}</button>
             </form>
           {% endif %}
         </section>

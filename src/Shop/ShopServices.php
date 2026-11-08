@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace GnozioCMS\Shop;
 
 use GnozioCMS\Shop\Payments\BankTransfer;
+use GnozioCMS\Shop\Payments\Cardlink;
 use GnozioCMS\Shop\Payments\CashOnDelivery;
 use GnozioCMS\Shop\Payments\PaymentProvider;
 use GnozioCMS\Shop\Payments\VivaWallet;
@@ -27,6 +28,7 @@ final class ShopServices
     private ?ShopPayments $payments = null;
     private ?ShopSecrets $secrets = null;
     private ?VivaWallet $viva = null;
+    private ?Cardlink $cardlink = null;
     /** @var array<string, PaymentProvider>|null */
     private ?array $providers = null;
 
@@ -48,7 +50,8 @@ final class ShopServices
         private \Closure $siteSettings,
         private string $defaultLang,
         private ?SystemMetaRepository $meta = null,
-        private ?\Closure $transport = null
+        private ?\Closure $transport = null,
+        private string $siteUrl = ''
     ) {
     }
 
@@ -65,6 +68,11 @@ final class ShopServices
     public function viva(): VivaWallet
     {
         return $this->viva ??= new VivaWallet($this->secrets(), $this->payments(), $this->meta ?? new SystemMetaRepository($this->database), $this->transport);
+    }
+
+    public function cardlink(): Cardlink
+    {
+        return $this->cardlink ??= new Cardlink($this->secrets(), $this->payments(), $this->orders(), $this->siteUrl, $this->transport);
     }
 
     public function settings(): ShopSettings
@@ -107,7 +115,7 @@ final class ShopServices
     {
         if ($this->providers === null) {
             $this->providers = [];
-            foreach ([$this->viva(), new BankTransfer(), new CashOnDelivery()] as $provider) {
+            foreach ([$this->viva(), $this->cardlink(), new BankTransfer(), new CashOnDelivery()] as $provider) {
                 $this->providers[$provider->id()] = $provider;
             }
         }

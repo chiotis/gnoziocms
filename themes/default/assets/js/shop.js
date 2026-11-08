@@ -155,4 +155,10 @@
       if (y !== null) { sessionStorage.removeItem('gz_checkout_y'); window.scrollTo(0, parseInt(y, 10) || 0); }
     } catch (e) {}
   });
+
+  // The step before the bank's card page: its signed form goes on its own (the button stays for when it does not).
+  var bank = document.querySelector('form[data-shop-autosubmit]');
+  if (bank) {
+    setTimeout(function () { bank.submit(); }, 300);
+  }
 })();

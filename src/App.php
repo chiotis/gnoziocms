@@ -3823,7 +3823,8 @@ final class App
             array_values(array_unique([$this->defaultLanguage(), ...($this->settings['languages']['available'] ?? [])])),
             $this->shopServices()->secrets(),
             $this->shopServices()->viva(),
-            $this->getBaseUrl()
+            $this->getBaseUrl(),
+            $this->shopServices()->cardlink()
         );
     }
 
@@ -3840,7 +3841,9 @@ final class App
             fn(string $to, string $subject, string $body, array $headers): bool => $this->sendEmailMessage($to, $subject, $body, $headers),
             fn(): array => $this->settings,
             $this->defaultLanguage(),
-            $this->systemMeta
+            $this->systemMeta,
+            null,
+            $this->getBaseUrl()
         );
     }
 
@@ -3905,7 +3908,8 @@ final class App
             fn() => $this->render404(),
             fn(string $slug): string => '/' . $prefix . $slug,
             $this->isHttpsRequest(),
-            $services->viva()
+            $services->viva(),
+            $services->cardlink()
         );
         // Orders whose time to be paid ran out give their stock back before a shopper sees it (Shop › Orders does too).
         $services->checkout()->expire();
