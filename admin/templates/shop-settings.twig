@@ -134,6 +134,31 @@
           </div>
         </div>
       </section>
+      {% set cl = shop.payments.cardlink %}
+      <section class="{{ card }}" aria-labelledby="pay-cardlink">
+        <div class="{{ card_head }}"><h2 id="pay-cardlink" class="text-sm font-semibold text-slate-900">Cardlink <span class="font-normal text-slate-400">· Eurobank (Worldline), Alpha (Nexi), Cardlink · cards, installments</span></h2>
+          <div class="flex items-center gap-3">
+            <label class="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" name="cardlink[test]" value="1" class="h-4 w-4 rounded border-slate-300" {% if cl.test %}checked{% endif %}> Test</label>
+            <label class="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" name="cardlink[enabled]" value="1" class="h-4 w-4 rounded border-slate-300" {% if cl.enabled %}checked{% endif %}> Offered</label>
+          </div>
+        </div>
+        <div class="grid gap-4 px-4 py-4 sm:grid-cols-2">
+          <div><label class="{{ label }}" for="cl-acquirer">Acquirer</label><select id="cl-acquirer" name="cardlink[acquirer]" class="{{ input }}">{% for id, name in cardlink_acquirers %}<option value="{{ id }}"{% if cl.acquirer == id %} selected{% endif %}>{{ name }}</option>{% endfor %}</select><p class="{{ note }}">The bank whose contract the shop has: it sets the payment page's address.</p></div>
+          <div><label class="{{ label }}" for="cl-merchant">Merchant ID</label><input id="cl-merchant" name="cardlink[merchant_id]" value="{{ cl.merchant_id }}" class="{{ input }} font-mono" inputmode="numeric" autocomplete="off" spellcheck="false"></div>
+          <div><label class="{{ label }}" for="cl-secret">Shared secret</label><input id="cl-secret" type="password" name="cardlink_secret[shared_secret]" value="" class="{{ input }} font-mono" autocomplete="new-password" placeholder="{{ cardlink_secrets.shared_secret.set|default(false) ? 'Set, ends in ' ~ cardlink_secrets.shared_secret.last4 ~ ' · blank keeps it' : '' }}"><p class="{{ note }}">The same ones a WooCommerce shop's Cardlink plugin uses.</p></div>
+          <div><label class="{{ label }}" for="cl-inst">Installments: from amount (€) = up to</label><textarea id="cl-inst" name="cardlink[installments]" rows="3" class="{{ input }} font-mono" placeholder="100 = 3&#10;300 = 6&#10;600 = 12">{{ cardlink_installments }}</textarea><p class="{{ note }}">Empty: no installments. The customer picks how many before going to the bank.</p></div>
+          <div class="sm:col-span-2 rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-600">
+            <p class="mb-1 font-medium text-slate-800">The bank sends the customer back to these addresses (nothing to set at Cardlink):</p>
+            <p>Confirm <code class="select-all">{{ cardlink_urls.confirm }}</code></p>
+            <p>Cancel <code class="select-all">{{ cardlink_urls.cancel }}</code></p>
+            <p class="mt-1">A payment whose answer never comes back (the browser closed) is asked about before its order is let go.</p>
+          </div>
+          <div class="sm:col-span-2 flex flex-wrap items-center gap-3">
+            <button type="submit" name="cardlink_action" value="check" class="{{ btn }} border border-slate-300 bg-white text-slate-700 hover:bg-slate-50">Save and check connection</button>
+            {% if cardlink_secrets.shared_secret.set|default(false) %}<label class="flex items-center gap-2 text-xs text-slate-500"><input type="checkbox" name="cardlink_clear" value="1" class="h-4 w-4 rounded border-slate-300"> Remove the stored secret</label>{% endif %}
+          </div>
+        </div>
+      </section>
       <section class="{{ card }}" aria-labelledby="pay-bank">
         <div class="{{ card_head }}"><h2 id="pay-bank" class="text-sm font-semibold text-slate-900">Bank transfer</h2>
           <label class="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" name="bank_transfer[enabled]" value="1" class="h-4 w-4 rounded border-slate-300" {% if shop.payments.bank_transfer.enabled %}checked{% endif %}> Offered</label>
@@ -161,7 +186,7 @@
           </fieldset>
         </div>
       </section>
-      <p class="max-w-3xl text-xs text-slate-500">The keys are kept apart from these settings, never shown again and never exported. Cardlink (Eurobank, Alpha, Cardlink) comes next.</p>
+      <p class="max-w-3xl text-xs text-slate-500">The keys are kept apart from these settings, never shown again and never exported.</p>
       <div><button type="submit" class="{{ primary }}">Save</button></div>
     </form>
   {% endif %}

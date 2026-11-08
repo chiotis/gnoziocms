@@ -6,7 +6,7 @@ namespace GnozioCMS\Shop;
 
 /**
  * System > Shop settings (docs/shop-plan.md, section 8): the screen and its forms. General (the store, VAT, orders), Shipping
- * (zones and their methods), Payments (bank transfer, cash on delivery; the online providers join it in phase 4) and Accounts.
+ * (zones and their methods), Payments (Viva Wallet, Cardlink, bank transfer, cash on delivery) and Accounts.
  */
 final class ShopSettingsAdmin
 {
@@ -24,7 +24,8 @@ final class ShopSettingsAdmin
         private array $languages = ['en'],
         private ?ShopSecrets $secrets = null,
         private ?Payments\VivaWallet $viva = null,
-        private string $siteUrl = ''
+        private string $siteUrl = '',
+        private ?Payments\Cardlink $cardlink = null
     )
     {
     }
@@ -44,8 +45,16 @@ final class ShopSettingsAdmin
             ($this->log)('shop.viva_check', $result['ok'] ? 'info' : 'warning', 'shop', 'viva', $result['message'], []);
             return ['ok' => $result['ok'], 'tab' => $tab, 'message' => $result['message']];
         }
+        if ($tab === 'payments' && ($post['cardlink_action'] ?? '') === 'check' && $this->cardlink !== null) {
+            $this->settings->savePayments($post);
+            $this->secrets?->save(Payments\Cardlink::ID, is_array($post['cardlink_secret'] ?? null) ? $post['cardlink_secret'] : []);
+            $result = $this->cardlink->check($this->settings->all()['payments']['cardlink']);
+            ($this->log)('shop.cardlink_check', $result['ok'] ? 'info' : 'warning', 'shop', 'cardlink', $result['message'], []);
+            return ['ok' => $result['ok'], 'tab' => $tab, 'message' => $result['message']];
+        }
         if ($tab === 'payments') {
             $this->secrets?->save(Payments\VivaWallet::ID, is_array($post['viva_secret'] ?? null) ? $post['viva_secret'] : [], !empty($post['viva_clear']));
+            $this->secrets?->save(Payments\Cardlink::ID, is_array($post['cardlink_secret'] ?? null) ? $post['cardlink_secret'] : [], !empty($post['cardlink_clear']));
         }
         match ($tab) {
             'shipping' => $this->settings->saveShipping($post, $this->languages),
@@ -78,6 +87,13 @@ final class ShopSettingsAdmin
                 'success' => rtrim($this->siteUrl, '/') . '/_shop/pay/viva/success',
                 'failure' => rtrim($this->siteUrl, '/') . '/_shop/pay/viva/failure',
                 'webhook' => rtrim($this->siteUrl, '/') . '/_shop/pay/viva/webhook',
+            ],
+            'cardlink_secrets' => $this->secrets?->view(Payments\Cardlink::ID) ?? [],
+            'cardlink_installments' => Payments\VivaWallet::installmentsText($this->settings->all()['payments']['cardlink']['installments']),
+            'cardlink_acquirers' => array_map(static fn(array $a): string => $a['label'], Payments\Cardlink::ACQUIRERS),
+            'cardlink_urls' => [
+                'confirm' => rtrim($this->siteUrl, '/') . '/_shop/pay/cardlink/confirm',
+                'cancel' => rtrim($this->siteUrl, '/') . '/_shop/pay/cardlink/cancel',
             ],
             'ship_kinds' => ShopShipping::KINDS,
             'table_text' => array_map(static fn(array $zone): array => array_map(static fn(array $m): string => ShopShipping::tableText($m['table']), $zone['methods']), $this->settings->all()['shipping']),

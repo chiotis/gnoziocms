@@ -92,7 +92,7 @@ final class ShopAdmin
                 'name' => ShopAddress::name($order['billing']),
                 'billing_lines' => ShopAddress::lines($order['billing'], 'en'),
                 'shipping_lines' => ShopAddress::lines($order['shipping'], 'en'),
-                'payment_label' => ['viva' => 'Viva Wallet', 'bank_transfer' => 'Bank transfer', 'cod' => 'Cash on delivery'][$order['payment_method']] ?? $order['payment_method'],
+                'payment_label' => ['viva' => 'Viva Wallet', 'cardlink' => 'Cardlink', 'bank_transfer' => 'Bank transfer', 'cod' => 'Cash on delivery'][$order['payment_method']] ?? $order['payment_method'],
                 'money' => array_map(static fn(int $c): string => ShopMoney::format($c, 'en'), ['items' => $order['items_cents'], 'discount' => -$order['discount_cents'], 'shipping' => $order['shipping_cents'], 'fee' => $order['fee_cents'], 'tax' => $order['tax_cents'], 'total' => $order['total_cents']]),
                 'public_url' => ($this->orderUrl)($order),
             ],
@@ -174,7 +174,7 @@ final class ShopAdmin
     private function refund(array $order, string $amount, bool $notify, string $actor): array
     {
         $payment = $this->shop->payments()->paidFor((int)$order['id']);
-        if ($payment === null || $payment['provider'] !== Payments\VivaWallet::ID) {
+        if ($payment === null || !in_array($payment['provider'], [Payments\VivaWallet::ID, Payments\Cardlink::ID], true)) {
             return ['ok' => false, 'message' => 'This order was not paid through a provider; mark it refunded once the money is back.'];
         }
         $left = (int)$payment['amount_cents'] - (int)$payment['refunded_cents'];
@@ -182,13 +182,17 @@ final class ShopAdmin
         if ($cents < 1 || $cents > $left) {
             return ['ok' => false, 'message' => 'A refund is more than zero and at most ' . ShopMoney::format($left, 'en') . '.'];
         }
-        $result = $this->shop->viva()->refund($this->shop->settings()->all()['payments']['viva'], (string)$payment['transaction_id'], $cents);
+        $settings = $this->shop->settings()->all()['payments'][$payment['provider']];
+        $name = $payment['provider'] === Payments\Cardlink::ID ? 'Cardlink' : 'Viva Wallet';
+        $result = $payment['provider'] === Payments\Cardlink::ID
+            ? $this->shop->cardlink()->refund($settings, $payment, $cents)
+            : $this->shop->viva()->refund($settings, (string)$payment['transaction_id'], $cents);
         if (!$result['ok']) {
             $this->shop->orders()->addEvent((int)$order['id'], 'payment', 'A refund of ' . ShopMoney::plain($cents) . ' EUR was refused: ' . $result['error'], $actor);
-            return ['ok' => false, 'message' => 'Viva did not make the refund: ' . $result['error']];
+            return ['ok' => false, 'message' => $name . ' did not make the refund: ' . $result['error']];
         }
         $this->shop->payments()->addRefund((int)$payment['id'], $cents);
-        $this->shop->orders()->addEvent((int)$order['id'], 'payment', 'Refunded ' . ShopMoney::plain($cents) . ' EUR through Viva Wallet' . ($result['transaction_id'] !== '' ? ' (transaction ' . $result['transaction_id'] . ')' : '') . '.', $actor);
+        $this->shop->orders()->addEvent((int)$order['id'], 'payment', 'Refunded ' . ShopMoney::plain($cents) . ' EUR through ' . $name . ($result['transaction_id'] !== '' ? ' (transaction ' . $result['transaction_id'] . ')' : '') . '.', $actor);
         ($this->log)('shop.refund', 'info', 'shop', 'order:' . $order['id'], 'Refunded ' . ShopMoney::plain($cents) . ' EUR on order ' . $order['number'] . '.', []);
         if ($cents === $left && in_array('refunded', ShopOrders::NEXT[$order['status']] ?? [], true)) {
             $this->shop->checkout()->changeStatus((int)$order['id'], 'refunded', $actor, 'All of it was given back.');

@@ -326,8 +326,8 @@ final class ShopCheckout
             return ['outcome' => 'pending', 'order' => $order, 'message' => ''];
         }
         $currencyOk = in_array(strtoupper($tx['currency']), ['', '978', 'EUR'], true);
-        if ($tx['amount_cents'] !== (int)$payment['amount_cents'] || (int)$payment['amount_cents'] !== (int)$order['total_cents'] || !$currencyOk || $tx['merchant_trns'] !== (string)$order['number']) {
-            $this->orders->addEvent($id, 'payment', 'A payment that does not match the order was refused: ' . ShopMoney::plain(max(0, $tx['amount_cents'])) . ' ' . $tx['currency'] . ' for "' . mb_substr($tx['merchant_trns'], 0, 40) . '" (transaction ' . $tx['transaction_id'] . ').', $actor);
+        if ($tx['amount_cents'] !== (int)$payment['amount_cents'] || (int)$payment['amount_cents'] !== (int)$order['total_cents'] || !$currencyOk || (($tx['merchant_trns'] ?? null) !== null && $tx['merchant_trns'] !== (string)$order['number'])) {
+            $this->orders->addEvent($id, 'payment', 'A payment that does not match the order was refused: ' . ShopMoney::plain(max(0, $tx['amount_cents'])) . ' ' . $tx['currency'] . ' for "' . mb_substr((string)($tx['merchant_trns'] ?? $tx['reference']), 0, 40) . '" (transaction ' . $tx['transaction_id'] . ').', $actor);
             return ['outcome' => 'mismatch', 'order' => $order, 'message' => ''];
         }
         if (!$this->payments->markPaid((int)$payment['id'], $tx['transaction_id'], 'Status ' . $tx['status'] . (($tx['installments'] ?? 0) > 1 ? ', ' . $tx['installments'] . ' installments' : ''))) {
@@ -370,10 +370,51 @@ final class ShopCheckout
     }
 
     /** Cancels the orders whose time to be paid ran out, giving back their stock. How many. */
+    /**
+     * Before an order is let go for not being paid in time, a provider that can be asked (Cardlink, whose answer comes only with
+     * the customer's browser) is asked about the payment it started: true when it was paid after all, or when the provider could
+     * not be asked (it is asked again ten minutes later, for six hours at most, and then the order is let go).
+     *
+     * @param array<string, mixed> $order
+     */
+    private function paidAfterAll(array $order): bool
+    {
+        $provider = $this->providers[(string)$order['payment_method']] ?? null;
+        if (!$provider instanceof Payments\ChecksPayments || $this->payments === null) {
+            return false;
+        }
+        $settings = $this->settings->all()['payments'][$provider->id()] ?? [];
+        $giveUp = time() > (int)$order['reserve_until'] + 6 * 3600;
+        foreach ($this->payments->forOrder((int)$order['id']) as $payment) {
+            if ($payment['status'] !== ShopPayments::STARTED) {
+                continue;
+            }
+            if (!$this->payments->once($provider->id(), 'lookup:' . $payment['reference'] . ':' . intdiv(time(), 600), 'lookup', (int)$order['id'])) {
+                return !$giveUp;
+            }
+            $tx = $provider->lookup($payment, is_array($settings) ? $settings : []);
+            if (!$tx['ok']) {
+                if ($giveUp) {
+                    $this->orders->addEvent((int)$order['id'], 'payment', 'Could not ask ' . $provider->id() . ' about the payment (' . $tx['error'] . '); check it in the bank\'s back office.', 'system');
+                    continue;
+                }
+                return true;
+            }
+            $result = $this->confirm($provider->id(), $tx, 'system');
+            if (in_array($result['outcome'], ['paid', 'already'], true)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public function expire(): int
     {
         $count = 0;
         foreach ($this->orders->expired(time()) as $order) {
+            if ($this->paidAfterAll($order)) {
+                continue;
+            }
             if ($this->changeStatus((int)$order['id'], 'cancelled', 'system', 'It was not paid in time.')['ok']) {
                 $count++;
             }

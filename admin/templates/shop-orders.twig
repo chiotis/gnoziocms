@@ -36,7 +36,7 @@
               <td class="px-4 py-2"><a class="font-mono font-medium text-blue-700 hover:underline" href="{{ url('admin/shop-orders?id=' ~ order.id) }}">{{ order.number }}</a></td>
               <td class="whitespace-nowrap px-4 py-2 text-slate-500">{{ order.created_at|date('d/m/Y H:i') }}</td>
               <td class="px-4 py-2"><span class="text-slate-900">{{ order.name ?: order.email }}</span>{% if order.name %}<span class="block text-xs text-slate-400">{{ order.email }}</span>{% endif %}</td>
-              <td class="px-4 py-2 text-slate-500">{{ {viva: 'Viva Wallet', bank_transfer: 'Bank transfer', cod: 'Cash on delivery'}[order.payment_method] ?? order.payment_method }}</td>
+              <td class="px-4 py-2 text-slate-500">{{ {viva: 'Viva Wallet', cardlink: 'Cardlink', bank_transfer: 'Bank transfer', cod: 'Cash on delivery'}[order.payment_method] ?? order.payment_method }}</td>
               <td class="px-4 py-2">{{ ui.badge(order.status_label, tones[order.status] ?? 'slate') }}</td>
               <td class="whitespace-nowrap px-4 py-2 text-right font-medium tabular-nums">{{ order.total }}</td>
             </tr>

@@ -14,6 +14,8 @@ use GnozioCMS\LoginThrottle;
  *   /account …                 signing in and up, a new password, the customer's orders and details
  *   /_shop/cart                adding to the cart from a product's page (a form or a script), and /_shop/cart.json
  *   /_shop/pay/viva/…          where Viva Wallet sends the customer back (success, failure) and calls (webhook)
+ *   /_shop/pay/cardlink/go     the step before Cardlink's page (installments), which posts the signed form to the bank
+ *   /_shop/pay/cardlink/…      where Cardlink posts the result back (confirm, cancel)
  *
  * These pages have their own session (cookie gz_shop), apart from the admin's, so a shopper's other pages stay the same for
  * everyone and can be kept by a cache. The cart is found by its own cookie; the header's count is read by the page's script
@@ -51,7 +53,8 @@ final class ShopFront
         private \Closure $notFound,
         private \Closure $pageUrl,
         private bool $https,
-        private ?\GnozioCMS\Shop\Payments\VivaWallet $viva = null
+        private ?\GnozioCMS\Shop\Payments\VivaWallet $viva = null,
+        private ?Payments\Cardlink $cardlink = null
     ) {
     }
 
@@ -88,6 +91,8 @@ final class ShopFront
             $segments[0] === 'checkout' && ($segments[1] ?? '') === 'order' && isset($segments[2]) && ($segments[3] ?? '') === 'pay' && $post => $this->payAgain($segments[2], $lang, (string)($_REQUEST['key'] ?? '')),
             $rest === '_shop/pay/viva/webhook' => $this->vivaWebhook($post),
             $rest === '_shop/pay/viva/success', $rest === '_shop/pay/viva/failure' => $this->vivaReturn($segments[3]),
+            $rest === '_shop/pay/cardlink/go' => $this->cardlinkGo($post),
+            ($rest === '_shop/pay/cardlink/confirm' || $rest === '_shop/pay/cardlink/cancel') && $post => $this->cardlinkReturn(),
             $segments[0] === 'account' => $this->account(array_slice($segments, 1), $lang, $post),
             default => ($this->notFound)(),
         };
@@ -418,6 +423,84 @@ final class ShopFront
             $this->toldPaid($result['order']);
         }
         $this->json([]);
+    }
+
+    /**
+     * The step between the checkout and Cardlink's page. Its address is signed for the payment, so no one else's order can be shown
+     * here. Where the amount allows installments, the customer picks how many; then the form (signed with the shared secret over
+     * the fields, the installments among them) goes to the bank on its own.
+     */
+    private function cardlinkGo(bool $post): void
+    {
+        $settings = $this->providerSettings(Payments\Cardlink::ID);
+        $reference = (string)($_REQUEST['ref'] ?? '');
+        if ($this->cardlink === null || preg_match('/^[A-Za-z0-9]{4,50}$/', $reference) !== 1 || !$this->cardlink->signed($reference, (string)($_REQUEST['k'] ?? ''))) {
+            ($this->notFound)();
+            return;
+        }
+        $pending = $this->cardlink->pending($reference, $settings);
+        if ($pending === null) {
+            $order = $this->checkout->orderOfPayment(Payments\Cardlink::ID, $reference);
+            $order !== null ? $this->go($this->orderPath($order)) : ($this->notFound)();
+            return;
+        }
+        $order = $pending['order'];
+        $lang = (string)$order['lang'];
+        $max = $pending['max_installments'];
+        $chosen = $post ? max(0, min($max, (int)($_POST['installments'] ?? 0))) : 0;
+        $ready = $max < 2 || $post;
+        ($this->render)('templates/shop/pay.twig', $lang, [
+            'document_title' => ($this->t)('shop.pay_card', $lang),
+            'order' => $this->orderView($order, $lang),
+            'installments' => $max >= 2 ? range(2, $max) : [],
+            'choose_url' => '/_shop/pay/cardlink/go?' . http_build_query(['ref' => $reference, 'k' => (string)$_REQUEST['k']]),
+            'bank' => $ready ? $this->cardlink->form($order, $pending['payment'], $settings, $chosen) : null,
+            'back_url' => $this->orderPath($order),
+        ]);
+    }
+
+    /**
+     * Where Cardlink posts the result (confirm or cancel, the same either way): believed only when its digest, made with the
+     * shared secret, is right and it is for this merchant. The customer lands on the order's page.
+     */
+    private function cardlinkReturn(): void
+    {
+        $settings = $this->providerSettings(Payments\Cardlink::ID);
+        if ($this->cardlink === null) {
+            ($this->notFound)();
+            return;
+        }
+        $tx = $this->cardlink->answer($_POST, $settings);
+        $order = $this->checkout->orderOfPayment(Payments\Cardlink::ID, (string)$tx['reference']);
+        if ($order === null) {
+            ($this->notFound)();
+            return;
+        }
+        if (!$tx['ok']) {
+            $this->orders->addEvent((int)$order['id'], 'payment', 'An answer from the bank was ignored: ' . $tx['error'], 'cardlink');
+            $this->go($this->orderPath($order) . '&pay=pending');
+            return;
+        }
+        $result = $this->checkout->confirm(Payments\Cardlink::ID, $tx, 'cardlink');
+        if ($tx['status'] === 'AUTHORIZED') {
+            $this->orders->addEvent((int)$order['id'], 'payment', 'The bank only authorised the payment (' . $tx['transaction_id'] . '): capture it in Cardlink\'s back office, then mark the order paid.', 'cardlink');
+        }
+        if ($result['outcome'] === 'paid' && $result['order'] !== null) {
+            $this->toldPaid($result['order']);
+        }
+        $state = match ($result['outcome']) {
+            'paid', 'already', 'late' => 'paid',
+            'pending' => 'pending',
+            default => 'failed',
+        };
+        $this->go($this->orderPath($result['order'] ?? $order) . '&pay=' . $state);
+    }
+
+    /** @return array<string, mixed> */
+    private function providerSettings(string $id): array
+    {
+        $settings = $this->settings->all()['payments'][$id] ?? [];
+        return is_array($settings) ? $settings : [];
     }
 
     /** @param array<string, mixed> $order the order is paid: the customer gets its email, the shop its notice */

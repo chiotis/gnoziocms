@@ -57,6 +57,24 @@ final class ShopHttp
         ];
     }
 
+    /**
+     * A body sent as it is (Cardlink's XML), the answer's text back as it came.
+     *
+     * @return array{ok: bool, status: int, body: string, error: string}
+     */
+    public function raw(string $method, string $url, string $body, string $contentType, int $timeout = 30): array
+    {
+        if (!$this->allowed($url)) {
+            return ['ok' => false, 'status' => 0, 'body' => '', 'error' => 'This address is not one of the provider\'s.'];
+        }
+        $answer = ($this->transport ?? self::curl(...))($method, $url, ['Accept: application/xml', 'User-Agent: ' . self::AGENT, 'Content-Type: ' . $contentType], $body, $timeout);
+        if ($answer['error'] !== '') {
+            return ['ok' => false, 'status' => $answer['status'], 'body' => '', 'error' => $this->scrub('The provider could not be reached: ' . $answer['error'])];
+        }
+        $ok = $answer['status'] >= 200 && $answer['status'] < 300;
+        return ['ok' => $ok, 'status' => $answer['status'], 'body' => $answer['body'], 'error' => $ok ? '' : 'The provider answered ' . $answer['status'] . '.'];
+    }
+
     /** Whether an address may be called: https on one of the hosts, or a fake on this machine. */
     public function allowed(string $url): bool
     {
