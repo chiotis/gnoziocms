@@ -73,6 +73,29 @@
 
         {% include 'templates/shop/_downloads.twig' %}
 
+        {% if subscriptions is not empty %}
+          <div class="shop-box" id="subscriptions">
+            <h2 class="shop-box-title">{{ t('shop.subscriptions', 'Your subscriptions') }}</h2>
+            <ul class="shop-mini-lines">
+              {% for s in subscriptions %}
+                <li>
+                  <span>{{ s.title }}{% if s.variant %} <span class="shop-muted">{{ s.variant }}</span>{% endif %}
+                    <span class="shop-muted">{{ s.price }} {{ s.every }} · {{ s.status_text }}{% if s.status in ['active', 'past_due'] and s.next_at > 0 %} · {{ t('shop.sub_next', 'next {date}')|replace({'{date}': s.next_at|date('d/m/Y')}) }}{% endif %}</span>
+                  </span>
+                  <span>
+                    {% if s.status == 'past_due' %}
+                      <form method="post" action="{{ url(prefix ~ 'account/subscriptions/' ~ s.id ~ '/pay') }}">{{ csrf_field() }}<button class="btn btn-primary" type="submit">{{ t('shop.sub_pay', 'Pay now') }}</button></form>
+                    {% endif %}
+                    {% if s.status in ['active', 'past_due', 'paused'] %}
+                      <form method="post" action="{{ url(prefix ~ 'account/subscriptions/' ~ s.id ~ '/cancel') }}" data-confirm="{{ t('shop.sub_cancel_confirm', 'Cancel this subscription? Nothing more is charged.') }}">{{ csrf_field() }}<button class="text-link" type="submit">{{ t('shop.sub_cancel', 'Cancel') }}</button></form>
+                    {% endif %}
+                  </span>
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% endif %}
+
         <form class="shop-box" id="details" method="post" action="{{ url(prefix ~ 'account/details') }}">
           {{ csrf_field() }}
           <h2 class="shop-box-title">{{ t('shop.details', 'Your details') }}</h2>

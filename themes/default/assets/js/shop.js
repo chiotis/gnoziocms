@@ -156,6 +156,13 @@
     } catch (e) {}
   });
 
+  // A form that asks first (cancelling a subscription).
+  document.querySelectorAll('form[data-confirm]').forEach(function (form) {
+    form.addEventListener('submit', function (event) {
+      if (!window.confirm(form.getAttribute('data-confirm') || '')) event.preventDefault();
+    });
+  });
+
   // The step before the bank's card page: its signed form goes on its own (the button stays for when it does not).
   var bank = document.querySelector('form[data-shop-autosubmit]');
   if (bank) {

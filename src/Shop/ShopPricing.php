@@ -14,8 +14,8 @@ use GnozioCMS\ContentItem;
  */
 final class ShopPricing
 {
-    /** Kinds sold. Subscriptions come in phase 7. */
-    public const SOLD_KINDS = ['physical', 'digital'];
+    /** Kinds sold. */
+    public const SOLD_KINDS = ['physical', 'digital', 'subscription'];
 
     /**
      * @param \Closure(ContentItem): string $url the address of a product
@@ -69,6 +69,11 @@ final class ShopPricing
                 $changes[] = ['title' => $title, 'reason' => 'not_sold'];
                 continue;
             }
+            // A subscription's first payment is its price and its sign-up fee; every renewal, its price.
+            $plan = $kind === 'subscription' ? ShopSubscriptions::plan($custom) + ['price_cents' => $unit] : null;
+            if ($plan !== null) {
+                $unit += $plan['signup_cents'];
+            }
             $tracked = !empty($custom['track_stock']) && empty($custom['allow_backorder']);
             $quantity = $line['quantity'];
             $max = null;
@@ -88,7 +93,7 @@ final class ShopPricing
             $rate = $this->settings->taxRate($class);
             $names = ShopCatalogue::optionNames((string)($custom['option_labels'] ?? ''));
             $label = $variant === null ? '' : implode(' / ', array_map(static fn(string $part): string => $names[mb_strtolower(trim($part))] ?? trim($part), explode('/', (string)$variant['values'])));
-            $digital = $kind === 'digital';
+            $digital = $kind === 'digital' || $kind === 'subscription';
             $grams = $digital ? 0 : (int)(is_numeric($variant['weight_g'] ?? null) ? $variant['weight_g'] : ($custom['weight_g'] ?? 0));
             $kept[] = ['product_id' => $line['product_id'], 'variant_key' => $line['variant_key'], 'quantity' => $quantity];
             $priced[] = [
@@ -111,6 +116,7 @@ final class ShopPricing
                 'collections' => array_values(array_map('strval', (array)($base->meta[Shop::COLLECTIONS] ?? []))),
                 'gift_wrap' => !$digital && !empty($custom['gift_wrap']),
                 'digital' => $digital,
+                'subscription' => $plan,
             ];
         }
         return [
@@ -122,6 +128,7 @@ final class ShopPricing
             'grams' => array_sum(array_column($priced, 'grams')),
             // Nothing to send: a cart of downloads only has no shipping.
             'digital_only' => $priced !== [] && array_filter($priced, static fn(array $l): bool => !$l['digital']) === [],
+            'subscriptions' => array_values(array_filter($priced, static fn(array $l): bool => $l['subscription'] !== null)) !== [],
         ];
     }
 

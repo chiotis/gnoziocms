@@ -411,7 +411,31 @@ final class App
             @set_time_limit($seconds + 300);
         }
         $this->aiTick(false);
-        return $this->jobRunner()->work(microtime(true) + $seconds);
+        $renewed = $this->shopTick(false);
+        return $renewed + $this->jobRunner()->work(microtime(true) + $seconds);
+    }
+
+    /**
+     * The shop's work that does not wait for a shopper: orders whose time to be paid ran out, and subscriptions whose period has
+     * come, charged again (docs/shop-plan.md, section 7). From cron, and, at most once an hour, from the shop's admin screens.
+     */
+    private function shopTick(bool $throttle = true): int
+    {
+        try {
+            if (!Shop::enabled($this->content->getTypes())) {
+                return 0;
+            }
+            if ($throttle && (int)$this->systemMeta->get('shop_tick_at') >= time() - 3600) {
+                return 0;
+            }
+            $this->systemMeta->set('shop_tick_at', (string)time());
+            $services = $this->shopServices();
+            $services->checkout()->expire();
+            return $services->subscriptions()->renewDue();
+        } catch (\Throwable $e) {
+            $this->logActivity('shop.tick', 'error', 'shop', null, 'The shop\'s scheduled work failed: ' . $e->getMessage(), []);
+            return 0;
+        }
     }
 
     /** Queues the AI schedules' posts that are due (AiWriter::tick); with `$throttle` at most once a minute, for visits and the admin. */
@@ -1281,6 +1305,7 @@ final class App
         'shop-customers' => 'handleShopCustomers',
         'shop-coupons' => 'handleShopCoupons',
         'shop-files' => 'handleShopFiles',
+        'shop-subscriptions' => 'handleShopSubscriptions',
         'ai-picture' => 'handleAiPicture',
         'mcp-authorize' => 'handleMcpAuthorize',
         'notification-read' => 'handleNotificationRead',
@@ -3911,7 +3936,8 @@ final class App
             $this->isHttpsRequest(),
             $services->viva(),
             $services->cardlink(),
-            $services->downloads()
+            $services->downloads(),
+            $services->subscriptions()
         );
         // Orders whose time to be paid ran out give their stock back before a shopper sees it (Shop › Orders does too).
         $services->checkout()->expire();
@@ -4016,6 +4042,27 @@ final class App
             $collections[$term['id']] = $this->taxonomies()->label(Shop::COLLECTIONS, $term['id'], $this->defaultLanguage());
         }
         $this->render('@admin/shop-coupons.twig', $admin->coupons($_GET, $collections) + $this->shopScreen('shop-coupons', 'Coupons') + [
+            'done' => (string)($_GET['done'] ?? ''),
+            'message' => mb_substr((string)($_GET['msg'] ?? ''), 0, 300),
+        ]);
+    }
+
+    /** Shop > Subscriptions (docs/shop-plan.md, section 7): the list by status, one with its orders, pause, resume, skip, cancel. */
+    private function handleShopSubscriptions(): void
+    {
+        if (!Shop::enabled($this->content->getTypes())) {
+            $this->redirect('/admin/content-types?shop=off');
+            return;
+        }
+        $admin = $this->shopAdmin();
+        $id = (int)($_GET['id'] ?? 0);
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && $id > 0) {
+            $result = $admin->subscriptionAction($id, $_POST, $this->currentUsername());
+            $this->redirect('/admin/shop-subscriptions?' . http_build_query(['id' => $id, 'done' => $result['ok'] ? 'ok' : 'fail', 'msg' => $result['message']]));
+            return;
+        }
+        $this->shopTick();
+        $this->render('@admin/shop-subscriptions.twig', $admin->subscriptions($_GET) + $this->shopScreen('shop-subscriptions', 'Subscriptions') + [
             'done' => (string)($_GET['done'] ?? ''),
             'message' => mb_substr((string)($_GET['msg'] ?? ''), 0, 300),
         ]);

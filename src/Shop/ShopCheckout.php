@@ -33,7 +33,8 @@ final class ShopCheckout
         private \Closure $t,
         private string $defaultLang,
         private ?ShopPayments $payments = null,
-        private ?ShopDownloads $downloads = null
+        private ?ShopDownloads $downloads = null,
+        private ?ShopSubscriptions $subscriptions = null
     ) {
     }
 
@@ -65,13 +66,7 @@ final class ShopCheckout
             }
         }
         $method ??= $methods[0] ?? null;
-        $payments = [];
-        foreach ($this->providers as $id => $provider) {
-            $settings = is_array($shop['payments'][$id] ?? null) ? $shop['payments'][$id] : [];
-            if ($provider->offered($settings, (string)($zone['id'] ?? ''))) {
-                $payments[$id] = ['id' => $id, 'label' => ($this->t)('shop.pay_' . $id, $lang), 'fee' => $provider->fee($settings), 'instructions' => $provider->instructions($settings)];
-            }
-        }
+        $payments = $this->ways($shop, (string)($zone['id'] ?? ''), $lang, false, $priced['subscriptions']);
         $payment = $payments[$paymentId] ?? (reset($payments) ?: null);
         $couponResult = trim($coupon) !== '' ? $this->coupons->apply($coupon, $priced['lines'], $email) : null;
         $totals = $this->pricing->totals($priced['lines'], $couponResult, (int)($method['cents'] ?? 0), (int)($payment['fee'] ?? 0));
@@ -99,13 +94,7 @@ final class ShopCheckout
     {
         $shop = $this->settings->all();
         $method = ['id' => 'download', 'kind' => 'download', 'label' => ($this->t)('shop.ship_download', $lang), 'cents' => 0, 'stores' => []];
-        $payments = [];
-        foreach ($this->providers as $id => $provider) {
-            $settings = is_array($shop['payments'][$id] ?? null) ? $shop['payments'][$id] : [];
-            if ($id !== 'cod' && $provider->offered($settings, '')) {
-                $payments[$id] = ['id' => $id, 'label' => ($this->t)('shop.pay_' . $id, $lang), 'fee' => $provider->fee($settings), 'instructions' => $provider->instructions($settings)];
-            }
-        }
+        $payments = $this->ways($shop, '', $lang, true, $priced['subscriptions']);
         $payment = $payments[$paymentId] ?? (reset($payments) ?: null);
         $couponResult = trim($coupon) !== '' ? $this->coupons->apply($coupon, $priced['lines'], $email) : null;
         return [
@@ -121,6 +110,26 @@ final class ShopCheckout
             'countries' => array_keys(ShopCountries::NAMES),
             'digital_only' => true,
         ];
+    }
+
+    /**
+     * The ways to pay the checkout offers: those switched on for the zone; not cash on delivery when nothing is sent; only those
+     * that can charge again when the cart has a subscription.
+     *
+     * @param array<string, mixed> $shop
+     * @return array<string, array<string, mixed>>
+     */
+    private function ways(array $shop, string $zoneId, string $lang, bool $nothingSent, bool $subscriptions): array
+    {
+        $payments = [];
+        foreach ($this->providers as $id => $provider) {
+            $settings = is_array($shop['payments'][$id] ?? null) ? $shop['payments'][$id] : [];
+            if (($nothingSent && $id === 'cod') || ($subscriptions && !$provider instanceof Payments\RecurringPayments) || !$provider->offered($settings, $zoneId)) {
+                continue;
+            }
+            $payments[$id] = ['id' => $id, 'label' => ($this->t)('shop.pay_' . $id, $lang), 'fee' => $provider->fee($settings), 'instructions' => $provider->instructions($settings)];
+        }
+        return $payments;
     }
 
     /**
@@ -157,6 +166,9 @@ final class ShopCheckout
         $priced = $quote['priced'];
         if ($priced['lines'] === []) {
             $errors[] = 'empty';
+        }
+        if ($priced['subscriptions'] && $customer === null) {
+            $errors[] = 'account_subscription';
         }
         if ($priced['changes'] !== []) {
             $errors[] = 'cart_changed';
@@ -252,7 +264,17 @@ final class ShopCheckout
             throw $e;
         }
         $this->orders->addEvent($created['id'], 'placed', 'Order placed' . ($customer !== null ? ' by the customer\'s account' : ' as a guest') . '.', $email);
-        $start = $provider->start($this->orders->get($created['id']) ?? ($order + $created), $paymentSettings);
+        $recurring = false;
+        if ($this->subscriptions !== null && $customer !== null) {
+            foreach ($priced['lines'] as $line) {
+                if ($line['subscription'] !== null) {
+                    $sub = $this->subscriptions->create((int)$customer['id'], $created['id'], $line, $lang, $provider->id());
+                    $this->orders->addEvent($created['id'], 'subscription', 'Subscription #' . $sub . ' starts once this order is paid.', 'checkout');
+                    $recurring = true;
+                }
+            }
+        }
+        $start = $provider->start(($this->orders->get($created['id']) ?? ($order + $created)) + ['recurring' => $recurring], $paymentSettings);
         if (($start['error'] ?? '') !== '') {
             // The provider could not be reached: the order goes, and its stock and coupon come back.
             $this->orders->addEvent($created['id'], 'payment', 'The payment could not start: ' . $start['error'], 'checkout');
@@ -320,6 +342,13 @@ final class ShopCheckout
                 $this->downloads->revoke($id);
             }
         }
+        if ($this->subscriptions !== null) {
+            if ($to === 'paid') {
+                $this->subscriptions->orderPaid($id);
+            } elseif ($to === 'cancelled') {
+                $this->subscriptions->orderCancelled($id);
+            }
+        }
         return ['ok' => true, 'message' => 'The order is ' . strtolower(ShopOrders::STATUSES[$to]) . '.', 'order' => $this->orders->get($id)];
     }
 
@@ -336,7 +365,8 @@ final class ShopCheckout
             return ['ok' => false, 'redirect' => '', 'error' => 'expired'];
         }
         $settings = $this->settings->all()['payments'][$provider->id()] ?? [];
-        $start = $provider->start($order, is_array($settings) ? $settings : []);
+        $recurring = $this->subscriptions !== null && $this->subscriptions->forOrder((int)$order['id']) !== [];
+        $start = $provider->start($order + ['recurring' => $recurring], is_array($settings) ? $settings : []);
         if (($start['error'] ?? '') !== '' || $start['redirect'] === '') {
             $this->orders->addEvent((int)$order['id'], 'payment', 'The payment could not start again: ' . ($start['error'] ?? ''), 'customer');
             return ['ok' => false, 'redirect' => '', 'error' => 'payment_start'];

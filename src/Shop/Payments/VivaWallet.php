@@ -21,7 +21,7 @@ use GnozioCMS\SystemMetaRepository;
  * Demo mode uses Viva's demo hosts. The hosts may be replaced by a fake on this machine for tests (the `base` secret, which no
  * screen can set).
  */
-final class VivaWallet implements PaymentProvider
+final class VivaWallet implements PaymentProvider, RecurringPayments
 {
     public const ID = 'viva';
     public const EVENT_PAID = 1796;
@@ -89,7 +89,8 @@ final class VivaWallet implements PaymentProvider
             ], static fn(string $v): bool => $v !== ''),
             'paymentTimeout' => max(300, min(65535, (int)($order['reserve_until'] ?? 0) - time())),
             'preauth' => false,
-            'allowRecurring' => false,
+            // A subscription's payment lets the shop charge the same card again for its renewals.
+            'allowRecurring' => !empty($order['recurring']),
             'maxInstallments' => self::maxInstallments(is_array($settings['installments'] ?? null) ? $settings['installments'] : [], $total),
             'paymentNotification' => false,
             'disableCash' => true,
@@ -160,6 +161,27 @@ final class VivaWallet implements PaymentProvider
         $data = is_array($answer['data']) ? $answer['data'] : [];
         $ok = $answer['ok'] && (($data['ErrorCode'] ?? 0) === 0 || ($data['ErrorCode'] ?? null) === null) && ($data['Success'] ?? true) !== false;
         return ['ok' => $ok, 'error' => $ok ? '' : ($answer['error'] !== '' ? $answer['error'] : (string)($data['ErrorText'] ?? 'Viva did not make the refund.')), 'transaction_id' => (string)($data['TransactionId'] ?? '')];
+    }
+
+    /**
+     * Charges again the card of a payment made with allowRecurring (a subscription's renewal): POST /api/transactions/{id} with the
+     * Merchant ID and API key. Viva answers with the new transaction.
+     */
+    public function charge(array $settings, string $token, int $cents, array $order): array
+    {
+        if (preg_match('/^[0-9a-fA-F-]{32,40}$/', $token) !== 1) {
+            return ['ok' => false, 'error' => 'There is no card to charge again.', 'transaction_id' => ''];
+        }
+        $secrets = $this->secrets->of(self::ID);
+        $payload = ['amount' => $cents, 'installments' => 1, 'customerTrns' => mb_substr((string)($settings['description'] ?? '') !== '' ? $settings['description'] . ' ' . $order['number'] : (string)$order['number'], 0, 255), 'merchantTrns' => (string)$order['number']];
+        if ((string)($settings['source_code'] ?? '') !== '') {
+            $payload['sourceCode'] = (string)$settings['source_code'];
+        }
+        $answer = $this->http()->send('POST', $this->host('www', $settings) . '/api/transactions/' . rawurlencode($token), [ShopHttp::basic((string)($settings['merchant_id'] ?? ''), $secrets['api_key'] ?? '')], $payload);
+        $data = is_array($answer['data']) ? $answer['data'] : [];
+        $tx = (string)($data['TransactionId'] ?? '');
+        $ok = $answer['ok'] && (int)($data['ErrorCode'] ?? 0) === 0 && ($data['Success'] ?? true) !== false && in_array((string)($data['StatusId'] ?? 'F'), self::PAID_STATUSES, true) && $tx !== '';
+        return ['ok' => $ok, 'error' => $ok ? '' : ($answer['error'] !== '' ? $answer['error'] : (string)($data['ErrorText'] ?? 'Viva refused the charge.')), 'transaction_id' => $tx];
     }
 
     /** The key Viva asks the webhook address to answer with, kept for a day. '' when it cannot be had. */

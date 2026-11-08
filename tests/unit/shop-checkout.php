@@ -39,7 +39,7 @@ $put = static function (string $file, string $front) use ($root): void {
 $put('ring.md', "title: Δαχτυλίδι\nstatus: published\ntranslation_id: ring0000000000001\ncollections: [balos]\ncustom_fields:\n  price: '124'\n  tax_class: standard\n  weight_g: 40\n  gift_wrap: true\n  track_stock: true\n  options:\n    - { name: Finish, values: \"Gold\\nSilver\" }\n  option_labels: \"Gold = Χρυσό\"\n  variants:\n    - { values: Gold, price: '186', sku: R-G }\n    - { values: Silver }");
 $put('ring.en.md', "title: Ring\nstatus: published\ntranslation_id: ring0000000000001\ncollections: [balos]\ncustom_fields:\n  price: '124'\n  track_stock: true\n  variants:\n    - { values: Gold, price: '186', sku: R-G }\n    - { values: Silver }");
 $put('book.md', "title: Βιβλίο\nstatus: published\ntranslation_id: book0000000000001\ncustom_fields:\n  price: '20'\n  tax_class: super_reduced\n  weight_g: 500");
-$put('ebook.md', "title: Membership\nstatus: published\ntranslation_id: ebook000000000001\ncustom_fields:\n  price: '9'\n  kind: subscription");
+$put('ebook.md', "title: Rental\nstatus: published\ntranslation_id: ebook000000000001\ncustom_fields:\n  price: '9'\n  kind: rental");
 $put('draft.md', "title: Draft\nstatus: draft\ntranslation_id: draft000000000001\ncustom_fields:\n  price: '9'");
 
 $stock = new ShopStock($db);

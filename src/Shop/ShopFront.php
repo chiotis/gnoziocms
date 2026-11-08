@@ -56,7 +56,8 @@ final class ShopFront
         private bool $https,
         private ?\GnozioCMS\Shop\Payments\VivaWallet $viva = null,
         private ?Payments\Cardlink $cardlink = null,
-        private ?ShopDownloads $downloads = null
+        private ?ShopDownloads $downloads = null,
+        private ?ShopSubscriptions $subscriptions = null
     ) {
     }
 
@@ -724,6 +725,25 @@ final class ShopFront
             $this->go($prefix . 'account');
             return;
         }
+        if ($action === 'subscriptions' && isset($segments[1], $segments[2]) && $post && $this->subscriptions !== null) {
+            $id = (int)$segments[1];
+            if ($segments[2] === 'cancel') {
+                $result = $this->subscriptions->act($id, 'cancel', (int)$customer['id']);
+                $this->flash($result['ok'] ? 'success' : 'error', ($this->t)($result['ok'] ? 'shop.sub_done' : 'shop.err_session', $lang));
+                $this->go($prefix . 'account#subscriptions');
+                return;
+            }
+            if ($segments[2] === 'pay') {
+                $result = $this->subscriptions->payNow($id, (int)$customer['id']);
+                if ($result['ok']) {
+                    $this->go($result['redirect']);
+                    return;
+                }
+                $this->flash('error', ($this->t)('shop.err_payment_start', $lang));
+                $this->go($prefix . 'account#subscriptions');
+                return;
+            }
+        }
         if ($action === 'orders' && isset($segments[1])) {
             $this->orderPage($segments[1], $lang, '');
             return;
@@ -735,6 +755,11 @@ final class ShopFront
         $this->accountPage($lang, 'home', [
             'orders' => array_map(fn(array $o): array => $this->orderView($o, $lang, false), $this->orders->forCustomer($customer['id'])),
             'downloads' => $this->downloads?->forOrders(array_column($this->orders->forCustomer($customer['id']), 'id')) ?? [],
+            'subscriptions' => array_map(fn(array $s): array => $s + [
+                'price' => ShopMoney::format($s['price_cents'] * $s['quantity'], $lang),
+                'every' => ($this->t)('shop.every_' . $s['interval'] . ($s['interval_count'] > 1 ? 's' : ''), $lang, ['n' => (string)$s['interval_count']]),
+                'status_text' => ($this->t)('shop.sub_' . $s['status'], $lang),
+            ], $this->subscriptions?->forCustomer((int)$customer['id']) ?? []),
             'countries' => ShopCountries::options(ShopShipping::countries($shop['shipping']) ?: array_keys(ShopCountries::NAMES), $lang),
             'verify_pending' => !$customer['verified'],
         ]);

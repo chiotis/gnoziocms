@@ -374,7 +374,7 @@ final class PermissionService
             'mcp', 'mcp-authorize' => 'mcp.manage',
             'ai-publishing' => 'ai.manage',
             'shop-settings', 'shop-coupons', 'shop-files' => 'shop.manage',
-            'shop-orders', 'shop-customers' => 'shop.orders',
+            'shop-orders', 'shop-customers', 'shop-subscriptions' => 'shop.orders',
             'users', 'users-delete' => 'users.manage',
             'roles' => 'roles.manage',
             'redirects' => 'redirects.manage',

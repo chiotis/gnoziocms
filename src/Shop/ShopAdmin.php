@@ -236,6 +236,51 @@ final class ShopAdmin
      * @return array<string, mixed>
      */
     /**
+     * Shop > Subscriptions: the list by status, or one with its customer and orders.
+     *
+     * @param array<string, mixed> $get
+     * @return array<string, mixed>
+     */
+    public function subscriptions(array $get): array
+    {
+        $subs = $this->shop->subscriptions();
+        $view = function (array $s): array {
+            $customer = $this->shop->customers()->get($s['customer_id']);
+            return $s + [
+                'price' => ShopMoney::format($s['price_cents'] * $s['quantity'], 'en'),
+                'every' => ($s['interval_count'] > 1 ? $s['interval_count'] . ' ' . $s['interval'] . 's' : $s['interval']),
+                'customer_name' => $customer !== null ? ($customer['name'] !== '' ? $customer['name'] : $customer['email']) : '—',
+                'customer_email' => $customer['email'] ?? '',
+            ];
+        };
+        $id = (int)($get['id'] ?? 0);
+        $one = $id > 0 ? $subs->get($id) : null;
+        $status = (string)($get['status'] ?? '');
+        return [
+            'subscriptions' => array_map($view, $subs->search($status)),
+            'counts' => $subs->counts(),
+            'statuses' => ShopSubscriptions::STATUSES,
+            'status' => isset(ShopSubscriptions::STATUSES[$status]) ? $status : '',
+            'sub' => $one !== null ? $view($one) : null,
+            'sub_orders' => $one !== null ? array_map(static fn(array $o): array => $o + ['total' => ShopMoney::format((int)$o['total_cents'], 'en')], $subs->orders($id)) : [],
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $post action: pause, resume, skip, cancel
+     * @return array{ok: bool, message: string}
+     */
+    public function subscriptionAction(int $id, array $post, string $actor): array
+    {
+        $action = (string)($post['action'] ?? '');
+        $result = $this->shop->subscriptions()->act($id, $action);
+        if ($result['ok']) {
+            ($this->log)('shop.subscription', 'info', 'shop', 'subscription:' . $id, ucfirst($action) . ' subscription #' . $id . '.', ['by' => $actor]);
+        }
+        return $result;
+    }
+
+    /**
      * Shop > Files: the digital products and the files each one sells.
      *
      * @param array<string, string> $products digital products, id => title
