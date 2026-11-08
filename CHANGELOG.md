@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.247 — 2026-11-08 — Subscriptions
+Phase 7 of the shop (`docs/shop-plan.md`). Nothing changes on a site until a product's Kind is Subscription.
+- **Subscription products**: charged every 1–12 weeks, months or years, with an optional sign-up fee and a number of renewals (0: until cancelled).
+- The checkout asks for an account and offers only Viva Wallet, allowing the card to be charged again. The subscription starts once its first order is paid.
+- **Renewals** are charged by the cron script (and at most hourly from Shop › Subscriptions), each as an order of its own, never twice for one period. A refused charge is tried again after 1, 3 and 7 days, the customer emailed each time, then the subscription is cancelled.
+- The customer's account lists their subscriptions, with **Cancel** and, for one past due, **Pay now** (the card used becomes the subscription's).
+- **Shop › Subscriptions**: by status, each with its orders; pause, resume, skip the next period, cancel.
+- Not yet checked against a real Viva demo account; Cardlink subscriptions come later.
+- Tests: `tests/unit/shop-subscriptions.php`, `tests/http/shop_subscriptions_test.py`.
+
 ## 0.1.246 — 2026-11-08 — Digital products
 Phase 6 of the shop (`docs/shop-plan.md`). Nothing changes on a site until a product's Kind is Digital product.
 - **Digital products** are sold: two new fields, *Downloads per purchase* and *Days to download* (0: no limit).
