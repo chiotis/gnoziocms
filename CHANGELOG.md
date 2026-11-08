@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.245 — 2026-11-08 — Card payments through Cardlink (Eurobank, Alpha, Cardlink)
+Phase 5 of the shop (`docs/shop-plan.md`). Nothing changes on a site until the shop is on and Cardlink is set up.
+- **Cardlink** on **Shop settings › Payments**: the acquirer (Cardlink, Nexi/Alpha Bank, Worldline/Eurobank), test mode, the Merchant ID, the shared secret (kept apart, never shown again, never exported), installments by amount, and **Save and check connection**. The same keys as Cardlink's WooCommerce plugin.
+- At the checkout, the customer goes to a short page that asks for installments where the amount allows them, then on to the bank's card page. The bank's answer pays the order only when its digest, merchant and amount are right, once; the emails go out then. A cancel leaves the order waiting with **Pay now**.
+- An order whose answer never came (the browser closed) is asked about at the bank before it is cancelled: paid after all, it is paid.
+- **Refunds** in part or in full from the order's screen; on the day of the payment, a void when the bank cannot refund yet.
+- Not yet checked against a real Cardlink test account.
+- Tests: `tests/unit/shop-cardlink.php`, `tests/http/shop_cardlink_test.py` (against a fake Cardlink).
+
 ## 0.1.244 — 2026-11-08 — Card payments through Viva Wallet
 Phase 4 of the shop (`docs/shop-plan.md`). Nothing changes on a site until the shop is on and Viva Wallet is set up.
 - **Viva Wallet Smart Checkout** on **Shop settings › Payments**: Merchant ID, API key, Client ID and secret (kept apart, never shown again, never exported), demo mode, the payment source, installments by amount, and **Save and check connection**. The card lists the success, failure and webhook addresses to set at Viva.
