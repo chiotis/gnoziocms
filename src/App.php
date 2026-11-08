@@ -1280,6 +1280,7 @@ final class App
         'shop-orders' => 'handleShopOrders',
         'shop-customers' => 'handleShopCustomers',
         'shop-coupons' => 'handleShopCoupons',
+        'shop-files' => 'handleShopFiles',
         'ai-picture' => 'handleAiPicture',
         'mcp-authorize' => 'handleMcpAuthorize',
         'notification-read' => 'handleNotificationRead',
@@ -3909,7 +3910,8 @@ final class App
             fn(string $slug): string => '/' . $prefix . $slug,
             $this->isHttpsRequest(),
             $services->viva(),
-            $services->cardlink()
+            $services->cardlink(),
+            $services->downloads()
         );
         // Orders whose time to be paid ran out give their stock back before a shopper sees it (Shop › Orders does too).
         $services->checkout()->expire();
@@ -4014,6 +4016,34 @@ final class App
             $collections[$term['id']] = $this->taxonomies()->label(Shop::COLLECTIONS, $term['id'], $this->defaultLanguage());
         }
         $this->render('@admin/shop-coupons.twig', $admin->coupons($_GET, $collections) + $this->shopScreen('shop-coupons', 'Coupons') + [
+            'done' => (string)($_GET['done'] ?? ''),
+            'message' => mb_substr((string)($_GET['msg'] ?? ''), 0, 300),
+        ]);
+    }
+
+    /** Shop > Files: the private files the digital products sell (docs/shop-plan.md, section 6). */
+    private function handleShopFiles(): void
+    {
+        if (!Shop::enabled($this->content->getTypes())) {
+            $this->redirect('/admin/content-types?shop=off');
+            return;
+        }
+        $products = [];
+        foreach ($this->content->getItems('products', $this->defaultLanguage(), true) as $product) {
+            $custom = is_array($product->meta['custom_fields'] ?? null) ? $product->meta['custom_fields'] : [];
+            $id = (string)($product->meta['translation_id'] ?? '');
+            if ($id !== '' && ($custom['kind'] ?? 'physical') === 'digital') {
+                $products[$id] = (string)($product->meta['title'] ?? $product->slug);
+            }
+        }
+        asort($products);
+        $admin = $this->shopAdmin();
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
+            $result = $admin->fileAction($_POST, is_array($_FILES['file'] ?? null) ? $_FILES['file'] : null, $products, $this->currentUsername());
+            $this->redirect('/admin/shop-files?' . http_build_query(['done' => $result['ok'] ? 'ok' : 'fail', 'msg' => $result['message']]));
+            return;
+        }
+        $this->render('@admin/shop-files.twig', $admin->files($products) + $this->shopScreen('shop-files', 'Files') + [
             'done' => (string)($_GET['done'] ?? ''),
             'message' => mb_substr((string)($_GET['msg'] ?? ''), 0, 300),
         ]);

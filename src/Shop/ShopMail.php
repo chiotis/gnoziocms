@@ -26,7 +26,8 @@ final class ShopMail
         private \Closure $siteSettings,
         private \Closure $t,
         private \Closure $send,
-        private \Closure $provider
+        private \Closure $provider,
+        private ?\Closure $downloads = null
     ) {
     }
 
@@ -42,6 +43,7 @@ final class ShopMail
             . $this->t('shop.mail_received_text', $lang, ['number' => $order['number']]) . "\n\n"
             . $this->summary($order, $lines, $lang)
             . $this->next($order, $lang)
+            . $this->files($order, $lang)
             . "\n" . $this->t('shop.mail_view', $lang, []) . "\n" . $viewUrl . "\n" . $this->signature();
         $sent = $this->mail((string)$order['email'], $this->t('shop.mail_received_subject', $lang, ['number' => $order['number'], 'store' => $this->storeName()]), $body);
 
@@ -70,6 +72,7 @@ final class ShopMail
         if ($status === 'shipped' && (string)$order['tracking'] !== '') {
             $body .= "\n" . $this->t('shop.mail_tracking', $lang, ['carrier' => (string)$order['carrier'], 'tracking' => (string)$order['tracking']]) . "\n";
         }
+        $body .= ($status === 'paid' || $status === 'completed' ? $this->files($order, $lang) : '');
         $body .= "\n" . $this->summary($order, $lines, $lang) . "\n" . $this->t('shop.mail_view', $lang, []) . "\n" . $viewUrl . "\n" . $this->signature();
         return $this->mail((string)$order['email'], $this->t('shop.mail_' . $status . '_subject', $lang, ['number' => $order['number'], 'store' => $this->storeName()]), $body);
     }
@@ -130,6 +133,25 @@ final class ShopMail
             return '';
         }
         return "\n" . $this->t('shop.bank_intro', $lang, ['number' => $order['number'], 'total' => ShopMoney::format((int)$order['total_cents'], $lang)]) . "\n" . implode("\n", $lines) . "\n";
+    }
+
+    /** The order's downloads, when it has any that can be had: each file with its link. */
+    private function files(array $order, string $lang): string
+    {
+        $files = $this->downloads !== null ? array_filter(($this->downloads)((int)$order['id']), static fn(array $d): bool => $d['usable']) : [];
+        if ($files === []) {
+            return '';
+        }
+        $text = "\n" . $this->t('shop.mail_downloads', $lang, []) . "\n";
+        foreach ($files as $file) {
+            $text .= '- ' . $file['name'] . ' (' . $file['title'] . ")\n  " . $file['url'] . "\n";
+        }
+        $first = reset($files);
+        $limits = array_filter([
+            $first['max_downloads'] > 0 ? $this->t('shop.mail_downloads_times', $lang, ['n' => (string)$first['max_downloads']]) : '',
+            $first['expires_at'] > 0 ? $this->t('shop.mail_downloads_until', $lang, ['date' => date('d/m/Y', $first['expires_at'])]) : '',
+        ]);
+        return $text . ($limits !== [] ? implode(' ', $limits) . "\n" : '');
     }
 
     private function mail(string $to, string $subject, string $body, string $replyTo = ''): bool

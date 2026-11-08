@@ -412,7 +412,7 @@ final class ShopCatalogue
                     break;
                 }
             }
-            $buyable = $details['kind'] === 'physical' && $details['price'] !== null && $details['available'] && ($details['variants'] === [] || $variant !== '');
+            $buyable = in_array($details['kind'], ShopPricing::SOLD_KINDS, true) && $details['price'] !== null && $details['available'] && ($details['variants'] === [] || $variant !== '');
             // The price of what Add the look puts in the cart: the variant's own, when it has one.
             $price = $details['variants'] !== [] && $variant !== '' ? ($this->variantPrice($details['variants'], $variant) ?? $details['price']) : $details['price'];
             if ($buyable && $price !== null) {

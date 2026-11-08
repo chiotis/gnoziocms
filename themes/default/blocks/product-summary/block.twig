@@ -21,7 +21,7 @@
     {% endif %}
     {% if product.short_description %}<p class="product-summary-text">{{ product.short_description|nl2br }}</p>{% endif %}
 
-    {% set sellable = product.kind == 'physical' and product.price_text %}
+    {% set sellable = product.kind in ['physical', 'digital'] and product.price_text %}
     <form class="product-buy" method="post" action="{{ url(prefix ~ '_shop/cart') }}" data-shop-add>
     <input type="hidden" name="product" value="{{ product.id }}">
     {% if product.options is not empty %}
@@ -42,10 +42,11 @@
       </div>
     {% endif %}
 
+    {% if product.kind == 'digital' %}<p class="product-stock">{{ t('shop.digital_product', 'A download, yours as soon as it is paid') }}</p>{% else %}
     <p class="product-stock" data-stock role="status" aria-live="polite"
        data-in="{{ t('shop.in_stock', 'In stock') }}" data-out="{{ t('shop.sold_out', 'Sold out') }}" data-none="{{ t('shop.no_variant', 'Not available in this combination') }}">
       {{ product.available ? t('shop.in_stock', 'In stock') : t('shop.sold_out', 'Sold out') }}
-    </p>
+    </p>{% endif %}
     {% if sellable %}
       <div class="product-buy-row">
         <label class="product-qty"><span class="visually-hidden">{{ t('shop.quantity', 'Quantity') }}</span><input type="number" name="quantity" value="1" min="1" max="99" inputmode="numeric"></label>

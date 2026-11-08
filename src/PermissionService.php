@@ -373,7 +373,7 @@ final class PermissionService
             'omni' => 'omni.manage',
             'mcp', 'mcp-authorize' => 'mcp.manage',
             'ai-publishing' => 'ai.manage',
-            'shop-settings', 'shop-coupons' => 'shop.manage',
+            'shop-settings', 'shop-coupons', 'shop-files' => 'shop.manage',
             'shop-orders', 'shop-customers' => 'shop.orders',
             'users', 'users-delete' => 'users.manage',
             'roles' => 'roles.manage',

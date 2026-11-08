@@ -14,8 +14,8 @@ use GnozioCMS\ContentItem;
  */
 final class ShopPricing
 {
-    /** Kinds sold with offline payments. Digital products and subscriptions come with the payment providers (phases 6 and 7). */
-    public const SOLD_KINDS = ['physical'];
+    /** Kinds sold. Subscriptions come in phase 7. */
+    public const SOLD_KINDS = ['physical', 'digital'];
 
     /**
      * @param \Closure(ContentItem): string $url the address of a product
@@ -88,7 +88,8 @@ final class ShopPricing
             $rate = $this->settings->taxRate($class);
             $names = ShopCatalogue::optionNames((string)($custom['option_labels'] ?? ''));
             $label = $variant === null ? '' : implode(' / ', array_map(static fn(string $part): string => $names[mb_strtolower(trim($part))] ?? trim($part), explode('/', (string)$variant['values'])));
-            $grams = (int)(is_numeric($variant['weight_g'] ?? null) ? $variant['weight_g'] : ($custom['weight_g'] ?? 0));
+            $digital = $kind === 'digital';
+            $grams = $digital ? 0 : (int)(is_numeric($variant['weight_g'] ?? null) ? $variant['weight_g'] : ($custom['weight_g'] ?? 0));
             $kept[] = ['product_id' => $line['product_id'], 'variant_key' => $line['variant_key'], 'quantity' => $quantity];
             $priced[] = [
                 'key' => ShopCart::key($line['product_id'], $line['variant_key']),
@@ -108,7 +109,8 @@ final class ShopPricing
                 'tracked' => $tracked,
                 'grams' => max(0, $grams) * $quantity,
                 'collections' => array_values(array_map('strval', (array)($base->meta[Shop::COLLECTIONS] ?? []))),
-                'gift_wrap' => !empty($custom['gift_wrap']),
+                'gift_wrap' => !$digital && !empty($custom['gift_wrap']),
+                'digital' => $digital,
             ];
         }
         return [
@@ -118,6 +120,8 @@ final class ShopPricing
             'count' => array_sum(array_column($priced, 'quantity')),
             'items_cents' => array_sum(array_column($priced, 'total_cents')),
             'grams' => array_sum(array_column($priced, 'grams')),
+            // Nothing to send: a cart of downloads only has no shipping.
+            'digital_only' => $priced !== [] && array_filter($priced, static fn(array $l): bool => !$l['digital']) === [],
         ];
     }
 

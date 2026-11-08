@@ -32,7 +32,8 @@ final class ShopCheckout
         private array $providers,
         private \Closure $t,
         private string $defaultLang,
-        private ?ShopPayments $payments = null
+        private ?ShopPayments $payments = null,
+        private ?ShopDownloads $downloads = null
     ) {
     }
 
@@ -52,6 +53,9 @@ final class ShopCheckout
     {
         $shop = $this->settings->all();
         $priced = $this->pricing->lines($cart, $lang);
+        if ($priced['digital_only']) {
+            return $this->digitalQuote($priced, $coupon, $paymentId, $lang, $email);
+        }
         $zone = ($address['country'] ?? '') !== '' ? ShopShipping::zoneFor($shop['shipping'], (string)$address['country'], (string)($address['postcode'] ?? '')) : null;
         $methods = $zone !== null ? ShopShipping::methods($zone, $priced['items_cents'], $priced['grams'], $lang, $this->defaultLang, fn(string $key): string => ($this->t)($key, $lang)) : [];
         $method = null;
@@ -81,6 +85,41 @@ final class ShopCheckout
             'coupon' => $couponResult,
             'totals' => $totals,
             'countries' => ShopShipping::countries($shop['shipping']),
+            'digital_only' => false,
+        ];
+    }
+
+    /**
+     * What a cart of downloads only costs: no shipping, one method that says so, every way to pay but cash on delivery.
+     *
+     * @param array<string, mixed> $priced
+     * @return array<string, mixed>
+     */
+    private function digitalQuote(array $priced, string $coupon, string $paymentId, string $lang, string $email): array
+    {
+        $shop = $this->settings->all();
+        $method = ['id' => 'download', 'kind' => 'download', 'label' => ($this->t)('shop.ship_download', $lang), 'cents' => 0, 'stores' => []];
+        $payments = [];
+        foreach ($this->providers as $id => $provider) {
+            $settings = is_array($shop['payments'][$id] ?? null) ? $shop['payments'][$id] : [];
+            if ($id !== 'cod' && $provider->offered($settings, '')) {
+                $payments[$id] = ['id' => $id, 'label' => ($this->t)('shop.pay_' . $id, $lang), 'fee' => $provider->fee($settings), 'instructions' => $provider->instructions($settings)];
+            }
+        }
+        $payment = $payments[$paymentId] ?? (reset($payments) ?: null);
+        $couponResult = trim($coupon) !== '' ? $this->coupons->apply($coupon, $priced['lines'], $email) : null;
+        return [
+            'priced' => $priced,
+            'zone' => ['id' => 'download', 'name' => ''],
+            'methods' => [$method],
+            'method' => $method,
+            'payments' => array_values($payments),
+            'payment' => $payment,
+            'coupon' => $couponResult,
+            'totals' => $this->pricing->totals($priced['lines'], $couponResult, 0, (int)($payment['fee'] ?? 0)),
+            // The billing address is still asked (an invoice needs it), in any country the shop knows.
+            'countries' => array_keys(ShopCountries::NAMES),
+            'digital_only' => true,
         ];
     }
 
@@ -196,7 +235,7 @@ final class ShopCheckout
             'shipping_method' => $quote['method']['id'],
             'shipping_label' => $quote['method']['label'] . ($store !== '' ? ' · ' . $store : ''),
             'billing' => $billing,
-            'shipping' => ($quote['method']['kind'] ?? '') === 'pickup' ? [] : $shipping,
+            'shipping' => in_array($quote['method']['kind'] ?? '', ['pickup', 'download'], true) ? [] : $shipping,
             'gift_wrap' => $giftWrap,
             'gift_note' => mb_substr(trim((string)($input['gift_note'] ?? '')), 0, 500),
             'customer_note' => mb_substr(trim((string)($input['note'] ?? '')), 0, 1000),
@@ -270,6 +309,17 @@ final class ShopCheckout
             $this->orders->update($id, ['stock_held' => self::TAKEN]);
         }
         $this->orders->addEvent($id, 'status', (ShopOrders::STATUSES[$from] ?? $from) . ' → ' . (ShopOrders::STATUSES[$to] ?? $to) . ($note !== '' ? '. ' . $note : '.'), $actor);
+        if ($this->downloads !== null) {
+            // Downloads come with the payment (or, for an order paid on delivery, when it is completed) and go with a cancel or refund.
+            if (in_array($to, ['paid', 'completed'], true)) {
+                $given = $this->downloads->grant($id, $lines);
+                if ($given > 0) {
+                    $this->orders->addEvent($id, 'download', $given === 1 ? 'A file can be downloaded.' : $given . ' files can be downloaded.', 'system');
+                }
+            } elseif (in_array($to, ['cancelled', 'refunded'], true)) {
+                $this->downloads->revoke($id);
+            }
+        }
         return ['ok' => true, 'message' => 'The order is ' . strtolower(ShopOrders::STATUSES[$to]) . '.', 'order' => $this->orders->get($id)];
     }
 

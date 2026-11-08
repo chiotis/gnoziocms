@@ -119,6 +119,25 @@
           <p>Reference: <span class="font-mono">{{ order.number }}</span>. Mark it <strong>Paid</strong> once the money is in the account.</p>
         </section>
       {% endif %}
+      {% if downloads is not empty %}
+        <section class="{{ card }}">
+          <div class="{{ head }}"><h2 class="text-sm font-semibold text-slate-900">Downloads</h2></div>
+          <ul class="divide-y divide-slate-100 text-xs">
+            {% for d in downloads %}
+              <li class="px-4 py-2">
+                <div class="flex items-center justify-between gap-2"><span class="truncate font-medium text-slate-800">{{ d.name }}</span>{{ ui.badge(d.usable ? 'can be had' : (not d.active ? 'off' : 'used or ended'), d.usable ? 'green' : 'slate') }}</div>
+                <div class="mt-0.5 text-slate-500">{{ d.downloads }}{% if d.max_downloads %} of {{ d.max_downloads }}{% endif %} times{% if d.expires_at %} · until {{ d.expires_at|date('d/m/Y') }}{% endif %}{% if d.last_at %} · last {{ d.last_at|date('d/m/Y H:i') }}{% endif %}</div>
+                {% if d.active and not d.usable %}
+                  <form method="post" action="{{ url('admin/shop-orders?id=' ~ order.id) }}" class="mt-1">
+                    {{ csrf_field() }}<input type="hidden" name="action" value="download_reset"><input type="hidden" name="download" value="{{ d.id }}">
+                    <button class="font-medium text-blue-700 hover:underline">Allow again from the start</button>
+                  </form>
+                {% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        </section>
+      {% endif %}
       {% if payments is not empty %}
         <section class="{{ card }}">
           <div class="{{ head }}"><h2 class="text-sm font-semibold text-slate-900">Payments</h2></div>

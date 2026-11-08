@@ -47,6 +47,7 @@
           <ul class="shop-accounts">{% for line in order.instructions %}<li>{{ line }}</li>{% endfor %}</ul>
         </div>
       {% endif %}
+      {% include 'templates/shop/_downloads.twig' %}
       {% if order.tracking %}
         <p class="shop-box">{{ t('shop.tracking', 'Tracking') }}: {{ order.carrier }} <span class="shop-code">{{ order.tracking }}</span></p>
       {% endif %}

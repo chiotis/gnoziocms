@@ -1,0 +1,28 @@
+{#
+  An order's files (digital products, docs/shop-plan.md, section 6): each with its link while it can be had, how many times are
+  left and until when; one that cannot be had any more says why. Used on the order's page and in the customer's account.
+#}
+{% if downloads is not empty %}
+  <div class="shop-box shop-downloads">
+    <h2 class="shop-box-title">{{ t('shop.downloads', 'Your downloads') }}</h2>
+    <ul class="shop-mini-lines">
+      {% for d in downloads %}
+        <li>
+          <span>
+            {% if d.usable %}<a class="text-link" href="{{ d.url }}" download>{{ d.name }}</a>{% else %}<span class="shop-muted">{{ d.name }}</span>{% endif %}
+            <span class="shop-muted">{{ d.title }}</span>
+          </span>
+          <span class="shop-muted">
+            {% if not d.active %}{{ t('shop.download_off', 'No longer available') }}
+            {% elseif d.left is not null and d.left == 0 %}{{ t('shop.download_used', 'Used up') }}
+            {% elseif d.expires_at > 0 and d.expires_at < 'now'|date('U') %}{{ t('shop.download_expired', 'Expired') }}
+            {% else %}
+              {% if d.left is not null %}{{ t('shop.download_left', '{n} left')|replace({'{n}': d.left}) }}{% endif %}
+              {% if d.expires_at > 0 %} · {{ t('shop.download_until', 'until {date}')|replace({'{date}': d.expires_at|date('d/m/Y')}) }}{% endif %}
+            {% endif %}
+          </span>
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endif %}

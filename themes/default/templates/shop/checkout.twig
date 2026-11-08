@@ -38,15 +38,20 @@
           <fieldset class="shop-step">
             <legend><span class="shop-step-n">2</span>{{ t('shop.address', 'Address') }}</legend>
             {% include 'templates/shop/_address.twig' with {name: 'billing', values: input.billing, with_phone: true, with_company: true} %}
-            <label class="shop-check"><input type="checkbox" name="ship_elsewhere" value="1"{% if input.ship_elsewhere %} checked{% endif %} data-shop-refresh> {{ t('shop.ship_elsewhere', 'Send it to another address') }}</label>
-            <div class="shop-ship-else">
-              {% include 'templates/shop/_address.twig' with {name: 'shipping', values: input.shipping, prefix_auto: 'shipping ', required: input.ship_elsewhere} %}
-            </div>
+            {% if not cart.digital_only %}
+              <label class="shop-check"><input type="checkbox" name="ship_elsewhere" value="1"{% if input.ship_elsewhere %} checked{% endif %} data-shop-refresh> {{ t('shop.ship_elsewhere', 'Send it to another address') }}</label>
+              <div class="shop-ship-else">
+                {% include 'templates/shop/_address.twig' with {name: 'shipping', values: input.shipping, prefix_auto: 'shipping ', required: input.ship_elsewhere} %}
+              </div>
+            {% endif %}
           </fieldset>
 
           <fieldset class="shop-step">
-            <legend><span class="shop-step-n">3</span>{{ t('shop.shipping', 'Shipping') }}</legend>
-            {% if not cart.has_zone %}
+            <legend><span class="shop-step-n">3</span>{{ cart.digital_only ? t('shop.delivery', 'Delivery') : t('shop.shipping', 'Shipping') }}</legend>
+            {% if cart.digital_only %}
+              <input type="hidden" name="method" value="download">
+              <p class="shop-muted">{{ t('shop.download_note', 'Nothing is sent: once it is paid, the files wait for you on the order\'s page and in the email.') }}</p>
+            {% elseif not cart.has_zone %}
               <p class="shop-muted">{{ t('shop.no_zone', 'Choose the country it goes to, to see the ways it can be sent.') }}</p>
             {% elseif cart.methods is empty %}
               <p class="shop-flash is-error">{{ t('shop.err_no_shipping', 'We cannot send this order to that address.') }}</p>
@@ -70,14 +75,16 @@
                 {% endfor %}
               </div>
             {% endif %}
-            {% if cart.gift_wrap %}
+            {% if cart.gift_wrap and not cart.digital_only %}
               <label class="shop-check"><input type="checkbox" name="gift_wrap" value="1"{% if input.gift_wrap %} checked{% endif %}> {{ t('shop.gift_wrap', 'Gift wrapping') }}</label>
             {% endif %}
-            <details class="shop-field"{% if input.gift_note %} open{% endif %}>
-              <summary>{{ t('shop.gift_note_add', 'Add a gift note') }}</summary>
-              <label class="visually-hidden" for="shop-gift-note">{{ t('shop.gift_note', 'Gift note') }}</label>
-              <textarea id="shop-gift-note" name="gift_note" rows="3" maxlength="500">{{ input.gift_note }}</textarea>
-            </details>
+            {% if not cart.digital_only %}
+              <details class="shop-field"{% if input.gift_note %} open{% endif %}>
+                <summary>{{ t('shop.gift_note_add', 'Add a gift note') }}</summary>
+                <label class="visually-hidden" for="shop-gift-note">{{ t('shop.gift_note', 'Gift note') }}</label>
+                <textarea id="shop-gift-note" name="gift_note" rows="3" maxlength="500">{{ input.gift_note }}</textarea>
+              </details>
+            {% endif %}
           </fieldset>
 
           <fieldset class="shop-step">
