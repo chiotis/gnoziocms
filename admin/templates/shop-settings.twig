@@ -107,6 +107,33 @@
   {% if tab == 'payments' %}
     <form method="post" action="{{ url('admin/shop-settings?tab=payments') }}" class="grid gap-4">
       {{ csrf_field() }}<input type="hidden" name="tab" value="payments">
+      {% set viva = shop.payments.viva %}
+      <section class="{{ card }}" aria-labelledby="pay-viva">
+        <div class="{{ card_head }}"><h2 id="pay-viva" class="text-sm font-semibold text-slate-900">Viva Wallet <span class="font-normal text-slate-400">· cards, Apple Pay, Google Pay, IRIS, installments</span></h2>
+          <div class="flex items-center gap-3">
+            <label class="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" name="viva[demo]" value="1" class="h-4 w-4 rounded border-slate-300" {% if viva.demo %}checked{% endif %}> Demo</label>
+            <label class="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" name="viva[enabled]" value="1" class="h-4 w-4 rounded border-slate-300" {% if viva.enabled %}checked{% endif %}> Offered</label>
+          </div>
+        </div>
+        <div class="grid gap-4 px-4 py-4 sm:grid-cols-2">
+          <div><label class="{{ label }}" for="viva-merchant">Merchant ID</label><input id="viva-merchant" name="viva[merchant_id]" value="{{ viva.merchant_id }}" class="{{ input }} font-mono" autocomplete="off" spellcheck="false"></div>
+          <div><label class="{{ label }}" for="viva-key">API key</label><input id="viva-key" type="password" name="viva_secret[api_key]" value="" class="{{ input }} font-mono" autocomplete="new-password" placeholder="{{ viva_secrets.api_key.set|default(false) ? 'Set, ends in ' ~ viva_secrets.api_key.last4 ~ ' · blank keeps it' : '' }}"></div>
+          <div><label class="{{ label }}" for="viva-client">Smart Checkout Client ID</label><input id="viva-client" name="viva[client_id]" value="{{ viva.client_id }}" class="{{ input }} font-mono" autocomplete="off" spellcheck="false"></div>
+          <div><label class="{{ label }}" for="viva-secret">Smart Checkout Client secret</label><input id="viva-secret" type="password" name="viva_secret[client_secret]" value="" class="{{ input }} font-mono" autocomplete="new-password" placeholder="{{ viva_secrets.client_secret.set|default(false) ? 'Set, ends in ' ~ viva_secrets.client_secret.last4 ~ ' · blank keeps it' : '' }}"></div>
+          <div><label class="{{ label }}" for="viva-source">Payment source code</label><input id="viva-source" name="viva[source_code]" value="{{ viva.source_code }}" class="{{ input }} font-mono" maxlength="20" placeholder="Default"><p class="{{ note }}">The 4-digit code of the source made for this site in Viva (Sales › Online payments › Websites/Apps).</p></div>
+          <div><label class="{{ label }}" for="viva-inst">Installments: from amount (€) = up to</label><textarea id="viva-inst" name="viva[installments]" rows="3" class="{{ input }} font-mono" placeholder="100 = 3&#10;300 = 6&#10;600 = 12">{{ viva_installments }}</textarea><p class="{{ note }}">Empty: no installments. Your contract with Viva sets the most allowed.</p></div>
+          <div class="sm:col-span-2 rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-600">
+            <p class="mb-1 font-medium text-slate-800">In the payment source at Viva, set:</p>
+            <p>Success URL <code class="select-all">{{ viva_urls.success }}</code></p>
+            <p>Failure URL <code class="select-all">{{ viva_urls.failure }}</code></p>
+            <p class="mt-1">And under Settings › API Access › Webhooks, add <code class="select-all">{{ viva_urls.webhook }}</code> for <em>Transaction Payment Created</em> and <em>Transaction Failed</em>.</p>
+          </div>
+          <div class="sm:col-span-2 flex flex-wrap items-center gap-3">
+            <button type="submit" name="viva_action" value="check" class="{{ btn }} border border-slate-300 bg-white text-slate-700 hover:bg-slate-50">Save and check connection</button>
+            {% if viva_secrets.api_key.set|default(false) or viva_secrets.client_secret.set|default(false) %}<label class="flex items-center gap-2 text-xs text-slate-500"><input type="checkbox" name="viva_clear" value="1" class="h-4 w-4 rounded border-slate-300"> Remove the stored keys</label>{% endif %}
+          </div>
+        </div>
+      </section>
       <section class="{{ card }}" aria-labelledby="pay-bank">
         <div class="{{ card_head }}"><h2 id="pay-bank" class="text-sm font-semibold text-slate-900">Bank transfer</h2>
           <label class="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" name="bank_transfer[enabled]" value="1" class="h-4 w-4 rounded border-slate-300" {% if shop.payments.bank_transfer.enabled %}checked{% endif %}> Offered</label>
@@ -134,7 +161,7 @@
           </fieldset>
         </div>
       </section>
-      <p class="max-w-3xl text-xs text-slate-500">Cards through Viva Wallet and Cardlink (Eurobank, Alpha, Cardlink) come next; their keys will be set here.</p>
+      <p class="max-w-3xl text-xs text-slate-500">The keys are kept apart from these settings, never shown again and never exported. Cardlink (Eurobank, Alpha, Cardlink) comes next.</p>
       <div><button type="submit" class="{{ primary }}">Save</button></div>
     </form>
   {% endif %}

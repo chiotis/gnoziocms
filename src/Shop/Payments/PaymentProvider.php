@@ -24,12 +24,12 @@ interface PaymentProvider
     public function fee(array $settings): int;
 
     /**
-     * What happens when an order is placed with it: the status the order takes, and where the customer goes next ('' for the
-     * order's own page).
+     * What happens when an order is placed with it (or paid again from its page): the status the order takes, where the customer
+     * goes next ('' for the order's own page), and what went wrong when the provider could not start ('' when it did).
      *
      * @param array<string, mixed> $order
      * @param array<string, mixed> $settings
-     * @return array{status: string, redirect: string}
+     * @return array{status: string, redirect: string, error?: string}
      */
     public function start(array $order, array $settings): array;
 

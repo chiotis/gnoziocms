@@ -31,7 +31,8 @@ final class ShopCheckout
         private ShopSettings $settings,
         private array $providers,
         private \Closure $t,
-        private string $defaultLang
+        private string $defaultLang,
+        private ?ShopPayments $payments = null
     ) {
     }
 
@@ -212,9 +213,17 @@ final class ShopCheckout
             throw $e;
         }
         $this->orders->addEvent($created['id'], 'placed', 'Order placed' . ($customer !== null ? ' by the customer\'s account' : ' as a guest') . '.', $email);
-        $start = $provider->start($order + $created, $paymentSettings);
+        $start = $provider->start($this->orders->get($created['id']) ?? ($order + $created), $paymentSettings);
+        if (($start['error'] ?? '') !== '') {
+            // The provider could not be reached: the order goes, and its stock and coupon come back.
+            $this->orders->addEvent($created['id'], 'payment', 'The payment could not start: ' . $start['error'], 'checkout');
+            $this->changeStatus($created['id'], 'cancelled', 'checkout', 'The payment could not start.');
+            return ['ok' => false, 'errors' => ['payment_start'], 'order' => null, 'redirect' => '', 'quote' => $quote];
+        }
         if ($start['status'] !== 'pending_payment') {
             $this->changeStatus($created['id'], $start['status'], 'checkout');
+        } else {
+            $this->orders->addEvent($created['id'], 'payment', 'Sent to pay with ' . $provider->id() . '.', 'checkout');
         }
         return ['ok' => true, 'errors' => [], 'order' => $this->orders->get($created['id']), 'redirect' => $start['redirect'], 'quote' => $quote];
     }
@@ -262,6 +271,102 @@ final class ShopCheckout
         }
         $this->orders->addEvent($id, 'status', (ShopOrders::STATUSES[$from] ?? $from) . ' → ' . (ShopOrders::STATUSES[$to] ?? $to) . ($note !== '' ? '. ' . $note : '.'), $actor);
         return ['ok' => true, 'message' => 'The order is ' . strtolower(ShopOrders::STATUSES[$to]) . '.', 'order' => $this->orders->get($id)];
+    }
+
+    /**
+     * Sends an order that is still waiting for its payment to pay again (its page's Pay now), while its stock is still held.
+     *
+     * @param array<string, mixed> $order
+     * @return array{ok: bool, redirect: string, error: string}
+     */
+    public function payAgain(array $order): array
+    {
+        $provider = $this->providers[(string)$order['payment_method']] ?? null;
+        if ($order['status'] !== 'pending_payment' || $provider === null || (int)$order['reserve_until'] <= time()) {
+            return ['ok' => false, 'redirect' => '', 'error' => 'expired'];
+        }
+        $settings = $this->settings->all()['payments'][$provider->id()] ?? [];
+        $start = $provider->start($order, is_array($settings) ? $settings : []);
+        if (($start['error'] ?? '') !== '' || $start['redirect'] === '') {
+            $this->orders->addEvent((int)$order['id'], 'payment', 'The payment could not start again: ' . ($start['error'] ?? ''), 'customer');
+            return ['ok' => false, 'redirect' => '', 'error' => 'payment_start'];
+        }
+        $this->orders->addEvent((int)$order['id'], 'payment', 'Sent to pay again with ' . $provider->id() . '.', 'customer');
+        return ['ok' => true, 'redirect' => $start['redirect'], 'error' => ''];
+    }
+
+    /**
+     * What a provider said about a payment, asked of its own API (never what a browser or a notification claims): an order is paid
+     * only when the provider says the transaction is paid, for this order's number, for exactly its amount in euros, once.
+     *
+     * @param array{ok: bool, error: string, transaction_id: string, reference: string, paid: bool, failed: bool, amount_cents: int, currency: string, merchant_trns: string, status: string, installments?: int} $tx
+     * @return array{outcome: string, order: array<string, mixed>|null, message: string}
+     *   outcome: paid, already, pending, failed, mismatch, late (paid after the order was cancelled), unknown, error
+     */
+    public function confirm(string $providerId, array $tx, string $actor): array
+    {
+        if ($this->payments === null) {
+            return ['outcome' => 'error', 'order' => null, 'message' => 'Payments are not available.'];
+        }
+        if (!$tx['ok']) {
+            return ['outcome' => 'error', 'order' => null, 'message' => $tx['error']];
+        }
+        $payment = $tx['reference'] !== '' ? $this->payments->byReference($providerId, $tx['reference']) : null;
+        $order = $payment !== null ? $this->orders->get((int)$payment['order_id']) : null;
+        if ($payment === null || $order === null) {
+            return ['outcome' => 'unknown', 'order' => null, 'message' => 'No order of this shop has that payment.'];
+        }
+        $id = (int)$order['id'];
+        if ($tx['failed']) {
+            $this->payments->markFailed((int)$payment['id'], 'Status ' . $tx['status']);
+            $this->orders->addEvent($id, 'payment', 'The payment did not go through (' . $providerId . ', status ' . $tx['status'] . ').', $actor);
+            return ['outcome' => 'failed', 'order' => $order, 'message' => ''];
+        }
+        if (!$tx['paid']) {
+            return ['outcome' => 'pending', 'order' => $order, 'message' => ''];
+        }
+        $currencyOk = in_array(strtoupper($tx['currency']), ['', '978', 'EUR'], true);
+        if ($tx['amount_cents'] !== (int)$payment['amount_cents'] || (int)$payment['amount_cents'] !== (int)$order['total_cents'] || !$currencyOk || $tx['merchant_trns'] !== (string)$order['number']) {
+            $this->orders->addEvent($id, 'payment', 'A payment that does not match the order was refused: ' . ShopMoney::plain(max(0, $tx['amount_cents'])) . ' ' . $tx['currency'] . ' for "' . mb_substr($tx['merchant_trns'], 0, 40) . '" (transaction ' . $tx['transaction_id'] . ').', $actor);
+            return ['outcome' => 'mismatch', 'order' => $order, 'message' => ''];
+        }
+        if (!$this->payments->markPaid((int)$payment['id'], $tx['transaction_id'], 'Status ' . $tx['status'] . (($tx['installments'] ?? 0) > 1 ? ', ' . $tx['installments'] . ' installments' : ''))) {
+            return ['outcome' => 'already', 'order' => $order, 'message' => ''];
+        }
+        $this->orders->addEvent($id, 'payment', 'Paid with ' . $providerId . ': ' . ShopMoney::plain($tx['amount_cents']) . ' EUR, transaction ' . $tx['transaction_id'] . (($tx['installments'] ?? 0) > 1 ? ', in ' . $tx['installments'] . ' installments' : '') . '.', $actor);
+        if ($order['status'] === 'pending_payment') {
+            $this->changeStatus($id, 'paid', $actor);
+            return ['outcome' => 'paid', 'order' => $this->orders->get($id), 'message' => ''];
+        }
+        if ($order['status'] === 'cancelled') {
+            $this->orders->addEvent($id, 'payment', 'The payment came after the order was cancelled: refund it, or take the order again by hand.', $actor);
+            return ['outcome' => 'late', 'order' => $order, 'message' => ''];
+        }
+        return ['outcome' => 'already', 'order' => $order, 'message' => ''];
+    }
+
+    /** @return array<string, mixed>|null the order a provider's reference belongs to */
+    public function orderOfPayment(string $providerId, string $reference): ?array
+    {
+        $payment = $this->payments?->byReference($providerId, $reference);
+        return $payment !== null ? $this->orders->get((int)$payment['order_id']) : null;
+    }
+
+    /** A payment the customer gave up (back from the provider without paying): noted on the order, which keeps waiting while it can. */
+    public function paymentFailed(string $providerId, string $reference, string $why): void
+    {
+        $payment = $this->payments?->byReference($providerId, $reference);
+        if ($payment === null || $payment['status'] !== ShopPayments::STARTED) {
+            return;
+        }
+        $this->payments->markFailed((int)$payment['id'], $why);
+        $this->orders->addEvent((int)$payment['order_id'], 'payment', $why, $providerId);
+    }
+
+    /** Writes a provider's call once by its key; false when it came before. */
+    public function noteEvent(string $providerId, string $key, string $kind, ?int $orderId, string $outcome): bool
+    {
+        return $this->payments?->once($providerId, $key, $kind, $orderId, $outcome) ?? false;
     }
 
     /** Cancels the orders whose time to be paid ran out, giving back their stock. How many. */

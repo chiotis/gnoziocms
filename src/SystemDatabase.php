@@ -120,6 +120,7 @@ final class SystemDatabase
         ));
         $this->applyMigration($pdo, '202611070002_shop_stock', fn(PDO $db) => $this->createShopStockTable($db));
         $this->applyMigration($pdo, '202611070003_shop_orders', fn(PDO $db) => $this->createShopOrderTables($db));
+        $this->applyMigration($pdo, '202611080001_shop_payments', fn(PDO $db) => $this->createShopPaymentTables($db));
     }
 
     /**
@@ -263,6 +264,44 @@ final class SystemDatabase
                 used INTEGER NOT NULL DEFAULT 0,
                 note TEXT NOT NULL DEFAULT '',
                 created_at INTEGER NOT NULL
+            )"
+        );
+    }
+
+    /**
+     * The shop's payments through a provider (docs/shop-plan.md, section 5): one row each time an order is sent to pay (the provider's
+     * reference, then its transaction, the amount, what was refunded), and every call a provider made to the site, once by its key,
+     * so a notification that comes twice changes nothing the second time.
+     */
+    private function createShopPaymentTables(PDO $pdo): void
+    {
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS shop_payments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                order_id INTEGER NOT NULL,
+                provider TEXT NOT NULL,
+                reference TEXT NOT NULL,
+                transaction_id TEXT NOT NULL DEFAULT '',
+                amount_cents INTEGER NOT NULL,
+                refunded_cents INTEGER NOT NULL DEFAULT 0,
+                status TEXT NOT NULL,
+                detail TEXT NOT NULL DEFAULT '',
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER NOT NULL
+            )"
+        );
+        $pdo->exec('CREATE INDEX IF NOT EXISTS shop_payments_order ON shop_payments (order_id)');
+        $pdo->exec('CREATE UNIQUE INDEX IF NOT EXISTS shop_payments_reference ON shop_payments (provider, reference)');
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS shop_gateway_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                provider TEXT NOT NULL,
+                event_key TEXT NOT NULL,
+                kind TEXT NOT NULL,
+                order_id INTEGER,
+                outcome TEXT NOT NULL DEFAULT '',
+                at INTEGER NOT NULL,
+                UNIQUE (provider, event_key)
             )"
         );
     }

@@ -17,7 +17,15 @@ final class ShopSettingsAdmin
      * @param \Closure(): array<string, string> $pages the site's pages, slug => title, for the terms and returns links
      * @param string[] $languages the site's languages, the default first: a shipping method's name is written in each
      */
-    public function __construct(private ShopSettings $settings, private \Closure $log, private \Closure $pages, private array $languages = ['en'])
+    public function __construct(
+        private ShopSettings $settings,
+        private \Closure $log,
+        private \Closure $pages,
+        private array $languages = ['en'],
+        private ?ShopSecrets $secrets = null,
+        private ?Payments\VivaWallet $viva = null,
+        private string $siteUrl = ''
+    )
     {
     }
 
@@ -28,6 +36,17 @@ final class ShopSettingsAdmin
     public function act(array $post): array
     {
         $tab = isset(self::TABS[(string)($post['tab'] ?? '')]) ? (string)$post['tab'] : 'general';
+        if ($tab === 'payments' && ($post['viva_action'] ?? '') === 'check' && $this->viva !== null) {
+            // Check connection checks what is stored, after saving what the form holds.
+            $this->settings->savePayments($post);
+            $this->secrets?->save(Payments\VivaWallet::ID, is_array($post['viva_secret'] ?? null) ? $post['viva_secret'] : []);
+            $result = $this->viva->check($this->settings->all()['payments']['viva']);
+            ($this->log)('shop.viva_check', $result['ok'] ? 'info' : 'warning', 'shop', 'viva', $result['message'], []);
+            return ['ok' => $result['ok'], 'tab' => $tab, 'message' => $result['message']];
+        }
+        if ($tab === 'payments') {
+            $this->secrets?->save(Payments\VivaWallet::ID, is_array($post['viva_secret'] ?? null) ? $post['viva_secret'] : [], !empty($post['viva_clear']));
+        }
         match ($tab) {
             'shipping' => $this->settings->saveShipping($post, $this->languages),
             'payments' => $this->settings->savePayments($post),
@@ -53,6 +72,13 @@ final class ShopSettingsAdmin
             'tax_labels' => ShopSettings::TAX_LABELS,
             'pages' => ($this->pages)(),
             'languages' => $this->languages,
+            'viva_secrets' => $this->secrets?->view(Payments\VivaWallet::ID) ?? [],
+            'viva_installments' => Payments\VivaWallet::installmentsText($this->settings->all()['payments']['viva']['installments']),
+            'viva_urls' => [
+                'success' => rtrim($this->siteUrl, '/') . '/_shop/pay/viva/success',
+                'failure' => rtrim($this->siteUrl, '/') . '/_shop/pay/viva/failure',
+                'webhook' => rtrim($this->siteUrl, '/') . '/_shop/pay/viva/webhook',
+            ],
             'ship_kinds' => ShopShipping::KINDS,
             'table_text' => array_map(static fn(array $zone): array => array_map(static fn(array $m): string => ShopShipping::tableText($m['table']), $zone['methods']), $this->settings->all()['shipping']),
             'done' => (string)($get['done'] ?? ''),
