@@ -135,6 +135,22 @@ final class ShopMail
         return "\n" . $this->t('shop.bank_intro', $lang, ['number' => $order['number'], 'total' => ShopMoney::format((int)$order['total_cents'], $lang)]) . "\n" . implode("\n", $lines) . "\n";
     }
 
+    /**
+     * A subscription's renewal could not be charged (failed: it is tried again) or it was given up (cancelled), with the account's
+     * address where it can be paid or looked at.
+     *
+     * @param array<string, mixed> $sub
+     */
+    public function subscriptionNotice(string $kind, array $sub, string $email, string $name, string $accountUrl): bool
+    {
+        $lang = (string)$sub['lang'];
+        $what = $sub['title'] . ($sub['variant'] !== '' ? ' (' . $sub['variant'] . ')' : '');
+        $body = $this->t('shop.mail_hello', $lang, ['name' => $name !== '' ? $name : $email]) . "\n\n"
+            . $this->t('shop.mail_sub_' . $kind . '_text', $lang, ['product' => $what, 'amount' => ShopMoney::format($sub['price_cents'] * $sub['quantity'], $lang), 'date' => $sub['next_at'] > 0 ? date('d/m/Y', $sub['next_at']) : '']) . "\n\n"
+            . $accountUrl . "\n" . $this->signature();
+        return $this->mail($email, $this->t('shop.mail_sub_' . $kind . '_subject', $lang, ['product' => $what, 'store' => $this->storeName()]), $body);
+    }
+
     /** The order's downloads, when it has any that can be had: each file with its link. */
     private function files(array $order, string $lang): string
     {

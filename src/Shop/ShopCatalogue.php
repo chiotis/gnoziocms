@@ -242,6 +242,7 @@ final class ShopCatalogue
             'options' => $options,
             'variants' => $variants,
             'gift_wrap' => !empty($custom['gift_wrap']),
+            'plan' => ($custom['kind'] ?? '') === 'subscription' ? ShopSubscriptions::plan($custom) : null,
             'tracked' => $tracked,
             'details' => $details,
         ];

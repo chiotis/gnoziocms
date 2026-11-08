@@ -1,7 +1,8 @@
 <?php
 /*
  * Publishes the scheduled entries whose time has come, writes the picture sizes pages may ask for that are missing (a few minutes'
- * worth per run; the next run goes on), works the background jobs that are due (AI pictures, a few minutes' worth), then takes the scheduled backup when it is due: for a cron job, so none of it depends on
+ * worth per run; the next run goes on), works the background jobs that are due (AI pictures, a few minutes' worth; the shop's
+ * unpaid orders and subscription renewals), then takes the scheduled backup when it is due: for a cron job, so none of it depends on
  * someone visiting the site.
  * (It lives in src/ because an update replaces that folder; a new file elsewhere would stop the older sites from updating.)
  *   php src/cron-backup.php

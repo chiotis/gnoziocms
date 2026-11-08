@@ -17,7 +17,7 @@ fields:
       physical: { el: Φυσικό προϊόν, en: Physical product }
       digital: { el: Ψηφιακό προϊόν, en: Digital product }
       subscription: { el: Συνδρομή, en: Subscription }
-    help: { el: 'Ένα ψηφιακό προϊόν πωλεί αρχεία, που ανεβαίνουν στο Κατάστημα › Αρχεία. Οι συνδρομές έρχονται αργότερα.', en: 'A digital product sells files, uploaded on Shop › Files. Subscriptions come later.' }
+    help: { el: 'Ένα ψηφιακό προϊόν πωλεί αρχεία, που ανεβαίνουν στο Κατάστημα › Αρχεία. Μια συνδρομή χρεώνεται ξανά κάθε περίοδο, με κάρτα μέσω Viva Wallet.', en: 'A digital product sells files, uploaded on Shop › Files. A subscription is charged again every period, by card through Viva Wallet.' }
   price:
     type: decimal
     label: { el: Τιμή (€), en: Price (€) }
@@ -132,6 +132,44 @@ fields:
     min: 0
     shared: true
     show: false
+  interval:
+    type: select
+    label: { el: Χρέωση κάθε, en: Charged every }
+    default: month
+    shared: true
+    show: false
+    when: { kind: [subscription] }
+    options:
+      week: { el: Εβδομάδα, en: Week }
+      month: { el: Μήνα, en: Month }
+      year: { el: Χρόνο, en: Year }
+  interval_count:
+    type: number
+    label: { el: Πόσες περίοδοι, en: How many of them }
+    min: 1
+    max: 12
+    default: 1
+    shared: true
+    show: false
+    when: { kind: [subscription] }
+    help: { el: 'Π.χ. 3 με «Μήνα»: κάθε τρεις μήνες.', en: 'E.g. 3 with "Month": every three months.' }
+  signup_fee:
+    type: decimal
+    label: { el: Τέλος εγγραφής (€), en: Sign-up fee (€) }
+    min: 0
+    shared: true
+    show: false
+    when: { kind: [subscription] }
+    help: { el: 'Μόνο με την πρώτη πληρωμή.', en: 'With the first payment only.' }
+  renewals:
+    type: number
+    label: { el: Ανανεώσεις, en: Renewals }
+    min: 0
+    default: 0
+    shared: true
+    show: false
+    when: { kind: [subscription] }
+    help: { el: '0: έως ότου ακυρωθεί.', en: '0: until it is cancelled.' }
   download_limit:
     type: number
     label: { el: Λήψεις ανά αγορά, en: Downloads per purchase }

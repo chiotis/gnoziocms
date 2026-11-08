@@ -30,6 +30,7 @@ final class ShopServices
     private ?VivaWallet $viva = null;
     private ?Cardlink $cardlink = null;
     private ?ShopDownloads $downloads = null;
+    private ?ShopSubscriptions $subscriptions = null;
     /** @var array<string, PaymentProvider>|null */
     private ?array $providers = null;
 
@@ -88,6 +89,25 @@ final class ShopServices
                 $product = $catalogue->product($productId, $catalogue->defaultLanguage());
                 $custom = is_array($product?->meta['custom_fields'] ?? null) ? $product->meta['custom_fields'] : [];
                 return ['limit' => max(0, (int)($custom['download_limit'] ?? 5)), 'days' => max(0, (int)($custom['download_days'] ?? 30))];
+            }
+        );
+    }
+
+    public function subscriptions(): ShopSubscriptions
+    {
+        return $this->subscriptions ??= new ShopSubscriptions(
+            $this->database,
+            $this->orders(),
+            $this->payments(),
+            $this->settings,
+            fn(): ShopCheckout => $this->checkout(),
+            fn(): array => $this->providers(),
+            function (string $kind, array $sub, ?array $order): void {
+                $customer = $this->customers()->get((int)$sub['customer_id']);
+                if ($customer !== null) {
+                    $lang = $sub['lang'] !== '' ? (string)$sub['lang'] : $this->defaultLang;
+                    $this->mail()->subscriptionNotice($kind, $sub, (string)$customer['email'], (string)$customer['name'], rtrim($this->siteUrl, '/') . '/' . ($lang !== $this->defaultLang ? $lang . '/' : '') . 'account#subscriptions');
+                }
             }
         );
     }
@@ -151,7 +171,8 @@ final class ShopServices
             fn(string $key, string $lang): string => ($this->t)($key, $lang, []),
             $this->defaultLang,
             $this->payments(),
-            $this->downloads()
+            $this->downloads(),
+            $this->subscriptions()
         );
     }
 

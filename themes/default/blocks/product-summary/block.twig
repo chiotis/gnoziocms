@@ -15,13 +15,13 @@
     {% if product.price_text %}
       <p class="product-summary-price">
         {% if product.from %}<span class="product-card-from" data-from>{{ t('shop.from', 'from') }}</span> {% endif %}
-        <span class="product-price" data-price>{{ product.price_text }}</span>
+        <span class="product-price" data-price>{{ product.price_text }}</span>{% if product.plan %} <span class="product-card-from">{{ t('shop.every_' ~ product.plan.interval ~ (product.plan.count > 1 ? 's' : ''), '')|replace({'{n}': product.plan.count}) }}</span>{% endif %}
         {% if product.was_text %}<s class="product-was"><span class="visually-hidden">{{ t('shop.was', 'was') }}</span> {{ product.was_text }}</s>{% endif %}
       </p>
     {% endif %}
     {% if product.short_description %}<p class="product-summary-text">{{ product.short_description|nl2br }}</p>{% endif %}
 
-    {% set sellable = product.kind in ['physical', 'digital'] and product.price_text %}
+    {% set sellable = product.kind in ['physical', 'digital', 'subscription'] and product.price_text %}
     <form class="product-buy" method="post" action="{{ url(prefix ~ '_shop/cart') }}" data-shop-add>
     <input type="hidden" name="product" value="{{ product.id }}">
     {% if product.options is not empty %}
@@ -42,7 +42,7 @@
       </div>
     {% endif %}
 
-    {% if product.kind == 'digital' %}<p class="product-stock">{{ t('shop.digital_product', 'A download, yours as soon as it is paid') }}</p>{% else %}
+    {% if product.plan %}<p class="product-stock">{{ product.plan.signup_cents > 0 ? t('shop.sub_signup', 'Charged again every period, by card; a sign-up fee of {fee} with the first payment. Cancel whenever you like.')|replace({'{fee}': (product.plan.signup_cents / 100)|number_format(2, lang == 'en' ? '.' : ',', '') ~ ' €'}) : t('shop.sub_note', 'Charged again every period, by card. Cancel whenever you like.') }}</p>{% elseif product.kind == 'digital' %}<p class="product-stock">{{ t('shop.digital_product', 'A download, yours as soon as it is paid') }}</p>{% else %}
     <p class="product-stock" data-stock role="status" aria-live="polite"
        data-in="{{ t('shop.in_stock', 'In stock') }}" data-out="{{ t('shop.sold_out', 'Sold out') }}" data-none="{{ t('shop.no_variant', 'Not available in this combination') }}">
       {{ product.available ? t('shop.in_stock', 'In stock') : t('shop.sold_out', 'Sold out') }}

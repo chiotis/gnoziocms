@@ -1,0 +1,76 @@
+{% extends '@admin/base.twig' %}
+{% set page_heading = 'Subscriptions' %}
+{% import '@admin/partials/ui.twig' as ui %}
+{#
+  Shop > Subscriptions (docs/shop-plan.md, section 7): status chips, the list, and the chosen one with its customer, its next charge,
+  its orders and what can be done to it (pause, resume, skip a period, cancel). Renewals are charged by the cron job.
+#}
+{% block content %}
+  {% set tones = {pending: 'amber', active: 'green', past_due: 'red', paused: 'slate', cancelled: 'slate', ended: 'blue'} %}
+  {% set btn = 'inline-flex items-center rounded-md border px-3 py-1.5 text-sm font-medium shadow-sm' %}
+  {{ ui.flash(message, done == 'ok' ? 'success' : 'error') }}
+
+  {% if sub %}
+    <section class="mb-4 rounded-lg border border-slate-200 bg-white">
+      <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-4 py-3">
+        <h2 class="text-sm font-semibold text-slate-900">#{{ sub.id }} · {{ sub.title }}{% if sub.variant %} <span class="font-normal text-slate-500">{{ sub.variant }}</span>{% endif %}</h2>
+        {{ ui.badge(sub.status_label, tones[sub.status] ?? 'slate') }}
+      </div>
+      <dl class="grid gap-x-6 gap-y-2 px-4 py-3 text-sm sm:grid-cols-4">
+        <div><dt class="text-xs text-slate-500">Customer</dt><dd>{{ sub.customer_name }}<span class="block text-xs text-slate-400">{{ sub.customer_email }}</span></dd></div>
+        <div><dt class="text-xs text-slate-500">Price</dt><dd>{{ sub.price }} every {{ sub.every }}</dd></div>
+        <div><dt class="text-xs text-slate-500">Next charge</dt><dd>{{ sub.next_at > 0 ? sub.next_at|date('d/m/Y H:i') : '—' }}{% if sub.failures > 0 %}<span class="block text-xs text-red-600">{{ sub.failures }} failed {{ sub.failures == 1 ? 'try' : 'tries' }}</span>{% endif %}</dd></div>
+        <div><dt class="text-xs text-slate-500">Renewals</dt><dd>{{ sub.renewed }}{% if sub.renewals %} of {{ sub.renewals }}{% else %} · until cancelled{% endif %}</dd></div>
+      </dl>
+      <div class="flex flex-wrap gap-2 border-t border-slate-200 px-4 py-3">
+        {% for action, label in {pause: 'Pause', resume: 'Resume', skip: 'Skip the next period', cancel: 'Cancel'} %}
+          {% set allowed = (action == 'pause' and sub.status in ['active', 'past_due']) or (action == 'resume' and sub.status == 'paused') or (action == 'skip' and sub.status in ['active', 'paused'] and sub.next_at > 0) or (action == 'cancel' and sub.status in ['pending', 'active', 'past_due', 'paused']) %}
+          {% if allowed %}
+            <form method="post" action="{{ url('admin/shop-subscriptions?id=' ~ sub.id) }}"{% if action == 'cancel' %} data-confirm="Cancel this subscription? Nothing more is charged."{% endif %}>
+              {{ csrf_field() }}<input type="hidden" name="action" value="{{ action }}">
+              <button class="{{ btn }} {{ action == 'cancel' ? 'border-red-200 bg-white text-red-700 hover:bg-red-50' : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50' }}">{{ label }}</button>
+            </form>
+          {% endif %}
+        {% endfor %}
+        <a href="{{ url('admin/shop-subscriptions') }}" class="ml-auto self-center text-sm text-slate-500 hover:underline">All subscriptions</a>
+      </div>
+      {% if sub_orders is not empty %}
+        <ul class="divide-y divide-slate-100 border-t border-slate-200 text-sm">
+          {% for o in sub_orders %}
+            <li class="flex items-center justify-between gap-3 px-4 py-2"><a class="font-mono text-blue-700 hover:underline" href="{{ url('admin/shop-orders?id=' ~ o.id) }}">{{ o.number }}</a><span class="text-xs text-slate-500">{{ {first: 'First', renewal: 'Renewal', payment: 'Paid by the customer'}[o.link_kind] ?? o.link_kind }} · {{ o.created_at|date('d/m/Y') }}</span><span>{{ o.status_label }}</span><span class="text-right">{{ o.total }}</span></li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    </section>
+  {% endif %}
+
+  <div class="mb-3 flex flex-wrap items-center gap-1.5">
+    <a href="{{ url('admin/shop-subscriptions') }}" class="rounded-full px-3 py-1 text-xs font-medium {{ status == '' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50' }}">All</a>
+    {% for key, name in statuses %}
+      {% if counts[key] > 0 or status == key %}
+        <a href="{{ url('admin/shop-subscriptions?status=' ~ key) }}" class="rounded-full px-3 py-1 text-xs font-medium {{ status == key ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50' }}">{{ name }} <span class="opacity-60">{{ counts[key] }}</span></a>
+      {% endif %}
+    {% endfor %}
+  </div>
+  <div class="overflow-hidden rounded-lg border border-slate-200 bg-white">
+    {% if subscriptions is empty %}
+      {{ ui.empty_state('No subscriptions', 'A product whose Kind is Subscription, bought with Viva Wallet, starts one.') }}
+    {% else %}
+      <table class="min-w-full divide-y divide-slate-200 text-sm">
+        <thead class="bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500"><tr><th class="px-4 py-2">#</th><th class="px-4 py-2">Product</th><th class="px-4 py-2">Customer</th><th class="px-4 py-2">Price</th><th class="px-4 py-2">Next charge</th><th class="px-4 py-2">Status</th></tr></thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for s in subscriptions %}
+            <tr class="hover:bg-slate-50">
+              <td class="px-4 py-2"><a class="font-mono text-blue-700 hover:underline" href="{{ url('admin/shop-subscriptions?id=' ~ s.id) }}">{{ s.id }}</a></td>
+              <td class="px-4 py-2">{{ s.title }}{% if s.variant %} <span class="text-slate-400">{{ s.variant }}</span>{% endif %}</td>
+              <td class="px-4 py-2">{{ s.customer_name }}</td>
+              <td class="px-4 py-2">{{ s.price }} / {{ s.every }}</td>
+              <td class="px-4 py-2 text-slate-500">{{ s.next_at > 0 ? s.next_at|date('d/m/Y') : '—' }}</td>
+              <td class="px-4 py-2">{{ ui.badge(s.status_label, tones[s.status] ?? 'slate') }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+  </div>
+{% endblock %}

@@ -122,6 +122,7 @@ final class SystemDatabase
         $this->applyMigration($pdo, '202611070003_shop_orders', fn(PDO $db) => $this->createShopOrderTables($db));
         $this->applyMigration($pdo, '202611080001_shop_payments', fn(PDO $db) => $this->createShopPaymentTables($db));
         $this->applyMigration($pdo, '202611080002_shop_downloads', fn(PDO $db) => $this->createShopDownloadTables($db));
+        $this->applyMigration($pdo, '202611080003_shop_subscriptions', fn(PDO $db) => $this->createShopSubscriptionTables($db));
     }
 
     /**
@@ -341,6 +342,52 @@ final class SystemDatabase
                 UNIQUE (order_id, file_id)
             )"
         );
+    }
+
+    /**
+     * Subscriptions (docs/shop-plan.md, section 7): what a customer is subscribed to, at what price every period, the provider's
+     * token it is charged again with, its status and when it is next due; and the orders of each (the first and every renewal).
+     */
+    private function createShopSubscriptionTables(PDO $pdo): void
+    {
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS shop_subscriptions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                customer_id INTEGER NOT NULL,
+                product_id TEXT NOT NULL,
+                variant_key TEXT NOT NULL DEFAULT '',
+                title TEXT NOT NULL,
+                variant TEXT NOT NULL DEFAULT '',
+                sku TEXT NOT NULL DEFAULT '',
+                quantity INTEGER NOT NULL DEFAULT 1,
+                price_cents INTEGER NOT NULL,
+                tax_rate REAL NOT NULL DEFAULT 0,
+                interval TEXT NOT NULL,
+                interval_count INTEGER NOT NULL DEFAULT 1,
+                renewals INTEGER NOT NULL DEFAULT 0,
+                renewed INTEGER NOT NULL DEFAULT 0,
+                lang TEXT NOT NULL DEFAULT '',
+                provider TEXT NOT NULL DEFAULT '',
+                token TEXT NOT NULL DEFAULT '',
+                status TEXT NOT NULL,
+                next_at INTEGER NOT NULL DEFAULT 0,
+                failures INTEGER NOT NULL DEFAULT 0,
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER NOT NULL,
+                ended_at INTEGER
+            )"
+        );
+        $pdo->exec('CREATE INDEX IF NOT EXISTS shop_subscriptions_due ON shop_subscriptions (status, next_at)');
+        $pdo->exec('CREATE INDEX IF NOT EXISTS shop_subscriptions_customer ON shop_subscriptions (customer_id)');
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS shop_subscription_orders (
+                subscription_id INTEGER NOT NULL,
+                order_id INTEGER NOT NULL,
+                kind TEXT NOT NULL DEFAULT 'renewal',
+                PRIMARY KEY (subscription_id, order_id)
+            )"
+        );
+        $pdo->exec('CREATE INDEX IF NOT EXISTS shop_subscription_orders_order ON shop_subscription_orders (order_id)');
     }
 
     /**
