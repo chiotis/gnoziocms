@@ -104,6 +104,28 @@ final class ShopSettings
         $this->meta->setJson(self::META, self::normalize($stored));
     }
 
+    /**
+     * The Emails tab's form: HTML or plain text, the colour, a logo and a footer line, and each email's subject and text in each
+     * language (blank: the theme's own words).
+     *
+     * @param array<string, mixed> $post
+     */
+    public function saveEmails(array $post): void
+    {
+        if (!$this->meta->isAvailable()) {
+            return;
+        }
+        $stored = $this->meta->getJson(self::META) ?? [];
+        $stored['emails'] = [
+            'html' => !empty($post['emails']['html']),
+            'accent' => (string)($post['emails']['accent'] ?? ''),
+            'logo' => (string)($post['emails']['logo'] ?? ''),
+            'footer' => (string)($post['emails']['footer'] ?? ''),
+            'texts' => is_array($post['emails']['texts'] ?? null) ? $post['emails']['texts'] : [],
+        ];
+        $this->meta->setJson(self::META, self::normalize($stored));
+    }
+
     /** The rate of a tax class, in percent; an unknown class is the standard one. */
     public function taxRate(string $class): float
     {
@@ -216,6 +238,40 @@ final class ShopSettings
                 'signup' => array_key_exists('signup', $accounts) ? (bool)$accounts['signup'] : true,
                 'verify' => !empty($accounts['verify']),
             ],
+            'emails' => self::emails(is_array($stored['emails'] ?? null) ? $stored['emails'] : []),
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $emails
+     * @return array{html: bool, accent: string, logo: string, footer: string, texts: array<string, array<string, array{subject: string, text: string}>>}
+     */
+    private static function emails(array $emails): array
+    {
+        $texts = [];
+        foreach (is_array($emails['texts'] ?? null) ? $emails['texts'] : [] as $kind => $byLang) {
+            if (!in_array((string)$kind, ShopMail::KINDS, true) || !is_array($byLang)) {
+                continue;
+            }
+            foreach ($byLang as $lang => $pair) {
+                if (preg_match('/^[a-z]{2}$/', (string)$lang) !== 1 || !is_array($pair)) {
+                    continue;
+                }
+                $subject = mb_substr(trim(preg_replace('/\s+/u', ' ', is_scalar($pair['subject'] ?? null) ? (string)$pair['subject'] : '') ?? ''), 0, 200);
+                $text = mb_substr(trim(str_replace("\r\n", "\n", is_scalar($pair['text'] ?? null) ? (string)$pair['text'] : '')), 0, 2000);
+                if ($subject !== '' || $text !== '') {
+                    $texts[(string)$kind][(string)$lang] = ['subject' => $subject, 'text' => $text];
+                }
+            }
+        }
+        $accent = strtolower(trim((string)($emails['accent'] ?? '')));
+        $logo = trim((string)($emails['logo'] ?? ''));
+        return [
+            'html' => array_key_exists('html', $emails) ? (bool)$emails['html'] : true,
+            'accent' => preg_match('/^#[0-9a-f]{6}$/', $accent) === 1 ? $accent : '#1f2937',
+            'logo' => preg_match('#^(https://|/)[^\s"\'<>]{1,500}$#', $logo) === 1 ? $logo : '',
+            'footer' => mb_substr(trim(str_replace("\r\n", "\n", (string)($emails['footer'] ?? ''))), 0, 500),
+            'texts' => $texts,
         ];
     }
 }

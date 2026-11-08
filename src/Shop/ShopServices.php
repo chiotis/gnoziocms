@@ -184,7 +184,8 @@ final class ShopServices
             $this->t,
             $this->send,
             fn(string $id): ?PaymentProvider => $this->providers()[$id] ?? null,
-            fn(int $orderId): array => $this->downloads()->forOrder($orderId)
+            fn(int $orderId): array => $this->downloads()->forOrder($orderId),
+            $this->siteUrl
         );
     }
 }

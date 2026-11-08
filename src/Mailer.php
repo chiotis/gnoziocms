@@ -34,15 +34,17 @@ final class Mailer
     /**
      * @param array<string, string> $headers From, Reply-To, Cc, Bcc
      * @param array<int, array{path: string, name: string, mime?: string}> $attachments files to send along
+     * @param string|null $html an HTML version of the body, sent beside the text (multipart/alternative)
      * @return array{ok: bool, provider: string, error: string}
      */
-    public function send(string $to, string $subject, string $body, array $headers, array $attachments = []): array
+    public function send(string $to, string $subject, string $body, array $headers, array $attachments = [], ?string $html = null): array
     {
         $provider = $this->provider();
+        $html = $html !== null && trim($html) !== '' ? $html : null;
         try {
             $result = match ($provider) {
-                'ses' => $this->sesConfigured() ? $this->sendViaSes($to, $subject, $body, $headers, $attachments) : ['ok' => false, 'error' => 'SES is not configured.'],
-                'smtp' => $this->smtpConfigured() ? $this->sendViaSmtp($to, $subject, $body, $headers, $attachments) : ['ok' => false, 'error' => 'SMTP is not configured.'],
+                'ses' => $this->sesConfigured() ? $this->sendViaSes($to, $subject, $body, $headers, $attachments, $html) : ['ok' => false, 'error' => 'SES is not configured.'],
+                'smtp' => $this->smtpConfigured() ? $this->sendViaSmtp($to, $subject, $body, $headers, $attachments, $html) : ['ok' => false, 'error' => 'SMTP is not configured.'],
                 default => ['ok' => false, 'error' => 'No email provider is configured.'],
             };
         } catch (\Throwable $e) {
@@ -92,7 +94,7 @@ final class Mailer
     }
 
     /** @return array{ok: bool, error: string} */
-    private function sendViaSmtp(string $to, string $subject, string $body, array $headers, array $attachments = []): array
+    private function sendViaSmtp(string $to, string $subject, string $body, array $headers, array $attachments = [], ?string $html = null): array
     {
         $smtp = is_array($this->config['smtp'] ?? null) ? $this->config['smtp'] : [];
         $host = trim((string)($smtp['host'] ?? ''));
@@ -181,19 +183,13 @@ final class Mailer
         $lines[] = 'MIME-Version: 1.0';
         $files = $this->readAttachments($attachments);
         if ($files === []) {
-            $lines[] = 'Content-Type: text/plain; charset=UTF-8';
-            $lines[] = 'Content-Transfer-Encoding: 8bit';
-            $lines[] = '';
-            $lines[] = str_replace(["\r\n", "\r"], "\n", $body);
+            array_push($lines, ...self::bodyPart($body, $html));
         } else {
             $boundary = 'gnozio-' . bin2hex(random_bytes(12));
             $lines[] = 'Content-Type: multipart/mixed; boundary="' . $boundary . '"';
             $lines[] = '';
             $lines[] = '--' . $boundary;
-            $lines[] = 'Content-Type: text/plain; charset=UTF-8';
-            $lines[] = 'Content-Transfer-Encoding: 8bit';
-            $lines[] = '';
-            $lines[] = str_replace(["\r\n", "\r"], "\n", $body);
+            array_push($lines, ...self::bodyPart($body, $html));
             foreach ($files as $file) {
                 $lines[] = '--' . $boundary;
                 $lines[] = 'Content-Type: ' . $file['mime'] . '; name="' . $file['name'] . '"';
@@ -247,7 +243,37 @@ final class Mailer
     }
 
     /** @return array{ok: bool, error: string} */
-    private function sendViaSes(string $to, string $subject, string $body, array $headers, array $attachments = []): array
+    /**
+     * The message's body as MIME lines (its headers, a blank line, the content): the text alone, or the text and the HTML as
+     * multipart/alternative, the HTML in base64 so no line is ever too long for SMTP.
+     *
+     * @return list<string>
+     */
+    public static function bodyPart(string $text, ?string $html): array
+    {
+        $text = str_replace(["\r\n", "\r"], "\n", $text);
+        if ($html === null) {
+            return ['Content-Type: text/plain; charset=UTF-8', 'Content-Transfer-Encoding: 8bit', '', $text];
+        }
+        $boundary = 'gnozio-alt-' . bin2hex(random_bytes(12));
+        return [
+            'Content-Type: multipart/alternative; boundary="' . $boundary . '"',
+            '',
+            '--' . $boundary,
+            'Content-Type: text/plain; charset=UTF-8',
+            'Content-Transfer-Encoding: 8bit',
+            '',
+            $text,
+            '--' . $boundary,
+            'Content-Type: text/html; charset=UTF-8',
+            'Content-Transfer-Encoding: base64',
+            '',
+            rtrim(chunk_split(base64_encode($html), 76, "\n")),
+            '--' . $boundary . '--',
+        ];
+    }
+
+    private function sendViaSes(string $to, string $subject, string $body, array $headers, array $attachments = [], ?string $html = null): array
     {
         $ses = is_array($this->config['ses'] ?? null) ? $this->config['ses'] : [];
         $accessKey = trim((string)($ses['key'] ?? ''));
@@ -266,7 +292,7 @@ final class Mailer
             'Content' => [
                 'Simple' => [
                     'Subject' => ['Data' => $subject, 'Charset' => 'UTF-8'],
-                    'Body' => ['Text' => ['Data' => $body, 'Charset' => 'UTF-8']],
+                    'Body' => ['Text' => ['Data' => $body, 'Charset' => 'UTF-8']] + ($html !== null ? ['Html' => ['Data' => $html, 'Charset' => 'UTF-8']] : []),
                 ],
             ],
         ];

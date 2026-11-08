@@ -170,6 +170,11 @@ check(): string                            // "Check connection" in settings
 - a new-order notice to the admin.
 - `Mailer` gains an optional HTML part (multipart/alternative) with a simple branded layout; plain text stays.
 - Abandoned-cart emails are a later item and need consent.
+- **As built (HTML emails and the Emails tab):**
+  - `Mailer::send()` takes an optional HTML body: over SMTP it goes as multipart/alternative (the text first, the HTML in base64, inside multipart/mixed when there are attachments); over SES as the Html body. The email log records whether an email had one.
+  - `ShopMail` builds each email once as parts (a greeting, paragraphs, a box for the bank accounts or the tracking, the downloads' links, the order with its totals, a button) and renders them as plain text and as HTML: a 600px table layout with inline styles, the shop's colour on the top line and the button, its logo or name, and a footer with the store's name, phone, email and a line of its own. Everything in it is escaped.
+  - **Shop settings › Emails:** HTML on or off (off: plain text only), the colour, a logo (a site path or an https address), a footer line, and for each email (order received, paid, shipped, cancelled, refunded, confirm the address, a new password, subscription not renewed or cancelled) its subject and opening text in each language, with its `{placeholders}`; blank keeps the theme's words, shown greyed. Each email has a preview per language (as HTML or `&format=text`, served with a CSP that allows no scripts) and a test sent with a made-up order.
+  - Not yet: editing the whole body, attachments such as an invoice PDF.
 
 **The Shop group in the sidebar** (only when the shop is on):
 - **Orders:** a list with status chips, search and date and status filters, and CSV export (with VAT columns for the accountant). The order screen shows the timeline, payments, refund, capture, mark shipped (carrier and tracking number), notes, resend email, and a printable packing slip.
@@ -233,7 +238,13 @@ All blocks use the theme tokens. Collection tones only change the CSS variables.
 - **Sitemap and feeds:** products and collections go in the sitemap. A Google Merchant XML feed comes later.
 - **Addresses:** clean collection URLs (taxonomy addresses already exist).
 - **WooCommerce import:** a WordPress importer profile (`docs/wordpress-profiles/`) for products. It maps price, sale price, SKU, gallery, product categories to the taxonomy, variations to variants, and stock to `shop_stock`. It writes 301s for `/product/…` and `/product-category/…`. Customers come across with their phpass hashes. Past orders are imported as read-only history, optionally.
-
+  - **As built:** `scripts/import-woocommerce.php` (classes `WooCommerceReader`, `WooCommerceImporter`), a script of its own rather than a profile, since products, stock and customers are not posts.
+    - **Reading:** with read-only REST keys in `WC_KEY`/`WC_SECRET` (environment only, sent only over https) it reads `/wp-json/wc/v3`: everything, stock quantities, weights, drafts, downloads and each variation's own price, SKU, picture and weight. Without them, the public Store API: prices from minor units, variations by their attribute slugs, no stock quantities or weights.
+    - **The dry run** (the default) reads everything and says what it would do: categories, products new, to update or left alone (a file of the site's own), physical and digital, variants, stock, pictures, redirects, customers; and what cannot be carried over (grouped and external products, a variation for "any" value, a product without a price). It writes `woocommerce-report.json`, `report.txt` and `woocommerce-redirects.txt` in `--out`.
+    - **`--apply`:** pictures into the library (one copy whatever its size in the address), product categories with their tree (the taxonomy turns hierarchical when they nest) and pictures, products as Markdown (id `woo` + the WooCommerce id, so a second run updates them), stock into `shop_stock`, and with `--redirects=apply` the 301s for `/product/…` and `/product-category/…` (a nested category to its whole path).
+    - **Customers:** a CSV of the old site's users (the script's header has the SQL for phpMyAdmin), found by column names. They are made confirmed with the old hash; `ShopCustomers::authenticate()` checks WordPress's portable phpass, its 6.8 bcrypt (`$wp$2y$`) and bare MD5, then hashes the password again. An address that has an account here is left as it is.
+    - **Not yet:** past orders as history, product reviews, attributes that are not variations (they stay in the description).
+    - **The client's dry run** is theirs to run on a copy of the site, with read keys: the report says what to fix in WooCommerce first.
 ## 11. Phases (each is one branch, one merge, one VERSION bump)
 
 1. **Catalogue.**
