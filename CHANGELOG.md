@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.244 — 2026-11-08 — Card payments through Viva Wallet
+Phase 4 of the shop (`docs/shop-plan.md`). Nothing changes on a site until the shop is on and Viva Wallet is set up.
+- **Viva Wallet Smart Checkout** on **Shop settings › Payments**: Merchant ID, API key, Client ID and secret (kept apart, never shown again, never exported), demo mode, the payment source, installments by amount, and **Save and check connection**. The card lists the success, failure and webhook addresses to set at Viva.
+- At the checkout, cards, Apple Pay, Google Pay and IRIS come first. The order waits for its payment with its stock held; the customer pays on Viva's page and comes back to the order's page. An order is paid only after Viva's API confirms the transaction for its exact amount and number, once; the emails go out then. Viva's webhook pays it too, if the customer closed the page.
+- An unpaid order can be paid again (**Pay now**) while its stock is held, and is cancelled when the hold runs out. If Viva cannot be reached, the order is not placed.
+- **Refunds** in part or in full from the order's screen; all of it makes the order refunded. The order's screen lists its payments.
+- Not yet checked against a real Viva demo account.
+- Tests: `tests/unit/shop-viva.php`, `tests/http/shop_viva_test.py` (against a fake Viva).
+
 ## 0.1.243 — 2026-11-07 — The shop's cart, checkout, orders and accounts
 Phase 3 of the shop (`docs/shop-plan.md`). Nothing changes on a site until the **Products** content type is switched on.
 - **Cart and checkout** at `/cart` and `/checkout` (under each language's prefix): Add to cart on the product page opens a cart drawer without leaving the page; the header shows the account and the cart with its count. The checkout is one page: contact, address (with an invoice's company and VAT number), shipping worked out from the country and postcode, gift wrapping and a gift note, the way to pay, the terms. Everything is priced again on the server; product pages stay cacheable (the shop's pages have their own session).
