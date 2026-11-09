@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.261 — 2026-11-09 — The orders table lines up
+- Customer account: the columns of the orders list line up from row to row, the status pill fits its text, the amounts are aligned right, and the heading has room above the list.
+
 ## 0.1.260 — 2026-11-09 — Files in the product
 - Digital products: a product's files are uploaded and removed in its Downloads card, at once and without saving. The card warns when there is no file.
 - Shop › Files is now an overview: totals, and for each file its product (with a link to edit it), size, date, orders, downloads and last download. Digital products with no file are listed.
