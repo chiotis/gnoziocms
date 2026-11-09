@@ -2185,6 +2185,11 @@ body.has-transparent-header:not(.header-solid) .site-header.is-on-dark[data-stic
   background: var(--hero-bg, var(--color-surface));
 }
 
+/* A title block set to the accent tone shows that accent, not the dark surface the tone gives its contents. */
+.block.tone-accent .single-hero:not(.has-image) {
+  background: var(--section-bg);
+}
+
 .single-hero.has-image {
   /* Dark underneath the photo: the light text stays readable while the picture loads, or if it never does. */
   background: var(--hero-bg, var(--ink));
