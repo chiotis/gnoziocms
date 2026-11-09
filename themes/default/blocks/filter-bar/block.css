@@ -38,3 +38,6 @@
 .filter-chip-count {
   opacity: 0.7;
 }
+
+/* A filter chosen comes back to the filters (#filters), clear of a header that stays on screen. */
+#filters { scroll-margin-top: calc(var(--header-height, 4.5rem) + var(--space-s)); }
