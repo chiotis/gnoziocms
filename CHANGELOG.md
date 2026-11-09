@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.255 — 2026-11-09 — Filters keep their place
+- Choosing a filter or a sort order on a list reloads the page at the filters, clear of a header that stays on screen, instead of at the top.
+
 ## 0.1.254 — 2026-11-09 — A look of one product
 - Shop the look on a product's page: a look that holds only that product still shows, with that product. Until now the block disappeared.
 
