@@ -77,6 +77,12 @@ final class ShopStock
         return $rows;
     }
 
+    /** The stock an order's line was held from: its variant's, or the product's one stock when it was a choice of options with no variants. */
+    public function keyHeld(string $productId, string $variantKey): string
+    {
+        return isset($this->forProduct($productId)[$variantKey]) ? $variantKey : '';
+    }
+
     /** How many can still be sold: on hand less what is held. */
     public function available(string $productId, string $variantKey = ''): int
     {
