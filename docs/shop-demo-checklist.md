@@ -21,7 +21,7 @@ email or a ticket. Use the providers' **test/demo** accounts only.
 - [ ] Shop settings › Accounts: as you want them.
 - [ ] Terms and returns pages exist and are chosen in General.
 - [ ] Products: one physical product with variants and stock (e.g. 3 in stock), one digital product with a file uploaded in
-      Shop › Files, one subscription product (monthly).
+      its Downloads card, one subscription product (monthly).
 
 ## 1. Without a gateway (bank transfer, cash on delivery)
 

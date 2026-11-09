@@ -373,6 +373,22 @@
                   </div>
                 {% endfor %}
               </div>
+              {% if fields.download_limit is defined and shop_files|default(null) %}
+                <div class="en-files" data-shop-files data-url="{{ url('admin/shop-files') }}" data-product="{{ shop_files.product }}" data-files="{{ shop_files.files|json_encode }}">
+                  <span class="mb-1 block text-sm font-medium text-slate-700">Files</span>
+                  {% if shop_files.product %}
+                    <ul class="en-files-list" data-files-list></ul>
+                    <p class="en-files-empty" data-files-empty hidden>No file yet: an order of this product would get nothing to download.</p>
+                    <label class="en-files-add">
+                      <input type="file" data-files-input class="sr-only">
+                      <span data-files-label>Upload a file</span>
+                    </label>
+                    <p class="en-help m-0" data-files-status role="status">Kept private: customers get a link after they pay. Up to {{ shop_files.max_mb }} MB. It is saved at once.</p>
+                  {% else %}
+                    <p class="en-help m-0">Save the product first; then you can upload its files here.</p>
+                  {% endif %}
+                </div>
+              {% endif %}
             </section>
           {% endfor %}
         </div>
@@ -581,6 +597,7 @@
   <script src="{{ asset('js/admin-editor.js') }}" defer></script>
   <script src="{{ asset('js/admin-seo-count.js') }}" defer></script>
   {% if type_fields is not empty %}<script src="{{ asset('js/admin-relations.js') }}" defer></script>{% endif %}
+  {% if shop_files|default(null) %}<script src="{{ asset('js/admin-shop-files.js') }}" defer></script>{% endif %}
   {% if block_editor_json %}
     {% include '@admin/partials/icon-library.twig' %}
     <script src="{{ asset('js/admin-sortable.js') }}"></script>

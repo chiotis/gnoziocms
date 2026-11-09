@@ -2,55 +2,61 @@
 {% set page_heading = 'Files' %}
 {% import '@admin/partials/ui.twig' as ui %}
 {#
-  Shop > Files (docs/shop-plan.md, section 6): the private files each digital product sells. They are kept under storage/shop-files,
-  never public; a paid order gets a link to each, with the product's limit on times and days.
+  Shop > Files (docs/shop-plan.md, section 6): an overview of the private files the digital products sell, and how each has done. They are
+  uploaded and removed in the Downloads card of their product, which each row links to.
 #}
+{% macro bytes(n) %}{{ n < 1048576 ? (max(1, n / 1024)|number_format(0) ~ ' KB') : ((n / 1048576)|number_format(1) ~ ' MB') }}{% endmacro %}
 {% block content %}
-  {% set input = 'block w-full rounded-md border border-slate-300 px-2.5 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500' %}
+  {% import _self as m %}
   {% set card = 'rounded-lg border border-slate-200 bg-white' %}
-  {% set btn = 'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium shadow-sm' %}
-  {{ ui.flash(message, done == 'ok' ? 'success' : 'error') }}
+  {% set th = 'px-3 py-2 text-left text-xs font-medium text-slate-500' %}
+  {% set num = 'px-3 py-2 text-right text-xs font-medium text-slate-500' %}
 
-  {% if products is empty %}
-    <div class="{{ card }}">{{ ui.empty_state('No digital products', 'Set a product\'s Kind to Digital product; its files are uploaded here.') }}</div>
-  {% else %}
-    <form method="post" action="{{ url('admin/shop-files') }}" enctype="multipart/form-data" class="{{ card }} mb-4 flex flex-wrap items-end gap-3 px-4 py-3">
-      {{ csrf_field() }}<input type="hidden" name="action" value="upload">
-      <div class="min-w-[12rem] flex-1"><label class="mb-1 block text-xs font-medium text-slate-600" for="f-product">Product</label>
-        <select id="f-product" name="product" class="{{ input }}" required>{% for p in products %}<option value="{{ p.id }}">{{ p.title }}</option>{% endfor %}</select></div>
-      <div class="min-w-[12rem] flex-1"><label class="mb-1 block text-xs font-medium text-slate-600" for="f-file">File</label>
-        <input id="f-file" type="file" name="file" class="block w-full text-sm text-slate-700" required></div>
-      <button class="{{ btn }} bg-blue-600 text-white hover:bg-blue-700">Upload</button>
-      <p class="w-full text-xs text-slate-500">Up to {{ max_mb }} MB, and no more than the server's upload limit. The customer gets the file with the name it has here.</p>
-    </form>
+  <dl class="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+    {% for stat in [
+      {label: 'Files', value: totals.files},
+      {label: 'Total size', value: m.bytes(totals.bytes)},
+      {label: 'Orders with a link', value: totals.links},
+      {label: 'Downloads', value: totals.downloads}
+    ] %}
+      <div class="{{ card }} px-4 py-3"><dt class="text-xs text-slate-500">{{ stat.label }}</dt><dd class="m-0 mt-0.5 text-lg font-semibold text-slate-900">{{ stat.value }}</dd></div>
+    {% endfor %}
+  </dl>
 
-    <div class="grid gap-3">
-      {% for p in products %}
-        <section class="{{ card }}">
-          <div class="flex items-center justify-between border-b border-slate-200 px-4 py-2.5"><h2 class="text-sm font-semibold text-slate-900">{{ p.title }}</h2><span class="text-xs text-slate-400">{{ p.files|length }} {{ p.files|length == 1 ? 'file' : 'files' }}</span></div>
-          {% if p.files is empty %}
-            <p class="px-4 py-3 text-xs text-amber-700">No file yet: an order of it would get nothing to download.</p>
-          {% else %}
-            <ul class="divide-y divide-slate-100 text-sm">
-              {% for f in p.files %}
-                <li class="flex items-center justify-between gap-3 px-4 py-2">
-                  <span class="min-w-0 truncate font-medium text-slate-800">{{ f.name }}</span>
-                  <span class="flex shrink-0 items-center gap-3 text-xs text-slate-500">
-                    {{ (f.size / 1048576)|number_format(f.size < 1048576 ? 2 : 1) }} MB · {{ f.created_at|date('d/m/Y') }}
-                    <form method="post" action="{{ url('admin/shop-files') }}" data-confirm="Remove {{ f.name }}? Links already given for it stop working.">
-                      {{ csrf_field() }}<input type="hidden" name="action" value="remove"><input type="hidden" name="id" value="{{ f.id }}">
-                      <button class="text-red-700 hover:underline">Remove</button>
-                    </form>
-                  </span>
-                </li>
-              {% endfor %}
-            </ul>
-          {% endif %}
-        </section>
-      {% endfor %}
+  {% if empty_products is not empty %}
+    <div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+      <p class="m-0 font-medium">No file yet: an order of these would get nothing to download.</p>
+      <ul class="mb-0 mt-1 flex flex-wrap gap-x-4 gap-y-1 p-0">
+        {% for p in empty_products %}<li class="list-none"><a class="underline" href="{{ url(p.url) }}">{{ p.title }}</a></li>{% endfor %}
+      </ul>
     </div>
   {% endif %}
-  {% if orphans is not empty %}
-    <p class="mt-4 text-xs text-slate-500">{{ orphans|length }} product(s) that are no longer digital still have files here; set them back to Digital product to see or remove them.</p>
+
+  {% if files is empty %}
+    <div class="{{ card }}">{{ ui.empty_state('No files yet', 'Set a product\'s Kind to Digital product and upload its files in the product\'s Downloads card.') }}</div>
+  {% else %}
+    <div class="{{ card }} overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="border-b border-slate-200">
+          <tr><th class="{{ th }}">File</th><th class="{{ th }}">Product</th><th class="{{ num }}">Size</th><th class="{{ th }}">Uploaded</th><th class="{{ num }}">Orders</th><th class="{{ num }}">Downloads</th><th class="{{ th }}">Last downloaded</th></tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for f in files %}
+            <tr>
+              <td class="max-w-[16rem] truncate px-3 py-2 font-medium text-slate-800" title="{{ f.name }}">{{ f.name }}</td>
+              <td class="px-3 py-2">
+                {% if f.url %}<a class="text-blue-700 hover:underline" href="{{ url(f.url) }}">{{ f.title }}</a>{% else %}<span class="text-slate-400">Product deleted</span>{% endif %}
+                {% if f.url and not f.digital %}<span class="ml-1 text-xs text-amber-700">not digital now</span>{% endif %}
+              </td>
+              <td class="whitespace-nowrap px-3 py-2 text-right text-slate-600">{{ m.bytes(f.size) }}</td>
+              <td class="whitespace-nowrap px-3 py-2 text-slate-600">{{ f.created_at|date('d/m/Y') }}</td>
+              <td class="px-3 py-2 text-right text-slate-600">{{ f.links }}</td>
+              <td class="px-3 py-2 text-right text-slate-600">{{ f.downloads }}</td>
+              <td class="whitespace-nowrap px-3 py-2 text-slate-600">{{ f.last_at ? f.last_at|date('d/m/Y H:i') : '–' }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   {% endif %}
 {% endblock %}

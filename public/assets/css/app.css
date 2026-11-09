@@ -2148,3 +2148,25 @@ html.dark .gal-add { border-color: #475569; color: #cbd5e1; }
 html.dark .gal-add:hover { border-color: #60a5fa; background: #1e293b; color: #bfdbfe; }
 html.dark .gal-foot { color: #94a3b8; }
 html.dark .gal-toggle { color: #93c5fd; }
+
+/* A digital product's files, in its Downloads card. */
+.en-files { margin-top: .75rem; }
+.en-files-list { display: grid; gap: .25rem; margin: 0 0 .5rem; padding: 0; list-style: none; }
+.en-files-list:empty { display: none; }
+.en-files-row { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .375rem .625rem; border: 1px solid #e2e8f0; border-radius: .375rem; font-size: .8125rem; }
+.en-files-name { min-width: 0; overflow: hidden; color: #1e293b; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.en-files-meta { display: flex; flex-shrink: 0; align-items: center; gap: .75rem; color: #64748b; font-size: .75rem; }
+.en-files-remove { color: #b91c1c; cursor: pointer; }
+.en-files-remove:hover { text-decoration: underline; }
+.en-files-remove.is-asking { font-weight: 600; }
+.en-files-empty { margin: 0 0 .5rem; color: #b45309; font-size: .75rem; }
+.en-files-add { display: inline-block; margin-bottom: .375rem; cursor: pointer; }
+.en-files-add span { display: inline-flex; padding: .3rem .75rem; border: 1px solid #cbd5e1; border-radius: .375rem; background: #fff; color: #334155; font-size: .8125rem; font-weight: 500; }
+.en-files-add span:hover { background: #f8fafc; }
+.en-files-add input:focus-visible + span { outline: 2px solid #1d4ed8; outline-offset: 1px; }
+.en-files-add.is-busy { cursor: progress; opacity: .6; }
+html.dark .en-files-row { border-color: #334155; }
+html.dark .en-files-name { color: #e2e8f0; }
+html.dark .en-files-remove { color: #fca5a5; }
+html.dark .en-files-empty { color: #fbbf24; }
+html.dark .en-files-add span { border-color: #334155; background: #0f172a; color: #cbd5e1; }

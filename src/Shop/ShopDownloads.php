@@ -285,6 +285,20 @@ final class ShopDownloads
     }
 
     /** @param array<string, mixed> $row @return array<string, mixed> */
+    /**
+     * How each file has done: the orders given a link to it, the times it was downloaded, and when last.
+     *
+     * @return array<int, array{links: int, downloads: int, last_at: int}> by file id; a file nobody has bought is not in it
+     */
+    public function stats(): array
+    {
+        $out = [];
+        foreach ($this->pdo()->query('SELECT file_id, COUNT(*) AS links, COALESCE(SUM(downloads), 0) AS downloads, MAX(last_at) AS last_at FROM shop_downloads GROUP BY file_id')->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $out[(int)$row['file_id']] = ['links' => (int)$row['links'], 'downloads' => (int)$row['downloads'], 'last_at' => (int)$row['last_at']];
+        }
+        return $out;
+    }
+
     private static function fileRow(array $row): array
     {
         $row['id'] = (int)$row['id'];
