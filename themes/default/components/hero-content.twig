@@ -1,6 +1,6 @@
 {#
   The content of a Hero, shared by the Hero block and by each slide of the Hero slider, so a slide is a hero in every detail.
-  macro body(h) takes: variant, eyebrow, heading, heading_tag, heading_id, heading_url (the heading links there: an entry's page), text, actions, highlights, steps, image, image_alt, more_images (the Mosaic's other pictures),
+  macro body(h) takes: variant, eyebrow, tagline, heading, heading_tag, heading_id, heading_url (the heading links there: an entry's page), text, actions, highlights, note, steps, image, image_alt, more_images (the Mosaic's other pictures),
   video (a playable video or null), video_poster, first (opens the page: its picture loads first), defer (a slide after the first: its picture
   waits for the slider's script, so the page does not fetch it), item_heading_tag, prefix.
 #}
@@ -43,6 +43,7 @@
   <div class="container hero-inner{% if not has_picture %} no-media{% endif %}{{ centred_cover ? ' is-centered' : '' }}">
     <div class="hero-content">
       {% if h.eyebrow %}<p class="eyebrow">{{ h.eyebrow }}</p>{% endif %}
+      {% if h.tagline|default('') %}<p class="hero-tagline">{{ h.tagline }}</p>{% endif %}
       {% if h.heading %}<{{ h.heading_tag }} class="hero-title"{% if h.heading_id %} id="{{ h.heading_id }}"{% endif %}>{% if h.heading_url|default('') %}<a class="hero-title-link" href="{{ h.heading_url }}">{{ h.heading }}</a>{% else %}{{ h.heading }}{% endif %}</{{ h.heading_tag }}>{% endif %}
       {% if h.text %}<p class="hero-text">{{ h.text|nl2br }}</p>{% endif %}
       {{ ui.actions(h.actions, h.prefix) }}
@@ -54,6 +55,7 @@
           {% endfor %}
         </ul>
       {% endif %}
+      {% if h.note|default('') %}<p class="hero-note">{{ h.note }}</p>{% endif %}
     </div>
     {% set steps = h.steps|default([])|filter(step => step.title or step.text) %}
     {% if variant in ['steps', 'steps-centered'] and steps is not empty %}

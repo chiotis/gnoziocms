@@ -18,7 +18,7 @@
       <ul class="term-list-items" role="list">
         {% for term in terms %}
           <li>
-            <a class="term-list-link" href="{{ term.url }}" data-picture="{{ loop.index0 }}"{% if term.tone_style %} style="{{ term.tone_style }}"{% endif %}>
+            <a class="term-list-link{% if loop.first %} is-current{% endif %}" href="{{ term.url }}" data-picture="{{ loop.index0 }}"{% if term.tone_style %} style="{{ term.tone_style }}"{% endif %}>
               {% if block.numbers %}<span class="term-number">{{ '%02d'|format(term.number ?: loop.index) }}</span>{% endif %}
               <span class="term-list-name">{{ term.label }}</span>
               <span class="term-list-more" aria-hidden="true"><span class="term-dot"></span>{{ t('blocks.see', 'See') }} →</span>

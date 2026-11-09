@@ -495,3 +495,17 @@
 .block-hero.block--mosaic .hero-mosaic.has-2 > :last-child {
   grid-row: 1 / span 2;
 }
+
+/* The optional line above the heading and the small note under the buttons. */
+.hero-tagline {
+  margin: 0;
+  font-family: var(--font-heading, inherit);
+  font-style: italic;
+  font-size: 1.5rem;
+  opacity: .75;
+}
+.hero-note {
+  margin: 0;
+  font-size: .875rem;
+  opacity: .8;
+}

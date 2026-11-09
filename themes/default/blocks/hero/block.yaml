@@ -66,6 +66,10 @@ fields:
     label: Eyebrow
     placeholder: Short label above the heading
     help: With an entry, its category when this is empty.
+  tagline:
+    type: text
+    label: Line above the heading
+    placeholder: A motto or a short phrase
   heading:
     type: text
     label: Heading
@@ -75,6 +79,10 @@ fields:
     type: textarea
     label: Text
     when: { source: manual }
+  note:
+    type: text
+    label: Small note
+    placeholder: A short line under the buttons
   actions:
     type: repeater
     label: Buttons
