@@ -1,7 +1,7 @@
 {% if block.variant == 'thread' %}
   {# A band of colours across the page: the colours chosen, or the deep tone of each term of a taxonomy. Without any, the accent. #}
   {% if block.thread_from == 'terms' %}
-    {% set thread = taxonomy_terms(block.thread_taxonomy|default('collections'))|map(t => t.tones.deep)|filter(c => c) %}
+    {% set thread = taxonomy_terms(block.thread_taxonomy|default('collections'))|map(t => block.thread_tone|default('deep') == 'surface' ? t.tones.surface : t.tones.deep)|filter(c => c) %}
   {% else %}
     {% set thread = [block.colour_1, block.colour_2, block.colour_3, block.colour_4, block.colour_5, block.colour_6]|filter(c => c) %}
   {% endif %}

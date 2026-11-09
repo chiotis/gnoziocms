@@ -4447,6 +4447,8 @@ p[align="justify"] { text-align: justify; hyphens: auto; }
 .dots.has-colours > span { opacity: 1; }
 
 /* The band of colours above the header (Header > Band of colours): the same stripes as the Divider's Band of colours. */
+.header-tool-text { font-size: var(--step--1); white-space: nowrap; }
+.has-tool-words .search-link, .has-tool-words .shop-header-link { width: auto; height: auto; }
 .header-thread {
   display: flex;
   width: 100%;

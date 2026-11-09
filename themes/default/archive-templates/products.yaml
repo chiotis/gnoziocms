@@ -8,7 +8,4 @@ blocks:
   - { type: result-count }
   - { type: entry-list, variant: grid, columns: '4', per_page: 24, order: date_desc }
 card:
-  - { type: image, image: { bind: main_image }, ratio: portrait }
-  - type: text
-    heading: { bind: title }
-  - { type: product-price }
+  - { type: product-card }

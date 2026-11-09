@@ -8,9 +8,9 @@
 {% set look = block.look %}
 {% set buyable = look.pieces|filter(p => p.buyable) %}
 <div class="container">
-  {{ ui.section_header(block, heading_tag, block_uid, 'left') }}
+  {% if not block.header_beside %}{{ ui.section_header(block, heading_tag, block_uid, 'left') }}{% endif %}
   <div class="look look-{{ block.variant }}">
-    {% if block.variant != 'complete' and look.image %}
+    {% if (block.variant != 'complete' or block.picture) and look.image %}
       <div class="hotspots-figure ratio-portrait" data-hotspots>
         {{ image(look.image, {alt: look.title, sizes: '(min-width: 900px) 50vw, 92vw', max_width: 1600}) }}
         {% for piece in look.pieces %}
@@ -26,25 +26,35 @@
       </div>
     {% endif %}
     <div class="look-side">
+      {% if block.header_beside %}{{ ui.section_header(block, heading_tag, block_uid, 'left') }}{% endif %}
       {% if block.variant != 'complete' %}<p class="look-title">{{ look.title }}</p>{% endif %}
       <ol class="look-pieces" role="list">
         {% for piece in look.pieces %}
           <li class="look-piece">
             {% if block.variant != 'complete' %}<span class="hotspots-number" aria-hidden="true">{{ loop.index }}</span>{% endif %}
+            {% set tone = piece.card.collection.tones.deep|default('') %}<span class="shop-dot look-piece-dot"{% if tone %} style="--dot: {{ tone }}"{% endif %} aria-hidden="true"></span>
             {% if block.variant == 'complete' and piece.card.image %}<span class="look-piece-picture">{{ image(piece.card.image, {alt: '', sizes: '64px', max_width: 240, loading: 'lazy'}) }}</span>{% endif %}
             <a class="look-piece-title" href="{{ url(item_path(piece.card.item, prefix)) }}">{{ piece.card.title }}</a>
             <span class="look-piece-price">{{ piece.buyable ? piece.price_text : t('shop.sold_out', 'Sold out') }}</span>
+            {% if block.add_each and piece.buyable %}
+              <form class="look-piece-add" method="post" action="{{ url(prefix ~ '_shop/cart') }}" data-shop-add>
+                <input type="hidden" name="items[0][product]" value="{{ piece.id }}">
+                <input type="hidden" name="items[0][variant]" value="{{ piece.variant }}">
+                <button class="text-link" type="submit" data-add-label="+ {{ t('shop.add', 'Add') }}" data-adding="{{ t('shop.adding', 'Adding…') }}"{% if tone %} style="color: {{ tone }}"{% endif %}>+ {{ t('shop.add', 'Add') }}</button>
+                <p class="product-buy-message visually-hidden" data-shop-message role="status" aria-live="polite"></p>
+              </form>
+            {% endif %}
           </li>
         {% endfor %}
       </ol>
-      {% if buyable is not empty %}
+      {% if buyable is not empty and not block.add_each %}
         <form class="look-buy" method="post" action="{{ url(prefix ~ '_shop/cart') }}" data-shop-add>
           {% for piece in buyable %}
             <input type="hidden" name="items[{{ loop.index0 }}][product]" value="{{ piece.id }}">
             <input type="hidden" name="items[{{ loop.index0 }}][variant]" value="{{ piece.variant }}">
           {% endfor %}
           {% if look.total_text %}<p class="look-total"><span>{{ t('shop.look_pieces', '{count} pieces')|replace({'{count}': buyable|length}) }}</span><strong>{{ look.total_text }}</strong></p>{% endif %}
-          <button class="btn btn-primary" type="submit" data-add-label="{{ t('shop.add_look', 'Add the look') }}" data-adding="{{ t('shop.adding', 'Adding…') }}">{{ t('shop.add_look', 'Add the look') }}</button>
+          {% set add_text = t('shop.add_look', 'Add the look') ~ (block.total_in_button and look.total_text ? ' · ' ~ look.total_text : '') %}<button class="btn btn-primary" type="submit" data-add-label="{{ add_text }}" data-adding="{{ t('shop.adding', 'Adding…') }}">{{ add_text }}</button>
           <p class="product-buy-message" data-shop-message role="status" aria-live="polite"></p>
         </form>
       {% endif %}

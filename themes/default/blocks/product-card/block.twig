@@ -1,0 +1,19 @@
+{# Product card: the card a Product grid draws, for the card of a list built with blocks. Data from ShopCatalogue::details(); the card's own link covers it. #}
+{% set card = block.product %}
+<div class="product-card">
+  <div class="product-card-media{% if block.hover_image and card.hover_image %} has-hover{% endif %}">
+    {% if card.image %}
+      {{ image(card.image, {alt: '', sizes: '(min-width: 1100px) 400px, (min-width: 700px) 30vw, 46vw', max_width: 1280, class: 'product-card-still'}) }}
+    {% else %}
+      <span class="product-card-blank" aria-hidden="true"></span>
+    {% endif %}
+    {% if block.hover_image and card.hover_image %}
+      {{ image(card.hover_image, {alt: '', sizes: '(min-width: 1100px) 400px, (min-width: 700px) 30vw, 46vw', max_width: 1280, class: 'product-card-hover', loading: 'lazy'}) }}
+    {% endif %}
+    {% if not card.available %}<span class="product-card-badge">{{ t('shop.sold_out', 'Sold out') }}</span>{% endif %}
+  </div>
+  <div class="product-card-body">
+    <p class="product-card-title">{{ card.title }}</p>
+    {% if card.price_text %}<p class="product-card-price">{% if card.from %}<span class="product-card-from">{{ t('shop.from', 'from') }}</span> {% endif %}{{ card.price_text }}</p>{% endif %}
+  </div>
+</div>

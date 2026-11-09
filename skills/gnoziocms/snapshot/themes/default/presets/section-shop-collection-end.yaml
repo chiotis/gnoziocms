@@ -4,8 +4,8 @@ label: {"el": "Κατάστημα: τέλος συλλογής", "en": "Shop: en
 description: {"el": "Το look της συλλογής και το επόμενο κεφάλαιο.", "en": "The look of the collection and the next chapter."}
 blocks:
   el:
-    - {"type": "shop-the-look", "variant": "split", "eyebrow": "Φορέστε τα μαζί", "heading": "Το look αυτής της συλλογής"}
+    - {"type": "shop-the-look", "variant": "split", "header_beside": true, "total_in_button": true, "eyebrow": "Φορέστε τα μαζί", "heading": "Το look αυτής της συλλογής"}
     - {"type": "next-term", "variant": "next", "label": "Επόμενο κεφάλαιο", "loop": true}
   en:
-    - {"type": "shop-the-look", "variant": "split", "eyebrow": "Wear it together", "heading": "The look of this collection"}
+    - {"type": "shop-the-look", "variant": "split", "header_beside": true, "total_in_button": true, "eyebrow": "Wear it together", "heading": "The look of this collection"}
     - {"type": "next-term", "variant": "next", "label": "Next chapter", "loop": true}

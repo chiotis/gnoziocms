@@ -1,0 +1,11 @@
+label: Product card
+description: 'The whole card of a product: its picture, a second picture on hover, the name and the price. For the card of a list of products.'
+category: Shop
+requires: shop
+variants:
+  default: Default
+fields:
+  hover_image:
+    type: toggle
+    label: Second picture on hover
+    default: true

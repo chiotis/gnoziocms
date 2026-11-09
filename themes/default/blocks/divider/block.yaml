@@ -47,6 +47,15 @@ fields:
     default: collections
     help: The address of the taxonomy whose terms give the colours (their deep tone, in their order), for example collections.
     when: { variant: thread, thread_from: terms }
+  thread_tone:
+    type: select
+    label: Tone
+    default: deep
+    options:
+      deep: Deep
+      surface: Surface
+    help: Which of each term's tones colours its stripe.
+    when: { variant: thread, thread_from: terms }
   colour_1: { type: color, label: Colour 1, when: { variant: thread, thread_from: colours } }
   colour_2: { type: color, label: Colour 2, when: { variant: thread, thread_from: colours } }
   colour_3: { type: color, label: Colour 3, when: { variant: thread, thread_from: colours } }

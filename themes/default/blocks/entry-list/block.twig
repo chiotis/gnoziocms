@@ -3,6 +3,7 @@
   entry) or, without one, the theme's own card (components/entry-list.twig). Page links under it. Context: archive, lang_prefix.
 #}
 {% set prefix = lang_prefix|default('') %}
+{% set editorial_picture = block.editorial_image|default('') ?: (block.editorial_after|default(0) and taxonomy|default('') and term_id|default('') ? term_info(taxonomy, term_id, prefix).image|default('') : '') %}
 {% set empty_text = block.empty_text ?: (archive.filtered ? t('filter.none', 'Nothing matches these filters.') : (t(type|default('') ~ '.archive_empty', '') ?: t('archive.empty'))) %}
 <div class="container">
   {% if block.sort_options %}
@@ -28,6 +29,9 @@
           {{ card.html|raw }}
           <a class="entry-card-link" href="{{ url(item_path(card.item, prefix)) }}"><span class="visually-hidden">{{ card.item.meta.title }}</span></a>
         </li>
+        {% if block.editorial_after|default(0) == loop.index and editorial_picture %}
+          <li class="entry-card entry-editorial">{{ image(editorial_picture, {alt: '', sizes: '(min-width: 900px) 66vw, 92vw', max_width: 1600}) }}</li>
+        {% endif %}
       {% endfor %}
     </ul>
   {% else %}

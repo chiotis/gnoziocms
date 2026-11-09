@@ -89,7 +89,10 @@ final class ShopCatalogue
             return $values;
         }
         $values['product'] = $this->details($product, $lang);
-        if ($type === 'product-price') {
+        if ($type === 'product-card') {
+            // Drawn with the Product grid block's styles.
+            $values['_types'] = ['product-grid'];
+        } elseif ($type === 'product-price') {
             $values['_empty'] = $values['product']['price_text'] === '';
         } elseif ($type === 'product-gallery') {
             $values['_empty'] = $values['product']['images'] === [];

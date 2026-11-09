@@ -4,18 +4,18 @@ label: {"el": "Κατάστημα: σελίδα συλλογής", "en": "Shop: 
 description: {"el": "Κεφάλαιο με εικόνα, φίλτρα σε chips, τα κομμάτια, το look της συλλογής και το επόμενο κεφάλαιο.", "en": "A chapter with its picture, chip filters, the pieces, the look of the collection and the next chapter."}
 blocks:
   el:
-    - {"type": "divider", "variant": "thread", "thread_from": "terms", "thread_taxonomy": "collections"}
+    - {"type": "divider", "variant": "thread", "thread_from": "terms", "thread_taxonomy": "collections", "thread_tone": "surface"}
     - {"type": "archive-title", "variant": "chapter"}
     - {"type": "filter-bar", "variant": "chips", "show_count": false}
     - {"type": "result-count", "always": true}
-    - {"type": "entry-list", "variant": "grid", "columns": "3", "per_page": 24, "order": "date_desc", "visitor_sort": true, "sort_choices": [{"order": "date_desc"}, {"order": "title_asc"}]}
-    - {"type": "shop-the-look", "variant": "split", "eyebrow": "Φορέστε τα μαζί", "heading": "Το look αυτής της συλλογής"}
+    - {"type": "entry-list", "variant": "grid", "columns": "3", "per_page": 24, "order": "date_desc", "editorial_after": 3, "visitor_sort": true, "sort_choices": [{"order": "date_desc"}, {"order": "title_asc"}]}
+    - {"type": "shop-the-look", "variant": "split", "header_beside": true, "total_in_button": true, "eyebrow": "Φορέστε τα μαζί", "heading": "Το look αυτής της συλλογής"}
     - {"type": "next-term", "variant": "next", "label": "Επόμενο κεφάλαιο", "loop": true}
   en:
-    - {"type": "divider", "variant": "thread", "thread_from": "terms", "thread_taxonomy": "collections"}
+    - {"type": "divider", "variant": "thread", "thread_from": "terms", "thread_taxonomy": "collections", "thread_tone": "surface"}
     - {"type": "archive-title", "variant": "chapter"}
     - {"type": "filter-bar", "variant": "chips", "show_count": false}
     - {"type": "result-count", "always": true}
-    - {"type": "entry-list", "variant": "grid", "columns": "3", "per_page": 24, "order": "date_desc", "visitor_sort": true, "sort_choices": [{"order": "date_desc"}, {"order": "title_asc"}]}
-    - {"type": "shop-the-look", "variant": "split", "eyebrow": "Wear it together", "heading": "The look of this collection"}
+    - {"type": "entry-list", "variant": "grid", "columns": "3", "per_page": 24, "order": "date_desc", "editorial_after": 3, "visitor_sort": true, "sort_choices": [{"order": "date_desc"}, {"order": "title_asc"}]}
+    - {"type": "shop-the-look", "variant": "split", "header_beside": true, "total_in_button": true, "eyebrow": "Wear it together", "heading": "The look of this collection"}
     - {"type": "next-term", "variant": "next", "label": "Next chapter", "loop": true}

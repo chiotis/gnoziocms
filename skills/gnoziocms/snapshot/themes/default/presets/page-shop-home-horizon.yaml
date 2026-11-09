@@ -3,22 +3,22 @@ label: {"el": "Κατάστημα: αρχική Horizon", "en": "Shop: Horizon h
 description: {"el": "Ήρεμη αρχική: εικόνα πλήρους πλάτους, δήλωση, συλλογές, look, ιστορία, εμπιστοσύνη και newsletter.", "en": "A calm home page: a full-width picture, a statement, collections, a look, the story, trust and a newsletter."}
 blocks:
   el:
-    - {"type": "divider", "variant": "thread", "thread_from": "terms", "thread_taxonomy": "collections"}
+    - {"type": "divider", "variant": "thread", "thread_from": "terms", "thread_taxonomy": "collections", "thread_tone": "surface"}
     - {"type": "hero", "variant": "cover", "heading": "Μια φράση που λέει ποιοι είστε", "text": "Μία ή δύο προτάσεις για όσα φτιάχνετε και γιατί ξεχωρίζουν.", "actions": [{"label": "Δείτε τις συλλογές", "url": "products", "style": "primary"}, {"label": "Η ιστορία μας", "url": "about", "style": "text"}]}
     - {"type": "quote", "variant": "statement", "quote": "Η φράση που συνοψίζει τη φιλοσοφία σας.", "translation": "Η ίδια φράση σε δεύτερη γλώσσα.", "dots": true}
     - {"type": "term-tiles", "variant": "grid", "heading": "Οι συλλογές μας", "taxonomy": "collections", "limit": 5, "numbers": true, "ratio": "portrait", "link_label": "Όλα τα κομμάτια", "link_url": "products"}
-    - {"type": "shop-the-look", "variant": "split", "eyebrow": "Ολοκληρωμένο look", "heading": "Ένας συνδυασμός που επιλέξαμε"}
-    - {"type": "text-image", "variant": "story", "eyebrow": "Η ιστορία μας", "pull_quote": "«Μια πρόταση από τον δημιουργό για το πώς δουλεύει.»", "body": "Δύο ή τρεις προτάσεις για το πώς ξεκίνησαν όλα και τι σας κινεί.", "actions": [{"label": "Γνωρίστε μας", "url": "about", "style": "text"}], "image_ratio": "portrait", "dots": true}
+    - {"type": "shop-the-look", "variant": "split", "header_beside": true, "total_in_button": true, "eyebrow": "Ολοκληρωμένο look", "heading": "Ένας συνδυασμός που επιλέξαμε"}
+    - {"type": "text-image", "variant": "story", "eyebrow": "Η ιστορία μας", "pull_quote": "«Μια πρόταση από τον δημιουργό για το πώς δουλεύει.»", "body": "Δύο ή τρεις προτάσεις για το πώς ξεκίνησαν όλα και τι σας κινεί.", "actions": [{"label": "Γνωρίστε μας", "url": "about", "style": "text"}], "image_ratio": "portrait", "dots": true, "tone": "muted"}
     - {"type": "features", "variant": "strip", "columns": "4", "items": [{"icon": "check", "title": "Χειροποίητα", "text": "Πώς φτιάχνεται κάθε κομμάτι."}, {"icon": "check", "title": "Αποστολή & επιστροφές", "text": "Πού στέλνετε, με ποιους όρους."}, {"icon": "check", "title": "Εγγύηση", "text": "Τι καλύπτει η εγγύηση."}, {"icon": "check", "title": "Σημεία πώλησης", "text": "Πού θα μας βρείτε."}]}
     - {"type": "newsletter", "variant": "centered", "heading": "Γράμματα από εμάς", "intro": "Νέα κομμάτια πριν από όλους και οι ιστορίες τους, λίγες φορές τον χρόνο.", "dots": true, "eyebrow": "Newsletter"}
-    - {"type": "divider", "variant": "thread", "thread_from": "terms", "thread_taxonomy": "collections"}
+    - {"type": "divider", "variant": "thread", "thread_from": "terms", "thread_taxonomy": "collections", "thread_tone": "surface"}
   en:
-    - {"type": "divider", "variant": "thread", "thread_from": "terms", "thread_taxonomy": "collections"}
+    - {"type": "divider", "variant": "thread", "thread_from": "terms", "thread_taxonomy": "collections", "thread_tone": "surface"}
     - {"type": "hero", "variant": "cover", "heading": "A line that says who you are", "text": "One or two sentences on what you make and why it stands apart.", "actions": [{"label": "See the collections", "url": "products", "style": "primary"}, {"label": "Our story", "url": "about", "style": "text"}]}
     - {"type": "quote", "variant": "statement", "quote": "The line that sums up what you believe.", "translation": "The same line in a second language.", "dots": true}
     - {"type": "term-tiles", "variant": "grid", "heading": "Our collections", "taxonomy": "collections", "limit": 5, "numbers": true, "ratio": "portrait", "link_label": "All pieces", "link_url": "products"}
-    - {"type": "shop-the-look", "variant": "split", "eyebrow": "Shop the look", "heading": "A combination we chose"}
-    - {"type": "text-image", "variant": "story", "eyebrow": "Our story", "pull_quote": "“A sentence from the maker on how they work.”", "body": "Two or three sentences on how it began and what drives you.", "actions": [{"label": "Meet us", "url": "about", "style": "text"}], "image_ratio": "portrait", "dots": true}
+    - {"type": "shop-the-look", "variant": "split", "header_beside": true, "total_in_button": true, "eyebrow": "Shop the look", "heading": "A combination we chose"}
+    - {"type": "text-image", "variant": "story", "eyebrow": "Our story", "pull_quote": "“A sentence from the maker on how they work.”", "body": "Two or three sentences on how it began and what drives you.", "actions": [{"label": "Meet us", "url": "about", "style": "text"}], "image_ratio": "portrait", "dots": true, "tone": "muted"}
     - {"type": "features", "variant": "strip", "columns": "4", "items": [{"icon": "check", "title": "Handmade", "text": "How each piece is made."}, {"icon": "check", "title": "Shipping & returns", "text": "Where you ship, on what terms."}, {"icon": "check", "title": "Warranty", "text": "What the warranty covers."}, {"icon": "check", "title": "Stores", "text": "Where to find us."}]}
     - {"type": "newsletter", "variant": "centered", "heading": "Letters from us", "intro": "New pieces before anyone else, and their stories, a few times a year.", "dots": true, "eyebrow": "Newsletter"}
-    - {"type": "divider", "variant": "thread", "thread_from": "terms", "thread_taxonomy": "collections"}
+    - {"type": "divider", "variant": "thread", "thread_from": "terms", "thread_taxonomy": "collections", "thread_tone": "surface"}

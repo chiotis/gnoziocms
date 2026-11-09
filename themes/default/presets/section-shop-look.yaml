@@ -3,6 +3,6 @@ label: {"el": "Κατάστημα: ολοκληρωμένο look", "en": "Shop: 
 description: {"el": "Μια εικόνα με σημεία, τα κομμάτια και προσθήκη όλων στο καλάθι.", "en": "A picture with points, its pieces and adding them all to the cart."}
 blocks:
   el:
-    - {"type": "shop-the-look", "variant": "split", "eyebrow": "Ολοκληρωμένο look", "heading": "Ένας συνδυασμός που επιλέξαμε"}
+    - {"type": "shop-the-look", "variant": "split", "header_beside": true, "total_in_button": true, "eyebrow": "Ολοκληρωμένο look", "heading": "Ένας συνδυασμός που επιλέξαμε"}
   en:
-    - {"type": "shop-the-look", "variant": "split", "eyebrow": "Shop the look", "heading": "A combination we chose"}
+    - {"type": "shop-the-look", "variant": "split", "header_beside": true, "total_in_button": true, "eyebrow": "Shop the look", "heading": "A combination we chose"}

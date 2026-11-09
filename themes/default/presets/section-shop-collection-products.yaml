@@ -7,9 +7,9 @@ blocks:
     - {"type": "archive-title", "variant": "chapter"}
     - {"type": "filter-bar", "variant": "chips", "show_count": false}
     - {"type": "result-count", "always": true}
-    - {"type": "entry-list", "variant": "grid", "columns": "3", "per_page": 24, "order": "date_desc", "visitor_sort": true, "sort_choices": [{"order": "date_desc"}, {"order": "title_asc"}]}
+    - {"type": "entry-list", "variant": "grid", "columns": "3", "per_page": 24, "order": "date_desc", "editorial_after": 3, "visitor_sort": true, "sort_choices": [{"order": "date_desc"}, {"order": "title_asc"}]}
   en:
     - {"type": "archive-title", "variant": "chapter"}
     - {"type": "filter-bar", "variant": "chips", "show_count": false}
     - {"type": "result-count", "always": true}
-    - {"type": "entry-list", "variant": "grid", "columns": "3", "per_page": 24, "order": "date_desc", "visitor_sort": true, "sort_choices": [{"order": "date_desc"}, {"order": "title_asc"}]}
+    - {"type": "entry-list", "variant": "grid", "columns": "3", "per_page": 24, "order": "date_desc", "editorial_after": 3, "visitor_sort": true, "sort_choices": [{"order": "date_desc"}, {"order": "title_asc"}]}

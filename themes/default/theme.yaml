@@ -365,7 +365,12 @@ settings:
         options:
           none: None
           terms: The tones of the collections
-        help: A thin band, one stripe for each collection of the shop in its deep tone, above the top bar and the header.
+          terms_surface: The lighter tones of the collections
+        help: A thin band, one stripe for each collection of the shop in its deep or lighter tone, above the top bar and the header.
+      tools_text:
+        type: toggle
+        label: Search, account and cart as words
+        help: Words instead of icons in the header. The cart shows its count in brackets, also when empty.
       topbar_social:
         type: toggle
         label: Social icons in the top bar

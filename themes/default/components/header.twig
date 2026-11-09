@@ -45,6 +45,7 @@
 {% set row_tone = hs.row_tone|default('default') in ['muted', 'soft', 'fade-muted', 'fade-soft', 'contrast', 'accent'] ? hs.row_tone : 'default' %}
 {% set search_mode = hs.search|default('icon') in ['field', 'none'] ? hs.search : 'icon' %}
 {% set search_field = search_mode == 'field' %}
+{% set tools_text = hs.tools_text|default(false) %}
 {# A switch that is off is false, which Twig's default() would turn back into its default. #}
 {% set show_language = hs.show_language is defined ? hs.show_language : true %}
 {% set show_mode = hs.show_mode is defined ? hs.show_mode : true %}
@@ -57,9 +58,9 @@
 {% set cta_class = hs.cta_style|default('solid') == 'outline' ? 'btn' : 'btn btn-primary' %}
 {% set topbar_href = link_url(hs.topbar_url|default(''), prefix) %}
 {% set show_topbar_social = hs.topbar_social|default(false) and theme_settings.social|default({})|filter(v => v)|length > 0 %}
-<header class="site-header header--{{ layout }} size-{{ size }} edge-{{ edge }} nav-{{ nav_style }}{% if shape == 'floating' %} is-floating{% endif %}{% if hs.width|default('contained') == 'wide' %} width-wide{% endif %}{% if hs.shrink|default(false) %} is-shrinking{% endif %}{% if layout == 'stacked' and hs.bar_tone|default('default') in ['contrast', 'accent'] %} bar-dark{% endif %}{% if row_tone != 'default' %} row-{{ row_tone }}{% endif %}{% if row_tone in ['contrast', 'accent'] %} tone-{{ row_tone }}{% endif %}{% if search_field %} has-search-field{% endif %}{% if transparent_header|default(false) %} is-transparent{% endif %}{% if transparent_on_dark|default(false) %} is-on-dark{% endif %}" data-sticky="{{ sticky_mode == 'smart' ? 'always' : sticky_mode }}"{% if sticky_mode == 'smart' %} data-smart{% endif %}>
-  {% if hs.thread|default('none') == 'terms' %}
-    {% set thread = taxonomy_terms('collections')|map(t => t.tones.deep)|filter(c => c) %}
+<header class="site-header{% if tools_text %} has-tool-words{% endif %} header--{{ layout }} size-{{ size }} edge-{{ edge }} nav-{{ nav_style }}{% if shape == 'floating' %} is-floating{% endif %}{% if hs.width|default('contained') == 'wide' %} width-wide{% endif %}{% if hs.shrink|default(false) %} is-shrinking{% endif %}{% if layout == 'stacked' and hs.bar_tone|default('default') in ['contrast', 'accent'] %} bar-dark{% endif %}{% if row_tone != 'default' %} row-{{ row_tone }}{% endif %}{% if row_tone in ['contrast', 'accent'] %} tone-{{ row_tone }}{% endif %}{% if search_field %} has-search-field{% endif %}{% if transparent_header|default(false) %} is-transparent{% endif %}{% if transparent_on_dark|default(false) %} is-on-dark{% endif %}" data-sticky="{{ sticky_mode == 'smart' ? 'always' : sticky_mode }}"{% if sticky_mode == 'smart' %} data-smart{% endif %}>
+  {% if hs.thread|default('none') in ['terms', 'terms_surface'] %}
+    {% set thread = taxonomy_terms('collections')|map(t => hs.thread == 'terms_surface' ? t.tones.surface : t.tones.deep)|filter(c => c) %}
     {% if thread is not empty %}
       <div class="divider-thread header-thread" aria-hidden="true">{% for c in thread %}<span style="background: {{ c }}"></span>{% endfor %}</div>
     {% endif %}
@@ -108,15 +109,15 @@
       {% endif %}
       {% if search_mode != 'none' %}
         <a class="search-link" href="{{ url(prefix ~ 'search') }}" aria-label="{{ t('search.title', 'Search') }}">
-          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          {% if tools_text %}<span class="header-tool-text">{{ t('search.title', 'Search') }}</span>{% else %}<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path d="M10.5 3a7.5 7.5 0 105.01 13.08l4.2 4.2 1.41-1.41-4.2-4.2A7.5 7.5 0 0010.5 3zm0 2a5.5 5.5 0 110 11 5.5 5.5 0 010-11z"></path>
-          </svg>
+          </svg>{% endif %}
         </a>
       {% endif %}
       {# The shop's account and cart (docs/shop-plan.md). The count is the page's script's, read from a cookie, so the page stays the same for everyone. #}
       {% if shop_enabled|default(false) %}
-        <a class="shop-header-link" href="{{ url(prefix ~ 'account') }}" aria-label="{{ t('shop.account', 'Your account') }}">{{ icon('user') }}</a>
-        <a class="shop-header-link" href="{{ url(prefix ~ 'cart') }}" aria-label="{{ t('shop.cart', 'Cart') }}" data-shop-cart-link data-shop-strings="{{ {title: t('shop.cart', 'Cart'), view: t('shop.view_cart', 'View the cart'), checkout: t('shop.to_checkout', 'Checkout'), close: t('shop.close', 'Close'), subtotal: t('shop.subtotal', 'Subtotal'), empty: t('shop.cart_empty', 'Your cart is empty.')}|json_encode }}">{{ icon('bag') }}<span class="shop-count" data-shop-count hidden></span></a>
+        <a class="shop-header-link" href="{{ url(prefix ~ 'account') }}" aria-label="{{ t('shop.account', 'Your account') }}">{{ tools_text ? ('<span class="header-tool-text">' ~ t('shop.account_short', 'Account')|e ~ '</span>')|raw : icon('user') }}</a>
+        <a class="shop-header-link" href="{{ url(prefix ~ 'cart') }}" aria-label="{{ t('shop.cart', 'Cart') }}" data-shop-cart-link data-shop-strings="{{ {title: t('shop.cart', 'Cart'), view: t('shop.view_cart', 'View the cart'), checkout: t('shop.to_checkout', 'Checkout'), close: t('shop.close', 'Close'), subtotal: t('shop.subtotal', 'Subtotal'), empty: t('shop.cart_empty', 'Your cart is empty.')}|json_encode }}">{% if tools_text %}<span class="header-tool-text">{{ t('shop.cart', 'Cart') }}</span> <span class="shop-count-words">(<span data-shop-count data-show-zero>0</span>)</span>{% else %}{{ icon('bag') }}<span class="shop-count" data-shop-count hidden></span>{% endif %}</a>
       {% endif %}
       {% if show_language %}{% include 'components/language-links.twig' with {links_class: 'lang-switcher'} %}{% endif %}
       {% if show_mode %}

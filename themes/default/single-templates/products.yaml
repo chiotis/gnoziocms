@@ -3,6 +3,7 @@
 # The product page of docs/shop-plan.md: the pictures beside the collection, name, price, options and the Details sections, then
 # the text, more from the same collection, and the blocks of the product.
 blocks:
+  - { type: entry-title, breadcrumbs: true, image: false, excerpt: false, byline: false }
   - type: container
     settings: { gap: l }
     columns:
@@ -14,6 +15,6 @@ blocks:
           - { type: product-summary }
           - { type: product-details, initial: first }
   - { type: content }
-  - { type: shop-the-look, variant: complete }
+  - { type: shop-the-look, variant: complete, picture: true, add_each: true, header_beside: true }
   - { type: product-grid, source: related, heading: 'More from the collection', limit: 4, columns: '4' }
   - { type: entry-blocks }
