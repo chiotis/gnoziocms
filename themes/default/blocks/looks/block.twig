@@ -10,7 +10,7 @@
       <li class="looks-card">
         <a href="{{ url(item_path(look.item, prefix)) }}">
           <span class="looks-picture">{% if look.image %}{{ image(look.image, {alt: '', sizes: '(min-width: 900px) 30vw, 92vw', max_width: 1200, loading: 'lazy'}) }}{% endif %}</span>
-          <span class="looks-name">{{ look.title }}</span>
+          <span class="looks-name">{% set tone = look.pieces[0].card.collection.tones.deep|default('') %}{% if tone %}<span class="shop-dot" style="--dot: {{ tone }}" aria-hidden="true"></span>{% endif %}{{ look.title }}</span>
           <span class="looks-meta">{{ t('shop.look_pieces', '{count} pieces')|replace({'{count}': look.count}) }}{% if look.total_text %} · {{ look.total_text }}{% endif %}</span>
         </a>
       </li>

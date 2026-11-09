@@ -6,6 +6,25 @@ variants:
   split: Picture and pieces side by side
   complete: Complete the look (a short list)
 fields:
+  header_beside:
+    type: toggle
+    label: The heading beside the picture
+    default: false
+  total_in_button:
+    type: toggle
+    label: The total in the button
+    default: false
+  picture:
+    type: toggle
+    label: Show the look's picture
+    help: Complete the look only; the other layout always has it.
+    default: false
+    when: { variant: complete }
+  add_each:
+    type: toggle
+    label: An add button for each piece
+    default: false
+    when: { variant: complete }
   eyebrow:
     type: text
     label: Eyebrow

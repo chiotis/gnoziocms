@@ -1,4 +1,4 @@
-# Blocks of this installation (GnozioCMS 0.1.242)
+# Blocks of this installation (GnozioCMS 0.1.250)
 
 ## Fields every block has
 
@@ -251,6 +251,7 @@ Space between two sections, a line (optionally with a short label in the middle)
 | `line_width` | choice; one of `page`, `narrow`, `short`; default `narrow`; only when `variant` is `line` or `label` |  |
 | `thread_from` | choice; one of `colours`, `terms`; default `colours`; only when `variant` is `t` or `h` or `r` or `e` or `a` or `d` |  |
 | `thread_taxonomy` | text; default `collections`; only when `variant` is `t` or `h` or `r` or `e` or `a` or `d` and `thread_from` is `t` or `e` or `r` or `m` or `s` | The address of the taxonomy whose terms give the colours (their deep tone, in their order), for example collections. |
+| `thread_tone` | choice; one of `deep`, `surface`; default `deep`; only when `variant` is `t` or `h` or `r` or `e` or `a` or `d` and `thread_from` is `t` or `e` or `r` or `m` or `s` | Which of each term's tones colours its stripe. |
 | `colour_1` | colour; only when `variant` is `t` or `h` or `r` or `e` or `a` or `d` and `thread_from` is `c` or `o` or `l` or `o` or `u` or `r` or `s` |  |
 | `colour_2` | colour; only when `variant` is `t` or `h` or `r` or `e` or `a` or `d` and `thread_from` is `c` or `o` or `l` or `o` or `u` or `r` or `s` |  |
 | `colour_3` | colour; only when `variant` is `t` or `h` or `r` or `e` or `a` or `d` and `thread_from` is `c` or `o` or `l` or `o` or `u` or `r` or `s` |  |
@@ -298,6 +299,8 @@ The entries of the list, in pages. Each entry is drawn with the card of the temp
 | `visitor_sort` | true / false; default `false` | Shows a "Sort by" choice above the list. A page in another order is not indexed by search engines. |
 | `sort_choices` | list of rows | Used when visitors can choose the order. Leave empty to offer every order of the list but the random one. |
 | &nbsp;&nbsp;`sort_choices[].order` | text |  |
+| `editorial_after` | whole number; default `0` | Takes the width of two entries, with the term's picture unless one is chosen below. 0 for none. |
+| `editorial_image` | image |  |
 | `pagination` | true / false; default `true` |  |
 | `empty_text` | text | Optional. Leave empty for the theme's text. |
 | `show_image` | true / false; default `true` |  |
@@ -747,6 +750,15 @@ Plans or price lists, as cards side by side or as clean rows. One plan can be hi
 | &nbsp;&nbsp;`items[].button_url` | link |  |
 | &nbsp;&nbsp;`items[].highlight` | true / false; default `false` |  |
 
+### `product-card` — Product card
+The whole card of a product: its picture, a second picture on hover, the name and the price. For the card of a list of products.
+
+**Layouts** (`variant`): `default` (Default). First is the default.
+
+| field | kind and choices | notes |
+|---|---|---|
+| `hover_image` | true / false; default `true` |  |
+
 ### `product-details` — Product details
 The product's Details sections (Details, Care, Shipping & returns, Warranty) as sections that open one at a time. Only in a template built with blocks for products.
 
@@ -843,6 +855,10 @@ A look: its picture with a point on each piece, the pieces with their prices, th
 
 | field | kind and choices | notes |
 |---|---|---|
+| `header_beside` | true / false; default `false` |  |
+| `total_in_button` | true / false; default `false` |  |
+| `picture` | true / false; default `false`; only when `variant` is `c` or `o` or `m` or `p` or `l` or `e` or `t` or `e` | Complete the look only; the other layout always has it. |
+| `add_each` | true / false; default `false`; only when `variant` is `c` or `o` or `m` or `p` or `l` or `e` or `t` or `e` |  |
 | `eyebrow` | text |  |
 | `heading` | text |  |
 | `intro` | text (several lines) |  |

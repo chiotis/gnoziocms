@@ -36,6 +36,14 @@ fields:
     help: Used when visitors can choose the order. Leave empty to offer every order of the list but the random one.
     fields:
       order: { type: text, label: Order, source: sort_order }
+  editorial_after:
+    type: number
+    label: A picture after this many entries
+    help: Takes the width of two entries, with the term's picture unless one is chosen below. 0 for none.
+    default: 0
+  editorial_image:
+    type: image
+    label: The picture
   pagination:
     type: toggle
     label: Page links under the list

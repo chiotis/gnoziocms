@@ -240,6 +240,8 @@ return [
     'shop.checkout' => 'Checkout',
     'shop.back_to_cart' => 'Back to the cart',
     'shop.contact' => 'Contact',
+    'shop.account_short' => 'Account',
+    'shop.add' => 'Add',
     'shop.account' => 'Your account',
     'shop.email' => 'Email',
     'shop.have_account' => 'Have an account?',

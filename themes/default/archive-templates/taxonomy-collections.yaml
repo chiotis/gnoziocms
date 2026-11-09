@@ -2,15 +2,12 @@
 # shape they are stored in. A site overrides it with custom/archive-templates/taxonomy-collections.yaml. See docs/theming.md, "Starting templates".
 # The chapter with its picture and quote, the product categories as chips, the pieces, the look of the collection and the next chapter.
 blocks:
-  - { type: divider, variant: thread, thread_from: terms, thread_taxonomy: collections }
+  - { type: divider, variant: thread, thread_from: terms, thread_taxonomy: collections, thread_tone: surface }
   - { type: archive-title, variant: chapter }
   - { type: filter-bar, variant: chips, show_count: false }
   - { type: result-count, always: true }
-  - { type: entry-list, variant: grid, columns: '3', per_page: 24, order: date_desc }
-  - { type: shop-the-look, variant: split }
+  - { type: entry-list, variant: grid, columns: '3', per_page: 24, order: date_desc, editorial_after: 3 }
+  - { type: shop-the-look, variant: split, header_beside: true }
   - { type: next-term, variant: next }
 card:
-  - { type: image, image: { bind: main_image }, ratio: portrait }
-  - type: text
-    heading: { bind: title }
-  - { type: product-price }
+  - { type: product-card }

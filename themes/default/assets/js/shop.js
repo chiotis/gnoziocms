@@ -11,8 +11,9 @@
 
   function setCount(count) {
     document.querySelectorAll('[data-shop-count]').forEach(function (badge) {
-      badge.textContent = count > 0 ? String(count) : '';
-      badge.hidden = !(count > 0);
+      var showZero = badge.hasAttribute('data-show-zero');
+      badge.textContent = count > 0 || showZero ? String(count) : '';
+      badge.hidden = !(count > 0 || showZero);
     });
   }
   setCount(parseInt(cookie('gz_cart_n'), 10) || 0);

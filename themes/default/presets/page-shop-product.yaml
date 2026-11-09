@@ -4,14 +4,16 @@ label: {"el": "Κατάστημα: σελίδα προϊόντος", "en": "Shop
 description: {"el": "Οι εικόνες δίπλα στην τιμή και τις επιλογές, οι λεπτομέρειες, ολοκλήρωση του look και κομμάτια της ίδιας συλλογής.", "en": "The pictures beside the price and options, the details, complete the look and pieces from the same collection."}
 blocks:
   el:
+    - {"type": "entry-title", "breadcrumbs": true, "image": false, "excerpt": false, "byline": false}
     - {"type": "container", "settings": {"gap": "l"}, "columns": [{"settings": {"width": "55%"}, "blocks": [{"type": "product-gallery", "variant": "stack"}]}, {"settings": {"width": "fill"}, "blocks": [{"type": "product-summary", "note": "Χειροποίητο · Συσκευασία δώρου"}, {"type": "product-details", "initial": "first"}]}]}
     - {"type": "content"}
-    - {"type": "shop-the-look", "variant": "complete", "eyebrow": "Φορέστε τα μαζί", "heading": "Ολοκληρώστε το look"}
+    - {"type": "shop-the-look", "variant": "complete", "picture": true, "add_each": true, "header_beside": true, "eyebrow": "Φορέστε τα μαζί", "heading": "Ολοκληρώστε το look"}
     - {"type": "product-grid", "variant": "grid", "source": "related", "heading": "Από την ίδια συλλογή", "limit": 4, "columns": "4"}
     - {"type": "entry-blocks"}
   en:
+    - {"type": "entry-title", "breadcrumbs": true, "image": false, "excerpt": false, "byline": false}
     - {"type": "container", "settings": {"gap": "l"}, "columns": [{"settings": {"width": "55%"}, "blocks": [{"type": "product-gallery", "variant": "stack"}]}, {"settings": {"width": "fill"}, "blocks": [{"type": "product-summary", "note": "Handmade · Gift wrapping"}, {"type": "product-details", "initial": "first"}]}]}
     - {"type": "content"}
-    - {"type": "shop-the-look", "variant": "complete", "eyebrow": "Wear it together", "heading": "Complete the look"}
+    - {"type": "shop-the-look", "variant": "complete", "picture": true, "add_each": true, "header_beside": true, "eyebrow": "Wear it together", "heading": "Complete the look"}
     - {"type": "product-grid", "variant": "grid", "source": "related", "heading": "From the same collection", "limit": 4, "columns": "4"}
     - {"type": "entry-blocks"}

@@ -240,6 +240,8 @@ return [
     'shop.checkout' => 'Ταμείο',
     'shop.back_to_cart' => 'Πίσω στο καλάθι',
     'shop.contact' => 'Επικοινωνία',
+    'shop.account_short' => 'Λογαριασμός',
+    'shop.add' => 'Προσθήκη',
     'shop.account' => 'Ο λογαριασμός σας',
     'shop.email' => 'Email',
     'shop.have_account' => 'Έχετε λογαριασμό;',

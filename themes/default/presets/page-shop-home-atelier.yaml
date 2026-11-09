@@ -3,18 +3,18 @@ label: {"el": "Κατάστημα: αρχική Atelier", "en": "Shop: Atelier h
 description: {"el": "Ασύμμετρη αρχική με την ιστορία μπροστά: κολάζ εικόνων, λίστα συλλογών, looks, δημιουργός και newsletter.", "en": "An asymmetric home page, story first: a picture collage, a list of collections, looks, the maker and a newsletter."}
 blocks:
   el:
-    - {"type": "divider", "variant": "thread", "thread_from": "terms", "thread_taxonomy": "collections"}
+    - {"type": "divider", "variant": "thread", "thread_from": "terms", "thread_taxonomy": "collections", "thread_tone": "surface"}
     - {"type": "hero", "variant": "mosaic", "eyebrow": "Χειροποίητα · Η πόλη σας", "heading": "Μια φράση που μένει", "text": "Ποιος σχεδιάζει και φτιάχνει τα κομμάτια σας, και από πού εμπνέεται.", "actions": [{"label": "Η νέα συλλογή", "url": "products", "style": "primary"}, {"label": "Η ιστορία μας", "url": "about", "style": "text"}]}
     - {"type": "term-tiles", "variant": "list", "eyebrow": "Συλλογές", "taxonomy": "collections", "limit": 5, "numbers": true, "link_label": "Δείτε"}
     - {"type": "looks", "variant": "grid", "eyebrow": "Φορέστε τα μαζί", "heading": "Συνδυασμοί που επιλέξαμε", "limit": 3, "columns": "3"}
-    - {"type": "text-image", "variant": "story", "eyebrow": "Η ιστορία μας", "pull_quote": "«Μια πρόταση από τον δημιουργό για το πώς δουλεύει.»", "body": "Δύο ή τρεις προτάσεις για το πώς ξεκίνησαν όλα και τι σας κινεί.", "actions": [{"label": "Γνωρίστε μας", "url": "about", "style": "text"}], "image_ratio": "portrait", "dots": true}
+    - {"type": "text-image", "variant": "story", "eyebrow": "", "pull_quote": "«Μια πρόταση από τον δημιουργό για το πώς δουλεύει.»", "body": "Δύο ή τρεις προτάσεις για το πώς ξεκίνησαν όλα και τι σας κινεί.", "actions": [{"label": "Γνωρίστε μας", "url": "about", "style": "text"}], "image_ratio": "portrait", "dots": false, "tone": "contrast"}
     - {"type": "newsletter", "variant": "inline", "heading": "Γράμματα από εμάς", "intro": "Νέα κομμάτια πριν από όλους και οι ιστορίες τους, λίγες φορές τον χρόνο.", "dots": true}
-    - {"type": "divider", "variant": "thread", "thread_from": "terms", "thread_taxonomy": "collections"}
+    - {"type": "divider", "variant": "thread", "thread_from": "terms", "thread_taxonomy": "collections", "thread_tone": "surface"}
   en:
-    - {"type": "divider", "variant": "thread", "thread_from": "terms", "thread_taxonomy": "collections"}
+    - {"type": "divider", "variant": "thread", "thread_from": "terms", "thread_taxonomy": "collections", "thread_tone": "surface"}
     - {"type": "hero", "variant": "mosaic", "eyebrow": "Handmade · Your city", "heading": "A line that stays", "text": "Who designs and makes your pieces, and what inspires them.", "actions": [{"label": "The new collection", "url": "products", "style": "primary"}, {"label": "Our story", "url": "about", "style": "text"}]}
     - {"type": "term-tiles", "variant": "list", "eyebrow": "Collections", "taxonomy": "collections", "limit": 5, "numbers": true, "link_label": "See"}
     - {"type": "looks", "variant": "grid", "eyebrow": "Wear it together", "heading": "Combinations we chose", "limit": 3, "columns": "3"}
-    - {"type": "text-image", "variant": "story", "eyebrow": "Our story", "pull_quote": "“A sentence from the maker on how they work.”", "body": "Two or three sentences on how it began and what drives you.", "actions": [{"label": "Meet us", "url": "about", "style": "text"}], "image_ratio": "portrait", "dots": true}
+    - {"type": "text-image", "variant": "story", "eyebrow": "", "pull_quote": "“A sentence from the maker on how they work.”", "body": "Two or three sentences on how it began and what drives you.", "actions": [{"label": "Meet us", "url": "about", "style": "text"}], "image_ratio": "portrait", "dots": false, "tone": "contrast"}
     - {"type": "newsletter", "variant": "inline", "heading": "Letters from us", "intro": "New pieces before anyone else, and their stories, a few times a year.", "dots": true}
-    - {"type": "divider", "variant": "thread", "thread_from": "terms", "thread_taxonomy": "collections"}
+    - {"type": "divider", "variant": "thread", "thread_from": "terms", "thread_taxonomy": "collections", "thread_tone": "surface"}
