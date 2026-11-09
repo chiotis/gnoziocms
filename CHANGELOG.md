@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.257 — 2026-11-09 — The accent on title blocks
+- Archive title and Entry title: with the accent tone, the title band shows the colour scheme's accent. Until now the band was painted dark over it. A band with a picture keeps its dark base.
+
 ## 0.1.256 — 2026-11-09 — The Atelier home page
 - Hero: two new optional fields, **Line above the heading** and **Small note** (under the buttons).
 - Term tiles, list layout: the term whose picture is showing is marked, from the first one on.
