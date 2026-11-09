@@ -293,7 +293,7 @@ final class ContentTypes
      */
     private static function pickTexts(array $definition, callable $pick): array
     {
-        foreach (['label', 'help', 'placeholder', 'item_label'] as $text) {
+        foreach (['label', 'help', 'placeholder', 'item_label', 'group'] as $text) {
             if (isset($definition[$text])) {
                 $definition[$text] = (string)$pick($definition[$text]);
             }

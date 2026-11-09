@@ -8,6 +8,8 @@ singular: { el: Προϊόν, en: Product }
 description: { el: 'Τα προϊόντα του καταστήματος, με τιμή, παραλλαγές και απόθεμα. Ανοίγει το κατάστημα.', en: 'What the shop sells, with prices, variants and stock. Switches the shop on.' }
 fields:
   kind:
+    span: full
+    chips: true
     type: select
     label: { el: Είδος, en: Kind }
     shared: true
@@ -19,6 +21,7 @@ fields:
       subscription: { el: Συνδρομή, en: Subscription }
     help: { el: 'Ένα ψηφιακό προϊόν πωλεί αρχεία, που ανεβαίνουν στο Κατάστημα › Αρχεία. Μια συνδρομή χρεώνεται ξανά κάθε περίοδο, με κάρτα μέσω Viva Wallet.', en: 'A digital product sells files, uploaded on Shop › Files. A subscription is charged again every period, by card through Viva Wallet.' }
   price:
+    group: { el: Τιμή, en: Price }
     type: decimal
     label: { el: Τιμή (€), en: Price (€) }
     min: 0
@@ -27,6 +30,7 @@ fields:
     show: false
     help: { el: 'Με τον ΦΠΑ.', en: 'VAT included.' }
   compare_at_price:
+    group: { el: Τιμή, en: Price }
     type: decimal
     label: { el: 'Αρχική τιμή (€)', en: 'Was (€)' }
     min: 0
@@ -34,6 +38,7 @@ fields:
     show: false
     help: { el: 'Δείχνεται διαγραμμένη δίπλα στην τιμή, όταν είναι μεγαλύτερη.', en: 'Shown struck through beside the price when it is higher.' }
   tax_class:
+    group: { el: Τιμή, en: Price }
     type: select
     label: { el: ΦΠΑ, en: VAT rate }
     shared: true
@@ -44,39 +49,109 @@ fields:
       reduced: { el: 'Μειωμένος (13%)', en: 'Reduced (13%)' }
       super_reduced: { el: 'Υπερμειωμένος (6%)', en: 'Super-reduced (6%)' }
       zero: { el: 'Μηδενικός', en: 'Zero' }
-  sku:
-    type: text
-    label: SKU
+  interval:
+    group: { el: Συνδρομή, en: Subscription }
+    type: select
+    label: { el: Χρέωση κάθε, en: Charged every }
+    default: month
     shared: true
     show: false
-  barcode:
-    type: text
-    label: { el: 'Barcode (GTIN, EAN)', en: 'Barcode (GTIN, EAN)' }
+    when: { kind: [subscription] }
+    options:
+      week: { el: Εβδομάδα, en: Week }
+      month: { el: Μήνα, en: Month }
+      year: { el: Χρόνο, en: Year }
+  interval_count:
+    group: { el: Συνδρομή, en: Subscription }
+    type: number
+    label: { el: Πόσες περίοδοι, en: How many of them }
+    min: 1
+    max: 12
+    default: 1
     shared: true
     show: false
-  brand:
-    type: text
-    label: { el: Μάρκα, en: Brand }
+    when: { kind: [subscription] }
+    help: { el: 'Π.χ. 3 με «Μήνα»: κάθε τρεις μήνες.', en: 'E.g. 3 with "Month": every three months.' }
+  signup_fee:
+    group: { el: Συνδρομή, en: Subscription }
+    type: decimal
+    label: { el: Τέλος εγγραφής (€), en: Sign-up fee (€) }
+    min: 0
     shared: true
     show: false
-  short_description:
-    type: textarea
-    label: { el: Σύντομη περιγραφή, en: Short description }
-    help: { el: 'Μία ή δύο προτάσεις δίπλα στην τιμή.', en: 'One or two sentences beside the price.' }
+    when: { kind: [subscription] }
+    help: { el: 'Μόνο με την πρώτη πληρωμή.', en: 'With the first payment only.' }
+  renewals:
+    group: { el: Συνδρομή, en: Subscription }
+    type: number
+    label: { el: Ανανεώσεις, en: Renewals }
+    min: 0
+    default: 0
+    shared: true
     show: false
+    when: { kind: [subscription] }
+    help: { el: '0: έως ότου ακυρωθεί.', en: '0: until it is cancelled.' }
+  download_limit:
+    group: { el: Λήψεις, en: Downloads }
+    type: number
+    label: { el: Λήψεις ανά αγορά, en: Downloads per purchase }
+    min: 0
+    default: 5
+    shared: true
+    show: false
+    when: { kind: [digital] }
+    help: { el: '0: χωρίς όριο.', en: '0: no limit.' }
+  download_days:
+    group: { el: Λήψεις, en: Downloads }
+    type: number
+    label: { el: Μέρες για λήψη, en: Days to download }
+    min: 0
+    default: 30
+    shared: true
+    show: false
+    when: { kind: [digital] }
+    help: { el: 'Από την πληρωμή. 0: χωρίς λήξη.', en: 'From the payment. 0: never ends.' }
   gallery:
+    group: { el: Φωτογραφίες, en: Pictures }
+    span: full
     type: gallery
     label: { el: Φωτογραφίες, en: Pictures }
     shared: true
     show: false
     help: { el: 'Η κύρια φωτογραφία πρώτα. Η εικόνα της σελίδας παραμένει η κάρτα του προϊόντος.', en: 'The main picture first. The entry''s main image stays the product''s card.' }
   hover_image:
+    group: { el: Φωτογραφίες, en: Pictures }
     type: image
     label: { el: 'Φωτογραφία στο πέρασμα', en: 'Picture on hover' }
     shared: true
     show: false
     help: { el: 'Η κάρτα του προϊόντος τη δείχνει όταν περνά το ποντίκι, π.χ. το κόσμημα φορεμένο.', en: 'The product card shows it on hover, for example the piece worn.' }
+  short_description:
+    group: { el: Περιγραφή, en: Description }
+    span: full
+    type: textarea
+    label: { el: Σύντομη περιγραφή, en: Short description }
+    help: { el: 'Μία ή δύο προτάσεις δίπλα στην τιμή.', en: 'One or two sentences beside the price.' }
+    show: false
+  details:
+    group: { el: Περιγραφή, en: Description }
+    type: repeater
+    label: { el: Λεπτομέρειες, en: Details }
+    item_label: { el: Ενότητα, en: Section }
+    max: 8
+    show: false
+    help: { el: 'Ανοιγόμενες ενότητες κάτω από την τιμή: Λεπτομέρειες, Φροντίδα, Αποστολή & επιστροφές, Εγγύηση.', en: 'Sections that open under the price: Details, Care, Shipping & returns, Warranty.' }
+    fields:
+      title:
+        type: text
+        label: { el: Τίτλος, en: Title }
+        placeholder: Care
+      text:
+        type: markdown
+        label: { el: Κείμενο, en: Text }
   options:
+    group: { el: Επιλογές και παραλλαγές, en: Options and variants }
+    when: { kind: [physical, digital] }
     type: repeater
     label: { el: Επιλογές, en: Options }
     item_label: { el: Επιλογή, en: Option }
@@ -94,6 +169,8 @@ fields:
         label: { el: Τιμές, en: Values }
         help: { el: 'Μία ανά γραμμή.', en: 'One per line.' }
   variants:
+    group: { el: Επιλογές και παραλλαγές, en: Options and variants }
+    when: { kind: [physical, digital] }
     type: repeater
     label: { el: Παραλλαγές, en: Variants }
     item_label: { el: Παραλλαγή, en: Variant }
@@ -121,113 +198,73 @@ fields:
         label: { el: Βάρος (g), en: Weight (g) }
         min: 0
   option_labels:
+    group: { el: Επιλογές και παραλλαγές, en: Options and variants }
+    span: full
+    when: { kind: [physical, digital] }
     type: textarea
     label: { el: Ονόματα επιλογών σε αυτή τη γλώσσα, en: Option names in this language }
     show: false
     placeholder: "Finish = Φινίρισμα\nGold = Χρυσό"
     help: { el: 'Για μια μετάφραση: «όνομα στη γλώσσα του site = όνομα εδώ», ένα ανά γραμμή.', en: 'For a translation: "name in the site''s language = name here", one per line.' }
-  weight_g:
-    type: number
-    label: { el: Βάρος (g), en: Weight (g) }
-    min: 0
-    shared: true
-    show: false
-  interval:
-    type: select
-    label: { el: Χρέωση κάθε, en: Charged every }
-    default: month
-    shared: true
-    show: false
-    when: { kind: [subscription] }
-    options:
-      week: { el: Εβδομάδα, en: Week }
-      month: { el: Μήνα, en: Month }
-      year: { el: Χρόνο, en: Year }
-  interval_count:
-    type: number
-    label: { el: Πόσες περίοδοι, en: How many of them }
-    min: 1
-    max: 12
-    default: 1
-    shared: true
-    show: false
-    when: { kind: [subscription] }
-    help: { el: 'Π.χ. 3 με «Μήνα»: κάθε τρεις μήνες.', en: 'E.g. 3 with "Month": every three months.' }
-  signup_fee:
-    type: decimal
-    label: { el: Τέλος εγγραφής (€), en: Sign-up fee (€) }
-    min: 0
-    shared: true
-    show: false
-    when: { kind: [subscription] }
-    help: { el: 'Μόνο με την πρώτη πληρωμή.', en: 'With the first payment only.' }
-  renewals:
-    type: number
-    label: { el: Ανανεώσεις, en: Renewals }
-    min: 0
-    default: 0
-    shared: true
-    show: false
-    when: { kind: [subscription] }
-    help: { el: '0: έως ότου ακυρωθεί.', en: '0: until it is cancelled.' }
-  download_limit:
-    type: number
-    label: { el: Λήψεις ανά αγορά, en: Downloads per purchase }
-    min: 0
-    default: 5
-    shared: true
-    show: false
-    when: { kind: [digital] }
-    help: { el: '0: χωρίς όριο.', en: '0: no limit.' }
-  download_days:
-    type: number
-    label: { el: Μέρες για λήψη, en: Days to download }
-    min: 0
-    default: 30
-    shared: true
-    show: false
-    when: { kind: [digital] }
-    help: { el: 'Από την πληρωμή. 0: χωρίς λήξη.', en: 'From the payment. 0: never ends.' }
-  gift_wrap:
-    type: toggle
-    label: { el: Συσκευασία δώρου, en: Gift wrapping }
-    shared: true
-    show: false
   track_stock:
+    group: { el: Απόθεμα, en: Stock }
+    when: { kind: [physical] }
     type: toggle
     label: { el: Παρακολούθηση αποθέματος, en: Track stock }
     shared: true
     show: false
     help: { el: 'Οι ποσότητες γράφονται στην καρτέλα «Απόθεμα» του προϊόντος.', en: 'Quantities are set in the product''s Stock box.' }
   allow_backorder:
+    group: { el: Απόθεμα, en: Stock }
     type: toggle
     label: { el: 'Παραγγελία και χωρίς απόθεμα', en: 'Sell when out of stock' }
     shared: true
     show: false
-    when: { track_stock: ['1', 'true'] }
+    when: { kind: [physical], track_stock: ['1', 'true'] }
   low_stock_at:
+    group: { el: Απόθεμα, en: Stock }
     type: number
     label: { el: 'Χαμηλό απόθεμα στα', en: 'Low stock at' }
     min: 0
     shared: true
     show: false
-    when: { track_stock: ['1', 'true'] }
-  details:
-    type: repeater
-    label: { el: Λεπτομέρειες, en: Details }
-    item_label: { el: Ενότητα, en: Section }
-    max: 8
+    when: { kind: [physical], track_stock: ['1', 'true'] }
+  weight_g:
+    group: { el: Αποστολή, en: Shipping }
+    when: { kind: [physical] }
+    type: number
+    label: { el: Βάρος (g), en: Weight (g) }
+    min: 0
+    shared: true
     show: false
-    help: { el: 'Ανοιγόμενες ενότητες κάτω από την τιμή: Λεπτομέρειες, Φροντίδα, Αποστολή & επιστροφές, Εγγύηση.', en: 'Sections that open under the price: Details, Care, Shipping & returns, Warranty.' }
-    fields:
-      title:
-        type: text
-        label: { el: Τίτλος, en: Title }
-        placeholder: Care
-      text:
-        type: markdown
-        label: { el: Κείμενο, en: Text }
+  gift_wrap:
+    group: { el: Αποστολή, en: Shipping }
+    when: { kind: [physical] }
+    type: toggle
+    label: { el: Συσκευασία δώρου, en: Gift wrapping }
+    shared: true
+    show: false
+  sku:
+    group: { el: Αναγνωριστικά, en: Identification }
+    type: text
+    label: SKU
+    shared: true
+    show: false
+  barcode:
+    group: { el: Αναγνωριστικά, en: Identification }
+    type: text
+    label: { el: 'Barcode (GTIN, EAN)', en: 'Barcode (GTIN, EAN)' }
+    shared: true
+    show: false
+  brand:
+    group: { el: Αναγνωριστικά, en: Identification }
+    type: text
+    label: { el: Μάρκα, en: Brand }
+    shared: true
+    show: false
   complete_the_look:
+    group: { el: Σχετικά, en: Related }
+    span: full
     type: relation
     types: [products]
     multiple: true
@@ -237,6 +274,8 @@ fields:
     label: { el: 'Ολοκληρώστε το look', en: 'Complete the look' }
     reverse_label: Goes with
   looks:
+    group: { el: Σχετικά, en: Related }
+    span: full
     type: relation
     types: [looks]
     multiple: true
