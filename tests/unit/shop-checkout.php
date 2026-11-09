@@ -39,6 +39,9 @@ $put = static function (string $file, string $front) use ($root): void {
 $put('ring.md', "title: Δαχτυλίδι\nstatus: published\ntranslation_id: ring0000000000001\ncollections: [balos]\ncustom_fields:\n  price: '124'\n  tax_class: standard\n  weight_g: 40\n  gift_wrap: true\n  track_stock: true\n  options:\n    - { name: Finish, values: \"Gold\\nSilver\" }\n  option_labels: \"Gold = Χρυσό\"\n  variants:\n    - { values: Gold, price: '186', sku: R-G }\n    - { values: Silver }");
 $put('ring.en.md', "title: Ring\nstatus: published\ntranslation_id: ring0000000000001\ncollections: [balos]\ncustom_fields:\n  price: '124'\n  track_stock: true\n  variants:\n    - { values: Gold, price: '186', sku: R-G }\n    - { values: Silver }");
 $put('charm.md', "title: Charm\nstatus: published\ntranslation_id: charm000000000001\ncustom_fields:\n  price: '30'\n  track_stock: true\n  options:\n    - { name: Colour, values: \"Red\\nBlue\" }\n    - { name: Size, values: \"S\\nM\" }");
+mkdir("$root/content/looks", 0775, true);
+file_put_contents("$root/content/looks/own.md", "---\ntitle: Own\nstatus: published\ntranslation_id: lookown000000001\ncustom_fields:\n  pieces:\n    - { product: book0000000000001, x: 10, 'y': 10 }\n---\n");
+file_put_contents("$root/content/looks/two.md", "---\ntitle: Two\nstatus: published\ntranslation_id: looktwo000000001\ncustom_fields:\n  pieces:\n    - { product: book0000000000001, x: 10, 'y': 10 }\n    - { product: charm000000000001, x: 20, 'y': 20 }\n---\n");
 $put('book.md', "title: Βιβλίο\nstatus: published\ntranslation_id: book0000000000001\ncustom_fields:\n  price: '20'\n  tax_class: super_reduced\n  weight_g: 500");
 $put('ebook.md', "title: Rental\nstatus: published\ntranslation_id: ebook000000000001\ncustom_fields:\n  price: '9'\n  kind: rental");
 $put('draft.md', "title: Draft\nstatus: draft\ntranslation_id: draft000000000001\ncustom_fields:\n  price: '9'");
@@ -207,6 +210,12 @@ $opted = $checkout->place($form, ['lines' => [['product_id' => 'charm00000000000
 check('its order takes from the one stock', [$opted['ok'], $stock->forProduct('charm000000000001')['']['on_hand'], $stock->forProduct('charm000000000001')['']['reserved'], $orders->lines($opted['order']['id'])[0]['variant']], [true, 1, 0, 'Blue / S']);
 $checkout->changeStatus($opted['order']['id'], 'cancelled', 'test');
 check('and cancelling gives it back', $stock->forProduct('charm000000000001')['']['on_hand'], 3);
+
+// ---- a product's page shows its look
+$book = $catalogue->product('book0000000000001', 'el');
+$lookOf = static fn(string $id): array => $catalogue->blockData('shop-the-look', ['look' => $id], ['item' => $book, 'lang' => 'el']);
+check('a look of only this product still shows', [$lookOf('lookown000000001')['_empty'], count($lookOf('lookown000000001')['look']['pieces'])], [false, 1]);
+check('with others, it lists the others', array_column($lookOf('looktwo000000001')['look']['pieces'], 'id'), ['charm000000000001']);
 
 echo $fail === 0 ? "ALL PASSED\n" : "$fail FAILED\n";
 exit($fail === 0 ? 0 : 1);
