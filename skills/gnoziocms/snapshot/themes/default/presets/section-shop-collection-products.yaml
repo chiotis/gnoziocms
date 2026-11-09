@@ -1,0 +1,15 @@
+kind: section
+for: archive
+label: {"el": "Κατάστημα: τα κομμάτια της συλλογής", "en": "Shop: the pieces of a collection"}
+description: {"el": "Κεφάλαιο, φίλτρα σε chips, πλήθος και τα κομμάτια.", "en": "The chapter, chip filters, the count and the pieces."}
+blocks:
+  el:
+    - {"type": "archive-title", "variant": "chapter"}
+    - {"type": "filter-bar", "variant": "chips", "show_count": false}
+    - {"type": "result-count", "always": true}
+    - {"type": "entry-list", "variant": "grid", "columns": "3", "per_page": 24, "order": "date_desc", "visitor_sort": true, "sort_choices": [{"order": "date_desc"}, {"order": "title_asc"}]}
+  en:
+    - {"type": "archive-title", "variant": "chapter"}
+    - {"type": "filter-bar", "variant": "chips", "show_count": false}
+    - {"type": "result-count", "always": true}
+    - {"type": "entry-list", "variant": "grid", "columns": "3", "per_page": 24, "order": "date_desc", "visitor_sort": true, "sort_choices": [{"order": "date_desc"}, {"order": "title_asc"}]}

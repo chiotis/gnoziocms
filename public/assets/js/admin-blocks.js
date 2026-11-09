@@ -39,7 +39,19 @@
   var templateMode = data.context === 'template';
   var footerMode = data.context === 'footer' || templateMode;
   var bindings = templateMode && data.bindings && Array.isArray(data.bindings.sources) ? data.bindings : null;
-  var presets = (data.presets || []).filter(function (p) { return !footerMode || p.kind !== 'page'; });
+  // A ready-made section or layout is offered only where all its blocks exist: the shop's while the shop is on, those of a list or of an
+  // entry's page in that editor. A whole-page layout in a template's editor is one made for it (`for:`).
+  function presetBlocksExist(list) {
+    return list.every(function (block) {
+      if (!block) return false;
+      if (block.type === 'container') return (block.columns || []).every(function (column) { return presetBlocksExist(column.blocks || []); });
+      return !!definitions[block.type];
+    });
+  }
+  var presets = (data.presets || []).filter(function (p) {
+    return presetBlocksExist(p.blocks || []) && (!footerMode || p.kind !== 'page' || (templateMode && !!p.for));
+  });
+  var templateLayouts = templateMode && presets.some(function (p) { return p.kind === 'page'; });
   var selected = {};
   var nextId = 1;
   // The footer's blocks can have a set for each language (data.languages: [{key: 'default', code: 'el'}, {key: 'en', code: 'en'}], the
@@ -2214,7 +2226,7 @@
   function renderPicker() {
     var position = pickerTarget;
     picker.innerHTML = '';
-    var tabs = [['blocks', 'Blocks'], ['sections', 'Ready-made sections']].concat(footerMode || pickerColumn ? [] : [['pages', 'Page layouts']]);
+    var tabs = [['blocks', 'Blocks'], ['sections', 'Ready-made sections']].concat((footerMode && !templateLayouts) || pickerColumn ? [] : [['pages', 'Page layouts']]);
     if (pickerTab === 'pages' && pickerColumn) pickerTab = 'blocks';
     var tabBar = el('div', { class: 'bk-pills', role: 'tablist' });
     tabs.forEach(function (tab) {

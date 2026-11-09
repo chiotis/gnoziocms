@@ -1,0 +1,8 @@
+kind: section
+label: {"el": "Κατάστημα: η ιστορία", "en": "Shop: the story"}
+description: {"el": "Πορτρέτο, παράθεμα, κείμενο και σύνδεσμος.", "en": "A portrait, a pull quote, text and a link."}
+blocks:
+  el:
+    - {"type": "text-image", "variant": "story", "eyebrow": "Η ιστορία μας", "pull_quote": "«Μια πρόταση από τον δημιουργό για το πώς δουλεύει.»", "body": "Δύο ή τρεις προτάσεις για το πώς ξεκίνησαν όλα και τι σας κινεί.", "actions": [{"label": "Γνωρίστε μας", "url": "about", "style": "text"}], "image_ratio": "portrait", "dots": true}
+  en:
+    - {"type": "text-image", "variant": "story", "eyebrow": "Our story", "pull_quote": "“A sentence from the maker on how they work.”", "body": "Two or three sentences on how it began and what drives you.", "actions": [{"label": "Meet us", "url": "about", "style": "text"}], "image_ratio": "portrait", "dots": true}

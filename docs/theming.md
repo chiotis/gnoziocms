@@ -583,6 +583,8 @@ Labels, descriptions, and blocks may be a single value or a map per language; th
 
 The theme ships these page layouts (all in Greek and English, with placeholder text and no pictures): **Home**, **About**, **Contact**, **Service page**, **Campaign landing page**, and, for the second family of blocks, **Lead generation landing** (Landing template), **Pricing page**, **Work index (portfolio)**, **Case study**, **Careers**, **Blog home (magazine)**, **FAQ and help center**, **Resources and downloads**, **Event or webinar** (Landing template), **Services overview**, **Legal page** (text with a contents list), **Coming soon** (Landing template) and **Link in bio** (Landing template).
 
+A section or layout is offered only in an editor that has all its blocks, so the shop's appear while the shop is on. `for: archive` or `for: template` marks a whole-page layout for the editor of a list or of an entry's page, where it appears under Page layouts; a template's editor shows no other layouts. With the shop on there are four shop layouts (**Horizon** and **Atelier** home pages, **collection page**, **product page**) and thirteen sections.
+
 Editors can tick blocks and **Save as section**: the blocks are checked and written to `custom/presets/<name>.yaml` in the page's language, appear under Ready-made sections with a delete button, and are included in backups (Site customizations).
 
 ## Header and footer

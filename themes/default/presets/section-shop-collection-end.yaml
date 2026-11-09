@@ -1,0 +1,11 @@
+kind: section
+for: archive
+label: {"el": "Κατάστημα: τέλος συλλογής", "en": "Shop: end of a collection"}
+description: {"el": "Το look της συλλογής και το επόμενο κεφάλαιο.", "en": "The look of the collection and the next chapter."}
+blocks:
+  el:
+    - {"type": "shop-the-look", "variant": "split", "eyebrow": "Φορέστε τα μαζί", "heading": "Το look αυτής της συλλογής"}
+    - {"type": "next-term", "variant": "next", "label": "Επόμενο κεφάλαιο", "loop": true}
+  en:
+    - {"type": "shop-the-look", "variant": "split", "eyebrow": "Wear it together", "heading": "The look of this collection"}
+    - {"type": "next-term", "variant": "next", "label": "Next chapter", "loop": true}

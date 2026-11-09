@@ -55,10 +55,10 @@ Setup:
 
 Payments:
 - [ ] Pay with Viva's demo card → back on the order page, the order is *paid*, stock taken, the paid email arrives.
-- [ ] The order's timeline shows the payment and the webhook (Shop › Orders).
+- [ ] The order's timeline shows the payment. Webhook calls are in the table `shop_gateway_events` (`webhook 1796` paid, `webhook 1798` failed).
 - [ ] A refused card (Viva's demo card for a refusal) → back with a message, the order still waits, **Pay now** works.
-- [ ] Cancel on Viva's page → the order waits; after the hold runs out (or set it to a few minutes) it is cancelled and the
-      stock comes back.
+- [ ] Leave Viva's page without paying (it has no cancel button) → the order waits; after the hold runs out (or set it to a few
+      minutes) it is cancelled and the stock comes back.
 - [ ] **Closed browser:** pay, then close the tab before coming back → the webhook alone makes the order paid.
 - [ ] Installments: set `100 = 3` and order above €100 → Viva offers up to 3.
 - [ ] Refund half from the order's screen → *partially refunded*, and Viva shows the refund. Refund the rest → *refunded*.

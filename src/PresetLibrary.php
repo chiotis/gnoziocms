@@ -14,6 +14,7 @@ use Symfony\Component\Yaml\Yaml;
  *   kind: section | page
  *   label / description: text, or a map per language (el: …, en: …)
  *   template: optional page template a page layout suggests (e.g. landing)
+ *   for: archive | template: a layout for the editor of a list or of an entry's page, built of the blocks only that editor has
  *   blocks: a list of blocks, or a map per language of lists
  * Blocks are checked with BlockRegistry::sanitizeForStorage() before they reach the editor.
  */
@@ -105,6 +106,23 @@ final class PresetLibrary
         return $this->theme->customPath() . '/presets';
     }
 
+    /** @param array<int, mixed> $blocks */
+    private function allExist(array $blocks): bool
+    {
+        foreach ($blocks as $block) {
+            if (($block['type'] ?? '') === BlockContainer::TYPE) {
+                foreach ($block['columns'] ?? [] as $column) {
+                    if (!$this->allExist($column['blocks'] ?? [])) {
+                        return false;
+                    }
+                }
+            } elseif ($this->registry->get((string)($block['type'] ?? '')) === null) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     /** @return array{id: string, kind: string, label: string, description: string, origin: string, template: string, blocks: array<int, array<string, mixed>>}|null */
     private function load(string $file, string $origin, string $lang, string $defaultLang): ?array
     {
@@ -128,7 +146,8 @@ final class PresetLibrary
         };
         $blocks = $pick($raw['blocks'] ?? []);
         $blocks = is_array($blocks) ? $this->registry->sanitizeForStorage(array_values($blocks)) : [];
-        if ($blocks === []) {
+        // A block that does not exist here (the shop's while the shop is off) would be a hole in the page: the whole preset waits.
+        if ($blocks === [] || !$this->allExist($blocks)) {
             return null;
         }
         $templates = $this->theme->pageTemplates();
@@ -140,6 +159,7 @@ final class PresetLibrary
             'description' => (string)$pick($raw['description'] ?? ''),
             'origin' => $origin,
             'template' => isset($templates[$template]) ? $template : '',
+            'for' => in_array($raw['for'] ?? '', ['archive', 'template'], true) ? (string)$raw['for'] : '',
             'blocks' => $blocks,
         ];
     }

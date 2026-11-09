@@ -1,0 +1,10 @@
+kind: section
+label: {"el": "Κατάστημα: εμπιστοσύνη και newsletter", "en": "Shop: trust and newsletter"}
+description: {"el": "Τέσσερα σημεία εμπιστοσύνης και η εγγραφή στο newsletter.", "en": "Four trust points and the newsletter sign-up."}
+blocks:
+  el:
+    - {"type": "features", "variant": "strip", "columns": "4", "items": [{"icon": "check", "title": "Χειροποίητα", "text": "Πώς φτιάχνεται κάθε κομμάτι."}, {"icon": "check", "title": "Αποστολή & επιστροφές", "text": "Πού στέλνετε, με ποιους όρους."}, {"icon": "check", "title": "Εγγύηση", "text": "Τι καλύπτει η εγγύηση."}, {"icon": "check", "title": "Σημεία πώλησης", "text": "Πού θα μας βρείτε."}]}
+    - {"type": "newsletter", "variant": "centered", "heading": "Γράμματα από εμάς", "intro": "Νέα κομμάτια πριν από όλους και οι ιστορίες τους, λίγες φορές τον χρόνο.", "dots": true, "eyebrow": "Newsletter"}
+  en:
+    - {"type": "features", "variant": "strip", "columns": "4", "items": [{"icon": "check", "title": "Handmade", "text": "How each piece is made."}, {"icon": "check", "title": "Shipping & returns", "text": "Where you ship, on what terms."}, {"icon": "check", "title": "Warranty", "text": "What the warranty covers."}, {"icon": "check", "title": "Stores", "text": "Where to find us."}]}
+    - {"type": "newsletter", "variant": "centered", "heading": "Letters from us", "intro": "New pieces before anyone else, and their stories, a few times a year.", "dots": true, "eyebrow": "Newsletter"}

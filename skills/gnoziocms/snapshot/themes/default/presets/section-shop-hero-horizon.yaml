@@ -1,0 +1,10 @@
+kind: section
+label: {"el": "Κατάστημα: εικόνα και δήλωση", "en": "Shop: picture and statement"}
+description: {"el": "Εικόνα πλήρους πλάτους με δύο συνδέσμους και μια μεγάλη δήλωση από κάτω.", "en": "A full-width picture with two links and a large statement below it."}
+blocks:
+  el:
+    - {"type": "hero", "variant": "cover", "heading": "Μια φράση που λέει ποιοι είστε", "text": "Μία ή δύο προτάσεις για όσα φτιάχνετε και γιατί ξεχωρίζουν.", "actions": [{"label": "Δείτε τις συλλογές", "url": "products", "style": "primary"}, {"label": "Η ιστορία μας", "url": "about", "style": "text"}]}
+    - {"type": "quote", "variant": "statement", "quote": "Η φράση που συνοψίζει τη φιλοσοφία σας.", "translation": "Η ίδια φράση σε δεύτερη γλώσσα.", "dots": true}
+  en:
+    - {"type": "hero", "variant": "cover", "heading": "A line that says who you are", "text": "One or two sentences on what you make and why it stands apart.", "actions": [{"label": "See the collections", "url": "products", "style": "primary"}, {"label": "Our story", "url": "about", "style": "text"}]}
+    - {"type": "quote", "variant": "statement", "quote": "The line that sums up what you believe.", "translation": "The same line in a second language.", "dots": true}

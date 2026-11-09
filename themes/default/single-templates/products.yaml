@@ -12,7 +12,8 @@ blocks:
       - settings: { width: fill }
         blocks:
           - { type: product-summary }
-          - { type: product-details }
+          - { type: product-details, initial: first }
   - { type: content }
+  - { type: shop-the-look, variant: complete }
   - { type: product-grid, source: related, heading: 'More from the collection', limit: 4, columns: '4' }
   - { type: entry-blocks }

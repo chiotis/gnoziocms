@@ -1,0 +1,8 @@
+kind: section
+label: {"el": "Κατάστημα: κολάζ εικόνων", "en": "Shop: picture collage"}
+description: {"el": "Κείμενο αριστερά, τρεις εικόνες δεξιά.", "en": "Text on the left, three pictures on the right."}
+blocks:
+  el:
+    - {"type": "hero", "variant": "mosaic", "eyebrow": "Χειροποίητα · Η πόλη σας", "heading": "Μια φράση που μένει", "text": "Ποιος σχεδιάζει και φτιάχνει τα κομμάτια σας, και από πού εμπνέεται.", "actions": [{"label": "Η νέα συλλογή", "url": "products", "style": "primary"}, {"label": "Η ιστορία μας", "url": "about", "style": "text"}]}
+  en:
+    - {"type": "hero", "variant": "mosaic", "eyebrow": "Handmade · Your city", "heading": "A line that stays", "text": "Who designs and makes your pieces, and what inspires them.", "actions": [{"label": "The new collection", "url": "products", "style": "primary"}, {"label": "Our story", "url": "about", "style": "text"}]}

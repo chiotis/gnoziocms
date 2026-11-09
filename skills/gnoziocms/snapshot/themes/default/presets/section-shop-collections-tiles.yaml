@@ -1,0 +1,8 @@
+kind: section
+label: {"el": "Κατάστημα: συλλογές σε πλακίδια", "en": "Shop: collection tiles"}
+description: {"el": "Οι συλλογές αριθμημένες, με εικόνα.", "en": "The collections, numbered, with a picture."}
+blocks:
+  el:
+    - {"type": "term-tiles", "variant": "grid", "heading": "Οι συλλογές μας", "taxonomy": "collections", "limit": 5, "numbers": true, "ratio": "portrait", "link_label": "Όλα τα κομμάτια", "link_url": "products"}
+  en:
+    - {"type": "term-tiles", "variant": "grid", "heading": "Our collections", "taxonomy": "collections", "limit": 5, "numbers": true, "ratio": "portrait", "link_label": "All pieces", "link_url": "products"}

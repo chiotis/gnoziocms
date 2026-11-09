@@ -1,0 +1,9 @@
+kind: section
+for: template
+label: {"el": "Κατάστημα: εικόνες και αγορά", "en": "Shop: pictures and buying"}
+description: {"el": "Οι εικόνες του προϊόντος δίπλα στην τιμή, τις επιλογές και τις λεπτομέρειες.", "en": "The product pictures beside the price, the options and the details."}
+blocks:
+  el:
+    - {"type": "container", "settings": {"gap": "l"}, "columns": [{"settings": {"width": "55%"}, "blocks": [{"type": "product-gallery", "variant": "stack"}]}, {"settings": {"width": "fill"}, "blocks": [{"type": "product-summary", "note": "Χειροποίητο · Συσκευασία δώρου"}, {"type": "product-details", "initial": "first"}]}]}
+  en:
+    - {"type": "container", "settings": {"gap": "l"}, "columns": [{"settings": {"width": "55%"}, "blocks": [{"type": "product-gallery", "variant": "stack"}]}, {"settings": {"width": "fill"}, "blocks": [{"type": "product-summary", "note": "Handmade · Gift wrapping"}, {"type": "product-details", "initial": "first"}]}]}
