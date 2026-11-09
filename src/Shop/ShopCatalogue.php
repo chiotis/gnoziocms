@@ -71,6 +71,10 @@ final class ShopCatalogue
                 $look = $this->lookOfPage($context, $lang);
             }
             $values['look'] = $look !== null ? $this->look($look, $lang, $product) : null;
+            // A look of nothing but the page's own product still shows, with that product.
+            if ($look !== null && $product !== null && $values['look']['pieces'] === []) {
+                $values['look'] = $this->look($look, $lang);
+            }
             $values['_empty'] = $values['look'] === null || $values['look']['pieces'] === [];
             // Drawn with the Image hotspots block's styles and script.
             $values['_types'] = ['image-hotspots'];
