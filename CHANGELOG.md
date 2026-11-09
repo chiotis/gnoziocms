@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.259 — 2026-11-09 — Icons for Products and Looks
+- Admin sidebar: Products has a price tag and Looks a clothes hanger, instead of the plain lines.
+
 ## 0.1.258 — 2026-11-09 — A tidy product form
 - Product details: the fields are in cards (Price, Pictures, Description, Options and variants, Stock, Shipping and more), with the kind of product as chips at the top.
 - Only what applies to the chosen kind shows: Stock and Shipping for a physical product, Downloads for a digital one, Subscription for a subscription. A switch that no longer applies turns off.

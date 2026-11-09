@@ -1,4 +1,4 @@
-# Blocks of this installation (GnozioCMS 0.1.258)
+# Blocks of this installation (GnozioCMS 0.1.259)
 
 ## Fields every block has
 
