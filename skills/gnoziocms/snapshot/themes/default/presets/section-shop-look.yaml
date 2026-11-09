@@ -1,0 +1,8 @@
+kind: section
+label: {"el": "Κατάστημα: ολοκληρωμένο look", "en": "Shop: shop the look"}
+description: {"el": "Μια εικόνα με σημεία, τα κομμάτια και προσθήκη όλων στο καλάθι.", "en": "A picture with points, its pieces and adding them all to the cart."}
+blocks:
+  el:
+    - {"type": "shop-the-look", "variant": "split", "eyebrow": "Ολοκληρωμένο look", "heading": "Ένας συνδυασμός που επιλέξαμε"}
+  en:
+    - {"type": "shop-the-look", "variant": "split", "eyebrow": "Shop the look", "heading": "A combination we chose"}

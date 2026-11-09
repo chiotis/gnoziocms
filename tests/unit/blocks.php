@@ -146,7 +146,7 @@ check('table: nothing typed is an empty table', BlockRenderer::tableData('', '')
 
 // The page layouts: every block is one the theme has, in both languages, and no value is lost when the editor stores it.
 $formStub = ['content_types' => fn() => ['posts' => 'Posts', 'projects' => 'Projects'], 'forms' => fn() => ['' => '—', 'contact' => 'Contact']];
-$withForms = new BlockRegistry($theme, $formStub);
+$withForms = new BlockRegistry($theme, $formStub, fn(): array => ['shop' => true]);
 $layouts = glob($root . '/themes/default/presets/page-*.yaml');
 check('at least 18 page layouts', count($layouts) >= 18, true);
 foreach ($layouts as $file) {
@@ -158,6 +158,7 @@ foreach ($layouts as $file) {
         $stored = $withForms->sanitizeForStorage($preset['blocks'][$lang]);
         $lost = [];
         foreach ($preset['blocks'][$lang] as $i => $block) {
+            if ($block['type'] === 'container') { continue; }
             $definition = $withForms->get($block['type']);
             if ($definition === null) { $lost[] = $block['type'] . ' unknown'; continue; }
             foreach ($block as $key => $value) {

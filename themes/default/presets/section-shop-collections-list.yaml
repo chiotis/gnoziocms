@@ -1,0 +1,8 @@
+kind: section
+label: {"el": "Κατάστημα: λίστα συλλογών", "en": "Shop: list of collections"}
+description: {"el": "Λίστα που αλλάζει μια μεγάλη εικόνα στο πέρασμα του ποντικιού.", "en": "A list that swaps a large picture on hover."}
+blocks:
+  el:
+    - {"type": "term-tiles", "variant": "list", "eyebrow": "Συλλογές", "taxonomy": "collections", "limit": 5, "numbers": true, "link_label": "Δείτε"}
+  en:
+    - {"type": "term-tiles", "variant": "list", "eyebrow": "Collections", "taxonomy": "collections", "limit": 5, "numbers": true, "link_label": "See"}

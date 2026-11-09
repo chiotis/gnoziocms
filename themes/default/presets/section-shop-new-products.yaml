@@ -1,0 +1,8 @@
+kind: section
+label: {"el": "Κατάστημα: νέα κομμάτια", "en": "Shop: new pieces"}
+description: {"el": "Πλέγμα προϊόντων με μια εικόνα ανάμεσά τους.", "en": "A product grid with a picture among the products."}
+blocks:
+  el:
+    - {"type": "product-grid", "variant": "grid", "eyebrow": "Νέα κομμάτια", "heading": "Μόλις έφτασαν", "source": "all", "limit": 8, "columns": "4", "editorial_every": 5, "editorial_text": "Μια εικόνα και λίγα λόγια ανάμεσα στα κομμάτια.", "link_label": "Όλα τα κομμάτια", "link_url": "products"}
+  en:
+    - {"type": "product-grid", "variant": "grid", "eyebrow": "New pieces", "heading": "Just in", "source": "all", "limit": 8, "columns": "4", "editorial_every": 5, "editorial_text": "A picture and a few words among the pieces.", "link_label": "All pieces", "link_url": "products"}

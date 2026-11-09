@@ -57,7 +57,8 @@ final class ShopCatalogue
             return $values;
         }
         if ($type === 'shop-the-look') {
-            // The look chosen in the block; otherwise the page's own look, or the first look of the page's product.
+            // The look chosen in the block; otherwise the page's own look, the first look of the page's product, the first with a piece of
+            // the collection whose page this is, or on any other page the newest look.
             $look = $this->lookById((string)($values['look'] ?? ''), $lang);
             if ($look === null && $item !== null && $item->type === Shop::LOOKS) {
                 $look = $item;
@@ -65,6 +66,9 @@ final class ShopCatalogue
             if ($look === null && $product !== null) {
                 $ids = array_map('strval', (array)($this->custom($product)['looks'] ?? []));
                 $look = $ids === [] ? null : $this->lookById($ids[0], $lang);
+            }
+            if ($look === null && $product === null) {
+                $look = $this->lookOfPage($context, $lang);
             }
             $values['look'] = $look !== null ? $this->look($look, $lang, $product) : null;
             $values['_empty'] = $values['look'] === null || $values['look']['pieces'] === [];
@@ -95,6 +99,29 @@ final class ShopCatalogue
             $values['_types'] = ['accordion'];
         }
         return $values;
+    }
+
+    /** @param array<string, mixed> $context the page's: a collection's page has taxonomy and term_id */
+    private function lookOfPage(array $context, string $lang): ?ContentItem
+    {
+        $looks = array_values($this->content->getItems(Shop::LOOKS, $lang, $this->includeHidden, true));
+        $term = (string)($context['term_id'] ?? '');
+        if ($term === '') {
+            return $looks[0] ?? null;
+        }
+        if (($context['taxonomy'] ?? '') !== Shop::COLLECTIONS) {
+            return null;
+        }
+        foreach ($looks as $look) {
+            foreach (is_array($this->custom($look)['pieces'] ?? null) ? $this->custom($look)['pieces'] : [] as $piece) {
+                $id = is_array($piece) ? (string)(is_array($piece['product'] ?? null) ? ($piece['product'][0] ?? '') : ($piece['product'] ?? '')) : '';
+                $product = $this->product($id, $lang);
+                if ($product !== null && in_array($term, self::terms($product, Shop::COLLECTIONS), true)) {
+                    return $look;
+                }
+            }
+        }
+        return null;
     }
 
     /**

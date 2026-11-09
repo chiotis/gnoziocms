@@ -266,6 +266,36 @@ cid = db("select id from shop_customers where email = 'eleni@example.test'")[0][
 st, _, html = root.get('/admin/shop-customers?id=%d' % cid)
 check('and her screen lists it', second[0] in html and 'Not confirmed' in html)
 
+# ---- ready-made layouts and sections (the shop's): complete pages in the editor, and each one a page that opens
+st, _, edit = root.get('/admin/edit?type=pages&slug=the-look&lang=el')
+data = json.loads(re.search(r'id="block-editor-data"[^>]*>(.*?)</script>', edit, re.S).group(1))
+presets = {p['id']: p for p in data['presets']}
+known = {d['type'] for d in data['definitions']}
+check('the editor gets the shop layouts, with whole pages and sections', {'theme:page-shop-home-horizon', 'theme:page-shop-home-atelier', 'theme:section-shop-look', 'theme:section-shop-story'} <= set(presets), sorted(presets)[:5])
+check('a layout for a list says so; its blocks are not this editor\'s', presets['theme:page-shop-collection']['for'] == 'archive' and 'archive-title' not in known)
+for name in ('page-shop-home-horizon', 'page-shop-home-atelier'):
+    write('app/content/pages/%s.md' % name, "---\ntitle: L\nstatus: published\ndate: '2026-03-05'\nblocks: " + json.dumps(presets['theme:' + name]['blocks']) + "\n---\n")
+    st, _, html = pub.get('/' + name)
+    check(name + ' opens, its look found by itself', st == 200 and 'Twig\\Error' not in html and 'Fatal error' not in html and ('look-pieces' in html or 'looks-card' in html), html[:200])
+
+# ---- a collection's page from its ready-made layout, with the look of that collection
+write('app/content/taxonomies/collections.yaml', """title: Collections
+terms:
+  - { id: apella, slug: apella, labels: { el: Apella, en: Apella }, number: 1, tones: { bg: '#e7e9de', surface: '#cdd1bc', deep: '#5c6a4c' } }
+  - { id: balos, slug: balos, labels: { el: Balos, en: Balos }, number: 2, image: /uploads/balos.jpg, tones: { bg: '#e3ecea', surface: '#c3d6d3', deep: '#3d6b6d' }, quote: { el: 'Η λιμνοθάλασσα.', en: 'The lagoon.' }, quote_author: Maria Patera }
+  - { id: kampos, slug: kampos, labels: { el: Kampos, en: Kampos }, number: 3, tones: { bg: '#f3e5dc', surface: '#e4c7b5', deep: '#96583f' } }
+""")
+form = next(f for f in root.forms('/admin/theme?tab=archive_layouts') if any(x[0] == 'active_tab' for x in f['fields']))
+overrides = {'archive_template[taxonomy:collections]': 'built'}
+root.request('/admin/theme', data=[tuple(x) for x in form['fields'] if x[0] not in overrides and x[0] != 'active_tab'] + list(overrides.items()) + [('active_tab', 'archive_layouts')])
+st, _, edit = root.get('/admin/theme?archive_template=taxonomy%3Acollections')
+data = json.loads(re.search(r'id="block-editor-data"[^>]*>(.*?)</script>', edit, re.S).group(1))
+stored = data['blocks'] if isinstance(data['blocks'], list) else data['blocks'].get('default', [])
+check('a collection starts from the chapter, the chips, the pieces, the look and the next chapter', [b['type'] for b in stored][:7] == ['divider', 'archive-title', 'filter-bar', 'result-count', 'entry-list', 'shop-the-look', 'next-term'], [b['type'] for b in stored])
+check('and its editor knows the layout made for it', 'archive-title' in {d['type'] for d in data['definitions']} and any(p['id'] == 'theme:page-shop-collection' for p in data['presets']))
+st, _, html = pub.get('/collections/balos')
+check('the collection\'s page shows the look that has one of its pieces', st == 200 and 'look-pieces' in html and 'ring00000000000a' in html, str(st) + html[:200])
+
 # ---- Shop the look
 st, _, html = pub.get('/the-look')
 check('Shop the look: the look\'s pieces, the total, Add the look', st == 200 and 'look-pieces' in html and 'name="items[0][product]" value="ring00000000000a"' in html and 'name="items[0][variant]" value="gold"' in html and '€190' in html, re.findall(r'look-total[^<]*<span>[^<]*</span><strong>[^<]*', html))

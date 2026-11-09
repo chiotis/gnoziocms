@@ -1,0 +1,8 @@
+kind: section
+label: {"el": "Κατάστημα: συνδυασμοί", "en": "Shop: looks"}
+description: {"el": "Τρία looks με το πλήθος κομματιών και το σύνολο.", "en": "Three looks with their number of pieces and total."}
+blocks:
+  el:
+    - {"type": "looks", "variant": "grid", "eyebrow": "Φορέστε τα μαζί", "heading": "Συνδυασμοί που επιλέξαμε", "limit": 3, "columns": "3"}
+  en:
+    - {"type": "looks", "variant": "grid", "eyebrow": "Wear it together", "heading": "Combinations we chose", "limit": 3, "columns": "3"}

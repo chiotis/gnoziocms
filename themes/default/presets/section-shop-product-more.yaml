@@ -1,0 +1,11 @@
+kind: section
+for: template
+label: {"el": "Κατάστημα: κάτω από το προϊόν", "en": "Shop: below the product"}
+description: {"el": "Ολοκληρώστε το look και κομμάτια της ίδιας συλλογής.", "en": "Complete the look and pieces from the same collection."}
+blocks:
+  el:
+    - {"type": "shop-the-look", "variant": "complete", "eyebrow": "Φορέστε τα μαζί", "heading": "Ολοκληρώστε το look"}
+    - {"type": "product-grid", "variant": "grid", "source": "related", "heading": "Από την ίδια συλλογή", "limit": 4, "columns": "4"}
+  en:
+    - {"type": "shop-the-look", "variant": "complete", "eyebrow": "Wear it together", "heading": "Complete the look"}
+    - {"type": "product-grid", "variant": "grid", "source": "related", "heading": "From the same collection", "limit": 4, "columns": "4"}
