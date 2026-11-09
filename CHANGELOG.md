@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.254 — 2026-11-09 — A look of one product
+- Shop the look on a product's page: a look that holds only that product still shows, with that product. Until now the block disappeared.
+
 ## 0.1.253 — 2026-11-09 — Options without variants
 - A product with options and no variants can be added to the cart: any combination of its options, at the product's price and from its one stock. The choice shows in the cart and on the order. Until now such a product was refused as not available.
 
