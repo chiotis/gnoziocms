@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.262 — 2026-11-09 — The search preview in dark mode
+- Entry form, SEO tab: the title and address in the search preview are readable in dark mode.
+
 ## 0.1.261 — 2026-11-09 — The orders table lines up
 - Customer account: the columns of the orders list line up from row to row, the status pill fits its text, the amounts are aligned right, and the heading has room above the list.
 
