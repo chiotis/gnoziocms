@@ -855,6 +855,7 @@ A look: its picture with a point on each piece, the pieces with their prices, th
 
 | field | kind and choices | notes |
 |---|---|---|
+| `tour` | true / false; default `false` | Each piece lights up with its note on the picture, then the next, in a loop. It waits while a visitor points at the look, stops once they open a note, and stays still for visitors who ask for less motion. |
 | `header_beside` | true / false; default `false` |  |
 | `total_in_button` | true / false; default `false` |  |
 | `picture` | true / false; default `false`; only when `variant` is `c` or `o` or `m` or `p` or `l` or `e` or `t` or `e` | Complete the look only; the other layout always has it. |

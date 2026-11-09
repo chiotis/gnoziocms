@@ -84,3 +84,7 @@
 .look-buy .btn {
   justify-content: center;
 }
+
+.look-piece { transition: color 0.3s var(--ease, ease), padding-left 0.3s var(--ease, ease); }
+.look-piece.is-lit { padding-left: var(--space-2xs); color: var(--c-deep, var(--accent)); }
+.look-piece.is-lit .look-piece-title { color: inherit; }
