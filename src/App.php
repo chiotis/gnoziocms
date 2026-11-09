@@ -2265,7 +2265,13 @@ final class App
             $values = is_array($form['type_values'] ?? null) ? $form['type_values'] : [];
             $shopStock = ['tracked' => !empty($values['track_stock']), 'rows' => $this->shopStock()->rowsFor((string)($form['meta_form']['translation_id'] ?? ''), $values)];
         }
-        $this->render($type === 'forms' ? '@admin/form-edit.twig' : '@admin/edit.twig', $form + ['user' => $user, 'ai_picture' => $aiPicture, 'shop_stock' => $shopStock]);
+        // A product's private files, in its Downloads card, for those who may manage them.
+        $shopFiles = null;
+        if ($shopStock !== null && $this->permissions->can($user, 'shop.manage')) {
+            $productId = (string)($form['meta_form']['translation_id'] ?? '');
+            $shopFiles = ['product' => $productId, 'files' => $this->shopAdmin()->productFiles($productId), 'max_mb' => ShopAdmin::maxFileMb()];
+        }
+        $this->render($type === 'forms' ? '@admin/form-edit.twig' : '@admin/edit.twig', $form + ['user' => $user, 'ai_picture' => $aiPicture, 'shop_stock' => $shopStock, 'shop_files' => $shopFiles]);
     }
 
     /**
@@ -4081,21 +4087,33 @@ final class App
         foreach ($this->content->getItems('products', $this->defaultLanguage(), true) as $product) {
             $custom = is_array($product->meta['custom_fields'] ?? null) ? $product->meta['custom_fields'] : [];
             $id = (string)($product->meta['translation_id'] ?? '');
-            if ($id !== '' && ($custom['kind'] ?? 'physical') === 'digital') {
-                $products[$id] = (string)($product->meta['title'] ?? $product->slug);
+            if ($id !== '') {
+                $products[$id] = [
+                    'title' => (string)($product->meta['title'] ?? $product->slug),
+                    'url' => '/admin/edit?' . http_build_query(['type' => 'products', 'slug' => $product->slug, 'lang' => $this->defaultLanguage()]),
+                    'digital' => ($custom['kind'] ?? 'physical') === 'digital',
+                ];
             }
         }
-        asort($products);
         $admin = $this->shopAdmin();
         if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
-            $result = $admin->fileAction($_POST, is_array($_FILES['file'] ?? null) ? $_FILES['file'] : null, $products, $this->currentUsername());
+            // From a product's Downloads card: any product, since its Kind may be chosen and not saved yet.
+            $fromCard = !empty($_POST['ajax']);
+            $allowed = array_map(
+                static fn(array $p): string => $p['title'],
+                $fromCard ? $products : array_filter($products, static fn(array $p): bool => $p['digital'])
+            );
+            $result = $admin->fileAction($_POST, is_array($_FILES['file'] ?? null) ? $_FILES['file'] : null, $allowed, $this->currentUsername());
+            if ($fromCard) {
+                header('Content-Type: application/json; charset=utf-8');
+                header('Cache-Control: no-store');
+                echo json_encode($result + ['files' => $admin->productFiles((string)($_POST['product'] ?? ''))], JSON_UNESCAPED_UNICODE);
+                return;
+            }
             $this->redirect('/admin/shop-files?' . http_build_query(['done' => $result['ok'] ? 'ok' : 'fail', 'msg' => $result['message']]));
             return;
         }
-        $this->render('@admin/shop-files.twig', $admin->files($products) + $this->shopScreen('shop-files', 'Files') + [
-            'done' => (string)($_GET['done'] ?? ''),
-            'message' => mb_substr((string)($_GET['msg'] ?? ''), 0, 300),
-        ]);
+        $this->render('@admin/shop-files.twig', $admin->files($products) + $this->shopScreen('shop-files', 'Files'));
     }
 
     /** A string of the theme's in a language, with its {placeholders} filled: the shop's pages and emails. */

@@ -19,7 +19,7 @@ fields:
       physical: { el: Φυσικό προϊόν, en: Physical product }
       digital: { el: Ψηφιακό προϊόν, en: Digital product }
       subscription: { el: Συνδρομή, en: Subscription }
-    help: { el: 'Ένα ψηφιακό προϊόν πωλεί αρχεία, που ανεβαίνουν στο Κατάστημα › Αρχεία. Μια συνδρομή χρεώνεται ξανά κάθε περίοδο, με κάρτα μέσω Viva Wallet.', en: 'A digital product sells files, uploaded on Shop › Files. A subscription is charged again every period, by card through Viva Wallet.' }
+    help: { el: 'Ένα ψηφιακό προϊόν πωλεί αρχεία, που ανεβαίνουν στην κάρτα «Λήψεις». Μια συνδρομή χρεώνεται ξανά κάθε περίοδο, με κάρτα μέσω Viva Wallet.', en: 'A digital product sells files, uploaded in the Downloads card. A subscription is charged again every period, by card through Viva Wallet.' }
   price:
     group: { el: Τιμή, en: Price }
     type: decimal

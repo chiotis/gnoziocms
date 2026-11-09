@@ -83,9 +83,12 @@ root.submit('/admin/shop-settings?tab=payments', has_field('tab'), {'bank_transf
 
 # ---- Shop > Files
 st, _, html = root.get('/admin/shop-files')
-check('Shop > Files lists the digital products, not the others', st == 200 and 'Ο οδηγός' in html and 'Δαχτυλίδι' not in html and 'No file yet' in html, st)
+check('Shop > Files names the digital products with no file, not the others', st == 200 and 'Ο οδηγός' in html and 'Δαχτυλίδι' not in html and 'No file yet' in html, st)
 check('in the Shop group of the sidebar', 'admin/shop-files' in root.get('/admin/shop-orders')[2])
-token = next(v for k, v in next(f for f in root.forms('/admin/shop-files') if ['action', 'upload'] in [list(x) for x in f['fields']])['fields'] if k == '_csrf')
+edit = '/admin/edit?type=products&slug=' + next(l for l in re.findall(r'admin/edit\?type=products&(?:amp;)?slug=([^&"]+)', html))
+st, _, card = root.get(edit)
+check('the upload is in the product', 'data-shop-files' in card and 'admin-shop-files.js' in card, st)
+token = next(v for k, v in next(f for f in root.forms(edit) if any(x[0] == '_csrf' for x in f['fields']))['fields'] if k == '_csrf')
 BOOK = b'%PDF-1.4 the guide ' + b'x' * 2000
 st, hdr, _ = multipart(root, '/admin/shop-files', [('_csrf', token), ('action', 'upload'), ('product', 'ebook0000000000d')], [('file', 'Ο οδηγός.pdf', BOOK)])
 check('a file uploaded for it', 'done=ok' in (hdr.get('Location') or ''), hdr.get('Location'))
@@ -95,7 +98,13 @@ stored = db('select stored, name, size from shop_files')
 check('kept under storage/shop-files with a random name', len(stored) == 1 and stored[0][1] == 'Ο οδηγός.pdf' and stored[0][2] == len(BOOK) and os.path.isfile('app/storage/shop-files/' + stored[0][0]), stored)
 check('never served by the site', Client().get('/storage/shop-files/' + stored[0][0])[0] in (403, 404))
 st, _, html = root.get('/admin/shop-files')
-check('the screen lists it', 'Ο οδηγός.pdf' in html and 'Remove' in html)
+check('the screen lists it, with a link to its product', 'Ο οδηγός.pdf' in html and 'admin/edit?type=products' in html and 'Downloads' in html)
+st, _, answer = multipart(root, '/admin/shop-files', [('_csrf', token), ('action', 'upload'), ('ajax', '1'), ('product', 'ebook0000000000d')], [('file', 'b.pdf', b'%PDF-1.4 two')])
+import json as _json
+files = _json.loads(answer)['files']
+check('from the card: the answer lists the files', [f['name'] for f in files] == ['Ο οδηγός.pdf', 'b.pdf'], answer)
+st, _, answer = multipart(root, '/admin/shop-files', [('_csrf', token), ('action', 'remove'), ('ajax', '1'), ('product', 'ebook0000000000d'), ('id', str(files[1]['id']))], [])
+check('from the card: a removal', [f['name'] for f in _json.loads(answer)['files']] == ['Ο οδηγός.pdf'], answer)
 
 # ---- the product and the checkout
 pub = Client()
@@ -148,8 +157,8 @@ st, _, html = pub2.get('/account')
 check('the account lists the files of its orders', 'Τα αρχεία σας' in html and 'Ο οδηγός.pdf' in html, st)
 
 # ---- removing the file
-token = next(v for k, v in next(f for f in root.forms('/admin/shop-files') if ['action', 'remove'] in [list(x) for x in f['fields']])['fields'] if k == '_csrf')
-st, hdr, _ = root.submit('/admin/shop-files', lambda f: ['action', 'remove'] in [list(x) for x in f['fields']], {})
+fid = db('select id from shop_files')[0][0]
+st, hdr, _ = multipart(root, '/admin/shop-files', [('_csrf', token), ('action', 'remove'), ('id', str(fid))], [])
 check('a file removed: from the disk too', 'done=ok' in (hdr.get('Location') or '') and not os.path.isfile('app/storage/shop-files/' + stored[0][0]) and db('select count(*) from shop_files')[0][0] == 0, hdr.get('Location'))
 check('its links not found', raw(path)[0] == 404)
 

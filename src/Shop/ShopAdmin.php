@@ -281,24 +281,53 @@ final class ShopAdmin
     }
 
     /**
-     * Shop > Files: the digital products and the files each one sells.
+     * Shop > Files: every file, with how it has done and the product it belongs to.
      *
-     * @param array<string, string> $products digital products, id => title
+     * @param array<string, array{title: string, url: string, digital: bool}> $products every product, by id
      * @return array<string, mixed>
      */
     public function files(array $products): array
     {
-        $all = $this->shop->downloads()->allFiles();
+        $downloads = $this->shop->downloads();
+        $all = $downloads->allFiles();
+        $stats = $downloads->stats();
         $rows = [];
-        foreach ($products as $id => $title) {
-            $rows[] = ['id' => $id, 'title' => $title, 'files' => $all[$id] ?? []];
+        foreach ($all as $id => $files) {
+            $product = $products[$id] ?? ['title' => '', 'url' => '', 'digital' => false];
+            foreach ($files as $file) {
+                $rows[] = $file + $product + ($stats[$file['id']] ?? ['links' => 0, 'downloads' => 0, 'last_at' => 0]);
+            }
         }
-        $orphans = array_diff_key($all, $products);
-        return ['products' => $rows, 'orphans' => $orphans, 'max_mb' => intdiv(ShopDownloads::MAX_BYTES, 1024 * 1024)];
+        usort($rows, static fn(array $a, array $b): int => [$a['title'], $a['id']] <=> [$b['title'], $b['id']]);
+        $empty = array_filter($products, static fn(array $p, string $id): bool => $p['digital'] && empty($all[$id]), ARRAY_FILTER_USE_BOTH);
+        return [
+            'files' => $rows,
+            'empty_products' => array_values($empty),
+            'totals' => [
+                'files' => count($rows),
+                'bytes' => array_sum(array_column($rows, 'size')),
+                'links' => array_sum(array_column($rows, 'links')),
+                'downloads' => array_sum(array_column($rows, 'downloads')),
+            ],
+        ];
+    }
+
+    /** A product's files for its Downloads card: what the card lists after each change. */
+    public function productFiles(string $productId): array
+    {
+        return array_map(
+            static fn(array $f): array => ['id' => $f['id'], 'name' => $f['name'], 'size' => $f['size']],
+            $productId === '' ? [] : $this->shop->downloads()->files($productId)
+        );
+    }
+
+    public static function maxFileMb(): int
+    {
+        return intdiv(ShopDownloads::MAX_BYTES, 1024 * 1024);
     }
 
     /**
-     * An upload or a removal on Shop > Files.
+     * An upload or a removal, from a product's Downloads card.
      *
      * @param array<string, mixed> $post action: upload (product), remove (id)
      * @param array<string, mixed>|null $upload the file from $_FILES
