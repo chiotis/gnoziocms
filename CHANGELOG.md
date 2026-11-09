@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.250 — 2026-11-09 — Ready-made shop layouts and sections
+- **Four complete page layouts** while the shop is on: Horizon and Atelier home pages, a collection page and a product page. The last two are offered in the editors of Archive Layouts and Single Layouts.
+- **Thirteen ready-made sections**: heroes, collections, new pieces, looks, the story, trust and newsletter, and parts of the collection and product pages. Greek and English, with placeholder text.
+- A collection's page starts from the chapter, chips, pieces, its look and the next chapter; the product page starts with Complete the look.
+- Shop the look with no look chosen finds one: on a collection's page one with a piece of that collection, on other pages the newest.
+- Ready-made sections and layouts appear only where all their blocks exist.
+
 ## 0.1.249 — 2026-11-09 — The checkout's country list
 - The checkout's country list is never empty: while no shipping zone names a country it offers every country the shop knows. Once zones name countries, it shows only those.
 - Greece comes first in the list, the other countries alphabetically after it.
