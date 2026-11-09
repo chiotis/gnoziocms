@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.258 — 2026-11-09 — A tidy product form
+- Product details: the fields are in cards (Price, Pictures, Description, Options and variants, Stock, Shipping and more), with the kind of product as chips at the top.
+- Only what applies to the chosen kind shows: Stock and Shipping for a physical product, Downloads for a digital one, Subscription for a subscription. A switch that no longer applies turns off.
+- Content types: a field's `when` now works in the entry form, and two new settings, `group` (the card a field sits in) and `chips` (a short choice drawn as chips).
+
 ## 0.1.257 — 2026-11-09 — The accent on title blocks
 - Archive title and Entry title: with the accent tone, the title band shows the colour scheme's accent. Until now the band was painted dark over it. A band with a picture keeps its dark base.
 
