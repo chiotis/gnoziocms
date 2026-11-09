@@ -8,7 +8,7 @@
 <div class="container">
   {% if block.sort_options %}
     {# The order a visitor chooses: a GET form that keeps the filters; a page in another order is not indexed (archive.filtered). #}
-    <form class="archive-sort" method="get" aria-label="{{ t('sort.label', 'Sort by') }}">
+    <form class="archive-sort" method="get" action="#filters" aria-label="{{ t('sort.label', 'Sort by') }}">
       {% for name, value in archive.selected|default({}) %}<input type="hidden" name="filter[{{ name }}]" value="{{ value }}">{% endfor %}
       <label class="archive-filter">
         <span>{{ t('sort.label', 'Sort by') }}</span>
