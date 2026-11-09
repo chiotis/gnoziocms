@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.251 — 2026-11-09 — Options for an editorial shop design
+- **Product card** block for the card of a list of products: picture, second picture on hover, name and price.
+- **Header:** search, account and cart can be words, with the cart's count in brackets; the band of colours can use the collections' lighter tones.
+- **Divider:** the thread can use the terms' surface tone.
+- **Shop the look:** heading beside the picture, total in the button; Complete the look can show the picture and an add button for each piece. Pieces and looks show their collection's dot.
+- **Entry list:** a picture after a chosen number of entries, the term's by default.
+- The shop's layouts and starting templates use these.
+
 ## 0.1.250 — 2026-11-09 — Ready-made shop layouts and sections
 - **Four complete page layouts** while the shop is on: Horizon and Atelier home pages, a collection page and a product page. The last two are offered in the editors of Archive Layouts and Single Layouts.
 - **Thirteen ready-made sections**: heroes, collections, new pieces, looks, the story, trust and newsletter, and parts of the collection and product pages. Greek and English, with placeholder text.
