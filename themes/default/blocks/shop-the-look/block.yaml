@@ -6,6 +6,11 @@ variants:
   split: Picture and pieces side by side
   complete: Complete the look (a short list)
 fields:
+  tour:
+    type: toggle
+    label: Show the pieces in turn
+    help: Each piece lights up with its note on the picture, then the next, in a loop. It waits while a visitor points at the look, stops once they open a note, and stays still for visitors who ask for less motion.
+    default: false
   header_beside:
     type: toggle
     label: The heading beside the picture

@@ -15,6 +15,6 @@ blocks:
           - { type: product-summary }
           - { type: product-details, initial: first }
   - { type: content }
-  - { type: shop-the-look, variant: complete, picture: true, add_each: true, header_beside: true }
+  - { type: shop-the-look, variant: complete, tour: true, picture: true, add_each: true, header_beside: true }
   - { type: product-grid, source: related, heading: 'More from the collection', limit: 4, columns: '4' }
   - { type: entry-blocks }

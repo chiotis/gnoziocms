@@ -11,7 +11,7 @@
   {% if not block.header_beside %}{{ ui.section_header(block, heading_tag, block_uid, 'left') }}{% endif %}
   <div class="look look-{{ block.variant }}">
     {% if (block.variant != 'complete' or block.picture) and look.image %}
-      <div class="hotspots-figure ratio-portrait" data-hotspots>
+      <div class="hotspots-figure ratio-portrait" data-hotspots{% if block.tour %} data-hotspots-tour{% endif %}>
         {{ image(look.image, {alt: look.title, sizes: '(min-width: 900px) 50vw, 92vw', max_width: 1600}) }}
         {% for piece in look.pieces %}
           <div class="hotspot" style="left: {{ piece.x }}%; top: {{ piece.y }}%">

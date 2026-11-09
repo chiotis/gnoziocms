@@ -115,3 +115,19 @@
   color: var(--color-muted);
   font-size: var(--step--1);
 }
+
+/* Shop the look's pieces in turn (block.js). */
+.hotspot.is-lit { z-index: 3; }
+.hotspot.is-lit .hotspot-card { animation: hotspot-in 0.35s var(--ease, ease) both; }
+.hotspot.is-lit .hotspot-dot { animation: hotspot-ring 1.6s ease-out infinite; }
+@keyframes hotspot-in {
+  from { opacity: 0; translate: 0 6px; }
+  to { opacity: 1; translate: 0 0; }
+}
+@keyframes hotspot-ring {
+  from { box-shadow: 0 0 0 0 rgb(255 255 255 / 0.75); }
+  to { box-shadow: 0 0 0 16px rgb(255 255 255 / 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hotspot.is-lit .hotspot-card, .hotspot.is-lit .hotspot-dot { animation: none; }
+}

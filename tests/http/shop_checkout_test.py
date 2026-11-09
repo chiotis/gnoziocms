@@ -276,6 +276,7 @@ check('a layout for a list says so; its blocks are not this editor\'s', presets[
 for name in ('page-shop-home-horizon', 'page-shop-home-atelier'):
     write('app/content/pages/%s.md' % name, "---\ntitle: L\nstatus: published\ndate: '2026-03-05'\nblocks: " + json.dumps(presets['theme:' + name]['blocks']) + "\n---\n")
     st, _, html = pub.get('/' + name)
+    if name.endswith('horizon'): check('the look of the Horizon layout shows its pieces in turn', 'data-hotspots-tour' in html)
     check(name + ' opens, its look found by itself', st == 200 and 'Twig\\Error' not in html and 'Fatal error' not in html and ('look-pieces' in html or 'looks-card' in html), html[:200])
 
 # ---- a collection's page from its ready-made layout, with the look of that collection
