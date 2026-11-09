@@ -595,11 +595,25 @@
   text-decoration: none;
 }
 
+/* Fixed column widths, since each row is its own grid: the columns line up whatever a row holds. */
 @media (min-width: 640px) {
   .shop-orders a {
-    grid-template-columns: 1.2fr 1fr 1.2fr auto;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1.2fr) 6rem;
     align-items: center;
   }
+}
+
+.shop-orders .shop-status {
+  justify-self: start;
+}
+
+.shop-orders a > :last-child {
+  justify-self: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.shop-box-title + .shop-orders {
+  margin-top: var(--space-s);
 }
 
 .shop-orders a:hover .shop-code {
