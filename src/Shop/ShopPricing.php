@@ -75,10 +75,11 @@ final class ShopPricing
                 $unit += $plan['signup_cents'];
             }
             $tracked = !empty($custom['track_stock']) && empty($custom['allow_backorder']);
+            $stockKey = !empty($variant['one_stock']) ? '' : $line['variant_key'];
             $quantity = $line['quantity'];
             $max = null;
             if ($tracked) {
-                $max = min(ShopCart::MAX_QUANTITY, $this->stock->available($line['product_id'], $line['variant_key']));
+                $max = min(ShopCart::MAX_QUANTITY, $this->stock->available($line['product_id'], $stockKey));
                 if ($max < 1) {
                     $changes[] = ['title' => $title, 'reason' => 'sold_out'];
                     continue;
@@ -100,6 +101,7 @@ final class ShopPricing
                 'key' => ShopCart::key($line['product_id'], $line['variant_key']),
                 'product_id' => $line['product_id'],
                 'variant_key' => $line['variant_key'],
+                'stock_key' => $stockKey,
                 'title' => $title,
                 'variant' => $label,
                 'sku' => (string)(($variant['sku'] ?? '') ?: ($custom['sku'] ?? '')),
@@ -179,7 +181,16 @@ final class ShopPricing
     {
         $variants = array_values(array_filter(is_array($custom['variants'] ?? null) ? $custom['variants'] : [], static fn(mixed $v): bool => is_array($v) && ShopStock::variantKey((string)($v['values'] ?? '')) !== ''));
         if ($variants === []) {
-            return $key === '' ? null : false;
+            // Options with no variants: any combination of them can be chosen, at the product's price and from its one stock.
+            if ($key === '') {
+                return null;
+            }
+            foreach (self::combinations($custom) as $combination) {
+                if (ShopStock::variantKey($combination) === $key) {
+                    return ['values' => $combination, 'one_stock' => true];
+                }
+            }
+            return false;
         }
         foreach ($variants as $variant) {
             if (ShopStock::variantKey((string)$variant['values']) === $key) {
@@ -187,5 +198,30 @@ final class ShopPricing
             }
         }
         return false;
+    }
+
+    /**
+     * Every combination of a product's options, as a variant writes it ("Gold / M").
+     *
+     * @param array<string, mixed> $custom
+     * @return list<string>
+     */
+    private static function combinations(array $custom): array
+    {
+        $all = [''];
+        foreach (is_array($custom['options'] ?? null) ? $custom['options'] : [] as $option) {
+            $values = is_array($option) ? array_values(array_filter(array_map('trim', preg_split('/\R/u', (string)($option['values'] ?? '')) ?: []), static fn(string $v): bool => $v !== '')) : [];
+            if ($values === [] || trim((string)($option['name'] ?? '')) === '') {
+                continue;
+            }
+            $next = [];
+            foreach ($all as $start) {
+                foreach ($values as $value) {
+                    $next[] = $start === '' ? $value : $start . ' / ' . $value;
+                }
+            }
+            $all = $next;
+        }
+        return array_values(array_filter($all, static fn(string $c): bool => $c !== ''));
     }
 }

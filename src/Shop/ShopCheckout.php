@@ -204,9 +204,9 @@ final class ShopCheckout
             if (!$line['tracked']) {
                 continue;
             }
-            if (!$this->stock->reserve($line['product_id'], $line['variant_key'], $line['quantity'])) {
+            if (!$this->stock->reserve($line['product_id'], $line['stock_key'], $line['quantity'])) {
                 foreach ($held as $back) {
-                    $this->stock->release($back['product_id'], $back['variant_key'], $back['quantity']);
+                    $this->stock->release($back['product_id'], $back['stock_key'], $back['quantity']);
                 }
                 return ['ok' => false, 'errors' => ['sold_out'], 'order' => null, 'redirect' => '', 'quote' => $quote];
             }
@@ -216,7 +216,7 @@ final class ShopCheckout
         if ($quote['coupon'] !== null && $quote['coupon']['ok']) {
             if (!$this->coupons->take($quote['coupon']['code'])) {
                 foreach ($held as $back) {
-                    $this->stock->release($back['product_id'], $back['variant_key'], $back['quantity']);
+                    $this->stock->release($back['product_id'], $back['stock_key'], $back['quantity']);
                 }
                 return ['ok' => false, 'errors' => ['coupon_used_up'], 'order' => null, 'redirect' => '', 'quote' => $quote];
             }
@@ -258,7 +258,7 @@ final class ShopCheckout
             $created = $this->orders->create($order, $lines, (string)$shop['order_prefix']);
         } catch (\Throwable $e) {
             foreach ($held as $back) {
-                $this->stock->release($back['product_id'], $back['variant_key'], $back['quantity']);
+                $this->stock->release($back['product_id'], $back['stock_key'], $back['quantity']);
             }
             $this->coupons->giveBack($couponTaken);
             throw $e;
@@ -315,9 +315,9 @@ final class ShopCheckout
                     continue;
                 }
                 if ($stock === self::HELD) {
-                    $this->stock->release($line['product_id'], $line['variant_key'], $line['quantity']);
+                    $this->stock->release($line['product_id'], $this->stock->keyHeld($line['product_id'], $line['variant_key']), $line['quantity']);
                 } elseif ($stock === self::TAKEN) {
-                    $this->stock->restock($line['product_id'], $line['variant_key'], $line['quantity']);
+                    $this->stock->restock($line['product_id'], $this->stock->keyHeld($line['product_id'], $line['variant_key']), $line['quantity']);
                 }
             }
             $this->orders->update($id, ['stock_held' => 0]);
@@ -325,7 +325,7 @@ final class ShopCheckout
         } elseif ($stock === self::HELD && $to !== 'refunded') {
             foreach ($lines as $line) {
                 if ($line['tracked']) {
-                    $this->stock->commit($line['product_id'], $line['variant_key'], $line['quantity']);
+                    $this->stock->commit($line['product_id'], $this->stock->keyHeld($line['product_id'], $line['variant_key']), $line['quantity']);
                 }
             }
             $this->orders->update($id, ['stock_held' => self::TAKEN]);

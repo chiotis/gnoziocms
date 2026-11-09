@@ -38,12 +38,14 @@ $put = static function (string $file, string $front) use ($root): void {
 };
 $put('ring.md', "title: Δαχτυλίδι\nstatus: published\ntranslation_id: ring0000000000001\ncollections: [balos]\ncustom_fields:\n  price: '124'\n  tax_class: standard\n  weight_g: 40\n  gift_wrap: true\n  track_stock: true\n  options:\n    - { name: Finish, values: \"Gold\\nSilver\" }\n  option_labels: \"Gold = Χρυσό\"\n  variants:\n    - { values: Gold, price: '186', sku: R-G }\n    - { values: Silver }");
 $put('ring.en.md', "title: Ring\nstatus: published\ntranslation_id: ring0000000000001\ncollections: [balos]\ncustom_fields:\n  price: '124'\n  track_stock: true\n  variants:\n    - { values: Gold, price: '186', sku: R-G }\n    - { values: Silver }");
+$put('charm.md', "title: Charm\nstatus: published\ntranslation_id: charm000000000001\ncustom_fields:\n  price: '30'\n  track_stock: true\n  options:\n    - { name: Colour, values: \"Red\\nBlue\" }\n    - { name: Size, values: \"S\\nM\" }");
 $put('book.md', "title: Βιβλίο\nstatus: published\ntranslation_id: book0000000000001\ncustom_fields:\n  price: '20'\n  tax_class: super_reduced\n  weight_g: 500");
 $put('ebook.md', "title: Rental\nstatus: published\ntranslation_id: ebook000000000001\ncustom_fields:\n  price: '9'\n  kind: rental");
 $put('draft.md', "title: Draft\nstatus: draft\ntranslation_id: draft000000000001\ncustom_fields:\n  price: '9'");
 
 $stock = new ShopStock($db);
 $stock->setOnHand('ring0000000000001', ['gold' => 2, 'silver' => 5], ['gold', 'silver']);
+$stock->setOnHand('charm000000000001', ['' => 3], ['']);
 $shop = new ShopSettings($meta);
 $taxonomies = new Taxonomies("$root/content", ["el", "en"]);
 $catalogue = new ShopCatalogue($content, fn() => $taxonomies, fn() => $types, $stock, fn() => 'el');
@@ -195,6 +197,16 @@ check('the customers\' list counts orders', $customers->search('maria')['rows'][
 $orders->unlink($id);
 $customers->delete($id);
 check('a deleted account leaves its orders, linked to nobody', [$customers->get($id), $orders->get($order['id'])['customer_id'], $orders->get($order['id'])['number']], [null, null, $order['number']]);
+
+// ---- options with no variants: any combination, at the product's price, from its one stock
+$charm = static fn(string $key, int $q = 1): array => $pricing->lines([['product_id' => 'charm000000000001', 'variant_key' => $key, 'quantity' => $q]], 'el');
+check('a combination of the options can be bought, and is named', [$charm('red / m')['lines'][0]['variant'], $charm('red / m')['lines'][0]['unit_cents']], ['Red / M', 3000]);
+check('a choice that is not there cannot', [$charm('green / m')['lines'], $charm('green / m')['changes'][0]['reason']], [[], 'gone']);
+check('the quantity is that of the one stock', $charm('blue / s', 9)['lines'][0]['quantity'], 3);
+$opted = $checkout->place($form, ['lines' => [['product_id' => 'charm000000000001', 'variant_key' => 'blue / s', 'quantity' => 2]], 'coupon' => ''], null, 'el');
+check('its order takes from the one stock', [$opted['ok'], $stock->forProduct('charm000000000001')['']['on_hand'], $stock->forProduct('charm000000000001')['']['reserved'], $orders->lines($opted['order']['id'])[0]['variant']], [true, 1, 0, 'Blue / S']);
+$checkout->changeStatus($opted['order']['id'], 'cancelled', 'test');
+check('and cancelling gives it back', $stock->forProduct('charm000000000001')['']['on_hand'], 3);
 
 echo $fail === 0 ? "ALL PASSED\n" : "$fail FAILED\n";
 exit($fail === 0 ? 0 : 1);
