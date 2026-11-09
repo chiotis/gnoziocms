@@ -1,4 +1,4 @@
-# Blocks of this installation (GnozioCMS 0.1.255)
+# Blocks of this installation (GnozioCMS 0.1.256)
 
 ## Fields every block has
 
@@ -433,8 +433,10 @@ Opening section with a strong heading, supporting text, buttons, and an image or
 | `skip_shown` | true / false; default `false`; only when `source` is `!` or `m` or `a` or `n` or `u` or `a` or `l` | Entries that a block higher on the page already shows (or the page itself) are left out, and the next ones take their place. |
 | `entry_button` | text; only when `source` is `!` or `m` or `a` or `n` or `u` or `a` or `l` |  |
 | `eyebrow` | text | With an entry, its category when this is empty. |
+| `tagline` | text |  |
 | `heading` | text; required; only when `source` is `m` or `a` or `n` or `u` or `a` or `l` |  |
 | `text` | text (several lines); only when `source` is `m` or `a` or `n` or `u` or `a` or `l` |  |
+| `note` | text |  |
 | `actions` | list of rows; at most 2 rows; only when `source` is `m` or `a` or `n` or `u` or `a` or `l` |  |
 | &nbsp;&nbsp;`actions[].label` | text |  |
 | &nbsp;&nbsp;`actions[].url` | link | A page ("contact"), a path ("/en/contact"), a full URL, #anchor, mailto: or tel: |

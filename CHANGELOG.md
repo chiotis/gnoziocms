@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.256 — 2026-11-09 — The Atelier home page
+- Hero: two new optional fields, **Line above the heading** and **Small note** (under the buttons).
+- Term tiles, list layout: the term whose picture is showing is marked, from the first one on.
+- The shop's Atelier home page layout uses both new fields and has a colour band above the maker's section.
+
 ## 0.1.255 — 2026-11-09 — Filters keep their place
 - Choosing a filter or a sort order on a list reloads the page at the filters, clear of a header that stays on screen, instead of at the top.
 
