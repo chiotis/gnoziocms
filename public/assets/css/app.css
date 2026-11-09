@@ -1389,6 +1389,8 @@ html.dark .en-crumb a { color: #93c5fd; }
 html.dark .en-crumb strong, html.dark .en-card-title, html.dark .en-title, html.dark .en-address-line strong, html.dark .en-list strong, html.dark .ed-pop strong { color: #f1f5f9; }
 html.dark .en-crumb, html.dark .en-help, html.dark .en-address-label, html.dark .en-address-line, html.dark .en-field > span, html.dark .en-field small, html.dark .en-list small, html.dark .ed-foot, html.dark .en-serp > span:last-child { color: #94a3b8; }
 html.dark .en-card, html.dark .en-serp, html.dark .ed-pop, html.dark .ed-picturebar { border-color: #334155; background: #0f172a; }
+html.dark .en-serp-url { color: #86efac; }
+html.dark .en-serp strong { color: #8ab4f8; }
 html.dark .en-tabs, html.dark .en-address, html.dark .en-list li { border-color: #1e293b; }
 html.dark .en-chip { background: #1e293b; color: #cbd5e1; }
 html.dark .en-chip.is-live { background: #052e16; color: #4ade80; }
