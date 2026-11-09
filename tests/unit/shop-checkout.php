@@ -103,6 +103,7 @@ check('a flat rate free over its amount, and pickup', [array_column(ShopShipping
 check('by weight, heavier than the table is not offered; free over an amount', [array_column(ShopShipping::methods($zones[2], 5000, 400, 'en', 'el', $t), 'cents'), array_column(ShopShipping::methods($zones[2], 40000, 3000, 'en', 'el', $t), 'cents')], [[1000], [0]]);
 check('a method without a label is named by its kind', ShopShipping::methods($zones[2], 5000, 400, 'en', 'el', $t)[0]['label'], 'shop.ship_weight');
 check('the countries of the checkout: every one when a zone is everywhere', [ShopShipping::countries(array_slice($zones, 0, 2)), count(ShopShipping::countries($zones)) > 30], [['GR', 'CY'], true]);
+check('no zone names a country yet: every country, Greece first in the list', [ShopShipping::countries([]) === array_keys(GnozioCMS\Shop\ShopCountries::NAMES), array_key_first(GnozioCMS\Shop\ShopCountries::options(['DE', 'AT', 'GR'], 'en'))], [true, 'GR']);
 check('the weight table back as text', ShopShipping::tableText($zones[2]['methods'][0]['table']), "500 = 10.00\n2000 = 18.00");
 
 // ---- settings

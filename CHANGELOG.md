@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.249 — 2026-11-09 — The checkout's country list
+- The checkout's country list is never empty: while no shipping zone names a country it offers every country the shop knows. Once zones name countries, it shows only those.
+- Greece comes first in the list, the other countries alphabetically after it.
+
 ## 0.1.248 — 2026-11-08 — HTML emails and the WooCommerce import
 - **HTML emails:** the shop's emails go as text and HTML (SMTP multipart/alternative, SES Html body): the shop's colour, logo, the order as a table, the bank accounts, downloads and a button, a footer line. The email log says whether one had HTML.
 - **Shop settings › Emails:** HTML on or off, the colour, a logo and a footer line, and each email's subject and opening text in each language (blank: the theme's words), with a preview per language and a test email.

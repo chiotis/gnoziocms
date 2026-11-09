@@ -147,7 +147,8 @@ final class ShopShipping
     }
 
     /**
-     * The countries an address can be in: those the zones name, or every country the shop knows when one zone is `*`.
+     * The countries an address can be in: those the zones name, or every country the shop knows when one zone is `*` or no zone
+     * names any yet (the list is never empty, so the checkout's required field can always be filled).
      *
      * @param list<array<string, mixed>> $zones
      * @return string[]
@@ -163,7 +164,7 @@ final class ShopShipping
                 $codes[$code] = true;
             }
         }
-        return array_keys($codes);
+        return $codes !== [] ? array_keys($codes) : array_keys(ShopCountries::NAMES);
     }
 
     /** @param list<array{0: int, 1: int}> $table grams => cents, the first row heavy enough is the rate; null when it is heavier than all */

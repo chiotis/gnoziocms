@@ -37,7 +37,7 @@ final class ShopCountries
 
     /**
      * @param string[] $codes
-     * @return array<string, string> code => name, in the order of the names
+     * @return array<string, string> code => name, Greece first, then in the order of the names
      */
     public static function options(array $codes, string $lang): array
     {
@@ -47,6 +47,6 @@ final class ShopCountries
         }
         $collator = class_exists(\Collator::class) ? new \Collator($lang) : null;
         uasort($options, static fn(string $a, string $b): int => $collator ? (int)$collator->compare($a, $b) : strcmp($a, $b));
-        return $options;
+        return isset($options['GR']) ? ['GR' => $options['GR']] + $options : $options;
     }
 }

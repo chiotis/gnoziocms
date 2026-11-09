@@ -760,7 +760,7 @@ final class ShopFront
                 'every' => ($this->t)('shop.every_' . $s['interval'] . ($s['interval_count'] > 1 ? 's' : ''), $lang, ['n' => (string)$s['interval_count']]),
                 'status_text' => ($this->t)('shop.sub_' . $s['status'], $lang),
             ], $this->subscriptions?->forCustomer((int)$customer['id']) ?? []),
-            'countries' => ShopCountries::options(ShopShipping::countries($shop['shipping']) ?: array_keys(ShopCountries::NAMES), $lang),
+            'countries' => ShopCountries::options(ShopShipping::countries($shop['shipping']), $lang),
             'verify_pending' => !$customer['verified'],
         ]);
     }
