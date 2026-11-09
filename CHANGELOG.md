@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.253 — 2026-11-09 — Options without variants
+- A product with options and no variants can be added to the cart: any combination of its options, at the product's price and from its one stock. The choice shows in the cart and on the order. Until now such a product was refused as not available.
+
 ## 0.1.252 — 2026-11-09 — Shop the look: the pieces in turn
 - **Show the pieces in turn**, a new option of Shop the look: each piece lights up with its note on the picture and its row in the list, then the next, in a loop. It runs only on screen, waits while a visitor points at the look, stops once they open a note, and stays still for visitors who ask for less motion.
 - The shop's layouts and starting templates have it on.
