@@ -9,6 +9,7 @@
 {{ parts.body({
   variant: block.variant,
   eyebrow: entry and not block.eyebrow and term ? taxonomy_label('categories', term, lang|default('')) : block.eyebrow,
+  tagline: block.tagline|default(''),
   heading: block.heading,
   heading_tag: heading_tag,
   heading_id: block_uid ~ '-title',
@@ -16,6 +17,7 @@
   text: entry ? (summary|length > 240 ? summary|slice(0, 240)|trim ~ '…' : summary) : block.text,
   actions: entry ? [{label: block.entry_button ?: t('hero.read_more', 'Read more'), url: url(item_path(entry, prefix)), style: 'primary'}] : block.actions,
   highlights: block.highlights,
+  note: block.note|default(''),
   steps: block.items,
   image: block.image,
   image_alt: block.image_alt,
