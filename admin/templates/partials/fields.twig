@@ -44,6 +44,17 @@
       </span>
       <input type="checkbox" name="{{ name }}" value="1" {% if value %}checked{% endif %} class="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500">
     </label>
+  {% elseif field.type == 'select' and field.chips|default(false) %}
+    {% set chosen = (value ~ '') ?: (field.default|default('') ~ '') %}
+    <div class="block{{ span }}" role="radiogroup" aria-label="{{ field.label }}">
+      <span class="mb-1 block text-sm font-medium text-slate-700">{{ field.label }}</span>
+      <div class="en-chips">
+        {% for option_value, option_label in field.options %}
+          <label class="lc-chip"><input type="radio" name="{{ name }}" value="{{ option_value }}" {% if chosen == option_value ~ '' or (chosen == '' and loop.first) %}checked{% endif %}><span>{{ option_label }}</span></label>
+        {% endfor %}
+      </div>
+      {% if field.help %}<span class="mt-1 block text-xs text-slate-400">{{ field.help }}</span>{% endif %}
+    </div>
   {% elseif field.type == 'gallery' %}
     <div class="block{{ span }}" role="group" aria-label="{{ field.label }}">
       <span class="mb-1 block text-sm font-medium text-slate-700">{{ field.label }}</span>

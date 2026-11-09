@@ -114,6 +114,14 @@ final class FieldSchema
             if ($when !== []) {
                 $field['when'] = $when;
             }
+            // The card of the entry form this field sits in: fields of the same `group` come together, in the order of the first of them.
+            if (is_string($definition['group'] ?? null) && trim($definition['group']) !== '') {
+                $field['group'] = trim($definition['group']);
+            }
+            // A short choice drawn as chips side by side instead of a list.
+            if ($type === 'select' && ($definition['chips'] ?? false) === true) {
+                $field['chips'] = true;
+            }
             // An icon is a choice from the theme's icon set; the set itself is filled in where the theme is known.
             if ($type === 'select' || $type === 'icon') {
                 $field['options'] = self::normalizeOptions($definition['options'] ?? []);

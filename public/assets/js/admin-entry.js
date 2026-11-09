@@ -160,3 +160,54 @@
     drawShare();
   }
 })();
+
+// ---- the details tab: a field with `when` shows only while the fields it names have those values; a card with nothing left to show goes too
+(function () {
+  'use strict';
+
+  var root = document.querySelector('[data-details-fields]');
+  if (!root) { return; }
+  var fields = Array.prototype.slice.call(root.querySelectorAll('[data-field-when]'));
+  if (!fields.length) { return; }
+
+  function current(key) {
+    var inputs = root.querySelectorAll('[name="details[' + key + ']"]');
+    for (var i = 0; i < inputs.length; i++) {
+      var input = inputs[i];
+      if (input.type === 'radio') { if (input.checked) { return input.value; } continue; }
+      if (input.type === 'checkbox') { return input.checked ? '1' : '0'; }
+      return input.value;
+    }
+    return '';
+  }
+
+  function holds(wanted, value) {
+    return wanted.some(function (w) { return w.charAt(0) === '!' ? value !== w.slice(1) : value === w; });
+  }
+
+  function shown(field) {
+    var when = JSON.parse(field.getAttribute('data-field-when'));
+    return Object.keys(when).every(function (key) { return holds([].concat(when[key]), current(key)); });
+  }
+
+  // After a change by hand, a switch that no longer applies is turned off, so a product never keeps a setting nobody can see.
+  function apply(byHand) {
+    var again = false;
+    fields.forEach(function (field) {
+      var show = shown(field);
+      if (byHand && !show && !field.hidden) {
+        field.querySelectorAll('input[type="checkbox"]:checked').forEach(function (box) {
+          if (box.name === 'details[' + field.getAttribute('data-field-key') + ']') { box.checked = false; again = true; }
+        });
+      }
+      field.hidden = !show;
+    });
+    if (again) { apply(false); }
+    root.querySelectorAll('[data-details-group]').forEach(function (group) {
+      group.hidden = !group.querySelector('.en-field:not([hidden])');
+    });
+  }
+
+  root.addEventListener('change', function () { apply(true); });
+  apply(false);
+})();

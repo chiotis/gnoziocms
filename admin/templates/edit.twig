@@ -354,15 +354,28 @@
       {% import '@admin/partials/fields.twig' as content_fields %}
       <div class="tab-panel hidden" data-panel="details">
         <input type="hidden" name="details_present" value="1">
-        <section class="{{ card }}" aria-labelledby="en-h-details">
-          <h2 id="en-h-details" class="en-card-title">{{ type_definition.singular }} details</h2>
-          <p class="en-help m-0">{{ type_definition.description ?: 'Fields defined for this content type. They are shown on the page and can be used to filter the archive.' }}</p>
-          <div class="en-details">
-            {% for key, field in type_fields %}
-              {{ content_fields.field(field, 'details[' ~ key ~ ']', type_values[key]|default(field.type == 'toggle' ? false : '')) }}
-            {% endfor %}
-          </div>
-        </section>
+        {# One card for each `group` of fields, in the order of the first field of each; the fields with no group come in the type's own card. #}
+        {% set field_groups = {} %}
+        {% for key, field in type_fields %}
+          {% set group_key = 'g:' ~ field.group|default('') %}
+          {% set field_groups = field_groups|merge({(group_key): field_groups[group_key]|default({})|merge({(key): field})}) %}
+        {% endfor %}
+        <div class="space-y-3" data-details-fields>
+          {% for group_key, fields in field_groups %}
+            {% set group_title = group_key|slice(2) %}
+            <section class="{{ card }}" aria-labelledby="en-h-details-{{ loop.index }}" data-details-group>
+              <h2 id="en-h-details-{{ loop.index }}" class="en-card-title">{{ group_title ?: type_definition.singular ~ ' details' }}</h2>
+              {% if field_groups|length == 1 %}<p class="en-help m-0">{{ type_definition.description ?: 'Fields defined for this content type. They are shown on the page and can be used to filter the archive.' }}</p>{% endif %}
+              <div class="en-details">
+                {% for key, field in fields %}
+                  <div class="en-field{{ field.type == 'repeater' or field.span == 'full' ? ' is-wide' : '' }}"{% if field.when|default(null) %} data-field-when="{{ field.when|json_encode }}"{% endif %} data-field-key="{{ key }}">
+                    {{ content_fields.field(field, 'details[' ~ key ~ ']', type_values[key]|default(field.type == 'toggle' ? false : '')) }}
+                  </div>
+                {% endfor %}
+              </div>
+            </section>
+          {% endfor %}
+        </div>
       </div>
     {% endif %}
 
