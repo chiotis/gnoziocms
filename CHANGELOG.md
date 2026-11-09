@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.252 — 2026-11-09 — Shop the look: the pieces in turn
+- **Show the pieces in turn**, a new option of Shop the look: each piece lights up with its note on the picture and its row in the list, then the next, in a loop. It runs only on screen, waits while a visitor points at the look, stops once they open a note, and stays still for visitors who ask for less motion.
+- The shop's layouts and starting templates have it on.
+
 ## 0.1.251 — 2026-11-09 — Options for an editorial shop design
 - **Product card** block for the card of a list of products: picture, second picture on hover, name and price.
 - **Header:** search, account and cart can be words, with the cart's count in brackets; the band of colours can use the collections' lighter tones.
