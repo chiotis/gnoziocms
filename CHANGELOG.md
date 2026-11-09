@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.260 — 2026-11-09 — Files in the product
+- Digital products: a product's files are uploaded and removed in its Downloads card, at once and without saving. The card warns when there is no file.
+- Shop › Files is now an overview: totals, and for each file its product (with a link to edit it), size, date, orders, downloads and last download. Digital products with no file are listed.
+
 ## 0.1.259 — 2026-11-09 — Icons for Products and Looks
 - Admin sidebar: Products has a price tag and Looks a clothes hanger, instead of the plain lines.
 
