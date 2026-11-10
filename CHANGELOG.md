@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.265 — 2026-11-10 — Coupons for chosen products
+- Shop › Coupons: a coupon can be limited to products, as many as wanted, chosen with a search picker (as Complete the look in the product editor). With collections too, a piece counts when it is in one of them or is one of the products. The list shows how many.
+
 ## 0.1.264 — 2026-11-10 — Cookie settings
 - With the Meta Pixel on and consent asked, the footer's copyright line has **Cookie settings**, which opens the banner again, so a visitor can change their answer as easily as they gave it. Any link to `#cookie-settings` (a menu item) does the same. Saying no after yes reloads the page without the Pixel.
 
