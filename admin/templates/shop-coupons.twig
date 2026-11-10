@@ -10,7 +10,7 @@
   {{ ui.flash(message, done == 'ok' ? 'success' : 'error') }}
 
   {% if editing or creating %}
-    {% set c = editing ?? {code: '', kind: 'percent', amount: '', min_cents: 0, starts_at: '', ends_at: '', usage_limit: 0, per_customer: 0, collections: [], active: true, used: 0, note: ''} %}
+    {% set c = editing ?? {code: '', kind: 'percent', amount: '', min_cents: 0, starts_at: '', ends_at: '', usage_limit: 0, per_customer: 0, collections: [], products: [], active: true, used: 0, note: ''} %}
     <form method="post" action="{{ url('admin/shop-coupons') }}" class="{{ card }} mb-4">
       {{ csrf_field() }}<input type="hidden" name="original" value="{{ editing ? c.code : '' }}">
       <div class="flex items-center justify-between border-b border-slate-200 px-4 py-3"><h2 class="text-sm font-semibold text-slate-900">{{ editing ? 'Coupon ' ~ c.code : 'New coupon' }}</h2>{% if editing %}<span class="text-xs text-slate-400">Used {{ c.used }} times</span>{% endif %}</div>
@@ -29,6 +29,12 @@
             {% for id, name in collections %}<label class="mr-3 inline-flex items-center gap-1.5 text-sm text-slate-700"><input type="checkbox" name="collections[]" value="{{ id }}" class="h-4 w-4 rounded border-slate-300" {% if id in c.collections %}checked{% endif %}> {{ name }}</label>{% endfor %}
           </fieldset>
         {% endif %}
+        <div class="sm:col-span-3">
+          {% import '@admin/partials/fields.twig' as content_fields %}
+          <span class="{{ label }}">Only for these products</span>
+          {{ content_fields.relation(product_field, 'products', c.products|default([]), input) }}
+          <p class="mt-1 text-xs text-slate-500">With collections and products both chosen, a piece counts when it is in one of the collections or is one of the products. None of either: everything.</p>
+        </div>
         <label class="flex items-center gap-2 text-sm text-slate-700 sm:col-span-3"><input type="checkbox" name="active" value="1" class="h-4 w-4 rounded border-slate-300" {% if c.active %}checked{% endif %}> Active</label>
       </div>
       <div class="flex gap-2 border-t border-slate-200 px-4 py-3">
@@ -50,7 +56,7 @@
           {% for c in coupons %}
             <tr class="hover:bg-slate-50">
               <td class="px-4 py-2"><a class="font-mono font-medium text-blue-700 hover:underline" href="{{ url('admin/shop-coupons?code=' ~ c.code) }}">{{ c.code }}</a> {% if not c.active %}{{ ui.badge('Off', 'slate') }}{% endif %}</td>
-              <td class="px-4 py-2 text-slate-600">{{ c.kind == 'percent' ? c.amount ~ '%' : (c.kind == 'fixed' ? '€' ~ c.amount : 'Free shipping') }}{% if c.min_cents %} <span class="text-xs text-slate-400">over €{{ c.min_cents / 100 }}</span>{% endif %}{% if c.collections is not empty %} <span class="text-xs text-slate-400">· {{ c.collections|length }} collections</span>{% endif %}</td>
+              <td class="px-4 py-2 text-slate-600">{{ c.kind == 'percent' ? c.amount ~ '%' : (c.kind == 'fixed' ? '€' ~ c.amount : 'Free shipping') }}{% if c.min_cents %} <span class="text-xs text-slate-400">over €{{ c.min_cents / 100 }}</span>{% endif %}{% if c.collections is not empty %} <span class="text-xs text-slate-400">· {{ c.collections|length }} collections</span>{% endif %}{% if c.products|default([]) is not empty %} <span class="text-xs text-slate-400">· {{ c.products|length }} {{ c.products|length == 1 ? 'product' : 'products' }}</span>{% endif %}</td>
               <td class="px-4 py-2 text-xs text-slate-500">{{ c.starts_at ?: '—' }} → {{ c.ends_at ?: '—' }}</td>
               <td class="px-4 py-2 text-right tabular-nums">{{ c.used }}{% if c.usage_limit %} / {{ c.usage_limit }}{% endif %}</td>
               <td class="px-4 py-2 text-right">
@@ -62,4 +68,5 @@
       </table>
     {% endif %}
   </div>
+  <script src="{{ asset('js/admin-relations.js') }}" defer></script>
 {% endblock %}

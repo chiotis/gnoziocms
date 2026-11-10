@@ -123,6 +123,13 @@ final class SystemDatabase
         $this->applyMigration($pdo, '202611080001_shop_payments', fn(PDO $db) => $this->createShopPaymentTables($db));
         $this->applyMigration($pdo, '202611080002_shop_downloads', fn(PDO $db) => $this->createShopDownloadTables($db));
         $this->applyMigration($pdo, '202611080003_shop_subscriptions', fn(PDO $db) => $this->createShopSubscriptionTables($db));
+        // A coupon can be limited to products too, not only to collections.
+        $this->applyMigration($pdo, '202611100002_shop_coupon_products', function (PDO $db): void {
+            $columns = array_column($db->query('PRAGMA table_info(shop_coupons)')->fetchAll(PDO::FETCH_ASSOC), 'name');
+            if ($columns !== [] && !in_array('products', $columns, true)) {
+                $db->exec("ALTER TABLE shop_coupons ADD COLUMN products TEXT NOT NULL DEFAULT ''");
+            }
+        });
         // What an order keeps, with the visitor's consent, for its purchase to be sent to Meta when it is paid (ShopMarketing).
         $this->applyMigration($pdo, '202611100001_shop_order_tracking', fn(PDO $db) => $db->exec(
             "CREATE TABLE IF NOT EXISTS shop_order_tracking (

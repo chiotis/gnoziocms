@@ -4062,7 +4062,11 @@ final class App
         }
         $admin = $this->shopAdmin();
         if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
-            $result = $admin->couponAction($_POST);
+            // The product picker sends ids, or `@products/slug` for a product that has none yet: the products' own relation field
+            // (Complete the look) turns them into ids the same way the content editor does.
+            $post = $_POST;
+            $post['products'] = RelationFields::idList($this->relations()->normalize(Shop::TYPE, ['complete_the_look' => is_array($_POST['products'] ?? null) ? $_POST['products'] : []])['complete_the_look'] ?? []);
+            $result = $admin->couponAction($post);
             $query = ['done' => $result['ok'] ? 'ok' : 'fail', 'msg' => $result['message']];
             if (!$result['ok'] && ($_POST['action'] ?? '') !== 'delete') {
                 $query += (string)($_POST['original'] ?? '') !== '' ? ['code' => (string)$_POST['original']] : ['new' => 1];
@@ -4074,7 +4078,14 @@ final class App
         foreach ($this->taxonomies()->load(Shop::COLLECTIONS)['terms'] as $term) {
             $collections[$term['id']] = $this->taxonomies()->label(Shop::COLLECTIONS, $term['id'], $this->defaultLanguage());
         }
-        $this->render('@admin/shop-coupons.twig', $admin->coupons($_GET, $collections) + $this->shopScreen('shop-coupons', 'Coupons') + [
+        $view = $admin->coupons($_GET, $collections);
+        // The product picker: the relation field of the content editor, with the titles of the products already chosen.
+        $view['product_field'] = $this->relations()->withLabels(
+            FieldSchema::normalize(['products' => ['type' => 'relation', 'types' => [Shop::TYPE], 'multiple' => true, 'label' => 'Products', 'placeholder' => 'Add a product: search by name…']]),
+            ['products' => $view['editing']['products'] ?? []],
+            $this->defaultLanguage()
+        )['products'];
+        $this->render('@admin/shop-coupons.twig', $view + $this->shopScreen('shop-coupons', 'Coupons') + [
             'done' => (string)($_GET['done'] ?? ''),
             'message' => mb_substr((string)($_GET['msg'] ?? ''), 0, 300),
         ]);

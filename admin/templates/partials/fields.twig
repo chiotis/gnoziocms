@@ -126,7 +126,7 @@
       {% for id in chosen %}{{ m.relation_chip(field, name, id) }}{% endfor %}
     </ul>
     <div class="rel-box">
-      <input type="text" class="rel-search {{ control }}" data-rel-search placeholder="{{ field.multiple ? 'Add an entry: search by title…' : 'Choose an entry: search by title…' }}" role="combobox" aria-expanded="false" aria-autocomplete="list" autocomplete="off"{% if field.max and chosen|length >= field.max %} disabled{% endif %}>
+      <input type="text" class="rel-search {{ control }}" data-rel-search placeholder="{{ field.placeholder|default('') ?: (field.multiple ? 'Add an entry: search by title…' : 'Choose an entry: search by title…') }}" role="combobox" aria-expanded="false" aria-autocomplete="list" autocomplete="off"{% if field.max and chosen|length >= field.max %} disabled{% endif %}>
       <ul class="rel-results" data-rel-results role="listbox" hidden></ul>
     </div>
     {% if field.multiple and field.max %}<span class="rel-hint">Up to {{ field.max }}.</span>{% endif %}
