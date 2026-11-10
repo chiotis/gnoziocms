@@ -4,6 +4,10 @@
   script adds it without leaving the page and opens the cart; without the script, the form goes to the cart.
 #}
 {% set product = block.product %}
+{# What the Meta Pixel is told of this page (Shop settings › Marketing): the product, by the id the product feed gives it. #}
+{% if shop_pixel|default(null) and product.id|default('') and product.price is not null %}
+  <script type="application/json" data-shop-track>{{ {event: 'ViewContent', data: {content_type: product.variants is not empty ? 'product_group' : 'product', content_ids: [product.id], content_name: product.title, value: product.price, currency: 'EUR'}}|json_encode(constant('JSON_HEX_TAG') b-or constant('JSON_HEX_AMP'))|raw }}</script>
+{% endif %}
 {% set prefix = lang_prefix|default('') %}
 {% set title_tag = block.show_title ? 'h1' : 'p' %}
 <div class="container">

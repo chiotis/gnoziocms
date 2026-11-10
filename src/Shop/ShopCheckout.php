@@ -34,7 +34,8 @@ final class ShopCheckout
         private string $defaultLang,
         private ?ShopPayments $payments = null,
         private ?ShopDownloads $downloads = null,
-        private ?ShopSubscriptions $subscriptions = null
+        private ?ShopSubscriptions $subscriptions = null,
+        private ?\Closure $onPaid = null
     ) {
     }
 
@@ -340,6 +341,13 @@ final class ShopCheckout
                 }
             } elseif (in_array($to, ['cancelled', 'refunded'], true)) {
                 $this->downloads->revoke($id);
+            }
+        }
+        if ($to === 'paid' && $this->onPaid !== null) {
+            // What else a payment sets off (the purchase sent to Meta): never in the way of the order itself.
+            try {
+                ($this->onPaid)($id);
+            } catch (\Throwable) {
             }
         }
         if ($this->subscriptions !== null) {

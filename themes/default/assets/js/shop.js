@@ -126,6 +126,8 @@
       .then(function (response) { return response.json(); })
       .then(function (data) {
         setCount(data.count || 0);
+        // The Meta Pixel (shop-pixel.js) hears what was added.
+        if (data.ok && data.track && data.track.event) document.dispatchEvent(new CustomEvent('gz:shop-track', { detail: data.track }));
         if (data.ok) openDrawer(data, data.message);
         else if (message) message.textContent = data.message || '';
       })

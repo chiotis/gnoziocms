@@ -161,6 +161,14 @@
   {% block scripts %}
   <script src="{{ theme_asset('js/site.js') }}"></script>
   {% if shop_enabled|default(false) %}<script src="{{ theme_asset('js/shop.js') }}" defer></script>{% endif %}
+  {# The Meta Pixel of Shop settings › Marketing: it runs once the visitor agrees, and sends the events the page gives it. #}
+  {% if shop_track|default(null) %}<script type="application/json" data-shop-track>{{ shop_track|json_encode(constant('JSON_HEX_TAG') b-or constant('JSON_HEX_AMP'))|raw }}</script>{% endif %}
+  {% if shop_pixel|default(null) and not is_admin|default(false) %}
+    <script src="{{ theme_asset('js/shop-pixel.js') }}" defer data-pixel="{{ shop_pixel.id }}" data-consent="{{ shop_pixel.consent }}"
+      data-text="{{ t('shop.consent_text', 'We use cookies from Meta to measure our ads and show you our pieces on Facebook and Instagram. Do you agree?') }}"
+      data-accept="{{ t('shop.consent_accept', 'I agree') }}" data-decline="{{ t('shop.consent_decline', 'No, thanks') }}"
+      data-more="{{ t('shop.consent_more', 'Privacy') }}" data-more-url="{{ shop_pixel.privacy_page ? '/' ~ lang_prefix|default('') ~ shop_pixel.privacy_page : '' }}"></script>
+  {% endif %}
   {% for src in block_scripts|default([]) %}
   <script src="{{ src }}" defer></script>
   {% endfor %}

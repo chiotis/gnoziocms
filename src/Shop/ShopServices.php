@@ -31,6 +31,7 @@ final class ShopServices
     private ?Cardlink $cardlink = null;
     private ?ShopDownloads $downloads = null;
     private ?ShopSubscriptions $subscriptions = null;
+    private ?ShopMarketing $marketing = null;
     /** @var array<string, PaymentProvider>|null */
     private ?array $providers = null;
 
@@ -172,7 +173,22 @@ final class ShopServices
             $this->defaultLang,
             $this->payments(),
             $this->downloads(),
-            $this->subscriptions()
+            $this->subscriptions(),
+            fn(int $orderId) => $this->marketing()->purchase($orderId)
+        );
+    }
+
+    /** The product feed's settings, the Meta Pixel and the purchases sent to Meta (ShopMarketing). */
+    public function marketing(): ShopMarketing
+    {
+        return $this->marketing ??= new ShopMarketing(
+            $this->settings,
+            $this->secrets(),
+            $this->orders(),
+            $this->database,
+            fn(string $id, string $lang) => ($this->catalogue)()->product($id, $lang),
+            $this->defaultLang,
+            $this->transport
         );
     }
 

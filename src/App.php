@@ -922,6 +922,11 @@ final class App
 
     private function handleFront(string $path): void
     {
+        // The product feed of Shop settings › Marketing, for Meta Commerce Manager and Google Merchant Center.
+        if ($path === 'feeds/products.xml' && Shop::enabled($this->content->getTypes()) && $this->shopSettings()->all()['marketing']['feed']) {
+            $this->renderProductFeed();
+            return;
+        }
         $route = FrontRoute::resolve($path, $this->settings, $this->content->getTypes(), array_values(array_filter($this->taxonomies()->names(), [Taxonomies::class, 'isCustom'])));
         if ($route['kind'] === 'sitemap') {
             $this->renderSitemap();
@@ -3858,8 +3863,27 @@ final class App
             $this->getBaseUrl(),
             $this->shopServices()->cardlink(),
             $this->shopServices()->mail(),
-            fn(string $key, string $lang): string => $this->shopText($key, $lang)
+            fn(string $key, string $lang): string => $this->shopText($key, $lang),
+            $this->shopServices()->marketing()
         );
+    }
+
+    /** /feeds/products.xml (?lang= for another language of the site): the shop's products for Meta and Google (ShopFeed). */
+    private function renderProductFeed(): void
+    {
+        $languages = $this->siteLanguageCodes();
+        $lang = in_array((string)($_GET['lang'] ?? ''), $languages, true) ? (string)$_GET['lang'] : $this->defaultLanguage();
+        $feed = new \GnozioCMS\Shop\ShopFeed(
+            $this->shopCatalogue(),
+            $this->shopSettings(),
+            fn(string $forLang): array => $this->content->getItems('products', $forLang, false, false),
+            fn(ContentItem $product): string => '/' . ContentPaths::build($product->type, $product->slug, $product->lang, (string)(($this->settings['home_page'] ?? '') !== '' ? $this->settings['home_page'] : 'index'), $this->defaultLanguage()),
+            $this->getBaseUrl(),
+            (string)($this->settings['title'] ?? '')
+        );
+        header('Content-Type: application/xml; charset=utf-8');
+        header('Cache-Control: public, max-age=900');
+        echo $feed->xml($lang);
     }
 
     /** The shop's parts (src/Shop/ShopServices.php). */
@@ -3945,7 +3969,8 @@ final class App
             $services->viva(),
             $services->cardlink(),
             $services->downloads(),
-            $services->subscriptions()
+            $services->subscriptions(),
+            $services->marketing()
         );
         // Orders whose time to be paid ran out give their stock back before a shopper sees it (Shop › Orders does too).
         $services->checkout()->expire();
@@ -4994,7 +5019,18 @@ final class App
             fn(): bool => $this->feed()->hasSiteFeed(),
             fn(): array => $this->siteLanguageCodes(),
             fn(): Relations => $this->relations(),
-            fn(): bool => Shop::enabled($this->content->getTypes())
+            fn(): bool => Shop::enabled($this->content->getTypes()),
+            function (): ?array {
+                if (!Shop::enabled($this->content->getTypes())) {
+                    return null;
+                }
+                $m = $this->shopSettings()->all()['marketing'];
+                return $m['pixel_id'] === '' ? null : [
+                    'id' => $m['pixel_id'],
+                    'consent' => $m['consent'],
+                    'privacy_page' => $m['privacy_page'],
+                ];
+            }
         );
     }
 

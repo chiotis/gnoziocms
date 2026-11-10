@@ -6,11 +6,12 @@ namespace GnozioCMS\Shop;
 
 /**
  * System > Shop settings (docs/shop-plan.md, section 8): the screen and its forms. General (the store, VAT, orders), Shipping
- * (zones and their methods), Payments (Viva Wallet, Cardlink, bank transfer, cash on delivery) and Accounts.
+ * (zones and their methods), Payments (Viva Wallet, Cardlink, bank transfer, cash on delivery), Accounts and Marketing (the product
+ * feed and the Meta Pixel).
  */
 final class ShopSettingsAdmin
 {
-    public const TABS = ['general' => 'General', 'shipping' => 'Shipping', 'payments' => 'Payments', 'emails' => 'Emails', 'accounts' => 'Accounts'];
+    public const TABS = ['general' => 'General', 'shipping' => 'Shipping', 'payments' => 'Payments', 'emails' => 'Emails', 'accounts' => 'Accounts', 'marketing' => 'Marketing'];
     public const EMAIL_LABELS = [
         'received' => 'Order received', 'paid' => 'Order paid', 'shipped' => 'Order shipped', 'cancelled' => 'Order cancelled', 'refunded' => 'Order refunded',
         'verify' => 'Confirm the email address', 'reset' => 'A new password', 'sub_failed' => 'Subscription not renewed', 'sub_cancelled' => 'Subscription cancelled',
@@ -31,7 +32,8 @@ final class ShopSettingsAdmin
         private string $siteUrl = '',
         private ?Payments\Cardlink $cardlink = null,
         private ?ShopMail $mail = null,
-        private ?\Closure $theme = null
+        private ?\Closure $theme = null,
+        private ?ShopMarketing $marketing = null
     )
     {
     }
@@ -68,6 +70,17 @@ final class ShopSettingsAdmin
             }
             $sent = $this->mail->sendTest($kind, $lang, $to);
             return ['ok' => $sent, 'tab' => $tab, 'message' => $sent ? 'Saved; a test of "' . self::EMAIL_LABELS[$kind] . '" is sent to ' . $to . '.' : 'Saved, but the test could not be sent; see Logs > Email.'];
+        }
+        if ($tab === 'marketing') {
+            $this->settings->saveMarketing($post);
+            $this->secrets?->save('meta', is_array($post['meta_secret'] ?? null) ? $post['meta_secret'] : [], !empty($post['meta_clear']));
+            if (($post['meta_action'] ?? '') === 'test' && $this->marketing !== null) {
+                $result = $this->marketing->test();
+                ($this->log)('shop.meta_test', $result['ok'] ? 'info' : 'warning', 'shop', 'meta', $result['message'], []);
+                return ['ok' => $result['ok'], 'tab' => $tab, 'message' => $result['message']];
+            }
+            ($this->log)('shop.settings', 'info', 'shop', $tab, 'Shop settings saved (Marketing).', []);
+            return ['ok' => true, 'tab' => $tab, 'message' => 'Shop settings saved.'];
         }
         if ($tab === 'payments') {
             $this->secrets?->save(Payments\VivaWallet::ID, is_array($post['viva_secret'] ?? null) ? $post['viva_secret'] : [], !empty($post['viva_clear']));
@@ -140,6 +153,9 @@ final class ShopSettingsAdmin
                 'confirm' => rtrim($this->siteUrl, '/') . '/_shop/pay/cardlink/confirm',
                 'cancel' => rtrim($this->siteUrl, '/') . '/_shop/pay/cardlink/cancel',
             ],
+            'meta_secrets' => $this->secrets?->view('meta') ?? [],
+            'consent_modes' => ShopMarketing::CONSENT,
+            'feed_urls' => array_map(fn(string $lang): array => ['lang' => $lang, 'url' => rtrim($this->siteUrl, '/') . '/feeds/products.xml' . ($lang === $this->languages[0] ? '' : '?lang=' . $lang)], $this->languages),
             'email_kinds' => self::EMAIL_LABELS,
             'email_placeholders' => ShopMail::PLACEHOLDERS,
             'email_defaults' => $this->emailDefaults(),

@@ -69,7 +69,8 @@ final class SiteTwig
         private \Closure $hasSiteFeed,
         private \Closure $siteLanguages,
         private ?\Closure $relations = null,
-        private ?\Closure $shopEnabled = null
+        private ?\Closure $shopEnabled = null,
+        private ?\Closure $shopPixel = null
     ) {
     }
 
@@ -395,6 +396,8 @@ final class SiteTwig
         $twig->addGlobal('theme', ['name' => $this->theme->name(), 'version' => $this->theme->version()]);
         $twig->addGlobal('is_admin', ($this->signedIn)());
         $twig->addGlobal('shop_enabled', $this->shopEnabled !== null && ($this->shopEnabled)());
+        // The Meta Pixel of Shop settings › Marketing, with how consent is asked: null when there is none.
+        $twig->addGlobal('shop_pixel', $this->shopPixel !== null ? ($this->shopPixel)() : null);
 
         return $twig;
     }

@@ -16,7 +16,7 @@ final class UserRepository
     public const AUTOMATION = 'automation';
 
     /** @var array<string, string> */
-    private array $roles = ['superadmin' => 'superadmin', 'admin' => 'admin', 'editor' => 'editor', 'user' => 'user'];
+    private array $roles = ['superadmin' => 'superadmin', 'admin' => 'admin', 'editor' => 'editor', 'shop_manager' => 'shop_manager', 'user' => 'user'];
     /** @var string[] Roles the super admin made, which a person can also have. */
     private array $extraRoles = [];
     /** @var array<string, string> */

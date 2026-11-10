@@ -57,7 +57,8 @@ final class ShopFront
         private ?\GnozioCMS\Shop\Payments\VivaWallet $viva = null,
         private ?Payments\Cardlink $cardlink = null,
         private ?ShopDownloads $downloads = null,
-        private ?ShopSubscriptions $subscriptions = null
+        private ?ShopSubscriptions $subscriptions = null,
+        private ?ShopMarketing $marketing = null
     ) {
     }
 
@@ -151,7 +152,15 @@ final class ShopFront
             $message = $priced['changes'] !== [] ? ($this->t)('shop.err_add_reduced', $lang) : ($this->t)('shop.added', $lang, ['title' => implode(', ', $added)]);
         }
         if ($wantsJson) {
-            $this->json(['ok' => $ok, 'message' => $message] + $this->cartSummary($lang), $ok ? 200 : 422);
+            $track = [];
+            if ($ok && $this->marketing !== null && $this->marketing->config()['pixel_id'] !== '') {
+                $bought = [];
+                foreach ($wanted as [$productId, $variant, $quantity]) {
+                    $bought = array_merge($bought, $this->pricing->lines([['product_id' => $productId, 'variant_key' => $variant, 'quantity' => $quantity]], $lang)['lines']);
+                }
+                $track = ShopMarketing::event('AddToCart', $bought, array_sum(array_column($bought, 'total_cents')), (string)$this->settings->all()['currency']);
+            }
+            $this->json(['ok' => $ok, 'message' => $message, 'track' => $track] + $this->cartSummary($lang), $ok ? 200 : 422);
             return;
         }
         $this->flash($ok ? 'success' : 'error', $message);
@@ -269,6 +278,7 @@ final class ShopFront
                     $this->mail->orderPlaced($order, $this->orders->lines((int)$order['id']), $this->orderUrl($order), ($this->absoluteUrl)('admin/shop-orders?id=' . $order['id']));
                 }
                 $_SESSION['shop_orders'] = array_slice(array_merge([(string)$order['number']], (array)($_SESSION['shop_orders'] ?? [])), 0, 10);
+                $this->marketing?->remember((int)$order['id'], $_SERVER, array_map('strval', array_filter($_COOKIE, 'is_scalar')), ($this->absoluteUrl)(($this->prefixFor)($lang) . 'checkout'));
                 $this->go($result['redirect'] !== '' ? $result['redirect'] : $this->orderPath($order));
                 return;
             }
@@ -305,6 +315,9 @@ final class ShopFront
             'returns_url' => $shop['returns_page'] !== '' ? ($this->pageUrl)($shop['returns_page']) : '',
             'sign_in_url' => '/' . $prefix . 'account?return=checkout',
             'flash' => $this->takeFlash(),
+            'shop_track' => $this->marketing !== null && $this->marketing->config()['pixel_id'] !== ''
+                ? ShopMarketing::event('InitiateCheckout', $quote['priced']['lines'], (int)($quote['totals']['total'] ?? array_sum(array_column($quote['priced']['lines'], 'total_cents'))), (string)$shop['currency'])
+                : null,
         ]);
     }
 
@@ -326,10 +339,27 @@ final class ShopFront
             'can_pay' => $order['status'] === 'pending_payment' && (int)$order['reserve_until'] > time() && $this->checkout->provider((string)$order['payment_method']) !== null,
             'pay_url' => '/' . ($this->prefixFor)($lang) . 'checkout/order/' . rawurlencode((string)$order['number']) . '/pay',
             'downloads' => $this->downloads?->forOrder((int)$order['id']) ?? [],
+            'shop_track' => $this->purchaseEvent($order),
             'key' => $key,
             'customer' => $customer,
             'flash' => $this->takeFlash(),
         ]);
+    }
+
+    /**
+     * A paid order's purchase for the Meta Pixel, with the event id the server sends it with, so Meta counts it once. The page's
+     * script sends it once per browser.
+     *
+     * @param array<string, mixed> $order
+     * @return array<string, mixed>|null
+     */
+    private function purchaseEvent(array $order): ?array
+    {
+        if ($this->marketing === null || $this->marketing->config()['pixel_id'] === '' || !in_array($order['status'], ['paid', 'processing', 'shipped', 'completed'], true)) {
+            return null;
+        }
+        $lines = $this->marketing->withContentIds($this->orders->lines((int)$order['id']));
+        return ShopMarketing::event('Purchase', $lines, (int)$order['total_cents'], (string)$order['currency'], ShopMarketing::purchaseId($order)) + ['once' => true];
     }
 
     // ---- paying online
