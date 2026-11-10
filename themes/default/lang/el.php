@@ -385,6 +385,7 @@ return [
     'shop.consent_accept' => 'Συμφωνώ',
     'shop.consent_decline' => 'Όχι, ευχαριστώ',
     'shop.consent_more' => 'Απόρρητο',
+    'shop.consent_settings' => 'Ρυθμίσεις cookies',
     'shop.err_add_gone' => 'Αυτό το κομμάτι δεν είναι διαθέσιμο.',
     'shop.err_add_sold_out' => 'Αυτό το κομμάτι έχει εξαντληθεί.',
     'shop.err_add_not_sold' => 'Αυτό το κομμάτι δεν μπορεί να παραγγελθεί ακόμη.',
