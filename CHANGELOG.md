@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.263 — 2026-11-10 — Meta Commerce, the Pixel and the Shop manager
+- **Product feed** at /feeds/products.xml (?lang= for another language), for Meta Commerce Manager, Instagram Shopping and Google Merchant Center: the physical products with prices, sale prices, pictures, availability, brand, identifiers and the Google category; each variant an item of its product's group. Switched on in Shop settings › Marketing.
+- **Meta Pixel** with the shop's events (PageView, ViewContent, AddToCart, InitiateCheckout, Purchase), the feed's ids, and a consent banner in the site's languages (or the site's own consent tool through `gnozioConsent.grant()`). Not loaded for people signed in to the admin.
+- **Conversions API:** a paid order's purchase is also sent from the server, only for a visitor who agreed, hashed as Meta asks and with the page's event id so it is counted once. The access token is kept as a secret; a test event can be sent from the tab.
+- **Shop manager**, a new built-in role: products, media, collections, orders and customers, Shop settings and Analytics; no site settings or users.
+
 ## 0.1.262 — 2026-11-09 — The search preview in dark mode
 - Entry form, SEO tab: the title and address in the search preview are readable in dark mode.
 
