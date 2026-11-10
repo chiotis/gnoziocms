@@ -31,7 +31,7 @@
     </ul>
   {% endif %}
 {% endset %}
-{% set copyright %}<p class="footer-copy">{% if footer.copyright|default('') %}{{ footer.copyright|replace({'{year}': 'now'|date('Y'), '{site}': site.title, '{copyright}': '©'}) }}{% else %}© {{ "now"|date("Y") }} {{ site.title }}. {{ t('footer.rights') }}{% endif %}</p>{% endset %}
+{% set copyright %}<p class="footer-copy">{% if footer.copyright|default('') %}{{ footer.copyright|replace({'{year}': 'now'|date('Y'), '{site}': site.title, '{copyright}': '©'}) }}{% else %}© {{ "now"|date("Y") }} {{ site.title }}. {{ t('footer.rights') }}{% endif %}{% if shop_pixel|default(null) and shop_pixel.consent != 'none' and not is_admin|default(false) %} <button type="button" class="footer-consent" data-consent-open>{{ t('shop.consent_settings', 'Cookie settings') }}</button>{% endif %}</p>{% endset %}
 {% set credits_markup %}{% if footer.credits|default('') %}<p class="footer-credits">{{ inline_links(footer.credits|replace({'{year}': 'now'|date('Y'), '{site}': site.title, '{copyright}': '©'})) }}</p>{% endif %}{% endset %}
 {% set brand_markup %}
   {% if brand_mode == 'logo' and brand_logo %}

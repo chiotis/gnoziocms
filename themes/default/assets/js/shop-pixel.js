@@ -1,7 +1,8 @@
 /*
  * The Meta Pixel of Shop settings › Marketing (src/Shop/ShopMarketing.php). It runs only after the visitor agrees: the site's banner
  * asks (data-consent="banner"), or the site's own consent tool calls gnozioConsent.grant() ("external"); "none" runs it at once.
- * The answer is the cookie gz_consent, which the server also reads before it sends a purchase to Meta.
+ * The answer is the cookie gz_consent, which the server also reads before it sends a purchase to Meta. The footer's Cookie settings
+ * (or any link to #cookie-settings) opens the banner again, so the answer can be changed at any time.
  *
  * The events: PageView on every page, and those the page gives in <script type="application/json" data-shop-track> (ViewContent,
  * InitiateCheckout, Purchase with its event id, sent once per browser), and AddToCart from shop.js (the event gz:shop-track).
@@ -54,11 +55,19 @@
 
   document.addEventListener('gz:shop-track', function (event) { if (started) track(event.detail); });
 
+  // Changing one's mind as easily as agreeing: the footer's Cookie settings, or any link to #cookie-settings (a menu item).
+  document.addEventListener('click', function (event) {
+    var link = event.target instanceof Element ? event.target.closest('[data-consent-open], a[href$="#cookie-settings"]') : null;
+    if (!link) return;
+    event.preventDefault();
+    showBanner();
+  });
+
   var banner = null;
   function closeBanner() { if (banner) { banner.remove(); banner = null; } }
 
   function showBanner() {
-    if (banner) return;
+    if (banner && banner.isConnected) return;
     banner = document.createElement('div');
     banner.className = 'gz-consent';
     banner.setAttribute('role', 'dialog');
@@ -93,10 +102,16 @@
     document.body.appendChild(banner);
   }
 
-  /* For the site's own consent tool, and for a "cookie settings" link (gnozioConsent.open()). */
+  /* For the site's own consent tool, and for a "cookie settings" link (gnozioConsent.open()). Saying no after yes takes effect on
+     the next page: the Pixel already loaded on this one is not loaded again. */
   window.gnozioConsent = {
     grant: function () { remember('granted'); closeBanner(); start(); },
-    deny: function () { remember('denied'); closeBanner(); },
+    deny: function () {
+      var was = answer() === 'granted';
+      remember('denied');
+      closeBanner();
+      if (was) location.reload();
+    },
     open: showBanner,
     state: answer
   };

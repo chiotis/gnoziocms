@@ -90,12 +90,13 @@ st, _, page = pub.get('/products/ring')
 check('the Pixel script with the banner texts and the privacy page', 'shop-pixel.js' in page and 'data-pixel="1234567890123"' in page and 'data-consent="banner"' in page and 'data-more-url="/about"' in page, st)
 track = re.search(r'<script type="application/json" data-shop-track>(.*?)</script>', page, re.S)
 data = json.loads(track.group(1)) if track else {}
+check('the footer offers Cookie settings, to change one\'s mind', 'data-consent-open' in page and 'Ρυθμίσεις cookies' in page)
 check('the product page gives ViewContent of the product group', data.get('event') == 'ViewContent' and data['data']['content_ids'] == ['ring00000000000m'] and data['data']['content_type'] == 'product_group', data)
 st, _, answer = pub.request('/_shop/cart', data={'product': 'ring00000000000m', 'variant': 'Gold', 'quantity': '2'}, headers={'Origin': BASE, 'Accept': 'application/json'})
 added = json.loads(answer)
 check('adding to the cart answers with AddToCart', added.get('ok') and added['track']['event'] == 'AddToCart' and added['track']['data']['value'] == 260 and added['track']['data']['content_ids'][0].startswith('ring00000000000m-'), answer[:400])
 st, _, admin_page = root.get('/products/ring')
-check('no Pixel for someone signed in to the admin', 'shop-pixel.js' not in admin_page)
+check('no Pixel or Cookie settings for someone signed in to the admin', 'shop-pixel.js' not in admin_page and 'data-consent-open' not in admin_page)
 
 # ---- the Shop manager
 root.submit('/admin/users-edit', has_field('username'), {'username': 'shopkeeper', 'email': 'shopkeeper@example.test', 'display_name': 'Shopkeeper', 'role': 'shop_manager', 'status': 'active', 'password': 'Sturdy-pass-99', 'password_confirm': 'Sturdy-pass-99'})

@@ -786,3 +786,15 @@
   display: flex;
   gap: 0.5rem;
 }
+
+/* The footer's Cookie settings: a link in the copyright line. */
+.footer-consent {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}

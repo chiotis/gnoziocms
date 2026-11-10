@@ -385,6 +385,7 @@ return [
     'shop.consent_accept' => 'I agree',
     'shop.consent_decline' => 'No, thanks',
     'shop.consent_more' => 'Privacy',
+    'shop.consent_settings' => 'Cookie settings',
     'shop.err_add_gone' => 'This piece is not available.',
     'shop.err_add_sold_out' => 'This piece is sold out.',
     'shop.err_add_not_sold' => 'This piece cannot be ordered yet.',
