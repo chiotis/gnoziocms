@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.264 — 2026-11-10 — Cookie settings
+- With the Meta Pixel on and consent asked, the footer's copyright line has **Cookie settings**, which opens the banner again, so a visitor can change their answer as easily as they gave it. Any link to `#cookie-settings` (a menu item) does the same. Saying no after yes reloads the page without the Pixel.
+
 ## 0.1.263 — 2026-11-10 — Meta Commerce, the Pixel and the Shop manager
 - **Product feed** at /feeds/products.xml (?lang= for another language), for Meta Commerce Manager, Instagram Shopping and Google Merchant Center: the physical products with prices, sale prices, pictures, availability, brand, identifiers and the Google category; each variant an item of its product's group. Switched on in Shop settings › Marketing.
 - **Meta Pixel** with the shop's events (PageView, ViewContent, AddToCart, InitiateCheckout, Purchase), the feed's ids, and a consent banner in the site's languages (or the site's own consent tool through `gnozioConsent.grant()`). Not loaded for people signed in to the admin.
