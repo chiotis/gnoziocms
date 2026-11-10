@@ -9,7 +9,7 @@ use PDO;
 
 /**
  * Coupons (table shop_coupons, docs/shop-plan.md, section 3): a percentage or an amount off, or free shipping; with a minimum,
- * dates, a limit of uses in all and per customer, and optionally only for some collections. A use is counted when an order is
+ * dates, a limit of uses in all and per customer, and optionally only for some collections or products. A use is counted when an order is
  * placed, by one UPDATE that checks the limit, so the last use cannot be taken twice.
  */
 final class ShopCoupons
@@ -81,15 +81,17 @@ final class ShopCoupons
             'usage_limit' => max(0, (int)($post['usage_limit'] ?? 0)),
             'per_customer' => max(0, (int)($post['per_customer'] ?? 0)),
             'collections' => implode(',', array_slice(array_values(array_filter(array_map(static fn(mixed $id): string => (string)preg_replace('/[^a-z0-9_-]/', '', strtolower((string)$id)), is_array($post['collections'] ?? null) ? $post['collections'] : []))), 0, 50)),
+            // Products by their id, as the product picker sends them.
+            'products' => implode(',', array_slice(array_values(array_unique(array_filter(array_map(static fn(mixed $id): string => (string)preg_replace('/[^A-Za-z0-9_-]/', '', (string)$id), is_array($post['products'] ?? null) ? $post['products'] : [])))), 0, 200)),
             'active' => !empty($post['active']) ? 1 : 0,
             'note' => mb_substr(trim((string)($post['note'] ?? '')), 0, 200),
         ];
         $pdo = $this->pdo();
         if ($original !== '' && $this->find($original) !== null) {
-            $stmt = $pdo->prepare('UPDATE shop_coupons SET code = :code, kind = :kind, amount = :amount, min_cents = :min_cents, starts_at = :starts_at, ends_at = :ends_at, usage_limit = :usage_limit, per_customer = :per_customer, collections = :collections, active = :active, note = :note WHERE code = :original');
+            $stmt = $pdo->prepare('UPDATE shop_coupons SET code = :code, kind = :kind, amount = :amount, min_cents = :min_cents, starts_at = :starts_at, ends_at = :ends_at, usage_limit = :usage_limit, per_customer = :per_customer, collections = :collections, products = :products, active = :active, note = :note WHERE code = :original');
             $stmt->execute($values + ['original' => $original]);
         } else {
-            $stmt = $pdo->prepare('INSERT INTO shop_coupons (code, kind, amount, min_cents, starts_at, ends_at, usage_limit, per_customer, collections, active, note, used, created_at) VALUES (:code, :kind, :amount, :min_cents, :starts_at, :ends_at, :usage_limit, :per_customer, :collections, :active, :note, 0, :now)');
+            $stmt = $pdo->prepare('INSERT INTO shop_coupons (code, kind, amount, min_cents, starts_at, ends_at, usage_limit, per_customer, collections, products, active, note, used, created_at) VALUES (:code, :kind, :amount, :min_cents, :starts_at, :ends_at, :usage_limit, :per_customer, :collections, :products, :active, :note, 0, :now)');
             $stmt->execute($values + ['now' => time()]);
         }
         return '';
@@ -127,7 +129,10 @@ final class ShopCoupons
         }
         $weights = [];
         foreach ($lines as $i => $line) {
-            $eligible = $coupon['collections'] === [] || array_intersect($coupon['collections'], (array)($line['collections'] ?? [])) !== [];
+            // Limited to collections, products or both: a line is in when it is in one of the collections or is one of the products.
+            $eligible = ($coupon['collections'] === [] && $coupon['products'] === [])
+                || array_intersect($coupon['collections'], (array)($line['collections'] ?? [])) !== []
+                || in_array((string)($line['product_id'] ?? ''), $coupon['products'], true);
             $weights[$i] = $eligible ? (int)$line['total_cents'] : 0;
         }
         $base = array_sum($weights);
@@ -187,6 +192,7 @@ final class ShopCoupons
             'usage_limit' => (int)$row['usage_limit'],
             'per_customer' => (int)$row['per_customer'],
             'collections' => array_values(array_filter(explode(',', (string)$row['collections']))),
+            'products' => array_values(array_filter(explode(',', (string)($row['products'] ?? '')))),
             'active' => (bool)$row['active'],
             'used' => (int)$row['used'],
             'note' => (string)$row['note'],
