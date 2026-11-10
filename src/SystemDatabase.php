@@ -123,6 +123,18 @@ final class SystemDatabase
         $this->applyMigration($pdo, '202611080001_shop_payments', fn(PDO $db) => $this->createShopPaymentTables($db));
         $this->applyMigration($pdo, '202611080002_shop_downloads', fn(PDO $db) => $this->createShopDownloadTables($db));
         $this->applyMigration($pdo, '202611080003_shop_subscriptions', fn(PDO $db) => $this->createShopSubscriptionTables($db));
+        // What an order keeps, with the visitor's consent, for its purchase to be sent to Meta when it is paid (ShopMarketing).
+        $this->applyMigration($pdo, '202611100001_shop_order_tracking', fn(PDO $db) => $db->exec(
+            "CREATE TABLE IF NOT EXISTS shop_order_tracking (
+                order_id INTEGER PRIMARY KEY,
+                ip TEXT NOT NULL DEFAULT '',
+                agent TEXT NOT NULL DEFAULT '',
+                fbp TEXT NOT NULL DEFAULT '',
+                fbc TEXT NOT NULL DEFAULT '',
+                url TEXT NOT NULL DEFAULT '',
+                created_at INTEGER NOT NULL
+            )"
+        ));
     }
 
     /**

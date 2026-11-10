@@ -7,7 +7,7 @@ namespace GnozioCMS;
 final class PermissionService
 {
     /** Roles whose capabilities the super admin can change. The super admin's own set is fixed so nobody can be locked out. */
-    public const CUSTOMIZABLE_ROLES = ['admin', 'editor', 'user'];
+    public const CUSTOMIZABLE_ROLES = ['admin', 'editor', 'shop_manager', 'user'];
 
     /** On for every role, and not switchable: without them a signed-in person could not reach the admin or their own profile. */
     private const LOCKED_ON = ['admin.access', 'users.self'];
@@ -90,6 +90,19 @@ final class PermissionService
             'content.manage',
             'media.manage',
             'taxonomies.manage',
+            'users.self',
+        ],
+        // Runs the shop: its products and looks (content), pictures, collections, orders and customers, the shop's settings (payments,
+        // shipping, the product feed and the Meta Pixel) and the visit reports. No site settings, users, forms, menus, SEO or raw HTML.
+        'shop_manager' => [
+            'admin.access',
+            'dashboard.view',
+            'content.manage',
+            'media.manage',
+            'taxonomies.manage',
+            'analytics.manage',
+            'shop.orders',
+            'shop.manage',
             'users.self',
         ],
         'user' => [
@@ -323,6 +336,7 @@ final class PermissionService
             'superadmin' => ['label' => 'Super admin', 'description' => 'Everything, including users and roles. Always has every permission; keep at least one.'],
             'admin' => ['label' => 'Admin', 'description' => 'Everything except managing users: content, forms, menus, settings, backups, and updates.'],
             'editor' => ['label' => 'Editor', 'description' => 'Writes, edits, and publishes pages, posts, and projects, and manages media and categories. Cannot change settings, forms, menus, or users, and cannot add raw HTML.'],
+            'shop_manager' => ['label' => 'Shop manager', 'description' => 'Runs the shop: products, orders, customers, the shop\'s settings (payments, shipping, the product feed, the Meta Pixel) and Analytics. No site settings or users.'],
             'user' => ['label' => 'Basic user', 'description' => 'Can sign in and edit their own profile only.'],
         ];
     }

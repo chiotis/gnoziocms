@@ -118,6 +118,18 @@ On a **copy** of the demo site, never the live one:
 - [ ] An imported customer signs in with their **old** password.
 - [ ] An old `/product/…` and `/product-category/…` address redirects to the new page.
 
+## 6b. Meta and Instagram Shopping
+
+- [ ] Shop settings › Marketing: **Publish the product feed** on; open the feed address: each variant is an item, prices and pictures right.
+- [ ] Meta Business settings: the domain verified (its code in SEO › Ownership).
+- [ ] Commerce Manager › Catalog › Data sources › **Scheduled feed** with the feed address, every hour. The catalogue shows the products with no errors.
+- [ ] A Shop with checkout on the website, the Instagram business account connected, submitted for review.
+- [ ] The Pixel ID and a Conversions API access token in Marketing. **Save and send a test event** with a test code: it shows in Events Manager › Test events.
+- [ ] On the site, signed out: the banner asks; after *I agree*, Meta Pixel Helper shows PageView, ViewContent on a product, AddToCart, InitiateCheckout.
+- [ ] A paid order: Purchase from the browser and from the server, counted once (deduplicated) in Events Manager; the order's timeline says it was sent.
+- [ ] Empty the test code afterwards.
+- [ ] The privacy policy names Meta's cookies and the Conversions API.
+
 ## 7. Before real money
 
 - [ ] Everything above ticked, every difference fixed in the code and released.

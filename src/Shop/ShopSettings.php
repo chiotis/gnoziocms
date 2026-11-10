@@ -90,6 +90,22 @@ final class ShopSettings
     }
 
     /**
+     * The Marketing tab's form: the product feed and the Meta Pixel (its access token is a secret, ShopSecrets).
+     *
+     * @param array<string, mixed> $post
+     */
+    public function saveMarketing(array $post): void
+    {
+        if (!$this->meta->isAvailable()) {
+            return;
+        }
+        $stored = $this->meta->getJson(self::META) ?? [];
+        $m = is_array($post['marketing'] ?? null) ? $post['marketing'] : [];
+        $stored['marketing'] = ShopMarketing::normalize($m + ['feed' => false, 'out_of_stock' => false]);
+        $this->meta->setJson(self::META, self::normalize($stored));
+    }
+
+    /**
      * The Accounts tab's form.
      *
      * @param array<string, mixed> $post
@@ -239,6 +255,7 @@ final class ShopSettings
                 'verify' => !empty($accounts['verify']),
             ],
             'emails' => self::emails(is_array($stored['emails'] ?? null) ? $stored['emails'] : []),
+            'marketing' => ShopMarketing::normalize(is_array($stored['marketing'] ?? null) ? $stored['marketing'] : []),
         ];
     }
 

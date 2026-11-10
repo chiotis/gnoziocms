@@ -48,7 +48,15 @@ final class ShopHttp
         $data = json_decode($answer['body'], true);
         $data = is_array($data) ? $data : null;
         $ok = $answer['status'] >= 200 && $answer['status'] < 300;
-        $said = is_array($data) ? (string)($data['message'] ?? $data['Message'] ?? $data['ErrorText'] ?? $data['error_description'] ?? $data['error'] ?? '') : '';
+        $said = '';
+        foreach (is_array($data) ? ['message', 'Message', 'ErrorText', 'error_description', 'error'] : [] as $field) {
+            // Meta's Graph API puts its message under error.message.
+            $value = is_array($data[$field] ?? null) ? ($data[$field]['message'] ?? null) : ($data[$field] ?? null);
+            if (is_scalar($value) && (string)$value !== '') {
+                $said = (string)$value;
+                break;
+            }
+        }
         return [
             'ok' => $ok && ($data !== null || $answer['body'] === ''),
             'status' => $answer['status'],

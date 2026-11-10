@@ -188,7 +188,7 @@ $formOnlyAdmin = ['in_form' => ['admin'], 'caps' => ['admin' => array_fill_keys(
 $roles->apply(new PermissionService($meta->getJson('role_permissions'), null), $formOnlyAdmin);
 check('a role not on the form keeps what it has', (new PermissionService($meta->getJson('role_permissions'), null))->capabilitiesForRole('editor'), $before);
 $screen = $roles->screen(new PermissionService($meta->getJson('role_permissions'), $meta->getJson('custom_roles')));
-check('the screen has a column per built-in role with its people', [array_keys($screen['columns']), $screen['columns']['admin']['users'], $screen['can_add_role'], $screen['custom_roles']], [['admin', 'editor', 'user'], 2, true, []]);
+check('the screen has a column per built-in role with its people', [array_keys($screen['columns']), $screen['columns']['admin']['users'], $screen['can_add_role'], $screen['custom_roles']], [['admin', 'editor', 'shop_manager', 'user'], 2, true, []]);
 check('permissions are grouped, and the super admin has all', [count($screen['groups']) > 1, count($screen['super_caps']) > 10], [true, true]);
 
 // ---- automation accounts: a role, no way to sign in

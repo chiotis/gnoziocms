@@ -15,7 +15,7 @@ final class ShopSecrets
 {
     public const META = 'shop_secrets';
     /** Each provider's secret keys. */
-    public const KEYS = ['viva' => ['api_key', 'client_secret'], 'cardlink' => ['shared_secret']];
+    public const KEYS = ['viva' => ['api_key', 'client_secret'], 'cardlink' => ['shared_secret'], 'meta' => ['capi_token']];
 
     public function __construct(private SystemMetaRepository $meta)
     {

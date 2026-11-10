@@ -117,6 +117,8 @@ final class ShopPricing
                 'grams' => max(0, $grams) * $quantity,
                 'collections' => array_values(array_map('strval', (array)($base->meta[Shop::COLLECTIONS] ?? []))),
                 'gift_wrap' => !$digital && !empty($custom['gift_wrap']),
+                // The id the product feed and the Meta Pixel know it by.
+                'content_id' => ShopMarketing::contentId($line['product_id'], ShopMarketing::hasVariants($custom) ? $line['variant_key'] : ''),
                 'digital' => $digital,
                 'subscription' => $plan,
             ];

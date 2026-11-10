@@ -3,7 +3,8 @@
 {% import '@admin/partials/ui.twig' as ui %}
 {#
   System > Shop settings (docs/shop-plan.md, section 8). Only while the shop is on (the Products content type): General, Shipping
-  (zones with their methods; admin-shop.js adds zones and methods), Payments, Emails and Accounts.
+  (zones with their methods; admin-shop.js adds zones and methods), Payments, Emails, Accounts and Marketing (the product feed
+  for Meta and Google, the Meta Pixel).
 #}
 
 {% block content %}
@@ -255,6 +256,58 @@
         <div class="grid gap-3 px-4 py-4">
           <label class="flex items-start gap-2 text-sm text-slate-700"><input type="checkbox" name="signup" value="1" class="mt-0.5 h-4 w-4 rounded border-slate-300" {% if shop.accounts.signup %}checked{% endif %}><span>Customers can create an account<span class="block text-xs text-slate-500">They see their orders, keep their address and order faster.</span></span></label>
           <label class="flex items-start gap-2 text-sm text-slate-700"><input type="checkbox" name="verify" value="1" class="mt-0.5 h-4 w-4 rounded border-slate-300" {% if shop.accounts.verify %}checked{% endif %}><span>Confirm the email address before the first sign-in<span class="block text-xs text-slate-500">Off: they sign in at once; the link still confirms the address, and only then do earlier guest orders with it join the account.</span></span></label>
+        </div>
+      </section>
+      <div><button type="submit" class="{{ primary }}">Save</button></div>
+    </form>
+  {% endif %}
+
+  {% if tab == 'marketing' %}
+    {% set m = shop.marketing %}
+    <form method="post" action="{{ url('admin/shop-settings?tab=marketing') }}" class="grid gap-4">
+      {{ csrf_field() }}<input type="hidden" name="tab" value="marketing">
+
+      <section class="{{ card }}" aria-labelledby="shop-feed">
+        <div class="{{ card_head }}"><h2 id="shop-feed" class="text-sm font-semibold text-slate-900">Product feed</h2><span class="text-xs text-slate-400">Meta Commerce Manager · Instagram Shopping · Google Merchant Center</span></div>
+        <div class="grid gap-4 px-4 py-4 sm:grid-cols-2">
+          <label class="flex items-start gap-2 text-sm text-slate-700 sm:col-span-2"><input type="checkbox" name="marketing[feed]" value="1" class="mt-0.5 h-4 w-4 rounded border-slate-300" {% if m.feed %}checked{% endif %}><span>Publish the product feed<span class="block text-xs text-slate-500">The physical products with their prices, pictures, stock and variants, at the addresses below. Digital products and subscriptions are left out: Meta and Google do not take them.</span></span></label>
+          {% if m.feed %}
+            <div class="sm:col-span-2 grid gap-1.5">
+              {% for f in feed_urls %}
+                <div class="flex items-center gap-2 text-xs"><span class="w-8 shrink-0 font-semibold uppercase text-slate-500">{{ f.lang }}</span><a class="truncate font-mono text-blue-700 hover:underline" href="{{ f.url }}" target="_blank" rel="noopener">{{ f.url }}</a></div>
+              {% endfor %}
+            </div>
+          {% endif %}
+          <div><label class="{{ label }}" for="mk-brand">Brand</label><input id="mk-brand" name="marketing[brand]" value="{{ m.brand }}" class="{{ input }}" maxlength="70" placeholder="{{ shop.store_name ?: 'The store name' }}"><p class="{{ note }}">For products with no brand of their own.</p></div>
+          <div><label class="{{ label }}" for="mk-cat">Google product category</label><input id="mk-cat" name="marketing[category]" value="{{ m.category }}" class="{{ input }}" maxlength="250" placeholder="188"><p class="{{ note }}">The number or the path of Google's list, e.g. <span class="font-mono">188</span> for Jewelry. Optional.</p></div>
+          <label class="flex items-start gap-2 text-sm text-slate-700 sm:col-span-2"><input type="checkbox" name="marketing[out_of_stock]" value="1" class="mt-0.5 h-4 w-4 rounded border-slate-300" {% if m.out_of_stock %}checked{% endif %}><span>List products that are out of stock<span class="block text-xs text-slate-500">They show as out of stock in the shop on Instagram. Off: they leave the feed until they are back.</span></span></label>
+          <div class="sm:col-span-2 rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-600">
+            <p class="mb-1 font-medium text-slate-800">In Meta Commerce Manager:</p>
+            <ol class="ml-4 list-decimal space-y-0.5">
+              <li>Verify the domain in Business settings › Brand safety › Domains (its code goes in SEO › Ownership).</li>
+              <li>Catalog › Data sources › Data feed › <strong>Scheduled feed</strong>: paste the address above and choose every hour or every day. Add the other languages as their own feeds.</li>
+              <li>Set up a Shop with checkout on your website, connect the Instagram business account, and submit it for review.</li>
+            </ol>
+          </div>
+        </div>
+      </section>
+
+      <section class="{{ card }}" aria-labelledby="shop-pixel">
+        <div class="{{ card_head }}"><h2 id="shop-pixel" class="text-sm font-semibold text-slate-900">Meta Pixel and Conversions API</h2><span class="text-xs text-slate-400">Views, adds to cart, checkouts and purchases</span></div>
+        <div class="grid gap-4 px-4 py-4 sm:grid-cols-2">
+          <div><label class="{{ label }}" for="mk-pixel">Pixel ID</label><input id="mk-pixel" name="marketing[pixel_id]" value="{{ m.pixel_id }}" class="{{ input }} font-mono" inputmode="numeric" maxlength="20" autocomplete="off" placeholder="123456789012345"><p class="{{ note }}">Events Manager › Data sources › your Pixel. Empty: no Pixel on the site.</p></div>
+          <div><label class="{{ label }}" for="mk-token">Conversions API access token</label><input id="mk-token" type="password" name="meta_secret[capi_token]" value="" class="{{ input }} font-mono" autocomplete="new-password" placeholder="{{ meta_secrets.capi_token.set|default(false) ? 'Set, ends in ' ~ meta_secrets.capi_token.last4 ~ ' · blank keeps it' : 'Optional' }}"><p class="{{ note }}">Events Manager › your Pixel › Settings › Generate access token. With it, a purchase is also sent from the server, so it counts when a browser blocks the Pixel.</p></div>
+          <div><label class="{{ label }}" for="mk-consent">Consent</label><select id="mk-consent" name="marketing[consent]" class="{{ input }}">{% for key, name in consent_modes %}<option value="{{ key }}" {% if m.consent == key %}selected{% endif %}>{{ name }}</option>{% endfor %}</select><p class="{{ note }}">In the EU the Pixel runs only after a visitor agrees. The site's banner asks once and remembers the answer for six months.</p></div>
+          <div><label class="{{ label }}" for="mk-privacy">Privacy page</label><select id="mk-privacy" name="marketing[privacy_page]" class="{{ input }}"><option value="">None</option>{% for slug, title in pages %}<option value="{{ slug }}" {% if m.privacy_page == slug %}selected{% endif %}>{{ title }}</option>{% endfor %}</select><p class="{{ note }}">Linked from the banner.</p></div>
+          <div><label class="{{ label }}" for="mk-test">Test event code</label><input id="mk-test" name="marketing[test_code]" value="{{ m.test_code }}" class="{{ input }} font-mono" maxlength="34" autocomplete="off" placeholder="TEST12345"><p class="{{ note }}">From Events Manager › Test events, while you check. Empty it afterwards: with it, server events show only as tests.</p></div>
+          <div class="flex flex-wrap items-end gap-3">
+            <button type="submit" name="meta_action" value="test" class="{{ btn }} border border-slate-300 bg-white text-slate-700 hover:bg-slate-50">Save and send a test event</button>
+            {% if meta_secrets.capi_token.set|default(false) %}<label class="flex items-center gap-2 text-xs text-slate-500"><input type="checkbox" name="meta_clear" value="1" class="h-4 w-4 rounded border-slate-300">Remove the access token</label>{% endif %}
+          </div>
+          <div class="sm:col-span-2 rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-600">
+            <p class="mb-1 font-medium text-slate-800">What is sent</p>
+            <p class="m-0">Every page: PageView. A product: ViewContent. Add to cart, the checkout and a paid order: AddToCart, InitiateCheckout and Purchase, with the same product ids as the feed. The server sends Purchase when an order is paid, only for a visitor who agreed, with the address hashed as Meta asks; the page and the server give it the same event id, so Meta counts it once.</p>
+          </div>
         </div>
       </section>
       <div><button type="submit" class="{{ primary }}">Save</button></div>

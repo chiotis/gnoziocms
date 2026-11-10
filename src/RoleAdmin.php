@@ -11,7 +11,7 @@ namespace GnozioCMS;
  */
 final class RoleAdmin
 {
-    private const STARTING_POINTS = ['admin', 'editor', 'user'];
+    private const STARTING_POINTS = ['admin', 'editor', 'shop_manager', 'user'];
 
     /** @param callable(string, string, ?string, ?string, string, array<string, mixed>): void $log records an activity: action, level, subject type, subject id, message, context */
     public function __construct(private SystemMetaRepository $meta, private UserRepository $users, private $log)
