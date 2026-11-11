@@ -15,8 +15,6 @@ body { font-feature-settings: "cv05" 1, "ss01" 1; }
 .scroll-thin::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
 .scroll-thin::-webkit-scrollbar-track { background: transparent; }
 
-.is-hidden { display: none !important; }
-
 /* Off-canvas + modal transition primitives (toggled by data attributes via admin.js) */
 [data-offcanvas] { transition: transform .25s ease; }
 [data-offcanvas][hidden] { display: block; transform: translateX(100%); }
