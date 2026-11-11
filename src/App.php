@@ -4473,7 +4473,8 @@ final class App
                 requestPicture: $this->aiSettings()->hasKey()
                     ? fn(string $entry, string $brief, bool $replace, string $by): array => $this->aiPictures()->requestForEntry($entry, $brief, [], $by, null, 'mcp', $replace)
                     : null,
-                pictureState: fn(string $entry): ?array => $this->aiPictures()->entryState($entry)
+                pictureState: fn(string $entry): ?array => $this->aiPictures()->entryState($entry),
+                relations: $this->relations()
             )
         );
     }
@@ -4556,7 +4557,7 @@ final class App
             $definition = $this->contentTypes()->definition($type, 'en', $default);
             $fields = [];
             foreach ($this->contentTypes()->editableFields($type, 'en', $default) as $name => $field) {
-                $fields[$name] = array_intersect_key($field, array_flip(['type', 'label', 'help', 'options', 'required', 'multiple', 'min', 'max']));
+                $fields[$name] = McpContent::describeField($field);
             }
             $types[] = [
                 'type' => $type,

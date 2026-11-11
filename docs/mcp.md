@@ -46,9 +46,9 @@ A tool needs one of its scopes and, on every call, the permission it asks of the
 
 | Tool | Scope | What it does |
 |---|---|---|
-| `site_info` | any | the site's name, address, languages, time zone and current time, its content types with their fields, its taxonomies, and the connection itself (name, account, scopes, paused, its rules and publications left) |
+| `site_info` | any | the site's name, address, languages, time zone and current time, its content types with their fields (for each: its kind, what it takes, whether MCP may write it, whether it is shared by the translations, the types an entry it points at may be, and a repeater's own fields), its taxonomies, and the connection itself (name, account, scopes, paused, its rules and publications left) |
 | `list_entries` | read | entries of a type, newest first, drafts and scheduled included; by language, status, changed since; paged |
-| `get_entry` | read | one entry: text in Markdown, status, dates, terms, fields, translations, `updated_at` |
+| `get_entry` | read | one entry: text in Markdown, status, dates, terms, fields (an entry pointed at as its address, `type/slug`), translations, `updated_at` |
 | `search_entries` | read | the words in title, address or text |
 | `list_terms` | read | the terms of a taxonomy, with ids and labels |
 | `find_by_source` | read | the entry made earlier for a `source_key` |
@@ -64,7 +64,15 @@ The read tools need `content.manage` on the account (they show drafts). Writing 
 
 **Pictures from the chat.** A picture the assistant made or was given is a file, not an address. The tool's `file` argument takes it as `{download_url, file_id, mime_type, file_name}`, and `_meta["openai/fileParams"]` tells ChatGPT to fill that argument with the chat's file (Apps SDK); other clients ignore it. The site fetches `download_url` with the same checks as `url`, and names the picture after `file_name`. A `file` without a `download_url` (a bare file id) is refused, since the site cannot fetch it. Base64 is not taken: a request is at most 1 MB, and a model would have to write the picture out character by character.
 
-**Strict writes.** The job cannot see the page, so nothing it sends is quietly fixed: an unknown argument, type, language, taxonomy, term or field, a value a field does not take (a select's other options are named), a date that is not `YYYY-MM-DD` and a scheduled entry without `publish_at` are errors, all of them at once, in sentences that say what to send instead. Text is Markdown; HTML is shown as text and the result says so. Fields that are lists, relations or galleries cannot be written yet. New terms are added by a person.
+**Strict writes.** The job cannot see the page, so nothing it sends is quietly fixed: an unknown argument, type, language, taxonomy, term or field, a value a field does not take (a select's other options are named), a date that is not `YYYY-MM-DD` and a scheduled entry without `publish_at` are errors, all of them at once, in sentences that say what to send instead. Text is Markdown; HTML is shown as text and the result says so. Every kind of field can be written except video, file, location, link, icon and tone, which a person sets in the admin:
+
+- a **decimal** (a price) takes a number; one outside the field's minimum or maximum is refused, not moved into range;
+- an **image** takes a picture of the media library, as the path (or full address) `add_image_from_url` gave; a **gallery** takes a list of them, in order, and replaces the old list;
+- a **relation** takes the address of an entry, `type/slug`, or a list of them; it is kept by the entry's id, as the admin keeps it, so it survives a change of address;
+- a **repeater** takes the whole list of rows, each an object of its fields, checked one by one (`parts[2].price` names the place of a problem); rows replace the old ones, so a job sends every row it keeps;
+- `""` or `[]` clears a field.
+
+A field marked `shared` (a product's price, its variants) has one value for every translation: writing it in one language changes it in all, as a save in the admin does. New terms are added by a person.
 
 **What is written.** Every save goes through the admin's own editor code (address from the title, translations, index, history, redirects). A new entry gets `generated_by: <connection>` (shown in the admin, marked *MCP* in the content list) and the connection's byline as `author` unless the job gives one. The history names the account and the connection. Each publication or scheduling leaves a notification in the admin, and the caches are emptied as after a save.
 
