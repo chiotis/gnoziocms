@@ -4492,7 +4492,21 @@ final class App
                 $this->shopStock(),
                 $this->shopSettings(),
                 $this->mcpStore(),
-                $this->defaultLanguage()
+                $this->defaultLanguage(),
+                $this->taxonomyEditor(),
+                array_values(array_map('strval', (array)($this->settings['languages']['available'] ?? [$this->defaultLanguage()]))),
+                fn(string $slug, string $lang, string $after, string $target, array $connection): array => $this->contentAdmin()->delete(
+                    Shop::TYPE,
+                    ['slug' => $slug, 'lang' => $lang, 'after' => $after, 'after_target' => $target],
+                    true,
+                    $this->permissions->can(['role' => (string)$connection['role'], 'status' => (string)$connection['user_status']], 'redirects.manage'),
+                    true,
+                    (string)$connection['username'] . ' (MCP: ' . $connection['name'] . ')'
+                ),
+                function (): void {
+                    $this->frontCache()->purgeAll();
+                    $this->contentIndex->bump();
+                }
             ) : null
         );
     }
