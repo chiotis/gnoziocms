@@ -990,8 +990,10 @@ final class App
             return;
         }
 
+        // Lists (search, archives, and the blocks of a page) are what visitors see, also for someone signed in; a draft is seen
+        // on its own page only, which is where $includeHidden is used.
         if ($route['kind'] === 'search') {
-            $this->handleSearch($route, $viewDefaults, $includeHidden);
+            $this->handleSearch($route, $viewDefaults, false);
             return;
         }
 
@@ -1000,7 +1002,7 @@ final class App
             $slug = $route['slug'];
             if ($route['kind'] === 'archive') {
                 $alternates = $this->languageAlternates()->forArchive($type);
-                $archive = $this->archivePages()->forType($type, $lang, $includeHidden, $_GET);
+                $archive = $this->archivePages()->forType($type, $lang, false, $_GET);
                 if ($archive['page'] > 1 && !$archive['filtered']) {
                     // Each page of a listing is its own page for search engines.
                     $viewDefaults['canonical_url'] = $currentUrl . '?page=' . $archive['page'];
