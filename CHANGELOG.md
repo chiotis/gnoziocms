@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.286 — 2026-11-11 — No flash of light mode behind Cloudflare
+- **Admin and default theme:** on sites where Cloudflare's Rocket Loader is on, the dark mode showed a moment of light mode on every page load, because Rocket Loader ran the colour-mode script after the first paint. The script is now marked for Rocket Loader to leave alone (`data-cfasync="false"`), so dark pages load dark again.
+
 ## 0.1.285 — 2026-11-11 — File many entries under a term
 - **Content lists:** tick entries (or use "select all"), then choose **Add to** or **Remove from** a term in the Bulk action menu, for example *Add to Collections: Balos*. Their other terms stay, and the history keeps each entry as it was. Works for every taxonomy of the type: collections, product categories, categories, tags.
 - **MCP:** `file_entries` does the same for up to 500 entries in one call, so an assistant no longer changes products one by one. A connection with only **Shop: change** may file products under collections and product categories.
