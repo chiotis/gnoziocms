@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.282 — 2026-11-11 — Sales summary through MCP
+- **MCP:** `sales_summary` tells an assistant what the shop sold between two days: orders, units, sales, discounts, shipping, VAT, refunds and the average order, per day, week or month, and the best sellers by product, variant, category or collection. Only paid orders count unless asked otherwise, and no customer is named.
+- Step 6 of `docs/mcp-shop-plan.md`; what is left is a real run on the demo shop.
+
 ## 0.1.281 — 2026-11-11 — Orders and coupons through MCP
 - **MCP:** assistants can list and read the shop's orders (lines, money, addresses, timeline) and move them along: on hold, processing, shipped with carrier and tracking number, completed or cancelled, with a note and, when asked, an email to the customer. A cancelled order gives its stock back, as in the admin.
 - Money stays with you: an order is never marked paid or refunded through MCP, and refunds are made in Shop › Orders.
