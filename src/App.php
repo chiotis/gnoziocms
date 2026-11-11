@@ -4506,7 +4506,18 @@ final class App
                 function (): void {
                     $this->frontCache()->purgeAll();
                     $this->contentIndex->bump();
-                }
+                },
+                new McpShopOrders(
+                    $this->shopServices(),
+                    $this->shopAdmin(),
+                    $this->content,
+                    $this->taxonomies(),
+                    $this->mcpStore(),
+                    $this->defaultLanguage(),
+                    function (): void {
+                        $this->frontCache()->purgeAll();
+                    }
+                )
             ) : null
         );
     }

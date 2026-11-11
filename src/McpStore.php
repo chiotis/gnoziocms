@@ -283,6 +283,17 @@ final class McpStore
         return (int)$stmt->fetchColumn();
     }
 
+    /** Why this many more shop changes would go over the connection's limit in 24 hours; null when they fit. @param array<string, mixed> $connection */
+    public function shopLimitProblem(array $connection, int $changes): ?string
+    {
+        $limit = self::policy($connection)['shop_limit'];
+        if ($limit <= 0 || $changes <= 0) {
+            return null;
+        }
+        $left = max(0, $limit - $this->shopChangesToday((int)$connection['id']));
+        return $changes > $left ? 'This would make ' . $changes . ' changes to the shop, and this connection has ' . $left . ' of its ' . $limit . ' in 24 hours left. Send fewer, or try again later.' : null;
+    }
+
     public function recordShopChanges(int $connectionId, int $changes): void
     {
         if ($changes > 0) {

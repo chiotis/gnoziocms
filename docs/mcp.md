@@ -41,7 +41,8 @@ On the consent screen you choose whom the connection **acts as** (yourself, or a
 | `media:write` | add pictures to the media library |
 | `shop:read` | read the shop: products with their prices, variants and stock (while the shop is on) |
 | `shop:write` | change prices, sales, stock, product categories and collections, and take products off sale (while the shop is on) |
-| `shop:delete` | delete products, remove product categories and collections |
+| `shop:delete` | delete products and coupons, remove product categories and collections |
+| `shop:orders` | see orders, with customers' names and addresses, and move them along (status, tracking, notes) |
 
 The shop scopes are unticked on the consent screen and in *Make a token by hand*: a person gives them on purpose.
 
@@ -72,14 +73,22 @@ A tool needs one of its scopes and, on every call, the permission it asks of the
 | `remove_term` | shop delete | removes one, as the admin does: it is taken off the products filed under it, its terms below move up |
 | `archive_product` | shop write | makes a product a draft in every language: off sale, kept with its history, prices and stock |
 | `delete_product` | shop delete | deletes a product in every language, as Delete in the admin does: the text stays in the history; visitors of its address go to `redirect_to` (the shop by default, home, none, or an address of the site) |
+| `list_orders` | orders | orders, newest first, with status, total, customer, payment, carrier and tracking; filters: status, dates, words in number, email or name; paged; the count in each status |
+| `get_order` | orders | one order: lines, money, addresses, payments (read only), the timeline, and the statuses `update_order` can move it to |
+| `update_order` | orders | moves an order to on hold, processing, shipped, completed or cancelled along the steps the order screen allows; `carrier`/`tracking` mark it shipped; `note` goes into its timeline; `notify_customer` emails the customer. Never to paid or refunded |
+| `list_coupons` | shop | the coupons with their rules and uses |
+| `save_coupon` | shop write | makes a coupon or changes the one with this code (what is given changes, the rest stays); `new_code` renames it; products by address, collections by id |
+| `delete_coupon` | shop delete | deletes a coupon |
 | `set_stock` | shop write | up to 200 changes: `on_hand`, or `adjust` (+/-, in one statement, so an order placed meanwhile is not lost); a product with variants needs the variant; `dry_run` optional |
 
 The read tools need `content.manage` on the account (they show drafts). Writing needs `content.manage`; published and scheduled entries, and changing them, need `content:publish` too. `add_image_from_url` and `generate_main_image` need `media:write` and `media.manage`; `create_entry` and `update_entry` take `image_brief`, the subject a picture made by the site will show; `main_image` takes a picture of the library (one added this way, or any other).
 
 **The shop** (`src/McpShop.php`, `docs/mcp-shop-plan.md`). Its tools are listed only while the shop is on, and need `content.manage` like the product editor. The term tools work on the shop's two taxonomies only and need `taxonomies.manage`; they save through the admin's own taxonomy save, so renamed addresses, menus and products filed under a removed term are handled as there. Products themselves are entries of the type `products`, made and changed with `create_entry` and `update_entry`; `update_prices` and `set_stock` are the batch tools. Prices and stock are written as the admin writes them: the history keeps each change, prices reach every translation, and a published product's price can change without `content:publish`. Every problem in a batch is named at once and nothing is saved while there is one. Two rules of the connection (Admin > MCP, shown with `shop:write`) hold whatever the job asks:
 
+**Orders** (`src/McpShopOrders.php`) hold shoppers' personal data: they need `shop:orders` and the account's `shop.orders`, and coupons need `shop.manage`. An order changes through the order screen's own actions, so stock, coupons, the customer's email and the timeline follow as there (a cancelled order gives its stock back). Money stays with a person: an order is never marked paid or refunded through MCP, and refunds are made in the admin.
+
 - **Price limit:** a price (the product's or a variant's) may move at most this far in one change, 50% by default; 0 means no limit. It applies to `update_entry` too. A price set where there was none is not a move.
-- **Shop changes in 24 hours:** each product whose prices change, each row of stock set, each category or collection added, changed or removed and each product archived or deleted counts; 500 by default.
+- **Shop changes in 24 hours:** each product whose prices change, each row of stock set, each category or collection added, changed or removed, each product archived or deleted, each order moved or noted and each coupon saved or deleted counts; 500 by default.
 
 **Pictures from an address** (`src/SafeHttp.php`). The address is someone else's choice, so it never reaches the site's own network: http or https on ports 80 and 443 only, no name and password in it, every address its host resolves to must be public (private, loopback, link-local, carrier-grade NAT, documentation, multicast and reserved ranges are refused, IPv6 too), the connection goes to the very address that was checked, at most 3 redirects, each checked the same way, no cookies, 10 MB and 15 seconds. What arrives is kept only if its first bytes are a JPEG, PNG, WebP, GIF or AVIF the site takes, and only if the storage limit leaves room. The picture's id is its fingerprint, so the same picture fetched again (from any address) is the one already kept. Alt text is required; the uploader is the account and the connection.
 
