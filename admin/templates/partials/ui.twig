@@ -42,6 +42,40 @@
   </button>
 {% endmacro %}
 
+{# A dropdown of checkboxes in a filter bar (form[data-filter-bar]): name[] for each ticked value. The bar sends its form
+   when the dropdown closes with something changed. options: {value, label, depth?, count?}; selected: the ticked values. #}
+{% macro multi_select(name, title, options, selected) %}
+  {% set picked = options|filter(o => o.value in selected) %}
+  <details class="relative" data-multiselect>
+    <summary class="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium shadow-sm [&::-webkit-details-marker]:hidden {{ picked is empty ? 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50' : 'border-blue-300 bg-blue-50 text-blue-700' }}">
+      <span>{{ title }}{% if picked|length == 1 %}:{% endif %}</span>
+      {% if picked|length == 1 %}<span class="-ml-0.5 max-w-[9rem] truncate font-normal">{{ (picked|first).label }}</span>
+      {% elseif picked|length > 1 %}<span class="rounded-full bg-blue-600 px-1.5 text-[11px] font-semibold leading-4 text-white">{{ picked|length }}</span>{% endif %}
+      <svg class="h-3.5 w-3.5 opacity-60" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6"/></svg>
+    </summary>
+    <div class="absolute left-0 z-30 mt-1 w-72 max-w-[calc(100vw-2rem)] rounded-lg border border-slate-200 bg-white shadow-lg" role="group" aria-label="{{ title }}">
+      {% if options|length > 8 %}
+        <div class="border-b border-slate-100 p-2">
+          <input type="search" placeholder="Find {{ title|lower }}…" class="w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-sm" data-multiselect-find aria-label="Find {{ title|lower }}">
+        </div>
+      {% endif %}
+      <div class="max-h-72 overflow-y-auto p-1">
+        {% for option in options %}
+          <label class="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-50" style="padding-left: {{ 0.5 + (option.depth|default(0)) * 1 }}rem" data-multiselect-option="{{ option.label|lower }}">
+            <input type="checkbox" name="{{ name }}[]" value="{{ option.value }}" class="h-4 w-4 rounded border-slate-300" {% if option.value in selected %}checked{% endif %}>
+            <span class="min-w-0 flex-1 truncate">{{ option.label }}</span>
+            {% if option.count is defined %}<span class="text-xs tabular-nums text-slate-400">{{ option.count }}</span>{% endif %}
+          </label>
+        {% endfor %}
+      </div>
+      <div class="flex items-center justify-between gap-2 border-t border-slate-100 px-2 py-1.5">
+        <button type="button" class="rounded px-2 py-1 text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-800" data-multiselect-clear>Clear</button>
+        <button type="button" class="rounded-md bg-blue-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-blue-700" data-multiselect-done>Show results</button>
+      </div>
+    </div>
+  </details>
+{% endmacro %}
+
 {# Empty state block used inside table cards. #}
 {% macro empty_state(title, text) %}
   <div class="flex flex-col items-center justify-center px-6 py-14 text-center">

@@ -19,12 +19,19 @@ final class ContentAdmin
     public const PER_PAGE_OPTIONS = [25, 50, 100, 0];
     public const PER_PAGE_DEFAULT = 50;
 
+    /** The filters behind "More filters" in the bar. */
+    public const MORE_FILTERS = ['author', 'image', 'updated_from', 'updated_to', 'stock'];
+
+    /** What the stock filter of products can ask for. */
+    public const STOCK_FILTERS = ['in', 'low', 'out', 'untracked'];
+
     /**
      * @param \Closure(): array<string, mixed> $settings
      * @param \Closure(): Taxonomies $taxonomies
      * @param \Closure(): PublicPaths $publicPaths
      * @param \Closure(): LinkScanner $linkScanner
      * @param \Closure(string, string, ?string, ?string, string, array<string, mixed>): void $log records an activity: action, level, subject type, subject id, message, context
+     * @param (\Closure(list<ContentItem>): array<string, list<string>>)|null $stockStates how each product stands (ShopStock::states) by translation id; null when the shop keeps no stock
      */
     public function __construct(
         private string $contentDir,
@@ -40,7 +47,8 @@ final class ContentAdmin
         private \Closure $publicPaths,
         private \Closure $linkScanner,
         private \Closure $log,
-        private ?Relations $relations = null
+        private ?Relations $relations = null,
+        private ?\Closure $stockStates = null
     ) {
     }
 
@@ -65,7 +73,6 @@ final class ContentAdmin
         $matching = $this->matching($type, $lang, $get);
         $items = $matching['items'];
         $filters = $matching['filters'];
-        $termFilter = $matching['term_filter'];
         $total = count($items);
         $perPage = self::perPage($get['per_page'] ?? null);
         $totalPages = $perPage === 0 ? 1 : max(1, (int)ceil($total / $perPage));
@@ -86,8 +93,9 @@ final class ContentAdmin
             'deleted' => isset($get['deleted']),
             'translation_langs' => $translationLangs,
             'filters' => $filters,
-            'filters_active' => $filters['q'] !== '' || $filters['status'] !== '' || $termFilter !== null,
-            'term_filter' => $termFilter,
+            'filters_active' => array_filter($filters, static fn(string $value): bool => $value !== '') !== [],
+            'more_filters_active' => count(array_filter(array_intersect_key($filters, array_flip(self::MORE_FILTERS)), static fn(string $value): bool => $value !== '')),
+            'filter_bar' => $matching['bar'],
             'status_options' => $matching['status_options'],
             'total' => $total,
             'page' => $page,
@@ -133,53 +141,190 @@ final class ContentAdmin
     }
 
     /**
-     * The entries of one type and language that the search, the status and the term let through, newest first, with
-     * the filters as they were understood. The list pages through them; "select all" in a bulk action takes all of them.
+     * The entries of one type and language that the filters let through, newest first, with the filters as they were
+     * understood (each a string, a list being comma-separated) and what the filter bar offers. The list pages through
+     * them; "select all" in a bulk action takes all of them.
+     *
+     * The filters: q (title, slug or SKU), status (any of), in_<taxonomy> (any of its terms, a term taking in the terms
+     * below it; different taxonomies must all match), author, image (with or without a main image), updated_from and
+     * updated_to (the day it was last updated) and, for products when the shop keeps stock, stock (in, low, out or untracked). The link from
+     * Taxonomies, taxonomy=…&term=…, is read as in_<taxonomy>.
      *
      * @param array<string, mixed> $get
-     * @return array{items: list<ContentItem>, filters: array{q: string, status: string, taxonomy: string, term: string}, term_filter: ?array<string, string>, status_options: list<string>}
+     * @return array{items: list<ContentItem>, filters: array<string, string>, status_options: list<string>, bar: array<string, mixed>}
      */
     private function matching(string $type, string $lang, array $get): array
     {
-        $items = $this->content->getItems($type, $lang, true, false);
+        $all = $this->content->getItems($type, $lang, true, false);
         // Newest first by when each entry was made, so editing one does not move it (the site keeps its own order, by date).
-        usort($items, static fn(ContentItem $a, ContentItem $b): int => $b->createdTime() <=> $a->createdTime());
+        usort($all, static fn(ContentItem $a, ContentItem $b): int => $b->createdTime() <=> $a->createdTime());
         $statusOptions = array_values(array_unique(array_merge(['published', 'draft', ScheduledPublishing::STATUS], array_map(
             static fn(ContentItem $item): string => (string)($item->meta['status'] ?? 'published'),
-            $items
+            $all
         ))));
-        $filters = [
-            'q' => trim((string)($get['q'] ?? '')),
-            'status' => in_array((string)($get['status'] ?? ''), $statusOptions, true) ? (string)$get['status'] : '',
-            'taxonomy' => '',
-            'term' => '',
-        ];
-        if ($filters['q'] !== '') {
-            $needle = mb_strtolower($filters['q']);
-            $items = array_values(array_filter($items, static fn(ContentItem $item): bool => str_contains(mb_strtolower((string)($item->meta['title'] ?? '') . ' ' . $item->slug), $needle)));
-        }
-        if ($filters['status'] !== '') {
-            $items = array_values(array_filter($items, static fn(ContentItem $item): bool => (string)($item->meta['status'] ?? 'published') === $filters['status']));
-        }
-        // Filed under a term: the link from Taxonomies. Anything that is not a term of a taxonomy is ignored.
-        $termFilter = null;
         $taxonomies = ($this->taxonomies)();
-        $filterTaxonomy = Slug::plain((string)($get['taxonomy'] ?? ''));
-        $filterTerm = Slug::plain((string)($get['term'] ?? ''));
-        if ($filterTaxonomy !== '' && $filterTerm !== '' && in_array($filterTaxonomy, $taxonomies->names(), true)
-            && in_array($filterTerm, array_column($taxonomies->load($filterTaxonomy)['terms'], 'id'), true)) {
-            $filters['taxonomy'] = $filterTaxonomy;
-            $filters['term'] = $filterTerm;
-            $termFilter = [
-                'taxonomy' => $filterTaxonomy,
-                'term' => $filterTerm,
-                'taxonomy_title' => $taxonomies->load($filterTaxonomy)['title'],
-                'label' => $taxonomies->label($filterTaxonomy, $filterTerm, $lang),
+        $taxonomyNames = $this->filterTaxonomies($type);
+
+        $filters = ['q' => trim((string)(is_scalar($get['q'] ?? null) ? $get['q'] : ''))];
+        $statuses = array_values(array_intersect($statusOptions, self::values($get['status'] ?? null)));
+        $filters['status'] = implode(',', $statuses);
+        $chosenTerms = [];
+        foreach ($taxonomyNames as $name) {
+            $ids = array_column($taxonomies->load($name)['terms'], 'id');
+            $picked = self::values($get['in_' . $name] ?? null);
+            if (Slug::plain((string)(is_scalar($get['taxonomy'] ?? null) ? $get['taxonomy'] : '')) === $name) {
+                $picked[] = Slug::plain((string)(is_scalar($get['term'] ?? null) ? $get['term'] : ''));
+            }
+            $picked = array_values(array_intersect($ids, $picked));
+            $filters['in_' . $name] = implode(',', $picked);
+            if ($picked !== []) {
+                $chosenTerms[$name] = $picked;
+            }
+        }
+        $authors = array_values(array_unique(array_filter(array_map(static fn(ContentItem $item): string => trim((string)($item->meta['author'] ?? '')), $all))));
+        sort($authors, SORT_NATURAL | SORT_FLAG_CASE);
+        $author = trim((string)(is_scalar($get['author'] ?? null) ? $get['author'] : ''));
+        $filters['author'] = in_array($author, $authors, true) ? $author : '';
+        $image = (string)(is_scalar($get['image'] ?? null) ? $get['image'] : '');
+        $filters['image'] = in_array($image, ['with', 'without'], true) ? $image : '';
+        foreach (['updated_from', 'updated_to'] as $key) {
+            $day = (string)(is_scalar($get[$key] ?? null) ? $get[$key] : '');
+            $filters[$key] = preg_match('/^\d{4}-\d{2}-\d{2}$/', $day) === 1 && strtotime($day) !== false ? $day : '';
+        }
+        $stockStates = $type === Shop\Shop::TYPE && $this->stockStates !== null ? ($this->stockStates)($all) : null;
+        $stock = (string)(is_scalar($get['stock'] ?? null) ? $get['stock'] : '');
+        $filters['stock'] = $stockStates !== null && in_array($stock, self::STOCK_FILTERS, true) ? $stock : '';
+
+        // A term takes in the terms below it.
+        $wanted = [];
+        foreach ($chosenTerms as $name => $ids) {
+            $expanded = $ids;
+            if ($taxonomies->isHierarchical($name)) {
+                foreach ($ids as $id) {
+                    $expanded = array_merge($expanded, $taxonomies->descendantIds($name, $id));
+                }
+            }
+            $wanted[$name] = array_values(array_unique($expanded));
+        }
+        $needle = mb_strtolower($filters['q']);
+        $from = $filters['updated_from'] !== '' ? (int)strtotime($filters['updated_from'] . ' 00:00:00') : null;
+        $to = $filters['updated_to'] !== '' ? (int)strtotime($filters['updated_to'] . ' 23:59:59') : null;
+        $items = array_values(array_filter($all, static function (ContentItem $item) use ($needle, $statuses, $wanted, $filters, $from, $to, $stockStates): bool {
+            if ($needle !== '') {
+                $custom = is_array($item->meta['custom_fields'] ?? null) ? $item->meta['custom_fields'] : [];
+                $haystack = mb_strtolower((string)($item->meta['title'] ?? '') . ' ' . $item->slug . ' ' . (is_scalar($custom['sku'] ?? null) ? $custom['sku'] : ''));
+                if (!str_contains($haystack, $needle)) {
+                    return false;
+                }
+            }
+            if ($statuses !== [] && !in_array((string)($item->meta['status'] ?? 'published'), $statuses, true)) {
+                return false;
+            }
+            foreach ($wanted as $name => $ids) {
+                if (array_intersect($ids, Format::list($item->meta[$name] ?? null)) === []) {
+                    return false;
+                }
+            }
+            if ($filters['author'] !== '' && trim((string)($item->meta['author'] ?? '')) !== $filters['author']) {
+                return false;
+            }
+            if ($filters['image'] !== '' && (trim((string)($item->meta['main_image'] ?? '')) !== '') !== ($filters['image'] === 'with')) {
+                return false;
+            }
+            if (($from !== null && $item->mtime < $from) || ($to !== null && $item->mtime > $to)) {
+                return false;
+            }
+            if ($filters['stock'] !== '') {
+                $states = $stockStates[(string)($item->meta['translation_id'] ?? '')] ?? [];
+                if ($filters['stock'] === 'untracked' ? $states !== [] : !in_array($filters['stock'], $states, true)) {
+                    return false;
+                }
+            }
+            return true;
+        }));
+
+        // What the bar offers: a dropdown for each taxonomy that has terms, each term with how many entries are filed under it.
+        $bar = ['taxonomies' => [], 'authors' => $authors, 'stock' => $stockStates !== null, 'columns' => [], 'labels' => []];
+        foreach ($taxonomyNames as $name) {
+            $tree = $taxonomies->tree($name);
+            if ($tree === []) {
+                continue;
+            }
+            // How many entries choosing a term lets through: filed under it, or under a term below it.
+            $below = [];
+            if ($taxonomies->isHierarchical($name)) {
+                foreach ($tree as $term) {
+                    $below[$term['id']] = $taxonomies->descendantIds($name, $term['id']);
+                }
+            }
+            $counts = [];
+            $used = [];
+            foreach ($all as $item) {
+                $filed = array_unique(Format::list($item->meta[$name] ?? null));
+                foreach ($filed as $id) {
+                    $used[$id] = true;
+                }
+                foreach ($tree as $term) {
+                    if (in_array($term['id'], $filed, true) || array_intersect($below[$term['id']] ?? [], $filed) !== []) {
+                        $counts[$term['id']] = ($counts[$term['id']] ?? 0) + 1;
+                    }
+                }
+            }
+            $labels = [];
+            $options = [];
+            foreach ($tree as $term) {
+                $labels[$term['id']] = $taxonomies->label($name, $term['id'], $lang);
+                $options[] = ['id' => $term['id'], 'label' => $labels[$term['id']], 'depth' => (int)$term['depth'], 'count' => $counts[$term['id']] ?? 0];
+            }
+            $bar['taxonomies'][] = [
+                'name' => $name,
+                'title' => $taxonomies->load($name)['title'],
+                'options' => $options,
+                'selected' => $chosenTerms[$name] ?? [],
             ];
-            $items = array_values(array_filter($items, static fn(ContentItem $item): bool => in_array($filterTerm, Format::list($item->meta[$filterTaxonomy] ?? null), true)));
+            $bar['labels'][$name] = $labels;
+            // A column only for a taxonomy some entry of the list is filed under.
+            if (array_intersect_key($used, $labels) !== []) {
+                $bar['columns'][] = ['name' => $name, 'title' => $taxonomies->load($name)['title']];
+            }
         }
 
-        return ['items' => $items, 'filters' => $filters, 'term_filter' => $termFilter, 'status_options' => $statusOptions];
+        return ['items' => $items, 'filters' => $filters, 'status_options' => $statusOptions, 'bar' => $bar];
+    }
+
+    /**
+     * The taxonomies the list of a type filters by: those its entries can be filed under. Products take only those meant
+     * for them (product categories, collections), not the ones every type can use, unless none is meant for them.
+     *
+     * @return string[]
+     */
+    private function filterTaxonomies(string $type): array
+    {
+        $taxonomies = ($this->taxonomies)();
+        $names = $taxonomies->names($type);
+        if ($type === Shop\Shop::TYPE) {
+            $own = array_values(array_filter($names, static fn(string $name): bool => in_array($type, $taxonomies->load($name)['assign'], true)));
+            return $own !== [] ? $own : $names;
+        }
+        return $names;
+    }
+
+    /**
+     * A filter that can hold several values: a list, or one string with the values separated by commas.
+     *
+     * @return list<string>
+     */
+    private static function values(mixed $value): array
+    {
+        $parts = is_array($value) ? $value : explode(',', is_scalar($value) ? (string)$value : '');
+        $out = [];
+        foreach ($parts as $part) {
+            $part = is_scalar($part) ? Slug::plain((string)$part) : '';
+            if ($part !== '' && !in_array($part, $out, true)) {
+                $out[] = $part;
+            }
+        }
+        return $out;
     }
 
     /**

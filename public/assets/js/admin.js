@@ -366,7 +366,7 @@
     var fToggle = closest(t, '[data-toggle="filter"]');
     if (fToggle) {
       var target = document.getElementById(fToggle.getAttribute('data-target'));
-      if (target) target.classList.toggle('hidden');
+      if (target) fToggle.setAttribute('aria-expanded', target.classList.toggle('hidden') ? 'false' : 'true');
       return;
     }
 

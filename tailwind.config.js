@@ -10,6 +10,7 @@ module.exports = {
     './public/assets/js/admin-taxonomies.js',
     './public/assets/js/admin-ai-picture.js',
     './public/assets/js/admin-shop-import.js',
+    './public/assets/js/admin-filter-bar.js',
     './src/**/*.php',
   ],
   theme: {

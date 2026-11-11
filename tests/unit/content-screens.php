@@ -123,9 +123,25 @@ check('a status narrows it', array_map(fn($i) => $i->slug, $r['items']), ['secre
 $r = $admin->listing(['type' => 'pages', 'lang' => 'el', 'status' => 'nonsense'], true)['data'];
 check('a status that is not one is ignored', [count($r['items']), $r['filters']['status']], [3, '']);
 $r = $admin->listing(['type' => 'posts', 'lang' => 'el', 'taxonomy' => 'tags', 'term' => 'news'], true)['data'];
-check('filed under a term', [array_map(fn($i) => $i->slug, $r['items']), $r['term_filter']['label'], $r['term_filter']['taxonomy_title']], [['hello'], 'News', 'Tags']);
+check('filed under a term: the link from Taxonomies becomes the filter of its taxonomy', [array_map(fn($i) => $i->slug, $r['items']), $r['filters']['in_tags'], $r['filter_bar']['taxonomies'][0]['selected'], $r['filter_bar']['labels']['tags']['news'], $r['list_query']['in_tags'] ?? null, isset($r['list_query']['taxonomy'])], [['hello'], 'news', ['news'], 'News', 'news', false]);
 $r = $admin->listing(['type' => 'posts', 'lang' => 'el', 'taxonomy' => 'tags', 'term' => 'ghost'], true)['data'];
-check('a term that does not exist is ignored', [count($r['items']), $r['term_filter']], [2, null]);
+check('a term that does not exist is ignored', [count($r['items']), $r['filters']['in_tags'], $r['filters_active']], [2, '', false]);
+$r = $admin->listing(['type' => 'posts', 'lang' => 'el'], true)['data'];
+check('the bar offers each taxonomy with terms, counted, and a column for the ones in use', [array_column($r['filter_bar']['taxonomies'], 'name'), $r['filter_bar']['taxonomies'][0]['options'][0]['count'], array_column($r['filter_bar']['columns'], 'name')], [['tags'], 1, ['tags']]);
+$r = $admin->listing(['type' => 'pages', 'lang' => 'el'], true)['data'];
+check('no column for a taxonomy nothing in the list is filed under', $r['filter_bar']['columns'], []);
+$r = $admin->listing(['type' => 'pages', 'lang' => 'el', 'status' => 'draft,published'], true)['data'];
+check('several statuses, comma-separated: any of them', [count($r['items']), $r['filters']['status'], $r['list_query']['status']], [3, 'published,draft', 'published,draft']);
+$r = $admin->listing(['type' => 'pages', 'lang' => 'el', 'status' => ['draft', 'nonsense']], true)['data'];
+check('or as a list, as the bar\'s boxes send them', [array_map(fn($i) => $i->slug, $r['items']), $r['filters']['status']], [['secret'], 'draft']);
+$r = $admin->listing(['type' => 'posts', 'lang' => 'el', 'in_tags' => 'news,ghost', 'status' => 'published'], true)['data'];
+check('a term and a status must both match', [array_map(fn($i) => $i->slug, $r['items']), $r['filters']['in_tags']], [['hello'], 'news']);
+$r = $admin->listing(['type' => 'pages', 'lang' => 'el', 'image' => 'without', 'updated_from' => date('Y-m-d', time() - 86400), 'updated_to' => 'not a day'], true)['data'];
+check('more filters: without a main image, updated since yesterday; a day that is not one is ignored', [count($r['items']), $r['filters']['image'], $r['filters']['updated_to'], $r['more_filters_active']], [3, 'without', '', 2]);
+$r = $admin->listing(['type' => 'pages', 'lang' => 'el', 'updated_to' => '2001-01-01'], true)['data'];
+check('nothing was updated before 2001', count($r['items']), 0);
+$r = $admin->listing(['type' => 'pages', 'lang' => 'el', 'stock' => 'out', 'author' => 'Nobody'], true)['data'];
+check('stock only for products, an author only one of the list\'s', [$r['filters']['stock'], $r['filters']['author'], $r['filter_bar']['stock'], count($r['items'])], ['', '', false, 3]);
 $r = $admin->listing(['type' => 'nonsense'], true)['data'];
 check('a type that does not exist opens the first one', $r['current_type'], 'pages');
 $r = $admin->listing(['type' => 'pages', 'bulk' => 'ok', 'bulk_msg' => ' Done. ', 'deleted' => '1', 'from' => '/a', 'to' => '/b', 'gone' => '/c'], true)['data'];
@@ -386,6 +402,28 @@ $chosen = $admin->bulkSelection(['type' => 'posts', 'lang' => 'el', 'bulk_action
 check('a bulk selection: type, language, action, entries', [$chosen['valid'], $chosen['type'], $chosen['action'], $chosen['slugs']], [true, 'posts', 'generate_images', ['harbour', 'lighthouse', 'bad-slug']]);
 check('select all matching takes every entry the filters let through', count($admin->bulkSelection(['type' => 'posts', 'lang' => 'el', 'all_matching' => '1', 'selected' => []])['slugs']) >= 2, true);
 check('forms cannot be chosen', $admin->bulkSelection(['type' => 'forms', 'lang' => 'el', 'selected' => ['x']])['valid'], false);
+
+// ---- products: filtered by their own taxonomies, and by stock
+mkdir("$dir/content/products", 0775, true);
+file_put_contents("$dir/content/taxonomies/product-categories.yaml", "title: Product categories\nhierarchical: true\nassign: [products]\nterms:\n  - id: jewels\n    slug: jewels\n    labels: {el: Jewels}\n  - id: rings\n    slug: rings\n    parent: jewels\n    labels: {el: Rings}\n");
+file_put_contents("$dir/content/taxonomies/collections.yaml", "title: Collections\nassign: [products]\nterms:\n  - id: summer\n    slug: summer\n    labels: {el: Summer}\n");
+file_put_contents("$dir/content/taxonomies/categories.yaml", "title: Categories\nterms:\n  - id: misc\n    slug: misc\n    labels: {el: Misc}\n");
+$write('products', 'ring', "---\ntitle: Gold ring\nstatus: published\ntranslation_id: p-ring\nproduct-categories: [rings]\ncollections: [summer]\ncustom_fields:\n  sku: GR-1\n  track_stock: true\n---\n\nx\n");
+$write('products', 'chain', "---\ntitle: Chain\nstatus: draft\ntranslation_id: p-chain\nproduct-categories: [jewels]\ncategories: [misc]\n---\n\nx\n");
+$taxonomies->forget();
+$flush();
+$shopAdmin = new ContentAdmin("$dir/content", $content, $index, $types, $editor, $translations, $revisions, $redirects, fn() => $settings, fn() => $taxonomies, fn() => $publicPaths, $scanner, $logger, null,
+    fn(array $items): array => ['p-ring' => \GnozioCMS\Shop\ShopStock::states([], ['track_stock' => true]), 'p-chain' => []]);
+$r = $shopAdmin->listing(['type' => 'products', 'lang' => 'el'], true)['data'];
+check('products filter by product categories and collections only, not the categories every type has', [array_column($r['filter_bar']['taxonomies'], 'name'), array_column($r['filter_bar']['columns'], 'name'), $r['filter_bar']['stock']], [['collections', 'product-categories'], ['collections', 'product-categories'], true]);
+$counts = array_column($r['filter_bar']['taxonomies'][1]['options'], 'count', 'id');
+check('a category counts the entries filed under the ones below it too', [$counts['jewels'], $counts['rings']], [2, 1]);
+$r = $shopAdmin->listing(['type' => 'products', 'lang' => 'el', 'in_product-categories' => 'jewels'], true)['data'];
+check('a category takes in the ones below it', array_map(fn($i) => $i->slug, $r['items']), ['chain', 'ring']);
+$r = $shopAdmin->listing(['type' => 'products', 'lang' => 'el', 'q' => 'gr-1'], true)['data'];
+check('the search looks at the SKU too', array_map(fn($i) => $i->slug, $r['items']), ['ring']);
+check('stock: out, not tracked', [array_map(fn($i) => $i->slug, $shopAdmin->listing(['type' => 'products', 'lang' => 'el', 'stock' => 'out'], true)['data']['items']), array_map(fn($i) => $i->slug, $shopAdmin->listing(['type' => 'products', 'lang' => 'el', 'stock' => 'untracked'], true)['data']['items'])], [['ring'], ['chain']]);
+check('a tracked product with nothing on hand is out', \GnozioCMS\Shop\ShopStock::states(['' => ['on_hand' => 3, 'reserved' => 1]], ['track_stock' => true, 'low_stock_at' => 2]), ['in', 'low']);
 
 // tidy up
 exec('rm -rf ' . escapeshellarg($dir));

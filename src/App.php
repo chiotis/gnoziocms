@@ -564,7 +564,17 @@ final class App
             fn(): PublicPaths => $this->publicPaths(),
             fn(): LinkScanner => $this->linkScanner(),
             fn(string $action, string $level, ?string $type, ?string $id, string $message, array $context) => $this->logActivity($action, $level, $type, $id, $message, $context),
-            $this->relations()
+            $this->relations(),
+            Shop::enabled($this->content->getTypes()) && $this->systemDatabase->isAvailable() ? function (array $items): array {
+                $stored = $this->shopStock()->all();
+                $states = [];
+                foreach ($items as $item) {
+                    $id = (string)($item->meta['translation_id'] ?? '');
+                    $custom = is_array($item->meta['custom_fields'] ?? null) ? $item->meta['custom_fields'] : [];
+                    $states[$id] = ShopStock::states($stored[$id] ?? [], $custom);
+                }
+                return $states;
+            } : null
         );
     }
 

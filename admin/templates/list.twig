@@ -28,7 +28,6 @@
     </div>
 
     <div class="flex flex-wrap items-center gap-2">
-      {{ ui.filter_button('contentFilter', filters_active) }}
       {# The products' CSV is in Shop settings > Import & export, beside the WooCommerce import. #}
       {% if current_type != 'products' %}
       <a class="{{ btn_secondary }}" href="{{ url('admin/import?type=' ~ current_type) }}">
@@ -47,42 +46,108 @@
     </div>
   </header>
 
-  <div id="contentFilter" class="mb-4 rounded-lg border border-slate-200 bg-white p-4 {{ filters_active ? '' : 'hidden' }}">
-    <form method="get" action="{{ url('admin/content') }}" class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-      <input type="hidden" name="type" value="{{ current_type }}">
-      <input type="hidden" name="lang" value="{{ lang }}">
-      {% if term_filter %}<input type="hidden" name="taxonomy" value="{{ term_filter.taxonomy }}"><input type="hidden" name="term" value="{{ term_filter.term }}">{% endif %}
-      {% if list_query.per_page is defined %}<input type="hidden" name="per_page" value="{{ list_query.per_page }}">{% endif %}
-      <label class="block sm:col-span-2">
-        <span class="mb-1 block text-sm font-medium text-slate-700">Search</span>
-        <input type="text" name="q" value="{{ filters.q }}" placeholder="Title or slug" class="{{ input_class }}">
+  {# The filter bar: search, status and the type's taxonomies at hand, the rest behind "More filters". It sends itself as
+     each choice is made (admin.js, form[data-filter-bar]); every filter is a comma-separated list in the address. #}
+  {% set field_small = 'rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-slate-700' %}
+  {% set clean_query = list_query|filter((v, k) => k != 'page') %}
+  <form method="get" action="{{ url('admin/content') }}" class="mb-4 rounded-lg border border-slate-200 bg-white" data-filter-bar role="search" aria-label="Filter {{ current_type }}">
+    <input type="hidden" name="type" value="{{ current_type }}">
+    <input type="hidden" name="lang" value="{{ lang }}">
+    {% if list_query.per_page is defined %}<input type="hidden" name="per_page" value="{{ list_query.per_page }}">{% endif %}
+    <div class="flex flex-wrap items-center gap-2 p-2.5">
+      <label class="relative block w-full sm:w-64">
+        <span class="sr-only">Search</span>
+        <svg class="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path stroke-linecap="round" d="m20 20-3.5-3.5"/></svg>
+        <input type="search" name="q" value="{{ filters.q }}" placeholder="{{ current_type == 'products' ? 'Title, slug or SKU' : 'Title or slug' }}" class="w-full rounded-md border border-slate-300 bg-white py-1.5 pl-8 pr-2.5 text-sm" data-filter-search>
       </label>
+      {{ ui.multi_select('status', 'Status', status_options|map(o => {value: o, label: o|title}), filters.status ? filters.status|split(',') : []) }}
+      {% for taxonomy in filter_bar.taxonomies %}
+        {{ ui.multi_select('in_' ~ taxonomy.name, taxonomy.title, taxonomy.options|map(o => {value: o.id, label: o.label, depth: o.depth, count: o.count}), taxonomy.selected) }}
+      {% endfor %}
+      <button type="button" data-toggle="filter" data-target="moreFilters" aria-controls="moreFilters" aria-expanded="{{ more_filters_active ? 'true' : 'false' }}" class="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900">
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 5h18M6 12h12M10 19h4"/></svg>
+        More filters
+        {% if more_filters_active %}<span class="rounded-full bg-blue-600 px-1.5 text-[11px] font-semibold leading-4 text-white">{{ more_filters_active }}</span>{% endif %}
+      </button>
+      {% if filters_active %}
+        <a href="{{ url('admin/content?' ~ {type: current_type, lang: lang}|merge(list_query.per_page is defined ? {per_page: list_query.per_page} : {})|url_encode) }}" class="ml-auto rounded-md px-2.5 py-1.5 text-sm font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-800">Reset</a>
+      {% endif %}
+      <noscript><button type="submit" class="{{ btn_secondary }}">Apply</button></noscript>
+    </div>
+
+    <div id="moreFilters" class="grid grid-cols-1 gap-3 border-t border-slate-100 px-3 py-3 sm:grid-cols-2 lg:grid-cols-4 {{ more_filters_active ? '' : 'hidden' }}">
       <label class="block">
-        <span class="mb-1 block text-sm font-medium text-slate-700">Status</span>
-        <select name="status" class="{{ select_class }}">
-          <option value="">All</option>
-          {% for option in status_options %}
-            <option value="{{ option }}" {% if filters.status == option %}selected{% endif %}>{{ option|title }}</option>
-          {% endfor %}
+        <span class="mb-1 block text-xs font-medium text-slate-500">Main image</span>
+        <select name="image" class="w-full {{ field_small }}" data-filter-auto>
+          <option value="">Any</option>
+          <option value="with" {% if filters.image == 'with' %}selected{% endif %}>With a main image</option>
+          <option value="without" {% if filters.image == 'without' %}selected{% endif %}>Without a main image</option>
         </select>
       </label>
-      <div class="flex justify-end gap-2 sm:col-span-3">
-        <a href="{{ url('admin/content?type=' ~ current_type ~ '&lang=' ~ lang) }}" class="rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100">Reset</a>
-        <button type="submit" class="{{ btn_primary }}">Apply</button>
-      </div>
-    </form>
-  </div>
+      {% if filter_bar.stock %}
+        <label class="block">
+          <span class="mb-1 block text-xs font-medium text-slate-500">Stock</span>
+          <select name="stock" class="w-full {{ field_small }}" data-filter-auto>
+            <option value="">Any</option>
+            {% for value, label in {in: 'In stock', low: 'Low stock', out: 'Out of stock', untracked: 'Stock not tracked'} %}
+              <option value="{{ value }}" {% if filters.stock == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      {% endif %}
+      {% if filter_bar.authors is not empty %}
+        <label class="block">
+          <span class="mb-1 block text-xs font-medium text-slate-500">Author</span>
+          <select name="author" class="w-full {{ field_small }}" data-filter-auto>
+            <option value="">Anyone</option>
+            {% for author in filter_bar.authors %}<option value="{{ author }}" {% if filters.author == author %}selected{% endif %}>{{ author }}</option>{% endfor %}
+          </select>
+        </label>
+      {% endif %}
+      <fieldset class="block sm:col-span-2 lg:col-span-1">
+        <legend class="mb-1 block text-xs font-medium text-slate-500">Updated</legend>
+        <div class="flex items-center gap-1.5">
+          <input type="date" name="updated_from" value="{{ filters.updated_from }}" class="min-w-0 flex-1 {{ field_small }}" aria-label="Updated from" data-filter-auto>
+          <span class="text-xs text-slate-400">to</span>
+          <input type="date" name="updated_to" value="{{ filters.updated_to }}" class="min-w-0 flex-1 {{ field_small }}" aria-label="Updated until" data-filter-auto>
+        </div>
+      </fieldset>
+    </div>
 
-  {% if term_filter %}
-    <p class="mb-4 flex flex-wrap items-center gap-2 text-sm text-slate-600">
-      Filed under
-      <span class="inline-flex items-center gap-1 rounded-full bg-blue-50 py-0.5 pl-2.5 pr-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-200">
-        {{ term_filter.taxonomy_title }}: {{ term_filter.label }}
-        <a href="{{ url('admin/content?' ~ list_query|filter((v, k) => k != 'taxonomy' and k != 'term')|url_encode) }}" class="rounded-full p-0.5 hover:bg-blue-100" aria-label="Remove the {{ term_filter.taxonomy_title }} filter"><svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></svg></a>
-      </span>
-      <a href="{{ url('admin/taxonomies?taxonomy=' ~ term_filter.taxonomy) }}" class="text-xs font-medium text-slate-500 underline hover:text-slate-800">Back to {{ term_filter.taxonomy_title }}</a>
-    </p>
-  {% endif %}
+    {% if filters_active %}
+      {# What is applied, each with a way to take it off. #}
+      {% set chip = 'inline-flex items-center gap-1 rounded-full bg-blue-50 py-0.5 pl-2.5 pr-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-200' %}
+      {% set x_icon = '<svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></svg>' %}
+      <div class="flex flex-wrap items-center gap-1.5 border-t border-slate-100 px-3 py-2">
+        {% if filters.q %}
+          <span class="{{ chip }}">“{{ filters.q }}”<a href="{{ url('admin/content?' ~ clean_query|filter((v, k) => k != 'q')|url_encode) }}" class="rounded-full p-0.5 hover:bg-blue-100" aria-label="Remove the search">{{ x_icon|raw }}</a></span>
+        {% endif %}
+        {% for status in filters.status ? filters.status|split(',') : [] %}
+          {% set rest = filters.status|split(',')|filter(s => s != status)|join(',') %}
+          <span class="{{ chip }}">Status: {{ status|title }}<a href="{{ url('admin/content?' ~ clean_query|merge({status: rest})|filter(v => v != '')|url_encode) }}" class="rounded-full p-0.5 hover:bg-blue-100" aria-label="Remove status {{ status }}">{{ x_icon|raw }}</a></span>
+        {% endfor %}
+        {% for taxonomy in filter_bar.taxonomies %}
+          {% for id in taxonomy.selected %}
+            {% set key = 'in_' ~ taxonomy.name %}
+            {% set rest = taxonomy.selected|filter(s => s != id)|join(',') %}
+            <span class="{{ chip }}">{{ taxonomy.title }}: {{ filter_bar.labels[taxonomy.name][id]|default(id) }}<a href="{{ url('admin/content?' ~ clean_query|merge({(key): rest})|filter(v => v != '')|url_encode) }}" class="rounded-full p-0.5 hover:bg-blue-100" aria-label="Remove {{ taxonomy.title }} {{ filter_bar.labels[taxonomy.name][id]|default(id) }}">{{ x_icon|raw }}</a></span>
+          {% endfor %}
+        {% endfor %}
+        {% set more_labels = {
+          image: filters.image == 'with' ? 'With a main image' : 'Without a main image',
+          stock: {in: 'In stock', low: 'Low stock', out: 'Out of stock', untracked: 'Stock not tracked'}[filters.stock]|default(''),
+          author: 'Author: ' ~ filters.author,
+          updated_from: 'Updated from ' ~ filters.updated_from,
+          updated_to: 'Updated until ' ~ filters.updated_to
+        } %}
+        {% for key, label in more_labels %}
+          {% if filters[key]|default('') %}
+            <span class="{{ chip }}">{{ label }}<a href="{{ url('admin/content?' ~ clean_query|filter((v, k) => k != key)|url_encode) }}" class="rounded-full p-0.5 hover:bg-blue-100" aria-label="Remove: {{ label }}">{{ x_icon|raw }}</a></span>
+          {% endif %}
+        {% endfor %}
+      </div>
+    {% endif %}
+  </form>
 
   <form method="post" action="{{ url('admin/content-bulk') }}" class="rounded-lg border border-slate-200 bg-white" data-bulk-form>
     {{ csrf_field() }}
@@ -163,6 +228,7 @@
             <tr class="border-b border-slate-100 bg-slate-50/50 text-left text-xs font-medium text-slate-400">
               <th class="w-8 px-4 py-2"><input type="checkbox" data-select-all="selected[]" class="h-4 w-4 rounded border-slate-300" aria-label="Select all on this page"></th>
               <th class="px-4 py-2 font-medium" data-sort="text">Title</th>
+              {% for column in filter_bar.columns %}<th class="px-4 py-2 font-medium" data-sort="text">{{ column.title }}</th>{% endfor %}
               <th class="px-4 py-2 font-medium" data-sort="text">Status</th>
               <th class="px-4 py-2 font-medium">Language</th>
               <th class="px-4 py-2 font-medium" data-sort="number">Updated</th>
@@ -204,6 +270,20 @@
                     {% endif %}
                   </div>
                 </td>
+                {% for column in filter_bar.columns %}
+                  {% set ids = item.meta[column.name] is iterable ? item.meta[column.name] : (item.meta[column.name] is defined and item.meta[column.name] ? [item.meta[column.name]] : []) %}
+                  {% set names = ids|map(id => filter_bar.labels[column.name][id]|default(null))|filter(n => n is not null) %}
+                  <td class="px-4 py-2.5" data-sort-value="{{ names|join(', ') }}">
+                    {% if names is empty %}<span class="text-slate-300" aria-label="None">—</span>{% else %}
+                      <div class="flex max-w-[16rem] flex-wrap gap-1">
+                        {% for id in ids|filter(id => filter_bar.labels[column.name][id] is defined)|slice(0, 3) %}
+                          <a href="{{ url('admin/content?' ~ clean_query|merge({('in_' ~ column.name): id})|url_encode) }}" class="whitespace-nowrap rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-600 no-underline hover:bg-slate-200 hover:text-slate-900" title="Show only {{ filter_bar.labels[column.name][id] }}">{{ filter_bar.labels[column.name][id] }}</a>
+                        {% endfor %}
+                        {% if names|length > 3 %}<span class="px-1 py-0.5 text-xs text-slate-400" title="{{ names|slice(3)|join(', ') }}">+{{ names|length - 3 }}</span>{% endif %}
+                      </div>
+                    {% endif %}
+                  </td>
+                {% endfor %}
                 <td class="px-4 py-2.5" data-sort-value="{{ status }}">
                   {{ ui.status_badge(status) }}
                   {% set publish_at = item.publishAtTime() %}
@@ -281,5 +361,6 @@
       </form>
     {% endif %}
   {% endfor %}
+  <script src="{{ asset('js/admin-filter-bar.js') }}" defer></script>
   {% if ai_bulk %}<script src="{{ asset('js/admin-ai-picture.js') }}" defer></script>{% endif %}
 {% endblock %}
