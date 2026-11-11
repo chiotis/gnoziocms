@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.288 — 2026-11-11 — A Look offers only published products
+- **Shop:** the Product picker of a Look's pieces offers only published products; drafts and hidden products are no longer in its list. A product already chosen stays, marked as a draft, until it is removed or published.
+- **Content types:** any relation field can do the same with `published_only: true` (docs/theming.md, *Relationships*).
+
 ## 0.1.287 — 2026-11-11 — Draft products can be picked again
 - **Admin:** in a relation picker (a Look's pieces, a coupon's products, any relation field), choosing a draft or hidden entry seemed to do nothing: it was chosen, but a leftover style hid its chip. The chip now shows, with its Draft or Hidden label. Looks saved meanwhile may already hold such products; their chips show up now.
 - **Blocks:** a block switched off in the builder no longer vanishes from it; it shows dashed and faded, as intended.
