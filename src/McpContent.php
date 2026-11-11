@@ -16,7 +16,17 @@ final class McpContent
 {
     private const STATUSES = ['draft', ScheduledPublishing::STATUS, 'published'];
     /** Field kinds a job can write; the others (lists, relations, galleries) are kept as they are. */
-    private const WRITABLE_FIELDS = ['text', 'textarea', 'markdown', 'number', 'date', 'select', 'toggle', 'url', 'email', 'color'];
+    private const WRITABLE_FIELDS = ['text', 'textarea', 'markdown', 'number', 'decimal', 'date', 'select', 'toggle', 'url', 'email', 'color', 'image', 'gallery', 'repeater', 'relation'];
+    /** What a field of each kind takes, for site_info. */
+    public const VALUE_HINTS = [
+        'decimal' => 'a number, such as 12.50; "" clears it',
+        'image' => 'a picture of the media library: the path add_image_from_url gave (/uploads/...); "" clears it',
+        'gallery' => 'a list of pictures of the media library (paths from add_image_from_url), in order; it replaces the old list',
+        'repeater' => 'a list of rows, each an object of the fields listed under it; it replaces the old list, so send every row you keep',
+        'relation' => 'the address of an entry, type/slug (such as books/my-book), or a list of them when the field takes several',
+        'toggle' => 'true or false',
+        'select' => 'one of the options',
+    ];
     private const MAX_BODY = 200000;
     public const MAX_IMAGE_BYTES = 10 * 1048576;
 
@@ -47,6 +57,7 @@ final class McpContent
         private ?\Closure $uploadsChanged = null,
         private ?\Closure $requestPicture = null,
         private ?\Closure $pictureState = null,
+        private ?Relations $relations = null,
     ) {
     }
 
@@ -230,7 +241,7 @@ final class McpContent
             'image_status' => $this->pictureState !== null ? ($this->pictureState)($item->type . '/' . $item->slug . '/' . $item->lang) : null,
             'seo' => array_intersect_key($seo, ['title' => 1, 'description' => 1]),
             'terms' => $terms,
-            'fields' => $this->types->values($item->type, $item->meta, 'en', $this->defaultLang()),
+            'fields' => $this->withAddresses($item->type, $this->types->values($item->type, $item->meta, 'en', $this->defaultLang())),
             'translations' => $siblings,
         ];
     }
@@ -438,16 +449,12 @@ final class McpContent
                 $field = $declared[$key] ?? null;
                 if ($field === null) {
                     $problems[] = $type . ' has no field "' . $key . '" (it has: ' . (implode(', ', array_keys($declared)) ?: 'none') . ').';
-                } elseif (!in_array($field['type'], self::WRITABLE_FIELDS, true)) {
-                    $problems[] = 'The field "' . $key . '" (' . $field['type'] . ') cannot be written through MCP yet; a person sets it in the admin.';
-                } else {
-                    $clean = FieldSchema::clean($field, $value);
-                    if (!self::same($clean, $value)) {
-                        $problems[] = 'The field "' . $key . '" (' . $field['type'] . ') does not take ' . json_encode($value, JSON_UNESCAPED_UNICODE) . '.'
-                            . (isset($field['options']) && is_array($field['options']) ? ' Choose one of: ' . implode(', ', array_map('strval', array_keys($field['options']))) . '.' : '');
-                    } else {
-                        $custom[$key] = $clean;
-                    }
+                    continue;
+                }
+                $before = count($problems);
+                $clean = $this->fieldValue((string)$key, $field, $value, $problems, $dryRun);
+                if (count($problems) === $before) {
+                    $custom[$key] = $clean;
                 }
             }
         }
@@ -557,6 +564,207 @@ final class McpContent
         }
         ($this->afterWrite)($this->summary($item), $connection, $published);
         return ['existing' => false, 'entry' => $this->summary($item), 'warnings' => $warnings];
+    }
+
+    // ---- fields
+
+    /**
+     * The value to keep for a field the type declares, checked as strictly as the rest: what the admin would change or drop is
+     * refused with the reason (added to `$problems`) instead. Pictures must be in the media library; entries pointed at are given
+     * by their address and kept by their id, as the admin does.
+     *
+     * @param array<string, mixed> $field normalized definition
+     * @param list<string> $problems
+     */
+    private function fieldValue(string $label, array $field, mixed $value, array &$problems, bool $dryRun): mixed
+    {
+        $type = (string)$field['type'];
+        $named = 'The field "' . $label . '" (' . $type . ')';
+        if (!in_array($type, self::WRITABLE_FIELDS, true)) {
+            $problems[] = $named . ' cannot be written through MCP yet; a person sets it in the admin.';
+            return null;
+        }
+        switch ($type) {
+            case 'decimal':
+                if ($value === '' || $value === null) {
+                    return '';
+                }
+                $clean = is_numeric($value) ? FieldSchema::clean($field, $value) : null;
+                if (!is_float($clean) && !is_int($clean) || abs((float)$clean - (float)$value) > 1e-7) {
+                    $range = array_filter(['at least ' . ($field['min'] ?? ''), 'at most ' . ($field['max'] ?? '')], static fn(string $s): bool => !str_ends_with($s, ' '));
+                    $problems[] = $named . ' takes a number' . ($range !== [] ? ', ' . implode(' and ', $range) : '') . ', not ' . json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . '.';
+                    return null;
+                }
+                return $clean;
+
+            case 'image':
+                if ($value === '' || $value === null) {
+                    return '';
+                }
+                $path = is_string($value) ? $this->mediaPath($value) : null;
+                if ($path === null) {
+                    $problems[] = $named . ' takes a picture of the media library: the path add_image_from_url gave (/uploads/...), or "" to clear it.';
+                }
+                return $path;
+
+            case 'gallery':
+                if (!is_array($value) || !array_is_list($value)) {
+                    $problems[] = $named . ' takes a list of pictures of the media library (paths from add_image_from_url).';
+                    return null;
+                }
+                $max = (int)($field['max'] ?? FieldSchema::GALLERY_MAX);
+                if (count($value) > $max) {
+                    $problems[] = $named . ' takes at most ' . $max . ' pictures.';
+                    return null;
+                }
+                $paths = [];
+                foreach ($value as $index => $one) {
+                    $path = is_string($one) ? $this->mediaPath($one) : null;
+                    if ($path === null) {
+                        $problems[] = $named . ': picture ' . ($index + 1) . ' is not in the media library; add it with add_image_from_url first.';
+                    } elseif (!in_array($path, $paths, true)) {
+                        $paths[] = $path;
+                    }
+                }
+                return $paths;
+
+            case 'relation':
+                $multiple = ($field['multiple'] ?? false) === true;
+                $tokens = is_array($value) ? $value : ($value === '' || $value === null ? [] : [$value]);
+                if (!array_is_list($tokens) || (!$multiple && count($tokens) > 1)) {
+                    $problems[] = $named . ' takes ' . ($multiple ? 'a list of entries' : 'one entry') . ', each as its address type/slug.';
+                    return null;
+                }
+                if (($field['max'] ?? null) !== null && count($tokens) > (int)$field['max']) {
+                    $problems[] = $named . ' takes at most ' . (int)$field['max'] . ' entries.';
+                    return null;
+                }
+                $allowed = array_map('strval', (array)($field['types'] ?? []));
+                $ids = [];
+                foreach ($tokens as $token) {
+                    $id = is_string($token) ? $this->relationId(trim($token), $allowed, $dryRun) : '';
+                    if ($id === '') {
+                        $problems[] = $named . ': there is no ' . ($allowed !== [] ? implode(' or ', $allowed) : 'entry') . ' at ' . json_encode($token, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . '. Give the address as type/slug; list_entries finds it.';
+                    } elseif (!in_array($id, $ids, true)) {
+                        $ids[] = $id;
+                    }
+                }
+                return $multiple ? $ids : ($ids[0] ?? '');
+
+            case 'repeater':
+                if ($value === '' || $value === null || $value === []) {
+                    return [];
+                }
+                $subFields = is_array($field['fields'] ?? null) ? $field['fields'] : [];
+                if (!is_array($value) || !array_is_list($value)) {
+                    $problems[] = $named . ' takes a list of rows, each an object with: ' . implode(', ', array_keys($subFields)) . '.';
+                    return null;
+                }
+                if (($field['max'] ?? null) !== null && count($value) > (int)$field['max']) {
+                    $problems[] = $named . ' takes at most ' . (int)$field['max'] . ' rows.';
+                    return null;
+                }
+                $rows = [];
+                foreach ($value as $index => $row) {
+                    $where = $label . '[' . ($index + 1) . ']';
+                    if (!is_array($row) || ($row !== [] && array_is_list($row))) {
+                        $problems[] = 'Row ' . $where . ' must be an object with: ' . implode(', ', array_keys($subFields)) . '.';
+                        continue;
+                    }
+                    $clean = [];
+                    foreach ($row as $subKey => $subValue) {
+                        $sub = $subFields[$subKey] ?? null;
+                        if ($sub === null) {
+                            $problems[] = 'Row ' . $where . ' has no field "' . $subKey . '" (it has: ' . implode(', ', array_keys($subFields)) . ').';
+                            continue;
+                        }
+                        $before = count($problems);
+                        $kept = $this->fieldValue($where . '.' . $subKey, $sub, $subValue, $problems, $dryRun);
+                        if (count($problems) === $before) {
+                            $clean[$subKey] = $kept;
+                        }
+                    }
+                    $rows[] = $clean;
+                }
+                // Defaults for what a row leaves out, and no empty rows: as the admin keeps them.
+                return FieldSchema::clean($field, $rows);
+
+            default:
+                $clean = FieldSchema::clean($field, $value);
+                if (!self::same($clean, $value)) {
+                    $problems[] = $named . ' does not take ' . json_encode($value, JSON_UNESCAPED_UNICODE) . '.'
+                        . (isset($field['options']) && is_array($field['options']) && $field['options'] !== [] ? ' Choose one of: ' . implode(', ', array_map('strval', array_keys($field['options']))) . '.' : '');
+                    return null;
+                }
+                return $clean;
+        }
+    }
+
+    /**
+     * A field as site_info describes it: its kind, label and limits, what it takes, whether MCP may write it, whether one value
+     * serves every translation, and the fields of a repeater's rows.
+     *
+     * @param array<string, mixed> $field normalized definition
+     * @return array<string, mixed>
+     */
+    public static function describeField(array $field): array
+    {
+        $type = (string)($field['type'] ?? 'text');
+        $out = array_intersect_key($field, array_flip(['type', 'label', 'help', 'options', 'required', 'multiple', 'min', 'max', 'types']));
+        $out['writable'] = in_array($type, self::WRITABLE_FIELDS, true);
+        if (isset(self::VALUE_HINTS[$type])) {
+            $out['takes'] = self::VALUE_HINTS[$type];
+        }
+        if (($field['shared'] ?? false) === true) {
+            $out['shared'] = 'one value for every translation: writing it in one language changes it in all';
+        }
+        if ($type === 'repeater') {
+            $out['fields'] = array_map(self::describeField(...), is_array($field['fields'] ?? null) ? $field['fields'] : []);
+        }
+        return $out;
+    }
+
+    /**
+     * Field values with each entry pointed at given by its address (type/slug), which is what a write takes.
+     *
+     * @param array<string, mixed> $values
+     * @return array<string, mixed>
+     */
+    private function withAddresses(string $type, array $values): array
+    {
+        if ($this->relations === null) {
+            return $values;
+        }
+        $meta = $this->relations->withAddresses($type, ['custom_fields' => $values]);
+        return is_array($meta['custom_fields'] ?? null) ? $meta['custom_fields'] : $values;
+    }
+
+    /** The path of a picture of the media library, given as its path or its full address; null when it is not one. */
+    private function mediaPath(string $value): ?string
+    {
+        $path = rawurldecode((string)parse_url(trim($value), PHP_URL_PATH));
+        return str_starts_with($path, '/uploads/') && !str_contains($path, '..') && is_file($this->publicDir . $path) ? $path : null;
+    }
+
+    /**
+     * The id of the entry at an address (type/slug), as the admin keeps a reference. A check that saves nothing gives no entry an
+     * id, so an entry that has none yet is only looked for.
+     *
+     * @param string[] $allowed
+     */
+    private function relationId(string $address, array $allowed, bool $dryRun): string
+    {
+        if ($this->relations === null || !str_contains($address, '/')) {
+            return '';
+        }
+        $id = $this->relations->lookup($address, $allowed, !$dryRun);
+        if ($id === '' && $dryRun) {
+            [$type, $slug] = explode('/', $address, 2);
+            $exists = ($allowed === [] || in_array($type, $allowed, true)) && in_array($type, $this->content->getTypes(), true)
+                && $this->content->find($type, Slug::plain($slug), $this->defaultLang(), true, false) !== null;
+            return $exists ? 'unsaved' : '';
+        }
+        return $id;
     }
 
     // ---- pictures
