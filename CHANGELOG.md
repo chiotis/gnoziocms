@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.278 — 2026-11-11 — Variants on sale
+- **Shop:** each variant has a **Was (€)** price of its own, so one finish or size can be put on sale alone. Left empty, the variant has the product's. On the product page the old price shows, struck through, when a variant on sale is chosen, and hides for one that is not.
+- The product feed (Google, Meta) gives each variant its own "was" price and sale price.
+- **Import from WooCommerce:** a variation on sale keeps its regular price as its "was" price.
+- Through MCP, a variant's `compare_at_price` is written like its price (`docs/mcp-shop-plan.md`, step 2).
+
 ## 0.1.277 — 2026-11-11 — Every kind of field through MCP
 - **MCP:** a connection can now write prices and other decimals, pictures, galleries, lists of rows (a product's variants and options) and links to other entries, so a product can be made or changed in full from Claude or ChatGPT. Pictures must be in the media library (`add_image_from_url` first); other entries are given by their address, such as `makers/acme`. A bad value is refused with the reason, inside rows too, and nothing is written.
 - Fields shared by the translations (a product's price) change in every language at once, as in the admin.
