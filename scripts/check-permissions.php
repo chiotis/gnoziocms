@@ -15,23 +15,23 @@ $fail = 0;
 function check(string $label, $actual, $expected) { global $fail; $ok = $actual === $expected; if (!$ok) $fail++; echo ($ok ? 'ok   ' : 'FAIL ') . $label . ($ok ? '' : ' => ' . var_export($actual, true) . ' expected ' . var_export($expected, true)) . "\n"; }
 $u = fn(string $role, int $id = 5) => ['id' => $id, 'role' => $role, 'status' => 'active'];
 
-// Every admin action the router knows, and who may use it: [superadmin, admin, editor, user]
+// Every admin action the router knows, and who may use it: [superadmin, admin, editor, shop_manager, user]
 $actions = [
-    'dashboard' => [1,1,1,0], 'index' => [1,1,1,0],
-    'content' => [1,1,1,0], 'content-bulk' => [1,1,1,0], 'search' => [1,1,1,0], 'edit' => [1,1,1,0], 'revisions' => [1,1,1,0], 'links' => [1,1,1,0], 'save' => [1,1,1,0], 'delete' => [1,1,1,0], 'new' => [1,1,1,0], 'block-presets' => [1,1,1,0], 'markdown-visual' => [1,1,1,0], 'media-picker' => [1,1,1,0], 'relations' => [1,1,1,0], 'broken-references' => [1,1,1,0],
-    'media' => [1,1,1,0], 'files' => [1,1,1,0], 'taxonomies' => [1,1,1,0],
-    'menus' => [1,1,0,0], 'menus-new' => [1,1,0,0], 'menus-edit' => [1,1,0,0],
-    'forms' => [1,1,0,0], 'forms-new' => [1,1,0,0], 'form-submissions' => [1,1,0,0], 'forms-export' => [1,1,0,0], 'export' => [1,1,0,0], 'import' => [1,1,0,0],
-    'settings' => [1,1,0,0], 'theme' => [1,1,0,0], 'system' => [1,1,0,0], 'content-types' => [1,1,0,0], 'translations' => [1,1,0,0],
-    'activity-logs' => [1,1,0,0], 'email-logs' => [1,1,0,0], 'backups' => [1,1,0,0], 'updates' => [1,1,0,0],
-    'notification-read' => [1,1,0,0], 'notifications-read-all' => [1,1,0,0],
-    'users' => [1,0,0,0], 'users-delete' => [1,0,0,0], 'roles' => [1,0,0,0], 'redirects' => [1,1,0,0], 'seo' => [1,1,0,0], 'analytics' => [1,1,0,0],
-    'users-edit' => [1,1,1,1],
-    'shop-settings' => [1,1,0,0],
-    'some-future-action' => [1,1,0,0],
+    'dashboard' => [1,1,1,1,0], 'index' => [1,1,1,1,0],
+    'content' => [1,1,1,1,0], 'content-bulk' => [1,1,1,1,0], 'search' => [1,1,1,1,0], 'edit' => [1,1,1,1,0], 'revisions' => [1,1,1,1,0], 'links' => [1,1,1,1,0], 'save' => [1,1,1,1,0], 'delete' => [1,1,1,1,0], 'new' => [1,1,1,1,0], 'block-presets' => [1,1,1,1,0], 'markdown-visual' => [1,1,1,1,0], 'media-picker' => [1,1,1,1,0], 'relations' => [1,1,1,1,0], 'broken-references' => [1,1,1,1,0],
+    'media' => [1,1,1,1,0], 'files' => [1,1,1,1,0], 'taxonomies' => [1,1,1,1,0],
+    'menus' => [1,1,0,0,0], 'menus-new' => [1,1,0,0,0], 'menus-edit' => [1,1,0,0,0],
+    'forms' => [1,1,0,0,0], 'forms-new' => [1,1,0,0,0], 'form-submissions' => [1,1,0,0,0], 'forms-export' => [1,1,0,0,0], 'export' => [1,1,0,0,0], 'import' => [1,1,0,0,0],
+    'settings' => [1,1,0,0,0], 'theme' => [1,1,0,0,0], 'system' => [1,1,0,0,0], 'content-types' => [1,1,0,0,0], 'translations' => [1,1,0,0,0],
+    'activity-logs' => [1,1,0,0,0], 'email-logs' => [1,1,0,0,0], 'backups' => [1,1,0,0,0], 'updates' => [1,1,0,0,0],
+    'notification-read' => [1,1,0,0,0], 'notifications-read-all' => [1,1,0,0,0],
+    'users' => [1,0,0,0,0], 'users-delete' => [1,0,0,0,0], 'roles' => [1,0,0,0,0], 'redirects' => [1,1,0,0,0], 'seo' => [1,1,0,0,0], 'analytics' => [1,1,0,1,0],
+    'users-edit' => [1,1,1,1,1],
+    'shop-settings' => [1,1,0,1,0],
+    'some-future-action' => [1,1,0,0,0],
 ];
 foreach ($actions as $action => $expected) {
-    foreach (['superadmin', 'admin', 'editor', 'user'] as $i => $role) {
+    foreach (['superadmin', 'admin', 'editor', 'shop_manager', 'user'] as $i => $role) {
         check("$role / $action", $p->canAccessAction($u($role), $action), (bool)$expected[$i]);
     }
 }
@@ -43,7 +43,7 @@ check('forms.manage not for editor', $p->can($u('editor'), 'forms.manage'), fals
 check('editor edits only self', [$p->canEditUser($u('editor', 5), 5), $p->canEditUser($u('editor', 5), 6), $p->canCreateUsers($u('editor'))], [true, false, false]);
 check('editor cannot change own role', $p->canChangeAccessForUser($u('editor', 5), 5), false);
 check('admin cannot manage users', $p->canCreateUsers($u('admin')), false);
-check('role list', array_keys(PermissionService::roles()), ['superadmin', 'admin', 'editor', 'user']);
+check('role list', array_keys(PermissionService::roles()), ['superadmin', 'admin', 'editor', 'shop_manager', 'user']);
 
 // Permissions the super admin chose (stored in system_meta as role_permissions).
 $custom = new PermissionService(['editor' => ['content.manage', 'menus.manage', 'users.manage', 'roles.manage', 'backups.restore', 'nonsense'], 'admin' => ['content.manage'], 'superadmin' => []]);
@@ -79,7 +79,7 @@ check('custom role: never gets what only the super admin has', [$mine->can($u('p
 check('custom role: reaches only its own screens', [$mine->canAccessAction($u('photographer'), 'media'), $mine->canAccessAction($u('photographer'), 'content'), $mine->canAccessAction($u('photographer'), 'settings'), $mine->canAccessAction($u('photographer'), 'roles'), $mine->canAccessAction($u('photographer'), 'users')], [true, false, false, false, false]);
 check('custom role: an unnamed role is named from its key', $mine->customRoles()['writer']['label'], 'Writer');
 check('custom role: inactive person denied', $mine->can(['id' => 1, 'role' => 'photographer', 'status' => 'inactive'], 'media.manage'), false);
-check('custom role: listed after the built-in ones', array_keys($mine->allRoles()), ['superadmin', 'admin', 'editor', 'user', 'photographer', 'writer']);
+check('custom role: listed after the built-in ones', array_keys($mine->allRoles()), ['superadmin', 'admin', 'editor', 'shop_manager', 'user', 'photographer', 'writer']);
 check('custom role: marked as custom', [$mine->allRoles()['photographer']['custom'], $mine->allRoles()['admin']['custom']], [true, false]);
 check('custom role: an unknown role still has nothing', $mine->capabilitiesForRole('wizard'), []);
 check('custom role: a built-in role can still be customised alongside', (new PermissionService(['editor' => ['media.manage']], ['photographer' => ['capabilities' => []]]))->capabilitiesForRole('editor'), ['admin.access', 'users.self', 'media.manage']);

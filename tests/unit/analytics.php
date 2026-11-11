@@ -124,7 +124,7 @@ check('a visitor cannot leave more than a few hundred rows a day', (int)$db->con
 $store->rollup($day); $store->rollup($day);
 check('summing a day twice gives the same', (int)$db->connection()->query("SELECT COUNT(*) FROM analytics_daily WHERE day = '$day' AND kind = 'total'")->fetchColumn(), 1);
 check('the stats', [$store->stats()['days'] >= 1, $store->stats()['first']], [true, $day]);
-$store->maintain(date('Y-m-d', strtotime($day . ' +20 months')), 12);
+$store->maintain(date('Y-m-d', strtotime('+20 months')), 12); // from today, so the visits of today are old by then too
 check('days older than the time they are kept go', (int)$db->connection()->query('SELECT COUNT(*) FROM analytics_daily')->fetchColumn(), 0);
 $store->clear();
 check('everything counted can be deleted', [(int)$db->connection()->query('SELECT COUNT(*) FROM analytics_hits')->fetchColumn(), (int)$db->connection()->query('SELECT COUNT(*) FROM analytics_daily')->fetchColumn()], [0, 0]);
