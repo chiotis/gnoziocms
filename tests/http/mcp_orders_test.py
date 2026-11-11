@@ -124,5 +124,25 @@ check('deleting needs shop:delete', r['isError'] and 'may not use' in r['text'],
 r = call(owner, 'delete_coupon', {'code': 'summer-26'})
 check('a coupon is deleted', r['isError'] is False and db("select count(*) from shop_coupons")[0][0] == 0, r)
 
+# ---- sales summary
+import datetime
+today = datetime.date.today().isoformat()
+third = place('nikos@example.test', 'Nikos')
+r = call(desk, 'sales_summary')
+t = r['data'].get('totals', {})
+check('sales_summary: the shipped order counts; the cancelled one and the one on hold do not', r['isError'] is False and t.get('orders') == 1 and t.get('units') == 2 and t.get('items') == '60.00' and t.get('shipping') == '4.00' and t.get('total') == '64.00' and t.get('net') == '64.00' and t.get('average_order') == '64.00', r)
+check('per day, today', [p['period'] for p in r['data'].get('periods', [])] == [today] and r['data']['periods'][0]['total'] == '64.00', r['data'].get('periods'))
+check('the best seller, with its units and sales', r['data']['best_sellers']['rows'] == [{'product': 'scarf', 'title': 'Silk scarf', 'units': 2, 'sales': '60.00', 'orders': 1}], r['data'].get('best_sellers'))
+check('no customer is named', 'Maria' not in r['text'] and 'maria@' not in r['text'])
+r = call(desk, 'sales_summary', {'include_unpaid': True, 'period': 'month', 'by': 'category'})
+check('with orders not paid yet, by month and by category', r['isError'] is False and r['data']['totals']['orders'] == 2 and r['data']['totals']['units'] == 4 and [p['period'] for p in r['data']['periods']] == [today[:7]] and r['data']['best_sellers']['rows'][0]['category'] == 'none', r)
+r = call(desk, 'sales_summary', {'from': '2020-01-01', 'to': '2020-01-31'})
+check('a time with no sales', r['isError'] is False and r['data']['totals']['orders'] == 0 and r['data']['periods'] == [] and r['data']['totals']['average_order'] is None, r)
+r = call(desk, 'sales_summary', {'from': today, 'to': '2020-01-01'})
+check('from after to is refused', r['isError'] and 'after' in r['text'], r)
+r = call(desk, 'sales_summary', {'from': '2026-02-30'})
+check('a day that does not exist is refused', r['isError'] and 'YYYY-MM-DD' in r['text'], r)
+check('reading the shop is enough for it', call(owner, 'sales_summary')['isError'] is False)
+
 print('\nALL PASSED' if not fails else '\n%d FAILED: %s' % (len(fails), fails))
 sys.exit(1 if fails else 0)
