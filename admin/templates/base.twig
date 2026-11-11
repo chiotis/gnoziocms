@@ -87,7 +87,8 @@
             'shop-customers': {cap: 'shop.orders', label: 'Customers', icon: '<circle cx="12" cy="8.5" r="3.5"/><path stroke-linecap="round" d="M5 20c.8-3.4 3.6-5.5 7-5.5s6.2 2.1 7 5.5"/>'},
             'shop-subscriptions': {cap: 'shop.orders', label: 'Subscriptions', icon: '<path stroke-linecap="round" stroke-linejoin="round" d="M4 12a8 8 0 0113.7-5.6M20 12a8 8 0 01-13.7 5.6M18 3v4h-4M6 21v-4h4"/>'},
             'shop-files': {cap: 'shop.manage', label: 'Files', icon: '<path stroke-linecap="round" stroke-linejoin="round" d="M12 4v11m0 0l-4-4m4 4l4-4M5 19h14"/>'},
-            'shop-coupons': {cap: 'shop.manage', label: 'Coupons', icon: '<path stroke-linecap="round" stroke-linejoin="round" d="M4 8a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 000 4v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2a2 2 0 000-4V8zM10 9v1M10 14v1"/>'}
+            'shop-coupons': {cap: 'shop.manage', label: 'Coupons', icon: '<path stroke-linecap="round" stroke-linejoin="round" d="M4 8a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 000 4v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2a2 2 0 000-4V8zM10 9v1M10 14v1"/>'},
+            'shop-import': {cap: 'shop.manage', label: 'Import', icon: '<path stroke-linecap="round" stroke-linejoin="round" d="M4 15v3a2 2 0 002 2h12a2 2 0 002-2v-3M12 4v11m0 0l-4-4m4 4l4-4"/>'}
           } %}
             {% if can(item.cap) %}
               <a href="{{ url('admin/' ~ key) }}" class="{{ nav_base }} {{ section == key ? nav_active : nav_idle }}"{% if section == key %} aria-current="page"{% endif %}>

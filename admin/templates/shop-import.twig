@@ -1,0 +1,248 @@
+{% extends '@admin/base.twig' %}
+{% set page_heading = 'Import from WooCommerce' %}
+{% import '@admin/partials/ui.twig' as ui %}
+{#
+  Shop > Import (WooCommerceImport): a WooCommerce shop brought over in three steps. Connect, review what the dry run found, import.
+  Reading and importing are background jobs; admin-shop-import.js polls ?work while one runs, which works it and says how far it is.
+#}
+
+{% block content %}
+  {% set btn = 'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium shadow-sm' %}
+  {% set primary = btn ~ ' bg-blue-600 text-white hover:bg-blue-700' %}
+  {% set secondary = btn ~ ' border border-slate-300 bg-white text-slate-700 hover:bg-slate-50' %}
+  {% set input = 'block w-full rounded-md border border-slate-300 px-2.5 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500' %}
+  {% set card = 'rounded-lg border border-slate-200 bg-white' %}
+  {% set card_head = 'flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3' %}
+  {% set label = 'block text-xs font-medium text-slate-600 mb-1' %}
+  {% set note = 'mt-1 text-xs text-slate-500' %}
+  {% set chip = 'inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700' %}
+  {% set s = state.status %}
+  {% set sum = state.summary %}
+  {% set step = s in ['idle', 'failed'] ? 1 : (s in ['reading', 'ready'] ? 2 : 3) %}
+
+  {{ ui.flash(message, done == 'ok' ? 'success' : 'error') }}
+
+  <header class="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
+    <p class="max-w-2xl text-xs text-slate-500">Brings a WooCommerce shop's product categories, products with their variants, prices, pictures and stock, and the redirects from its old addresses into this shop. Nothing changes here until you confirm the import, and running it again updates what it brought instead of making copies.</p>
+    <ol class="m-0 flex list-none items-center gap-1.5 p-0 text-xs" aria-label="Steps">
+      {% for n, name in {1: 'Connect', 2: 'Review', 3: 'Import'} %}
+        <li class="flex items-center gap-1.5">
+          <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-medium {{ n == step ? 'bg-blue-600 text-white' : (n < step ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-500') }}"{% if n == step %} aria-current="step"{% endif %}>
+            <span class="tabular-nums">{{ n < step ? '✓' : n }}</span>{{ name }}
+          </span>
+          {% if not loop.last %}<span class="h-px w-4 bg-slate-300" aria-hidden="true"></span>{% endif %}
+        </li>
+      {% endfor %}
+    </ol>
+  </header>
+
+  {# ---- 1. Connect #}
+  {% if s in ['idle', 'failed'] %}
+    {% if s == 'failed' %}
+      <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">
+        <p class="m-0 font-medium">{{ state.error|default('The import stopped.') }}</p>
+        <p class="m-0 mt-1 text-xs text-red-700">Check the address and the keys, and try again.</p>
+      </div>
+    {% endif %}
+    <form method="post" action="{{ url('admin/shop-import') }}" enctype="multipart/form-data" class="grid gap-4" data-import-start>
+      {{ csrf_field() }}<input type="hidden" name="action" value="start">
+      <section class="{{ card }}" aria-labelledby="imp-shop">
+        <div class="{{ card_head }}"><h2 id="imp-shop" class="text-sm font-semibold text-slate-900">The WooCommerce shop</h2><span class="text-xs text-slate-400">Only read, never changed</span></div>
+        <div class="grid gap-4 px-4 py-4 sm:grid-cols-2">
+          <div class="sm:col-span-2"><label class="{{ label }}" for="imp-site">Shop address</label><input id="imp-site" name="site" value="{{ state.site }}" class="{{ input }}" placeholder="https://shop.example" inputmode="url" autocomplete="off" spellcheck="false" required></div>
+          <div><label class="{{ label }}" for="imp-key">Consumer key</label><input id="imp-key" type="password" name="consumer_key" value="" class="{{ input }} font-mono" autocomplete="new-password" spellcheck="false" placeholder="{{ keys.consumer_key.set ? 'Set, ends in ' ~ keys.consumer_key.last4 ~ ' · blank keeps it' : 'ck_…' }}"></div>
+          <div><label class="{{ label }}" for="imp-secret">Consumer secret</label><input id="imp-secret" type="password" name="consumer_secret" value="" class="{{ input }} font-mono" autocomplete="new-password" spellcheck="false" placeholder="{{ keys.consumer_secret.set ? 'Set, ends in ' ~ keys.consumer_secret.last4 ~ ' · blank keeps it' : 'cs_…' }}"></div>
+          <div class="sm:col-span-2 rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-600">
+            <p class="m-0"><strong class="font-medium text-slate-800">The keys are optional, and recommended.</strong> Without them only what a shopper sees is read: no stock quantities, weights, downloads, or draft and private products.</p>
+            <details class="mt-1">
+              <summary class="cursor-pointer text-blue-700">How to make read keys</summary>
+              <ol class="mb-0 mt-1 pl-4">
+                <li>In the shop's WordPress admin: <strong>WooCommerce › Settings › Advanced › REST API › Add key</strong>.</li>
+                <li>Pick an administrator or shop manager as the user, set <strong>Permissions</strong> to <strong>Read</strong>, and click <strong>Generate API key</strong>.</li>
+                <li>Copy the consumer key and secret here. They are kept with the shop's other secrets, never shown again, and forgotten when the import is done. You can revoke them in WooCommerce afterwards.</li>
+              </ol>
+            </details>
+          </div>
+          {% if languages|length > 1 %}
+            <div><label class="{{ label }}" for="imp-lang">Language of the shop's texts</label>
+              <select id="imp-lang" name="lang" class="{{ input }}">{% for l in languages %}<option value="{{ l }}"{% if l == (state.lang ?: languages[0]) %} selected{% endif %}>{{ l|upper }}</option>{% endfor %}</select>
+            </div>
+          {% endif %}
+        </div>
+      </section>
+
+      <details class="{{ card }} group"{% if has_csv %} open{% endif %}>
+        <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3">
+          <span class="text-sm font-semibold text-slate-900">Customers <span class="font-normal text-slate-400">· optional</span></span>
+          <span class="text-xs text-slate-500">{{ has_csv ? 'A CSV is ready' : 'They keep their passwords' }}</span>
+        </summary>
+        <div class="grid gap-3 border-t border-slate-200 px-4 py-4 text-xs text-slate-600">
+          <p class="m-0">The shop's customer accounts come from a CSV of its users, exported from its database (for example in phpMyAdmin) with the columns <code>user_email</code>, <code>user_pass</code>, <code>display_name</code> and the <code>billing_…</code> ones. Customers sign in with their old passwords: each is checked against the WordPress hash once, then stored the way this site does. The file holds password hashes: it is kept outside the website and deleted when the import is done.</p>
+          <div class="flex flex-wrap items-center gap-3">
+            <input type="file" name="customers" accept=".csv,text/csv" class="text-sm">
+            {% if has_csv %}<label class="flex items-center gap-2"><input type="checkbox" name="customers_clear" value="1" class="h-4 w-4 rounded border-slate-300"> Remove the CSV that is here</label>{% endif %}
+          </div>
+        </div>
+      </details>
+
+      <div class="flex flex-wrap items-center gap-3">
+        <button type="submit" class="{{ primary }}">Check the shop</button>
+        <span class="text-xs text-slate-500">A dry run: it says what would be imported, and changes nothing.</span>
+      </div>
+    </form>
+  {% endif %}
+
+  {# ---- Working: reading the shop, or importing #}
+  {% if s in ['reading', 'importing'] %}
+    {% set p = state.progress %}
+    {% set total = p.media_total|default(0) %}
+    <section class="{{ card }} px-4 py-5" data-import-poll="{{ url('admin/shop-import') }}" data-import-status="{{ s }}" aria-live="polite">
+      <div class="flex items-center gap-3">
+        <svg class="h-5 w-5 shrink-0 animate-spin text-blue-600" fill="none" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.5" class="opacity-20"/><path d="M21 12a9 9 0 00-9-9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+        <div class="min-w-0">
+          <h2 class="m-0 text-sm font-semibold text-slate-900">{{ s == 'reading' ? 'Reading ' ~ state.site ~ '…' : 'Importing from ' ~ state.site ~ '…' }}</h2>
+          <p class="m-0 mt-0.5 text-xs text-slate-500" data-import-line>
+            {% if s == 'reading' %}Products, categories and pictures. A large shop takes a minute or two.{% elseif p.step == 'products' %}Writing the products, the categories and the redirects…{% else %}Pictures: {{ p.media_next|default(0) }} of {{ total }}{% endif %}
+          </p>
+        </div>
+      </div>
+      {% if s == 'importing' %}
+        <div class="mt-4 h-2 overflow-hidden rounded-full bg-slate-100" role="progressbar" aria-valuemin="0" aria-valuemax="{{ total }}" aria-valuenow="{{ p.media_next|default(0) }}" data-import-bar>
+          <div class="h-full rounded-full bg-blue-600 transition-all" style="width: {{ total > 0 ? (100 * p.media_next|default(0) / total)|round : 5 }}%"></div>
+        </div>
+      {% endif %}
+      <p class="m-0 mt-4 text-xs text-slate-500">This screen keeps the work going. You can leave it: the site's scheduled tasks carry on, more slowly, and the progress is here when you come back.</p>
+    </section>
+  {% endif %}
+
+  {# ---- 2. Review #}
+  {% if s == 'ready' %}
+    <dl class="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+      {% for stat in [
+        {label: 'Products', value: sum.products, sub: sum.new ~ ' new' ~ (sum.update ? ' · ' ~ sum.update ~ ' updated' : '') ~ (sum.skip ? ' · ' ~ sum.skip ~ ' left alone' : '')},
+        {label: 'Categories', value: sum.categories, sub: 'Product categories'},
+        {label: 'Pictures', value: sum.media, sub: sum.without_pictures ? sum.without_pictures ~ ' products have none' : 'To the media library'},
+        {label: 'Redirects', value: sum.redirects, sub: 'From the old addresses'}
+      ] %}
+        <div class="{{ card }} px-4 py-3"><dt class="text-xs text-slate-500">{{ stat.label }}</dt><dd class="m-0 mt-0.5 text-lg font-semibold text-slate-900">{{ stat.value }}</dd><dd class="m-0 text-xs text-slate-500">{{ stat.sub }}</dd></div>
+      {% endfor %}
+    </dl>
+
+    <div class="mb-4 flex flex-wrap gap-1.5">
+      <span class="{{ chip }}">{{ sum.physical }} physical</span>
+      {% if sum.digital %}<span class="{{ chip }}">{{ sum.digital }} digital</span>{% endif %}
+      <span class="{{ chip }}">{{ sum.with_variants ? sum.with_variants ~ ' with variants (' ~ sum.variants ~ ')' : 'No variants' }}</span>
+      <span class="{{ chip }}">{{ sum.stocked }} with stock quantities</span>
+      <span class="{{ chip }} {{ sum.full ? '!bg-green-50 !text-green-800' : '!bg-amber-50 !text-amber-800' }}">{{ sum.full ? 'Read with the keys' : 'Read without keys' }}</span>
+    </div>
+
+    {% if not sum.full %}
+      <div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <p class="m-0 font-medium">Read without keys: only what a shopper sees.</p>
+        <p class="m-0 mt-0.5 text-xs">No stock quantities, weights or downloads, and no draft or private products. Start over with read keys to bring them too.</p>
+      </div>
+    {% endif %}
+
+    {% if problems is not empty %}
+      <details class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"{% if problems|length <= 8 %} open{% endif %}>
+        <summary class="cursor-pointer font-medium">{{ problems|length }} {{ problems|length == 1 ? 'thing' : 'things' }} could not be carried over exactly. Fix {{ problems|length == 1 ? 'it' : 'them' }} in WooCommerce first, or after the import here.</summary>
+        <ul class="mb-0 mt-2 max-h-60 overflow-y-auto pl-4 text-xs">{% for line in problems %}<li>{{ line }}</li>{% endfor %}</ul>
+      </details>
+    {% endif %}
+
+    {% if sum.customers_new or sum.customers_exist or sum.customers_invalid %}
+      <div class="{{ card }} mb-4 px-4 py-3 text-sm">
+        <p class="m-0 font-medium text-slate-900">Customers: {{ sum.customers_new }} new</p>
+        <p class="m-0 mt-0.5 text-xs text-slate-500">
+          {% if sum.customers_exist %}{{ sum.customers_exist }} already have an account here and are left as they are. {% endif %}
+          {% if sum.customers_no_password %}{{ sum.customers_no_password }} have no password this site can check: they set one with "Forgot your password". {% endif %}
+          {% if sum.customers_invalid %}{{ sum.customers_invalid }} rows have no valid email address and are left out.{% endif %}
+        </p>
+      </div>
+    {% endif %}
+
+    <section class="{{ card }} mb-4" aria-labelledby="imp-products">
+      <div class="{{ card_head }}">
+        <h2 id="imp-products" class="text-sm font-semibold text-slate-900">Products</h2>
+        <span class="flex items-center gap-3 text-xs">
+          {% if products|length < sum.products %}<span class="text-slate-400">The first {{ products|length }} of {{ sum.products }}</span>{% endif %}
+          {% if reports.report %}<a class="text-blue-700 hover:underline" href="{{ url('admin/shop-import?download=report') }}">Full report</a>{% endif %}
+          {% if reports.redirects %}<a class="text-blue-700 hover:underline" href="{{ url('admin/shop-import?download=redirects') }}">Redirects list</a>{% endif %}
+        </span>
+      </div>
+      <div class="max-h-[28rem] overflow-auto">
+        <table class="w-full text-sm">
+          <thead class="sticky top-0 border-b border-slate-200 bg-white">
+            <tr>
+              <th class="px-3 py-2 text-left text-xs font-medium text-slate-500">Name</th>
+              <th class="px-3 py-2 text-left text-xs font-medium text-slate-500">Address here</th>
+              <th class="px-3 py-2 text-left text-xs font-medium text-slate-500">Here</th>
+              <th class="px-3 py-2 text-right text-xs font-medium text-slate-500">Variants</th>
+              <th class="px-3 py-2 text-right text-xs font-medium text-slate-500">Pictures</th>
+              <th class="px-3 py-2 text-right text-xs font-medium text-slate-500">Stock</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            {% for p in products %}
+              <tr>
+                <td class="max-w-[18rem] truncate px-3 py-1.5 font-medium text-slate-800" title="{{ p.name }}">{{ p.name }}</td>
+                <td class="max-w-[16rem] truncate px-3 py-1.5 font-mono text-xs text-slate-500">/products/{{ p.slug }}</td>
+                <td class="px-3 py-1.5">{% if p.state == 'new' %}<span class="rounded bg-green-50 px-1.5 py-0.5 text-xs text-green-800">New</span>{% elseif p.state == 'update' %}<span class="rounded bg-blue-50 px-1.5 py-0.5 text-xs text-blue-800">Updated</span>{% else %}<span class="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-600" title="A product of this site's own has this address">Left alone</span>{% endif %}</td>
+                <td class="px-3 py-1.5 text-right tabular-nums text-slate-600">{{ p.variants ?: '–' }}</td>
+                <td class="px-3 py-1.5 text-right tabular-nums {{ p.pictures ? 'text-slate-600' : 'text-amber-700' }}">{{ p.pictures }}</td>
+                <td class="px-3 py-1.5 text-right tabular-nums text-slate-600">{{ p.stock is null ? '–' : p.stock }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <form method="post" action="{{ url('admin/shop-import') }}" class="{{ card }} grid gap-3 px-4 py-4" data-import-confirm>
+      {{ csrf_field() }}<input type="hidden" name="action" value="confirm">
+      <label class="flex items-start gap-2 text-sm text-slate-700"><input type="checkbox" name="redirects" value="1" checked class="mt-0.5 h-4 w-4 rounded border-slate-300"><span>Add the {{ sum.redirects }} redirects to <a class="text-blue-700 hover:underline" href="{{ url('admin/redirects') }}">Redirects</a><span class="block text-xs text-slate-500">So the old /product/… and /product-category/… addresses lead here once the shop's domain points at this site.</span></span></label>
+      {% if sum.skip %}
+        <label class="flex items-start gap-2 text-sm text-slate-700"><input type="checkbox" name="overwrite" value="1" class="mt-0.5 h-4 w-4 rounded border-slate-300"><span>Replace the {{ sum.skip }} products of this site's own that have the same address<span class="block text-xs text-slate-500">Off: they are left as they are, and the shop's products with those addresses are not imported.</span></span></label>
+      {% endif %}
+      <div class="flex flex-wrap items-center gap-3 border-t border-slate-100 pt-3">
+        <button type="submit" class="{{ primary }}">Import {{ sum.products - (sum.skip) }} products</button>
+        <span class="text-xs text-slate-500">Make a <a class="text-blue-700 hover:underline" href="{{ url('admin/backups') }}">backup</a> first if this site already has products.</span>
+      </div>
+    </form>
+    <form method="post" action="{{ url('admin/shop-import') }}" class="mt-3">
+      {{ csrf_field() }}<input type="hidden" name="action" value="reset">
+      <button type="submit" class="text-xs text-slate-500 underline hover:text-slate-800">Start over with another address or keys</button>
+    </form>
+  {% endif %}
+
+  {# ---- 3. Done #}
+  {% if s == 'done' %}
+    {% set r = state.result %}
+    <section class="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-4">
+      <h2 class="m-0 text-sm font-semibold text-green-900">The shop is imported</h2>
+      <p class="m-0 mt-1 text-sm text-green-900">{{ r.written }} products, {{ r.categories }} categories and {{ r.media }} pictures{% if r.customers %}, {{ r.customers }} customers{% endif %}{% if state.options.redirects %}, {{ r.redirects.added|default(0) + r.redirects.updated|default(0) + r.redirects.kept|default(0) }} redirects{% if r.redirects.kept|default(0) %} ({{ r.redirects.kept }} were already there){% endif %}{% endif %}.</p>
+      <p class="m-0 mt-1 text-xs text-green-800">The keys and the customers' CSV are forgotten. You can revoke the keys in WooCommerce now.</p>
+    </section>
+    {% if r.media_failed is not empty %}
+      <details class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <summary class="cursor-pointer font-medium">{{ r.media_failed|length }} pictures could not be fetched. Importing again fetches only these.</summary>
+        <ul class="mb-0 mt-2 max-h-48 overflow-y-auto pl-4 text-xs">{% for u in r.media_failed %}<li class="break-all">{{ u }}</li>{% endfor %}</ul>
+      </details>
+    {% endif %}
+    <div class="{{ card }} grid gap-2 px-4 py-4 text-sm">
+      <p class="m-0 font-medium text-slate-900">Next</p>
+      <ul class="m-0 grid gap-1 pl-4 text-slate-700">
+        <li>Look the products over in <a class="text-blue-700 hover:underline" href="{{ url('admin/content?type=products') }}">Products</a> and their <a class="text-blue-700 hover:underline" href="{{ url('admin/taxonomies?taxonomy=product-categories') }}">Product categories</a>.</li>
+        <li>Set the payments and shipping in <a class="text-blue-700 hover:underline" href="{{ url('admin/shop-settings') }}">Shop settings</a>.</li>
+        {% if state.options.redirects %}<li>The redirects are in <a class="text-blue-700 hover:underline" href="{{ url('admin/redirects') }}">Redirects</a>. They work once the shop's domain points at this site.</li>{% endif %}
+        <li>Changed something in WooCommerce? Import again: it updates what it brought.</li>
+      </ul>
+      <form method="post" action="{{ url('admin/shop-import') }}" class="mt-2">
+        {{ csrf_field() }}<input type="hidden" name="action" value="reset">
+        <button type="submit" class="{{ secondary }}">Import again</button>
+      </form>
+    </div>
+  {% endif %}
+
+  <script src="{{ asset('js/admin-shop-import.js') }}" defer></script>
+{% endblock %}
