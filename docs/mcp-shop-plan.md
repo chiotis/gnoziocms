@@ -103,7 +103,7 @@ Each step is a merge and a version of its own.
 1. **All field types through MCP** (3.1). Products become fully writable through `update_entry`, except stock. *Built in 0.1.277 (`McpContent::fieldValue`, `tests/http/mcp_fields_test.py`).*
 2. **Sale prices on variants** (3.2), in the admin and on the product page. *Built in 0.1.278: the variant's `compare_at_price`, shown when the variant is chosen, in the product feed, and brought from WooCommerce variations on sale.*
 3. **Shop scopes, `shop_info`, product and stock tools, `update_prices`** with the price guard. *Built in 0.1.279 (`src/McpShop.php`, `tests/http/mcp_shop_test.py`): `shop_info`, `list_products`, `get_product`, `update_prices`, `set_stock`, the `shop:read`/`shop:write` scopes, the price limit (also on `update_entry`) and the shop changes limit. `create_product`/`update_product` were not needed: since step 1, `create_entry`/`update_entry` write every product field, and `shop_info` lists them.*
-4. **Term tools**, then `archive_product` / `delete_product`.
+4. **Term tools**, then `archive_product` / `delete_product`. *Built in 0.1.280: `create_term`, `update_term`, `remove_term` (the shop's two taxonomies only, through `TaxonomyEditor::apply`), `archive_product`, `delete_product` and the `shop:delete` scope. Blog taxonomies are not covered yet.*
 5. **Orders and coupons.**
 6. **`sales_summary`.**
 7. A real run on the demo shop: Claude adds a product with variants and pictures from a supplier page, puts a category on sale by 10% with a dry run first, ends the sale, sets stock, and ships a demo order.

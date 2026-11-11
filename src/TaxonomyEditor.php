@@ -368,9 +368,11 @@ final class TaxonomyEditor
      *
      * @param array<string, mixed> $post
      * @param string[] $languages
+     * @param list<array<string, mixed>>|null $rows the terms as rowsFromPost gives them, from another source than the form (MCP);
+     *        null reads them from `$post`. A key a row leaves out keeps what the term has.
      * @return array{title: string, terms: int, moved: int, removed: int, added: int, unfiled: int, refused: int}
      */
-    public function apply(string $taxonomy, array $post, array $languages, string $defaultLang, string $by): array
+    public function apply(string $taxonomy, array $post, array $languages, string $defaultLang, string $by, ?array $rows = null): array
     {
         $current = $this->store->load($taxonomy);
         $names = $this->store->names();
@@ -378,7 +380,7 @@ final class TaxonomyEditor
         $title = trim((string)($post['taxonomy_title'] ?? $current['title']));
         // Whether terms can have a parent: a form that carries the choice decides, one without it leaves it as it is.
         $hierarchical = isset($post['taxonomy_hierarchical']) ? FieldSchema::isTruthy($post['taxonomy_hierarchical']) : $current['hierarchical'];
-        $prepared = $this->store->prepare($taxonomy, $this->rowsFromPost($post, $languages), $defaultLang, $hierarchical);
+        $prepared = $this->store->prepare($taxonomy, $rows ?? $this->rowsFromPost($post, $languages), $defaultLang, $hierarchical);
 
         // How the pages of this taxonomy look is edited in Theme > Archive Layouts; a form without it leaves it alone.
         $archive = is_array($post['archive'] ?? null) ? $this->archiveFromInput($taxonomy, $post['archive']) : null;

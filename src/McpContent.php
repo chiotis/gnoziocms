@@ -363,16 +363,16 @@ final class McpContent
     /**
      * Changes fields of an entry that McpShop has checked itself (a product's prices), through the same save as update_entry:
      * the history, the cache and the translations that share the fields. Changing a published product's price is the shop's
-     * work, so it does not need content:publish; its status stays as it is.
+     * work, so it does not need content:publish. Its status stays as it is, unless `$status` (archive_product: draft) is given.
      *
      * @param array<string, mixed> $fields
      * @param array<string, mixed> $connection
      * @return array<string, mixed>
      */
-    public function changeFields(ContentItem $item, array $fields, array $connection): array
+    public function changeFields(ContentItem $item, array $fields, array $connection, ?string $status = null): array
     {
         $connection['scope'] = trim((string)$connection['scope'] . ' ' . McpOAuth::SCOPE_WRITE . ' ' . McpOAuth::SCOPE_PUBLISH);
-        return $this->write([], $connection, $item, false, $fields);
+        return $this->write($status !== null ? ['status' => $status] : [], $connection, $item, false, $fields);
     }
 
     /**
@@ -767,7 +767,7 @@ final class McpContent
     }
 
     /** The path of a picture of the media library, given as its path or its full address; null when it is not one. */
-    private function mediaPath(string $value): ?string
+    public function mediaPath(string $value): ?string
     {
         $path = rawurldecode((string)parse_url(trim($value), PHP_URL_PATH));
         return str_starts_with($path, '/uploads/') && !str_contains($path, '..') && is_file($this->publicDir . $path) ? $path : null;
