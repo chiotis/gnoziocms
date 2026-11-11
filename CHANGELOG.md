@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.281 — 2026-11-11 — Orders and coupons through MCP
+- **MCP:** assistants can list and read the shop's orders (lines, money, addresses, timeline) and move them along: on hold, processing, shipped with carrier and tracking number, completed or cancelled, with a note and, when asked, an email to the customer. A cancelled order gives its stock back, as in the admin.
+- Money stays with you: an order is never marked paid or refunded through MCP, and refunds are made in Shop › Orders.
+- Coupons can be listed, made, changed, renamed and deleted.
+- Orders need a new permission, **Shop: orders**, unticked until you tick it, since they hold customers' names and addresses. Deleting a coupon needs **Shop: delete**.
+- Step 5 of `docs/mcp-shop-plan.md`.
+
 ## 0.1.280 — 2026-11-11 — Categories, collections and deleting through MCP
 - **MCP:** assistants can add, rename and change product categories and collections (names and texts in each language, address, picture, a collection's number, colours and quote), and remove them. They work as in the admin: a new address keeps the old one working, and a removed category is taken off its products.
 - `archive_product` takes a product off sale in every language and keeps its prices and stock; `delete_product` deletes it as Delete in the admin does, kept in History and with its visitors sent to the shop.
