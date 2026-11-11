@@ -27,7 +27,7 @@ final class BlockRuntime
 
     /**
      * @param \Closure(): array<string, mixed> $settings the site's settings, as they are now
-     * @param \Closure(): bool $signedIn whether someone is signed in to the admin (they also see what is hidden)
+     * @param \Closure(): bool $signedIn whether someone is signed in to the admin (blocks may offer them more; lists never show drafts)
      * @param \Closure(): ContentTypes $contentTypes
      * @param \Closure(): string $language the language being shown
      * @param \Closure(): string $defaultLanguage
@@ -128,7 +128,8 @@ final class BlockRuntime
     /** The renderer for the blocks of one page, drawing with the given Twig (which can be replaced during a request). */
     public function renderer(string $lang, string $path, Environment $twig, array $more = []): BlockRenderer
     {
-        $includeHidden = ($this->signedIn)();
+        // Lists on the site are what visitors see, also for someone signed in: a draft is seen on its own page only.
+        $includeHidden = false;
         return new BlockRenderer(
             $this->registry(),
             $twig,
@@ -338,7 +339,7 @@ final class BlockRuntime
         $library = new GeoLibrary($this->images, $this->basePath . '/storage/cache');
         return $this->geoView = new GeoView(
             new GeoMap($library, $this->images),
-            fn(string $type, string $lang): array => in_array($type, $this->content->getTypes(), true) ? $this->content->getItems($type, $lang, ($this->signedIn)(), false) : [],
+            fn(string $type, string $lang): array => in_array($type, $this->content->getTypes(), true) ? $this->content->getItems($type, $lang, false, false) : [],
             fn(string $type, string $lang): string => $this->typeLabel($type, $lang),
             fn(string $slug, string $lang): string => ($this->termLabel)('categories', $slug, $lang),
             fn(ContentItem $item, string $lang): string => ($this->absoluteUrl)(ContentPaths::build($item->type, $item->slug, $lang, (string)((($this->settings)()['home_page'] ?? '') !== '' ? ($this->settings)()['home_page'] : 'index'), ($this->defaultLanguage)())),
@@ -347,7 +348,7 @@ final class BlockRuntime
                 'tiles_url' => (string)(($this->settings)()['apis']['maps']['tiles_url'] ?? ''),
                 'attribution' => (string)(($this->settings)()['apis']['maps']['attribution'] ?? ''),
             ],
-            new GeoCache($this->basePath . '/storage/cache/geo-data', fn(): ?string => $this->mapsStamp(), $library, fn(): string => ($this->signedIn)() ? 'editor' : 'visitor'),
+            new GeoCache($this->basePath . '/storage/cache/geo-data', fn(): ?string => $this->mapsStamp(), $library, fn(): string => 'visitor'),
             ($filters = $this->mapFilters()) === null ? null : fn(array $types, ?array $chosen, string $lang): array => $filters->facets($types, $chosen, $lang)
         );
     }

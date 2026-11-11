@@ -104,7 +104,7 @@ $same = static function (string $label, string $type, string $lang, int $limit, 
 
 check('the index can answer', $query->ready(), true);
 foreach ([false, true] as $signedIn) {
-    $who = $signedIn ? ' (signed in: drafts and hidden entries too)' : ' (a visitor)';
+    $who = $signedIn ? ' (signed in)' : ' (a visitor)';
     $same('the newest six' . $who, 'posts', 'el', 6);
     $same('the most the block allows' . $who, 'posts', 'el', 24);
     $same('more than that is the most it allows' . $who, 'posts', 'el', 500);
@@ -125,7 +125,11 @@ foreach ([false, true] as $signedIn) {
     $same('by title backwards, in a category' . $who, 'posts', 'el', 8, 'news', 1, 'title_desc');
     $same('an order that is not one is newest first' . $who, 'posts', 'el', 6, '', 0, 'sideways');
 }
+$signedIn = true;
+$asEditor = $names($items($runtime(null))('posts', 'el', 100, ''));
 $signedIn = false;
+$asVisitor = $names($items($runtime(null))('posts', 'el', 100, ''));
+check('signed in, a list is what a visitor sees: a draft is seen on its own page only', [$asEditor === $asVisitor, in_array('posts/p09.el', $asEditor, true)], [true, false]);
 check('the visitor gets the newest published entries', [count($indexed('posts', 'el', 6, '')), $names($indexed('posts', 'el', 3, ''))[0] === $names($scanning('posts', 'el', 3, ''))[0]], [6, true]);
 $direct = $query->page(['types' => ['posts'], 'term' => ['taxonomy' => ['categories', 'tags'], 'ids' => ['quick']]], 'el', false, [], [], 'date_desc', '', 0, 0, 1, 8);
 check('the index itself answers a term filed as a category or a tag', [$direct !== null, $direct === null ? null : $names($direct['items'])], [true, $names($scanning('posts', 'el', 8, 'quick'))]);
