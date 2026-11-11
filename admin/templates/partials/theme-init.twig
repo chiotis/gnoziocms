@@ -1,9 +1,10 @@
 {#
   The colour mode of the admin, applied before the first paint so a page does not show light and then dark. It reads what
   admin.js stores (`admin.theme`: light, dark or system; light when nothing is stored) and must stay the same as effectiveTheme()
-  there. Included in the head of every admin document, before the style sheets.
+  there. Included in the head of every admin document, before the style sheets. data-cfasync="false" keeps Cloudflare's
+  Rocket Loader from deferring it past the first paint, which brings back the flash of light mode.
 #}
-<script>
+<script data-cfasync="false">
   (function () {
     try {
       var pref = localStorage.getItem('admin.theme') || 'light';

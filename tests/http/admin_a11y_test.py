@@ -167,7 +167,8 @@ js_early = urllib.request.urlopen(BASE + '/assets/js/admin.js').read().decode()
 # ---- the colour mode is applied before the first paint, so a page does not show light and then dark
 def before_paint(html):
     mode, sheet = html.find("localStorage.getItem('admin.theme')"), html.find('admin.build.css')
-    return 0 <= mode < sheet
+    # data-cfasync="false": Cloudflare's Rocket Loader would otherwise run it after the first paint
+    return 0 <= mode < sheet and '<script data-cfasync="false">' in html[:mode]
 for label, html in (('an admin page', root.get('/admin')[2]), ('the sign in page', Client().get('/admin/login')[2])):
     check(f'{label} sets the colour mode in the head, before the style sheets', before_paint(html), html[:300])
 check('the script that stores the choice reads and writes the same key and default', "localStorage.getItem('admin.theme') || 'light'" in js_early and "localStorage.getItem('admin.theme') || 'light'" in root.get('/admin')[2])

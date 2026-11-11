@@ -95,7 +95,8 @@
   {% endif %}
   {{ seo_head() }}
   {# Apply a remembered colour mode before first paint to avoid a light/dark flash. #}
-  <script>
+  {# data-cfasync="false": Cloudflare's Rocket Loader must not defer this past the first paint. #}
+  <script data-cfasync="false">
     (function () {
       try {
         var mode = localStorage.getItem('faroscms-mode');
