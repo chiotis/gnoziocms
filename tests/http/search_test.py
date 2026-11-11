@@ -220,7 +220,7 @@ for query in ('privatefieldneedle', 'retiredfieldneedle', 'customurlneedle', 'un
 status, html, page = search('visibilityneedle')
 check('visitor sees only published visible entries of enabled types', page.paths == ['/search-published'], page.paths)
 status, html, page = search('visibilityneedle', client=editor)
-check('signed-in search preserves preview visibility but excludes forms and disabled types', set(page.paths) == {'/search-published', '/search-draft', '/search-hidden'}, page.paths)
+check('signed-in search shows what visitors see: no drafts, hidden entries, forms or disabled types', page.paths == ['/search-published'], page.paths)
 status, html, page = search('languageboundaryneedle', lang='en')
 check('English search does not fall back to untranslated Greek entries', page.paths == ['/en/search-language'] and 'Greek' not in page.results[0]['text'], page.paths)
 status, html, page = search('languageboundaryneedle')
