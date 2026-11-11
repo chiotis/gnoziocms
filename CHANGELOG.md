@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.285 — 2026-11-11 — File many entries under a term
+- **Content lists:** tick entries (or use "select all"), then choose **Add to** or **Remove from** a term in the Bulk action menu, for example *Add to Collections: Balos*. Their other terms stay, and the history keeps each entry as it was. Works for every taxonomy of the type: collections, product categories, categories, tags.
+- **MCP:** `file_entries` does the same for up to 500 entries in one call, so an assistant no longer changes products one by one. A connection with only **Shop: change** may file products under collections and product categories.
+
 ## 0.1.284 — 2026-11-11 — A filter bar and taxonomy columns in content lists
 - **Admin:** every content list has a filter bar that is always open: search, Status and one dropdown for each taxonomy the type uses (products: Product categories and Collections; posts: Categories and Tags; any custom taxonomy too). Each dropdown takes several values, shows how many entries each term has, and a term takes in the terms below it. The list updates when a dropdown closes, a choice changes, or typing stops.
 - **More filters:** main image (with or without), last updated between two days, author (when entries have one) and, for products, stock (in, low, out or not tracked).
