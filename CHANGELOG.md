@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.271 — 2026-11-11 — Shop › Import from WooCommerce
+- **Shop › Import:** a WooCommerce shop brought over from the admin, in three steps. **Connect:** the shop's address, its read keys (optional; kept with the shop's secrets, never shown again, forgotten when the import is done), the language of its texts and the customers' CSV. **Review:** a dry run that changes nothing, with the products, categories, pictures and redirects it found, what cannot be carried over, each product's address here and whether it is new, updated or left alone, and the report and redirects list to download. **Import:** the redirects and replacing the site's own products as choices, then a progress bar, and links to what to look at next.
+- Reading the shop and importing it are background jobs: the screen keeps them going while it is open, the site's scheduled tasks when it is not, and the pictures go a slice at a time, so a large shop does not run into the server's time limit. Running it again updates what it brought.
+
 ## 0.1.270 — 2026-11-11 — The importers ship with releases
 - The WordPress and WooCommerce importers are now in the release package, as `src/Cli/import-wordpress.php` and `src/Cli/import-woocommerce.php`: on a live site, `php src/Cli/import-woocommerce.php https://shop.example` in its folder, with the same options. In the repository `scripts/import-*.php` still work and point there. They live inside `src/` because an older site's updater refuses a new single file outside its folders. They run only from the command line.
 
