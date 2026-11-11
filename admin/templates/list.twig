@@ -175,6 +175,14 @@
             <option value="draft">Move to draft</option>
             <option value="delete">Delete</option>
             {% if ai_bulk %}<option value="generate_images">Generate main images (AI)</option>{% endif %}
+            {# Filing the selected entries under a term of one of the type's taxonomies, or taking them out of it: the other terms they have stay. #}
+            {% for taxonomy in current_type != 'pages' ? filter_bar.taxonomies|default([]) : [] %}
+              {% for kind, verb in {'term_add': 'Add to', 'term_remove': 'Remove from'} %}
+                <optgroup label="{{ verb }} {{ taxonomy.title }}">
+                  {% for o in taxonomy.options %}<option value="{{ kind }}:{{ taxonomy.name }}:{{ o.id }}">{{ verb }}: {% if o.depth > 0 %}{% for i in 1..o.depth %}— {% endfor %}{% endif %}{{ o.label }}</option>{% endfor %}
+                </optgroup>
+              {% endfor %}
+            {% endfor %}
           </select>
           {% if ai_bulk %}
             <label class="hidden items-center gap-1 text-xs text-slate-600" data-ai-bulk-replace><input type="checkbox" name="ai_replace" value="1" class="h-3.5 w-3.5 rounded border-slate-300"> Replace existing images</label>

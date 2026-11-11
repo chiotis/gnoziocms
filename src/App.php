@@ -4480,7 +4480,8 @@ final class App
                 ? fn(string $entry, string $brief, bool $replace, string $by): array => $this->aiPictures()->requestForEntry($entry, $brief, [], $by, null, 'mcp', $replace)
                 : null,
             pictureState: fn(string $entry): ?array => $this->aiPictures()->entryState($entry),
-            relations: $this->relations()
+            relations: $this->relations(),
+            admin: $this->contentAdmin()
         );
     }
 
