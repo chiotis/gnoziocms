@@ -31,8 +31,8 @@ register_shutdown_function(function () use ($root) { @exec('rm -rf ' . escapeshe
 $site = 'https://shop.example';
 $v3 = [
     '/wp-json/wc/v3/products/categories' => [
-        ['id' => 10, 'slug' => 'skoularikia', 'name' => 'Σκουλαρίκια', 'parent' => 0, 'description' => '<p>Χειροποίητα</p>', 'image' => ['src' => $site . '/wp-content/uploads/cat.jpg'], 'permalink' => $site . '/product-category/skoularikia/'],
-        ['id' => 11, 'slug' => 'krikoi', 'name' => 'Κρίκοι &amp; κρεμαστά', 'parent' => 10, 'description' => '', 'image' => null, 'permalink' => $site . '/product-category/skoularikia/krikoi/'],
+        ['id' => 10, 'slug' => 'skoularikia', 'name' => 'Σκουλαρίκια', 'parent' => 0, 'description' => '<p>Χειροποίητα</p>', 'image' => ['src' => $site . '/wp-content/uploads/cat.jpg']],
+        ['id' => 11, 'slug' => 'krikoi', 'name' => 'Κρίκοι &amp; κρεμαστά', 'parent' => 10, 'description' => '', 'image' => null],
     ],
     '/wp-json/wc/v3/products?status=any' => [
         ['id' => 101, 'slug' => 'balos-earrings', 'name' => 'Σκουλαρίκια Μπάλος', 'status' => 'publish', 'type' => 'variable', 'sku' => 'BAL', 'description' => '<p>Από <strong>ασήμι</strong>.</p>', 'short_description' => '<p>Χειροποίητα στην Κρήτη.</p>', 'regular_price' => '', 'sale_price' => '',
@@ -53,12 +53,16 @@ $v3 = [
     ],
 ];
 $asked = [];
-$get = function (string $url) use (&$asked, $v3, $site): ?array {
+// How the fake shop takes the keys: 'both', 'header' (a host whose server ignores them in the query) or 'query' (one that strips the header).
+$takes = 'both';
+$get = function (string $url, array $headers = []) use (&$asked, &$takes, $v3, $site): ?array {
     $asked[] = $url;
     $parts = parse_url($url);
     parse_str($parts['query'] ?? '', $query);
     $path = $parts['path'];
-    if (str_contains($path, '/wc/v3/') && (($query['consumer_key'] ?? '') !== 'ck_test' || ($query['consumer_secret'] ?? '') !== 'cs_test')) {
+    $inHeader = in_array('Authorization: Basic ' . base64_encode('ck_test:cs_test'), $headers, true) && $takes !== 'query';
+    $inQuery = ($query['consumer_key'] ?? '') === 'ck_test' && ($query['consumer_secret'] ?? '') === 'cs_test' && $takes !== 'header';
+    if (str_contains($path, '/wc/v3/') && !$inHeader && !$inQuery) {
         return ['status' => 401, 'body' => '{"code":"woocommerce_rest_cannot_view"}'];
     }
     $key = $path . (isset($query['status']) ? '?status=' . $query['status'] : '');
@@ -176,6 +180,18 @@ check('a wrong password does not sign in', $customers->authenticate('maria@examp
 check('the old WordPress password signs in, and is hashed again', [$customers->authenticate('maria@example.com', 'test12345')['email'] ?? null, str_starts_with($customers->byEmail('maria@example.com')['password_hash'], '$2y$'), $customers->authenticate('maria@example.com', 'test12345') !== null], ['maria@example.com', true, true]);
 check('WordPress 6.8\'s hashes too', [$customers->authenticate('nikos@example.com', 'secret pass')['email'] ?? null, $customers->authenticate('nikos@example.com', 'nope')], ['nikos@example.com', null]);
 check('one already here is kept as it was', password_verify('a long password', $customers->byEmail('eleni@example.com')['password_hash']), true);
+
+// ---- how the keys are sent
+foreach (['header', 'query'] as $way) {
+    $takes = $way;
+    $asked = [];
+    $read = new WooCommerceReader($site, $get, 'ck_test', 'cs_test');
+    $found = [count($read->categories()), count($read->products())];
+    $inUrl = array_filter($asked, static fn(string $u): bool => str_contains($u, 'cs_test'));
+    check("a shop that takes the keys only in the $way: read all the same", $found, [count($v3['/wp-json/wc/v3/products/categories']), count($v3['/wp-json/wc/v3/products?status=any'])]);
+    check("  and the keys in an address only when the shop needs them there ($way)", $inUrl !== [], $way === 'query');
+}
+$takes = 'both';
 
 // ---- the public Store API
 $asked = [];

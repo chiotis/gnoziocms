@@ -9,14 +9,18 @@ namespace GnozioCMS;
  * categories, all in one shape whichever way they are read.
  *
  *  - With the shop's REST keys (WooCommerce > Settings > Advanced > REST API, read only): /wp-json/wc/v3, which has everything,
- *    stock quantities, weights and whether a product is a download among it. The keys travel in the query over https and are
- *    never written anywhere.
+ *    stock quantities, weights and whether a product is a download among it. The keys travel over https in a Basic-auth header;
+ *    a shop that does not take that (a host that strips the header) is asked again with them in the query. They are never
+ *    written anywhere.
  *  - Without them: the public Store API (/wp-json/wc/store/v1), which shows what a shopper sees: no stock quantities (only in
  *    stock or not), no weights, no drafts.
  */
 final class WooCommerceReader
 {
-    /** @param \Closure(string): (array{status: int, body: string}|null) $get */
+    /** Whether the keys go in the query: only when the shop refused them in the header. */
+    private bool $keysInQuery = false;
+
+    /** @param \Closure(string, list<string>): (array{status: int, body: string}|null) $get the address and the request's headers */
     public function __construct(private string $site, private \Closure $get, private string $key = '', private string $secret = '')
     {
         $this->site = rtrim($site, '/');
@@ -50,7 +54,42 @@ final class WooCommerceReader
                 'link' => (string)($row['permalink'] ?? $row['link'] ?? ''),
             ];
         }
-        return array_values(array_filter($out, static fn(array $c): bool => $c['id'] > 0 && $c['slug'] !== ''));
+        $out = array_values(array_filter($out, static fn(array $c): bool => $c['id'] > 0 && $c['slug'] !== ''));
+        return $this->full() ? $this->withLinks($out) : $out;
+    }
+
+    /**
+     * The REST API gives no category its address: they come from the public Store API, and a category that one does not show
+     * (an empty one) gets WooCommerce's usual /product-category/ with the slugs of its tree.
+     *
+     * @param list<array<string, mixed>> $categories
+     * @return list<array<string, mixed>>
+     */
+    private function withLinks(array $categories): array
+    {
+        $links = [];
+        foreach ($this->all('/wp-json/wc/store/v1/products/categories') as $row) {
+            $link = (string)($row['permalink'] ?? $row['link'] ?? '');
+            if ($link !== '') {
+                $links[(int)($row['id'] ?? 0)] = $link;
+            }
+        }
+        $byId = array_column($categories, null, 'id');
+        foreach ($categories as $i => $category) {
+            if ($category['link'] !== '') {
+                continue;
+            }
+            if (isset($links[$category['id']])) {
+                $categories[$i]['link'] = $links[$category['id']];
+                continue;
+            }
+            $path = [];
+            for ($c = $category, $depth = 0; $c !== null && $depth < 20; $c = $byId[$c['parent']] ?? null, $depth++) {
+                array_unshift($path, rawurlencode($c['slug']));
+            }
+            $categories[$i]['link'] = $this->site . '/product-category/' . implode('/', $path) . '/';
+        }
+        return $categories;
     }
 
     /**
@@ -218,17 +257,32 @@ final class WooCommerceReader
     private function json(string $path): ?array
     {
         $url = $this->site . $path;
-        if ($this->full() && str_contains($path, '/wc/v3/')) {
-            $url .= (str_contains($url, '?') ? '&' : '?') . http_build_query(['consumer_key' => $this->key, 'consumer_secret' => $this->secret]);
+        if (!$this->full() || !str_contains($path, '/wc/v3/')) {
+            $answer = ($this->get)($url, []);
+            return $answer !== null && $answer['status'] === 200 ? self::decode($answer['body']) : null;
         }
-        $answer = ($this->get)($url);
+        $answer = $this->keysInQuery ? null : ($this->get)($url, ['Authorization: Basic ' . base64_encode($this->key . ':' . $this->secret)]);
+        if ($answer === null || in_array($answer['status'], [401, 403], true)) {
+            $withKeys = $url . (str_contains($url, '?') ? '&' : '?') . http_build_query(['consumer_key' => $this->key, 'consumer_secret' => $this->secret]);
+            $again = ($this->get)($withKeys, []);
+            if ($again !== null && $again['status'] === 200) {
+                $this->keysInQuery = true;
+            }
+            $answer = $again ?? $answer;
+        }
         if ($answer === null || $answer['status'] !== 200) {
-            if ($answer !== null && in_array($answer['status'], [401, 403], true) && $this->full()) {
+            if ($answer !== null && in_array($answer['status'], [401, 403], true)) {
                 throw new \RuntimeException('The shop refused the REST keys (' . $answer['status'] . '). Check they are read keys of an admin.');
             }
             return null;
         }
-        $data = json_decode($answer['body'], true);
+        return self::decode($answer['body']);
+    }
+
+    /** @return array<mixed>|null */
+    private static function decode(string $body): ?array
+    {
+        $data = json_decode($body, true);
         return is_array($data) ? $data : null;
     }
 
