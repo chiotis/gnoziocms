@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.270 — 2026-11-11 — The importers ship with releases
+- The WordPress and WooCommerce importers are now in the release package, as `src/Cli/import-wordpress.php` and `src/Cli/import-woocommerce.php`: on a live site, `php src/Cli/import-woocommerce.php https://shop.example` in its folder, with the same options. In the repository `scripts/import-*.php` still work and point there. They live inside `src/` because an older site's updater refuses a new single file outside its folders. They run only from the command line.
+
 ## 0.1.269 — 2026-11-11 — The WooCommerce import with REST keys
 - **WooCommerce import:** the REST keys go in a Basic-auth header, and in the query only when a shop refuses the header. A shop behind Cloudflare refused them in the query (403), since WooCommerce saw plain http at the origin.
 - With the keys, product categories get their old addresses too, so their redirects from `/product-category/…` are made: the REST API gives none, so they come from the public Store API, or from the category's slug path.
