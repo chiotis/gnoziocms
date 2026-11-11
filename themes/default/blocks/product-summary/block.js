@@ -1,4 +1,4 @@
-// Product summary: the chosen options pick the variant, whose price, SKU and stock are shown.
+// Product summary: the chosen options pick the variant, whose price, "was" price, SKU and stock are shown.
 (function () {
   document.querySelectorAll('[data-product-summary]').forEach(function (summary) {
     var data = summary.querySelector('[data-variants]');
@@ -7,6 +7,8 @@
     try { variants = JSON.parse(data.textContent || '[]'); } catch (e) { return; }
     var price = summary.querySelector('[data-price]');
     var from = summary.querySelector('[data-from]');
+    var was = summary.querySelector('[data-was]');
+    var wasText = summary.querySelector('[data-was-text]');
     var sku = summary.querySelector('[data-sku]');
     var stock = summary.querySelector('[data-stock]');
     var key = function (values) { return values.map(function (v) { return v.trim().toLowerCase(); }).join(' / '); };
@@ -19,6 +21,8 @@
       variants.forEach(function (variant) { if (variant.key === key(chosen)) match = variant; });
       if (from) from.hidden = true;
       if (match && price && match.price) price.textContent = match.price;
+      // The "was" price of the chosen variant: shown when it is on sale, hidden when it is not.
+      if (match && was && wasText) { wasText.textContent = match.was || ''; was.hidden = !match.was; }
       if (sku) sku.textContent = match && match.sku ? match.sku : sku.textContent;
       if (stock) stock.textContent = !match ? stock.getAttribute('data-none') : (match.available ? stock.getAttribute('data-in') : stock.getAttribute('data-out'));
       var add = summary.querySelector('.product-add');

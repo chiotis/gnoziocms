@@ -136,7 +136,7 @@ final class ShopFeed
                 foreach ($attributes as $i => $attribute) {
                     $item[$attribute] = (string)($variant['values'][$i] ?? '');
                 }
-                $out[] = $item + $this->price((float)($variant['price'] ?? $d['price']), $was, $currency);
+                $out[] = $item + $this->price((float)($variant['price'] ?? $d['price']), $variant['was'] ?? null, $currency);
             }
         }
         return $out;

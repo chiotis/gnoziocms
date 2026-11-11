@@ -146,6 +146,7 @@ $read = static function (string $slug) use ($root): array {
 [$balos, $body] = $read('balos-earrings');
 $cf = $balos['custom_fields'];
 check('a variable product: its options and variants with their own prices and SKUs', [$cf['options'], array_column($cf['variants'], 'values'), array_column($cf['variants'], 'price'), array_column($cf['variants'], 'sku')], [[['name' => 'Φινίρισμα', 'values' => "Χρυσό\nΑσήμι"]], ['Χρυσό', 'Ασήμι'], ['186.00', '99.00'], ['BAL-G', 'BAL-S']]);
+check('a variation on sale keeps its old price', [$cf['variants'][1]['compare_at_price'] ?? null, isset($cf['variants'][0]['compare_at_price'])], ['124.00', false]);
 check('its price the first variant\'s, its weight in grams, its category, its id', [$cf['price'], $cf['weight_g'], $cf['variants'][1]['weight_g'], $balos['product-categories'], $balos['translation_id'], $balos['status'], $balos['date']], ['186.00', 20, 30, ['krikoi'], 'woo0000000000101', 'published', '2025-05-01']);
 check('its pictures in the library, the first the main one; a variant\'s own', [count($cf['gallery']), $balos['main_image'] === $cf['gallery'][0], str_starts_with($cf['variants'][0]['image'], '/uploads/media/'), $cf['variants'][1]['image'] === $cf['gallery'][0]], [2, true, true, true]);
 check('its texts: the description as Markdown, the short one as text', [$body, $cf['short_description']], ['Από **ασήμι**.', 'Χειροποίητα στην Κρήτη.']);
