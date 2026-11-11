@@ -157,9 +157,31 @@ final class WooCommerceImporter
      */
     public function apply(array $plan): array
     {
-        $done = ['media' => 0, 'media_failed' => [], 'categories' => 0, 'written' => 0, 'skipped' => 0, 'stock' => 0, 'customers' => 0];
+        $media = $this->applyMedia($plan, INF);
+        return ['media' => $media['done'], 'media_failed' => $media['failed']] + $this->applyContent($plan);
+    }
+
+    /**
+     * The pictures into the library, from the plan's picture number $from on, until $deadline (microtime) has passed; at least one
+     * is fetched each time. A picture already in the library is not fetched again, so a run cut short starts again safely.
+     *
+     * @param array<string, mixed> $plan
+     * @param (\Closure(int, int): void)|null $onEach after each picture: the number of the next one, and how many were fetched
+     * @return array{next: int, total: int, done: int, failed: list<string>}
+     */
+    public function applyMedia(array $plan, float $deadline, int $from = 0, ?\Closure $onEach = null): array
+    {
+        $out = ['next' => $from, 'total' => count($plan['media']), 'done' => 0, 'failed' => []];
         $this->library->ensureDirectories();
-        foreach ($plan['media'] as $file) {
+        for ($i = $from; $i < $out['total']; $i++) {
+            if ($i > $from && microtime(true) >= $deadline) {
+                break;
+            }
+            $out['next'] = $i + 1;
+            $file = $plan['media'][$i];
+            if ($onEach !== null && $i > $from) {
+                $onEach($i, $out['done']);
+            }
             if ($this->library->find($file['id']) !== null) {
                 continue;
             }
@@ -167,18 +189,30 @@ final class WooCommerceImporter
             $status = ($this->download)($file['url'], (string)$tmp);
             if ($status !== 200) {
                 @unlink((string)$tmp);
-                $done['media_failed'][] = $file['url'];
+                $out['failed'][] = $file['url'];
                 continue;
             }
             try {
                 $this->library->import((string)$tmp, $file['name'], $file['id'], $file['alt'], 'woocommerce-import');
-                $done['media']++;
+                $out['done']++;
             } catch (\Throwable) {
-                $done['media_failed'][] = $file['url'];
+                $out['failed'][] = $file['url'];
             } finally {
                 @unlink((string)$tmp);
             }
         }
+        return $out;
+    }
+
+    /**
+     * The rest of the plan, once the pictures are in: the categories, the products and their stock, the customers.
+     *
+     * @param array<string, mixed> $plan
+     * @return array{categories: int, written: int, skipped: int, stock: int, customers: int}
+     */
+    public function applyContent(array $plan): array
+    {
+        $done = ['categories' => 0, 'written' => 0, 'skipped' => 0, 'stock' => 0, 'customers' => 0];
 
         // Categories: the old ones joined with those already here, by id.
         $existing = $this->taxonomies->load(Shop::CATEGORIES);

@@ -14,8 +14,8 @@ use GnozioCMS\SystemMetaRepository;
 final class ShopSecrets
 {
     public const META = 'shop_secrets';
-    /** Each provider's secret keys. */
-    public const KEYS = ['viva' => ['api_key', 'client_secret'], 'cardlink' => ['shared_secret'], 'meta' => ['capi_token']];
+    /** Each provider's secret keys; `woocommerce`: the read keys of a shop being imported (WooCommerceImport), until it is done. */
+    public const KEYS = ['viva' => ['api_key', 'client_secret'], 'cardlink' => ['shared_secret'], 'meta' => ['capi_token'], 'woocommerce' => ['consumer_key', 'consumer_secret']];
 
     public function __construct(private SystemMetaRepository $meta)
     {

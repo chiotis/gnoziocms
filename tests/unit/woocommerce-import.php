@@ -4,13 +4,14 @@
  * downloads, variations with their own prices) and the public Store API (prices in minor units, variations by slug), the dry
  * run changing nothing, the import (categories with their tree, products with their fields, pictures, stock), running it again,
  * a file of the site's own left alone, grouped products and "any" variations reported, the redirects, the customers' CSV and
- * their WordPress password hashes (phpass and the newer bcrypt) signing in and hashed again.
+ * their WordPress password hashes (phpass and the newer bcrypt) signing in and hashed again. Then Shop > Import's steps
+ * (WooCommerceImport): connect, the dry run as a job, the import in slices of pictures, the keys and hashes forgotten after.
  *   php tests/unit/woocommerce-import.php
  */
 $repo = dirname(__DIR__, 2);
 require $repo . '/vendor/autoload.php';
-use GnozioCMS\{ContentRepository, ContentTypes, MediaLibrary, SystemDatabase, Taxonomies, Theme, WooCommerceImporter, WooCommerceReader};
-use GnozioCMS\Shop\{ShopCustomers, ShopStock};
+use GnozioCMS\{ContentRepository, ContentTypes, JobRunner, MediaLibrary, SystemDatabase, SystemMetaRepository, Taxonomies, Theme, WooCommerceImporter, WooCommerceReader};
+use GnozioCMS\Shop\{ShopCustomers, ShopSecrets, ShopStock, WooCommerceImport};
 use League\CommonMark\Environment\Environment;
 use League\CommonMark\Extension\CommonMark\CommonMarkCoreExtension;
 use League\CommonMark\MarkdownConverter;
@@ -199,6 +200,59 @@ $store = $make(new WooCommerceReader($site, $get))->plan();
 $item = $store['products'][0];
 check('without keys: the Store API, prices from minor units, variants named', [$store['full'], count($store['products']), str_contains($item['markdown'], "values: Χρυσό\n"), str_contains($item['markdown'], "price: '99.00'"), str_contains($item['markdown'], "price: '186.00'"), $item['stock']], [false, 1, true, true, true, null]);
 check('and nothing sent to the REST API', array_filter($asked, static fn(string $u): bool => str_contains($u, '/wc/v3/')), []);
+
+// ---- Shop > Import: the same, as the screen's steps and background jobs
+$sroot = "$root/screen";
+mkdir("$sroot/content/products", 0775, true);
+mkdir("$sroot/public/uploads", 0775, true);
+mkdir("$sroot/storage", 0775, true);
+$sdb = new SystemDatabase("$sroot/storage");
+$sdb->initialize();
+$jobs = new JobRunner($sdb);
+$secrets = new ShopSecrets(new SystemMetaRepository($sdb));
+$finished = [];
+$screen = new WooCommerceImport(
+    "$sroot/storage/import/woocommerce",
+    $jobs,
+    $secrets,
+    fn(string $address, string $key, string $secret, array $options): WooCommerceImporter => new WooCommerceImporter(new WooCommerceReader($address, $get, $key, $secret), "$sroot/content", new MediaLibrary("$sroot/content", "$sroot/public/uploads"), new Taxonomies("$sroot/content", ['el']), $download, new ShopStock($sdb), new ShopCustomers($sdb), $options + ['default_lang' => 'el']),
+    function (array $redirects, bool $apply) use (&$finished): array { $finished = [count($redirects), $apply]; return ['added' => $apply ? count($redirects) : 0, 'updated' => 0, 'kept' => 0]; }
+);
+$screen->register();
+$runAll = function () use ($jobs): int {
+    $slices = 0;
+    // A deadline already past: each picture job fetches one picture and hands over to the next.
+    while ($jobs->pending(null, true) > 0 && $slices < 100) {
+        $jobs->work(microtime(true) + 0.2, WooCommerceImport::kinds(), 1);
+        $slices++;
+    }
+    return $slices;
+};
+
+check('screen: an address is needed', $screen->start(['site' => ''], null, ['el'])['ok'], false);
+check('screen: keys are not sent over http', $screen->start(['site' => 'http://shop.test', 'consumer_key' => 'ck_test', 'consumer_secret' => 'cs_test'], null, ['el'])['ok'], false);
+$secrets->save(WooCommerceImport::SECRETS, [], true);
+$started = $screen->start(['site' => 'shop.test/', 'consumer_key' => 'ck_test', 'consumer_secret' => 'cs_test'], null, ['el']);
+$site = 'https://shop.test';
+$state = $screen->state();
+check('screen: connect queues the dry run, the address made whole', [$started['ok'], $state['status'], $state['site'], $state['with_keys']], [true, 'reading', 'https://shop.test', true]);
+check('  the keys kept as secrets, not in the state file', [$secrets->view(WooCommerceImport::SECRETS)['consumer_secret']['last4'], str_contains((string)file_get_contents("$sroot/storage/import/woocommerce/state.json"), 'cs_test')], ['test', false]);
+check('  nothing imported yet', glob("$sroot/content/products/*.md"), []);
+$runAll();
+$view = $screen->view();
+check('screen: the dry run read the shop with the keys', [$view['state']['status'], $view['state']['summary']['full'], $view['state']['summary']['products'], count($view['products']), $view['problems'] !== [], $view['reports']], ['ready', true, 4, 4, true, ['report' => true, 'redirects' => true]]);
+check('  still nothing written', glob("$sroot/content/products/*.md"), []);
+check('screen: a second start while one runs is refused', ($screen->confirm(['redirects' => '1'])['ok'] && !$screen->start(['site' => $site], null, ['el'])['ok']), true);
+$slices = $runAll();
+$state = $screen->state();
+check('screen: imported in slices, a picture at a time when time is short', [$state['status'], $slices >= $state['progress']['media_total'], $state['progress']['media_next'] === $state['progress']['media_total']], ['done', true, true]);
+check('  the products written, the redirects handed over to be added', [count(glob("$sroot/content/products/*.md")), $state['result']['written'], $finished], [4, 4, [$view['state']['summary']['redirects'], true]]);
+check('  the keys and the dry run (with any password hashes) forgotten', [$secrets->view(WooCommerceImport::SECRETS)['consumer_key']['set'], is_file("$sroot/storage/import/woocommerce/plan.json")], [false, false]);
+check('screen: start over', [$screen->reset()['ok'], $screen->state()['status'], $screen->state()['site']], [true, 'idle', $site]);
+$screen->start(['site' => $site, 'consumer_key' => 'ck_nope', 'consumer_secret' => 'cs_nope'], null, ['el']);
+$runAll();
+$state = $screen->state();
+check('screen: wrong keys end the dry run with the reason, without the keys', [$state['status'], str_contains($state['error'], 'refused the REST keys'), str_contains($state['error'], 'cs_nope')], ['failed', true, false]);
 
 echo $fail === 0 ? "ALL PASSED\n" : "$fail FAILED\n";
 exit($fail === 0 ? 0 : 1);

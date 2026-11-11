@@ -12,6 +12,7 @@ use GnozioCMS\Shop\ShopServices;
 use GnozioCMS\Shop\ShopSettings;
 use GnozioCMS\Shop\ShopSettingsAdmin;
 use GnozioCMS\Shop\ShopStock;
+use GnozioCMS\Shop\WooCommerceImport;
 use League\CommonMark\Environment\Environment;
 use League\CommonMark\Extension\Attributes\AttributesExtension;
 use League\CommonMark\Extension\CommonMark\CommonMarkCoreExtension;
@@ -113,6 +114,7 @@ final class App
     private ?McpOAuth $mcpOAuthService = null;
     private ?McpAdmin $mcpAdminService = null;
     private ?JobRunner $jobRunnerService = null;
+    private ?WooCommerceImport $wooImportService = null;
     private ?AiSettings $aiSettingsService = null;
     private ?ShopStock $shopStockService = null;
     /** @var array<int, ShopCatalogue> without drafts (0) and with them (1) */
@@ -1311,6 +1313,7 @@ final class App
         'shop-coupons' => 'handleShopCoupons',
         'shop-files' => 'handleShopFiles',
         'shop-subscriptions' => 'handleShopSubscriptions',
+        'shop-import' => 'handleShopImport',
         'ai-picture' => 'handleAiPicture',
         'mcp-authorize' => 'handleMcpAuthorize',
         'notification-read' => 'handleNotificationRead',
@@ -3628,6 +3631,7 @@ final class App
             $this->jobRunnerService = new JobRunner($this->systemDatabase);
             $this->aiPictures()->register();
             $this->aiWriter()->register();
+            $this->wooImport()->register();
         }
         return $this->jobRunnerService;
     }
@@ -4107,6 +4111,91 @@ final class App
         }
         $this->shopTick();
         $this->render('@admin/shop-subscriptions.twig', $admin->subscriptions($_GET) + $this->shopScreen('shop-subscriptions', 'Subscriptions') + [
+            'done' => (string)($_GET['done'] ?? ''),
+            'message' => mb_substr((string)($_GET['msg'] ?? ''), 0, 300),
+        ]);
+    }
+
+    /** The WooCommerce import as a screen (Shop > Import). */
+    private function wooImport(): WooCommerceImport
+    {
+        return $this->wooImportService ??= new WooCommerceImport(
+            $this->basePath . '/storage/import/woocommerce',
+            $this->jobRunner(),
+            $this->shopServices()->secrets(),
+            fn(string $site, string $key, string $secret, array $options): WooCommerceImporter => new WooCommerceImporter(
+                new WooCommerceReader($site, static fn(string $url, array $headers): ?array => WordPressHttp::get($url, $headers), $key, $secret),
+                $this->contentDir,
+                $this->media,
+                $this->taxonomies(),
+                static fn(string $url, string $to): int => WordPressHttp::download($url, $to),
+                $this->shopStock(),
+                $this->shopServices()->customers(),
+                $options + ['default_lang' => $this->defaultLanguage()]
+            ),
+            function (array $redirects, bool $apply): array {
+                $result = ['added' => 0, 'updated' => 0, 'kept' => 0];
+                if ($apply && $redirects !== []) {
+                    $result = array_intersect_key((new ImportedRedirects($this->redirects))->apply($redirects, true, 'woocommerce-import'), $result);
+                }
+                $this->rebuildContentIndex();
+                $this->frontCache()->purgeAll();
+                return $result;
+            },
+            fn(string $action, string $level, string $message) => $this->logActivity($action, $level, 'shop', null, $message, [])
+        );
+    }
+
+    /**
+     * Shop > Import: a WooCommerce shop brought over in three steps (WooCommerceImport). While the shop is read or imported, the
+     * screen asks ?work again and again, which works the next slice of the job, and ?status every second, which only says how far
+     * it is (the session is let go first, so the two do not wait for each other).
+     */
+    private function handleShopImport(): void
+    {
+        if (!Shop::enabled($this->content->getTypes())) {
+            $this->redirect('/admin/content-types?shop=off');
+            return;
+        }
+        $import = $this->wooImport();
+        if (isset($_GET['work']) || isset($_GET['status'])) {
+            @session_write_close();
+            if (isset($_GET['work']) && array_sum(array_map(fn(string $k): int => $this->jobRunner()->pending($k, true), WooCommerceImport::kinds())) > 0) {
+                if (function_exists('set_time_limit')) {
+                    @set_time_limit(900);
+                }
+                $this->jobRunner()->work(microtime(true) + 25, WooCommerceImport::kinds(), 1);
+            }
+            header('Content-Type: application/json; charset=utf-8');
+            header('Cache-Control: no-store');
+            echo json_encode($import->status(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            return;
+        }
+        if (isset($_GET['download'])) {
+            $file = $import->reportFile((string)$_GET['download']);
+            if ($file === null) {
+                $this->redirect('/admin/shop-import');
+                return;
+            }
+            header('Content-Type: ' . (str_ends_with($file, '.json') ? 'application/json' : 'text/plain') . '; charset=utf-8');
+            header('Content-Disposition: attachment; filename="' . basename($file) . '"');
+            header('Cache-Control: no-store');
+            readfile($file);
+            return;
+        }
+        $languages = array_values(array_unique(array_merge([$this->defaultLanguage()], array_map('strval', $this->settings['languages']['available'] ?? []))));
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
+            $result = match ((string)($_POST['action'] ?? '')) {
+                'start' => $import->start($_POST, is_array($_FILES['customers'] ?? null) ? $_FILES['customers'] : null, $languages),
+                'confirm' => $import->confirm($_POST),
+                'reset' => $import->reset(),
+                default => ['ok' => false, 'message' => 'Unknown action.'],
+            };
+            $this->redirect('/admin/shop-import' . ($result['ok'] ? '' : '?' . http_build_query(['done' => 'fail', 'msg' => $result['message']])));
+            return;
+        }
+        $this->render('@admin/shop-import.twig', $import->view() + $this->shopScreen('shop-import', 'Import from WooCommerce') + [
+            'languages' => $languages,
             'done' => (string)($_GET['done'] ?? ''),
             'message' => mb_substr((string)($_GET['msg'] ?? ''), 0, 300),
         ]);
