@@ -105,7 +105,7 @@ Each step is a merge and a version of its own.
 3. **Shop scopes, `shop_info`, product and stock tools, `update_prices`** with the price guard. *Built in 0.1.279 (`src/McpShop.php`, `tests/http/mcp_shop_test.py`): `shop_info`, `list_products`, `get_product`, `update_prices`, `set_stock`, the `shop:read`/`shop:write` scopes, the price limit (also on `update_entry`) and the shop changes limit. `create_product`/`update_product` were not needed: since step 1, `create_entry`/`update_entry` write every product field, and `shop_info` lists them.*
 4. **Term tools**, then `archive_product` / `delete_product`. *Built in 0.1.280: `create_term`, `update_term`, `remove_term` (the shop's two taxonomies only, through `TaxonomyEditor::apply`), `archive_product`, `delete_product` and the `shop:delete` scope. Blog taxonomies are not covered yet.*
 5. **Orders and coupons.** *Built in 0.1.281 (`src/McpShopOrders.php`, `tests/http/mcp_orders_test.py`): `list_orders`, `get_order`, `update_order` (never to paid or refunded), `list_coupons`, `save_coupon`, `delete_coupon`, and the `shop:orders` scope.*
-6. **`sales_summary`.**
+6. **`sales_summary`.** *Built in 0.1.282: totals and periods in the site's time zone, best sellers by product, variant, category or collection, refunds from the payments; no customer named.*
 7. A real run on the demo shop: Claude adds a product with variants and pictures from a supplier page, puts a category on sale by 10% with a dry run first, ends the sale, sets stock, and ships a demo order.
 
 ## 5. Risks

@@ -21,6 +21,12 @@ use GnozioCMS\Shop\ShopServices;
  */
 final class McpShopOrders
 {
+    /** The orders that count as sales: paid for, or on their way (refunded ones with their refund). */
+    public const SOLD = ['paid', 'processing', 'shipped', 'completed', 'refunded'];
+    /** Orders not paid yet, counted only when asked (include_unpaid). */
+    public const UNPAID = ['pending_payment', 'on_hold'];
+    public const MAX_SUMMARY_DAYS = 731;
+
     /** What an order can be moved to through MCP; paid and refunded stay with a person. */
     public const MOVES = ['on_hold', 'processing', 'shipped', 'completed', 'cancelled'];
 
@@ -92,6 +98,21 @@ final class McpShopOrders
                 ], ['order']),
                 'annotations' => ['readOnlyHint' => false, 'destructiveHint' => true, 'idempotentHint' => false, 'openWorldHint' => true],
             ],
+            'sales_summary' => [
+                'scopes' => [McpOAuth::SCOPE_SHOP_ORDERS, McpOAuth::SCOPE_SHOP_READ], 'permission' => 'shop.orders', 'shop' => true, 'title' => 'Sales summary',
+                'description' => 'What the shop sold between two days: orders, units, sales, discounts, shipping, VAT, refunds and the average order, '
+                    . 'per day, week or month, and the best sellers by product, variant, category or collection. Counts paid orders (paid, processing, shipped, completed, and refunded ones with their refund); '
+                    . 'include_unpaid adds those on hold or waiting for payment. No customer is named.',
+                'inputSchema' => $schema([
+                    'from' => $date('The first day; 30 days ago when left out.'),
+                    'to' => $date('The last day; today when left out.'),
+                    'period' => ['type' => 'string', 'enum' => ['day', 'week', 'month'], 'default' => 'day', 'description' => 'How the totals are split in time.'],
+                    'by' => ['type' => 'string', 'enum' => ['product', 'variant', 'category', 'collection'], 'default' => 'product', 'description' => 'What the best sellers are counted by. A product in two categories counts in both.'],
+                    'top' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 100, 'default' => 20],
+                    'include_unpaid' => ['type' => 'boolean', 'default' => false],
+                ], []),
+                'annotations' => $ro,
+            ],
             'list_coupons' => [
                 'scopes' => [McpOAuth::SCOPE_SHOP_READ, McpOAuth::SCOPE_SHOP_WRITE], 'permission' => 'shop.manage', 'shop' => true, 'title' => 'List coupons',
                 'description' => 'The shop\'s coupons: code, kind, amount, minimum, dates, limits, how often used, the collections and products they are for, and whether active.',
@@ -120,6 +141,7 @@ final class McpShopOrders
             'list_orders' => $this->listOrders($args),
             'get_order' => $this->getOrder($args),
             'update_order' => $this->updateOrder($args, $connection),
+            'sales_summary' => $this->salesSummary($args),
             'list_coupons' => ['coupons' => array_map($this->coupon(...), $this->shop->coupons()->all())],
             'save_coupon' => $this->saveCoupon($args, $connection),
             'delete_coupon' => $this->deleteCoupon($args, $connection),
@@ -265,6 +287,125 @@ final class McpShopOrders
             'shipping_method' => (string)($order['shipping_label'] ?? ''),
             'carrier' => (string)($order['carrier'] ?? ''),
             'tracking' => (string)($order['tracking'] ?? ''),
+        ];
+    }
+
+    // ---- sales
+
+    /** @param array<string, mixed> $args @return array<string, mixed> */
+    private function salesSummary(array $args): array
+    {
+        $day = static function (mixed $value, string $name): ?\DateTimeImmutable {
+            if ($value === null || $value === '') {
+                return null;
+            }
+            $date = is_string($value) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) === 1 ? \DateTimeImmutable::createFromFormat('!Y-m-d', $value) : false;
+            if ($date === false || $date->format('Y-m-d') !== $value) {
+                throw new \InvalidArgumentException($name . ' must be a day as YYYY-MM-DD.');
+            }
+            return $date;
+        };
+        $to = $day($args['to'] ?? null, 'to') ?? new \DateTimeImmutable('today');
+        $from = $day($args['from'] ?? null, 'from') ?? $to->modify('-29 days');
+        if ($from > $to) {
+            throw new \InvalidArgumentException('from is after to.');
+        }
+        if ((int)$from->diff($to)->days > self::MAX_SUMMARY_DAYS) {
+            throw new \InvalidArgumentException('At most ' . self::MAX_SUMMARY_DAYS . ' days at once; ask for a shorter time, or in parts.');
+        }
+        $period = in_array($args['period'] ?? 'day', ['day', 'week', 'month'], true) ? (string)($args['period'] ?? 'day') : 'day';
+        $by = in_array($args['by'] ?? 'product', ['product', 'variant', 'category', 'collection'], true) ? (string)($args['by'] ?? 'product') : 'product';
+        $top = max(1, min(100, (int)($args['top'] ?? 20)));
+        $statuses = array_merge(self::SOLD, ($args['include_unpaid'] ?? false) === true ? self::UNPAID : []);
+
+        $products = [];
+        foreach ($this->content->getItems(Shop::TYPE, $this->defaultLang, true, false) as $item) {
+            $id = (string)($item->meta['translation_id'] ?? '');
+            if ($id !== '') {
+                $products[$id] = $item;
+            }
+        }
+        $label = fn(string $taxonomy, string $term): string => $this->taxonomies->label($taxonomy, $term, $this->defaultLang) ?: $term;
+        $empty = ['orders' => 0, 'units' => 0, 'items' => 0, 'discounts' => 0, 'shipping' => 0, 'fees' => 0, 'vat' => 0, 'total' => 0, 'refunded' => 0];
+        $totals = $empty;
+        $periods = [];
+        $sellers = [];
+        $zone = new \DateTimeZone(date_default_timezone_get());
+        $page = 1;
+        do {
+            $found = $this->shop->orders()->search(['from' => $from->format('Y-m-d'), 'to' => $to->format('Y-m-d')], $page, 200);
+            foreach ($found['rows'] as $order) {
+                if (!in_array($order['status'], $statuses, true)) {
+                    continue;
+                }
+                $placed = (new \DateTimeImmutable('@' . $order['created_at']))->setTimezone($zone);
+                $key = match ($period) {
+                    'week' => $placed->format('o-\WW'),
+                    'month' => $placed->format('Y-m'),
+                    default => $placed->format('Y-m-d'),
+                };
+                $refunded = 0;
+                foreach ($this->shop->payments()->forOrder((int)$order['id']) as $payment) {
+                    $refunded += (int)$payment['refunded_cents'];
+                }
+                $lines = $this->shop->orders()->lines((int)$order['id']);
+                $add = ['orders' => 1, 'units' => array_sum(array_column($lines, 'quantity')), 'items' => $order['items_cents'], 'discounts' => $order['discount_cents'], 'shipping' => $order['shipping_cents'], 'fees' => $order['fee_cents'], 'vat' => $order['tax_cents'], 'total' => $order['total_cents'], 'refunded' => $refunded];
+                $periods[$key] ??= $empty;
+                foreach ($add as $k => $v) {
+                    $totals[$k] += $v;
+                    $periods[$key][$k] += $v;
+                }
+                foreach ($lines as $line) {
+                    $item = $products[$line['product_id']] ?? null;
+                    if ($by === 'category' || $by === 'collection') {
+                        $taxonomy = $by === 'category' ? Shop::CATEGORIES : Shop::COLLECTIONS;
+                        $keys = [];
+                        foreach ($item !== null ? array_map('strval', (array)($item->meta[$taxonomy] ?? [])) : [] as $term) {
+                            $keys[$term] = $label($taxonomy, $term);
+                        }
+                        $keys = $keys === [] ? ['' => 'none'] : $keys;
+                    } elseif ($by === 'variant') {
+                        $keys = [$line['product_id'] . '|' . $line['variant_key'] => ($item?->slug ?? $line['title']) . ($line['variant'] !== '' ? ' (' . $line['variant'] . ')' : '')];
+                    } else {
+                        $keys = [$line['product_id'] => $item?->slug ?? $line['title']];
+                    }
+                    foreach ($keys as $sellerKey => $name) {
+                        $sellers[$sellerKey] ??= ['name' => $name, 'title' => in_array($by, ['product', 'variant'], true) ? (string)($item?->meta['title'] ?? $line['title']) : null, 'units' => 0, 'sales' => 0, 'orders' => []];
+                        $sellers[$sellerKey]['units'] += $line['quantity'];
+                        $sellers[$sellerKey]['sales'] += $line['total_cents'];
+                        $sellers[$sellerKey]['orders'][(int)$order['id']] = true;
+                    }
+                }
+            }
+            $page++;
+        } while (($page - 1) * 200 < $found['total']);
+
+        $money = static function (array $row): array {
+            foreach (['items', 'discounts', 'shipping', 'fees', 'vat', 'total', 'refunded'] as $k) {
+                $row[$k] = ShopMoney::plain((int)$row[$k]);
+            }
+            return $row;
+        };
+        ksort($periods);
+        uasort($sellers, static fn(array $a, array $b): int => [$b['sales'], $b['units']] <=> [$a['sales'], $a['units']]);
+        return [
+            'from' => $from->format('Y-m-d'),
+            'to' => $to->format('Y-m-d'),
+            'time_zone' => $zone->getName(),
+            'currency' => (string)$this->shop->settings()->all()['currency'],
+            'counted' => $statuses,
+            'totals' => $money($totals) + [
+                'net' => ShopMoney::plain($totals['total'] - $totals['refunded']),
+                'average_order' => $totals['orders'] > 0 ? ShopMoney::plain(intdiv($totals['total'], $totals['orders'])) : null,
+            ],
+            'periods' => array_map(static fn(string $key, array $row): array => ['period' => $key] + $money($row), array_map('strval', array_keys($periods)), array_values($periods)),
+            'best_sellers' => [
+                'by' => $by,
+                'note' => 'sales are the lines\' totals with VAT, before discounts on the whole order',
+                'rows' => array_values(array_map(static fn(array $s): array => array_filter([
+                    $by => $s['name'], 'title' => $s['title'], 'units' => $s['units'], 'sales' => ShopMoney::plain($s['sales']), 'orders' => count($s['orders']),
+                ], static fn(mixed $v): bool => $v !== null), array_slice($sellers, 0, $top, true))),
+            ],
         ];
     }
 

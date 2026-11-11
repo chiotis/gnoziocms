@@ -76,6 +76,7 @@ A tool needs one of its scopes and, on every call, the permission it asks of the
 | `list_orders` | orders | orders, newest first, with status, total, customer, payment, carrier and tracking; filters: status, dates, words in number, email or name; paged; the count in each status |
 | `get_order` | orders | one order: lines, money, addresses, payments (read only), the timeline, and the statuses `update_order` can move it to |
 | `update_order` | orders | moves an order to on hold, processing, shipped, completed or cancelled along the steps the order screen allows; `carrier`/`tracking` mark it shipped; `note` goes into its timeline; `notify_customer` emails the customer. Never to paid or refunded |
+| `sales_summary` | orders or shop | what was sold between two days (30 by default, at most two years): orders, units, sales, discounts, shipping, VAT, refunds, net and the average order, per day, week or month, and the best sellers by product, variant, category or collection. Paid orders count (paid, processing, shipped, completed, refunded with their refund); `include_unpaid` adds those on hold or waiting. Names no customer; needs `shop.orders` |
 | `list_coupons` | shop | the coupons with their rules and uses |
 | `save_coupon` | shop write | makes a coupon or changes the one with this code (what is given changes, the rest stays); `new_code` renames it; products by address, collections by id |
 | `delete_coupon` | shop delete | deletes a coupon |
