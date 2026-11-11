@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.274 — 2026-11-11 — Removed terms leave the entries too
+- **Taxonomies:** removing a term (a category, a tag, a product category, any taxonomy's) and saving now also takes it off every entry filed under it, in every content type and language, so the site stops showing it. Only that field of each entry changes.
+- Terms removed before this release are named on their taxonomy's screen, with **Take them off the entries**.
+
 ## 0.1.273 — 2026-11-11 — Picture quality
 - **Settings › Basics › Picture quality:** Standard (as before: WebP at 72, AVIF at 50), High (85 and 65) or Best (92 and 80). The copies of the pictures in the sizes a page needs are made at that quality, so photos keep more detail, at the cost of larger files. A change applies to every picture: the new copies are made as pages ask for them, and the old ones are removed after a week.
 
