@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.269 — 2026-11-11 — The WooCommerce import with REST keys
+- **WooCommerce import:** the REST keys go in a Basic-auth header, and in the query only when a shop refuses the header. A shop behind Cloudflare refused them in the query (403), since WooCommerce saw plain http at the origin.
+- With the keys, product categories get their old addresses too, so their redirects from `/product-category/…` are made: the REST API gives none, so they come from the public Store API, or from the category's slug path.
+
 ## 0.1.268 — 2026-11-11 — The Mosaic hero fits its column
 - Hero › Mosaic: the three pictures stay inside their column. The grid took its height from the row and its 5:4 shape then made it wider than the column, so the two small pictures were cut at the right edge; it now takes the column's width and the shape sets the height.
 
