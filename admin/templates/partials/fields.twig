@@ -120,7 +120,7 @@
 {% macro relation(field, name, value, control) %}
   {% import _self as m %}
   {% set chosen = value is iterable ? value : (value ? [value] : []) %}
-  <div class="rel" data-relation data-types="{{ field.types|join(',') }}" data-multiple="{{ field.multiple ? 1 : 0 }}" data-max="{{ field.max ?? 0 }}" data-url="/admin/relations">
+  <div class="rel" data-relation data-types="{{ field.types|join(',') }}" data-multiple="{{ field.multiple ? 1 : 0 }}" data-max="{{ field.max ?? 0 }}"{% if field.published_only|default(false) %} data-published="1"{% endif %} data-url="/admin/relations">
     <input type="hidden" name="{{ name }}" value="" disabled data-rel-name>
     <ul class="rel-chips" data-rel-chips aria-label="Chosen">
       {% for id in chosen %}{{ m.relation_chip(field, name, id) }}{% endfor %}

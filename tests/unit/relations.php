@@ -168,6 +168,7 @@ check('the ones that start with the text come first', array_column($relations->s
 check('an entry without an id is offered by its address until it gets one', array_column($relations->search('dee', ['authors'], $all), 'value'), ['@authors/dee']);
 check('a type the person may not open, or the field does not allow, is never offered', [$relations->search('', ['works'], ['authors']), $relations->search('', ['authors'], ['works'])], [[], []]);
 check('a limit is kept', count($relations->search('', ['authors'], $all, 2)), 2);
+check('published only: drafts are not offered, with or without text', [array_column($relations->search('', ['authors'], $all, 20, true), 'title'), array_column($relations->search('cy', ['authors'], $all, 20, true), 'title')], [['Ada EN', 'Bob', 'Dee', 'Δοξιάδης'], []]);
 
 // ---- what the form holds
 $fieldsOfWorks = $relations->withLabels($types->editableFields('works', 'en', 'el'), $types->values('works', $w2->meta), 'el');

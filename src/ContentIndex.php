@@ -523,20 +523,21 @@ final class ContentIndex
      * @param string[] $types
      * @return array<int, array<string, mixed>>
      */
-    public function choices(array $types, string $defaultLang, int $limit, string $query = ''): array
+    public function choices(array $types, string $defaultLang, int $limit, string $query = '', bool $publishedOnly = false): array
     {
         if ($types === [] || !$this->isAvailable()) {
             return [];
         }
         $marks = implode(',', array_fill(0, count($types), '?'));
         $params = array_merge(array_values($types), [$defaultLang, $defaultLang]);
-        $where = '';
+        // Only the entries visitors can see: published and not hidden.
+        $where = $publishedOnly ? " AND lower(status) = 'published' AND visible = 1" : '';
         $order = 'title_key';
         $query = trim(mb_strtolower($query));
         if ($query !== '') {
             // Titles and addresses that contain the text, the ones that start with it first.
             $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $query);
-            $where = " AND (title_key LIKE ? ESCAPE '\\' OR slug LIKE ? ESCAPE '\\')";
+            $where .= " AND (title_key LIKE ? ESCAPE '\\' OR slug LIKE ? ESCAPE '\\')";
             $order = "CASE WHEN title_key LIKE ? ESCAPE '\\' THEN 0 ELSE 1 END, title_key";
             $params = array_merge($params, ['%' . $escaped . '%', '%' . $escaped . '%', $escaped . '%']);
         }

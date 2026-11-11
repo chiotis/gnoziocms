@@ -2,7 +2,8 @@
  * The picker of a relation field (admin/templates/partials/fields.twig, macro relation): chips for the entries chosen and a search box
  * that offers more. Everything is read from the markup, so a field cloned into a new row of a list works at once:
  *
- *   [data-relation]            data-types (content types it may point at), data-multiple, data-max, data-url (the search address)
+ *   [data-relation]            data-types (content types it may point at), data-multiple, data-max, data-url (the search address),
+ *                              data-published="1" (offer only published entries that are not hidden)
  *   [data-rel-name]            a disabled input that keeps the field's name; a repeater renames it with the row
  *   [data-rel-chips]           the chosen entries, each [data-rel-chip] with a hidden input holding the id
  *   [data-rel-search]          the text box, [data-rel-results] its list of answers
@@ -110,7 +111,7 @@
     if (requests.get(box)) requests.get(box).abort();
     var controller = typeof AbortController === 'function' ? new AbortController() : null;
     requests.set(box, controller);
-    var url = box.getAttribute('data-url') + '?q=' + encodeURIComponent(search.value.trim()) + '&types=' + encodeURIComponent(box.getAttribute('data-types') || '');
+    var url = box.getAttribute('data-url') + '?q=' + encodeURIComponent(search.value.trim()) + '&types=' + encodeURIComponent(box.getAttribute('data-types') || '') + (box.getAttribute('data-published') === '1' ? '&published=1' : '');
     fetch(url, { credentials: 'same-origin', headers: { Accept: 'application/json' }, signal: controller ? controller.signal : undefined })
       .then(function (response) { return response.ok ? response.json() : Promise.reject(new Error(String(response.status))); })
       .then(function (items) { if (document.activeElement === search) show(box, Array.isArray(items) ? items : []); })
