@@ -3993,11 +3993,36 @@ final class App
             $services->cardlink(),
             $services->downloads(),
             $services->subscriptions(),
-            $services->marketing()
+            $services->marketing(),
+            $this->shopGoogle()
         );
         // Orders whose time to be paid ran out give their stock back before a shopper sees it (Shop › Orders does too).
         $services->checkout()->expire();
         $front->handle($rest, $lang);
+    }
+
+    /**
+     * Customers signing in with Google (Shop settings › Accounts): the shop's own client, or the admin's Google sign-in client
+     * (Settings) when the shop's client ID is blank. Google sends them back to /account/google/callback.
+     */
+    private function shopGoogle(): GoogleSignIn
+    {
+        return new GoogleSignIn(
+            function (): array {
+                $accounts = $this->shopServices()->settings()->all()['accounts'];
+                $secret = $this->shopServices()->secrets()->of('google')['client_secret'] ?? '';
+                $admin = is_array($this->settings['auth']['google'] ?? null) ? $this->settings['auth']['google'] : [];
+                $own = $accounts['google_client_id'] !== '';
+                return ['auth' => ['google' => [
+                    'enabled' => $accounts['google'],
+                    'client_id' => $own ? $accounts['google_client_id'] : (string)($admin['client_id'] ?? ''),
+                    'client_secret' => $own ? $secret : (string)($admin['client_secret'] ?? ''),
+                ]]];
+            },
+            fn(string $path): string => $this->buildAbsoluteUrl($path),
+            null,
+            '/account/google/callback'
+        );
     }
 
     private function shopAdmin(): ShopAdmin

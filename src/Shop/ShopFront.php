@@ -12,6 +12,7 @@ use GnozioCMS\LoginThrottle;
  *   /checkout                  contact, address, shipping, payment, placing the order
  *   /checkout/order/{number}   an order's page (with its key for a guest, or for its customer)
  *   /account …                 signing in and up, a new password, the customer's orders and details
+ *   /account/google …          signing in with Google; Google sends the person back to /account/google/callback (no prefix)
  *   /_shop/cart                adding to the cart from a product's page (a form or a script), and /_shop/cart.json
  *   /_shop/pay/viva/…          where Viva Wallet sends the customer back (success, failure) and calls (webhook)
  *   /_shop/pay/cardlink/go     the step before Cardlink's page (installments), which posts the signed form to the bank
@@ -58,7 +59,8 @@ final class ShopFront
         private ?Payments\Cardlink $cardlink = null,
         private ?ShopDownloads $downloads = null,
         private ?ShopSubscriptions $subscriptions = null,
-        private ?ShopMarketing $marketing = null
+        private ?ShopMarketing $marketing = null,
+        private ?\GnozioCMS\GoogleSignIn $google = null
     ) {
     }
 
@@ -602,6 +604,10 @@ final class ShopFront
         $shop = $this->settings->all();
         $return = in_array((string)($_REQUEST['return'] ?? ''), self::RETURNS, true) ? (string)$_REQUEST['return'] : 'account';
 
+        if ($action === 'google' && !$post) {
+            $this->googleSignIn($segments[1] ?? '', $lang, $return);
+            return;
+        }
         if ($action === 'signin' && $post) {
             $email = trim((string)($_POST['email'] ?? ''));
             $address = (string)($_SERVER['REMOTE_ADDR'] ?? '');
@@ -713,7 +719,7 @@ final class ShopFront
                 $this->go($prefix . 'account');
                 return;
             }
-            $this->accountPage($lang, 'signin', ['return' => $return, 'signup' => $shop['accounts']['signup']]);
+            $this->accountPage($lang, 'signin', ['return' => $return, 'signup' => $shop['accounts']['signup'], 'google' => $this->googleReady()]);
             return;
         }
 
@@ -728,7 +734,7 @@ final class ShopFront
             $message = ($this->t)('shop.details_saved', $lang);
             $level = 'success';
             if ((string)($_POST['new_password'] ?? '') !== '') {
-                if ($this->customers->authenticate($customer['email'], (string)($_POST['password'] ?? '')) === null) {
+                if ($customer['has_password'] && $this->customers->authenticate($customer['email'], (string)($_POST['password'] ?? '')) === null) {
                     [$level, $message] = ['error', ($this->t)('shop.err_password', $lang)];
                 } elseif (!$this->customers->setPassword($customer['id'], (string)$_POST['new_password'])) {
                     [$level, $message] = ['error', ($this->t)('shop.err_signup_password', $lang)];
@@ -742,7 +748,11 @@ final class ShopFront
             return;
         }
         if ($action === 'delete' && $post) {
-            if ($this->customers->authenticate($customer['email'], (string)($_POST['password'] ?? '')) === null) {
+            // An account made with Google has no password: writing its address confirms instead.
+            $confirmed = $customer['has_password']
+                ? $this->customers->authenticate($customer['email'], (string)($_POST['password'] ?? '')) !== null
+                : mb_strtolower(trim((string)($_POST['confirm_email'] ?? ''))) === mb_strtolower($customer['email']);
+            if (!$confirmed) {
                 $this->flash('error', ($this->t)('shop.err_password', $lang));
                 $this->go($prefix . 'account#delete');
                 return;
@@ -793,6 +803,70 @@ final class ShopFront
             'countries' => ShopCountries::options(ShopShipping::countries($shop['shipping']), $lang),
             'verify_pending' => !$customer['verified'],
         ]);
+    }
+
+    private function googleReady(): bool
+    {
+        return $this->google !== null && $this->google->config()['ready'];
+    }
+
+    /**
+     * Signing in with Google. /account/google sends the person there with a state kept in the session (with the language and where
+     * to go after); Google sends them back to /account/google/callback, where the state is checked, the code turned into a profile
+     * and the profile into a customer (ShopCustomers::fromGoogle()). A way back that fails, or was cancelled at Google, says so on
+     * the sign-in page.
+     */
+    private function googleSignIn(string $step, string $lang, string $return): void
+    {
+        if ($this->google === null || !$this->googleReady() || !in_array($step, ['', 'callback'], true)) {
+            ($this->notFound)();
+            return;
+        }
+        $config = $this->google->config();
+        if ($step === '') {
+            $state = bin2hex(random_bytes(16));
+            $_SESSION['shop_google'] = ['state' => $state, 'lang' => $lang, 'return' => $return, 'at' => time()];
+            $this->go($this->google->authorizationUrl($config, $state));
+            return;
+        }
+        $kept = is_array($_SESSION['shop_google'] ?? null) ? $_SESSION['shop_google'] : [];
+        unset($_SESSION['shop_google']);
+        $lang = is_string($kept['lang'] ?? null) ? $kept['lang'] : $lang;
+        $return = in_array($kept['return'] ?? '', self::RETURNS, true) ? (string)$kept['return'] : 'account';
+        $back = '/' . ($this->prefixFor)($lang) . 'account?return=' . $return;
+        $state = (string)($_GET['state'] ?? '');
+        $code = (string)($_GET['code'] ?? '');
+        if ($state === '' || !hash_equals((string)($kept['state'] ?? ''), $state) || time() - (int)($kept['at'] ?? 0) > 900 || $code === '') {
+            $this->flash('error', ($this->t)('shop.err_google', $lang));
+            $this->go($back);
+            return;
+        }
+        $token = $this->google->exchange($code, $config);
+        $profile = $token['ok'] ? $this->google->profile((string)$token['access_token']) : ['ok' => false];
+        if (!$profile['ok']) {
+            $this->flash('error', ($this->t)('shop.err_google', $lang));
+            $this->go($back);
+            return;
+        }
+        $accepted = $this->google->accept($profile, ['allowed_domain' => ''] + $config);
+        if (!$accepted['ok']) {
+            $this->flash('error', ($this->t)('shop.err_google_email', $lang));
+            $this->go($back);
+            return;
+        }
+        $name = is_string($profile['name'] ?? null) ? $profile['name'] : '';
+        $found = $this->customers->fromGoogle($accepted['sub'], $accepted['email'], $name, $lang, $this->settings->all()['accounts']['signup']);
+        if (is_string($found)) {
+            $this->flash('error', ($this->t)($found === 'signup' ? 'shop.err_google_signup' : 'shop.err_google', $lang));
+            $this->go($back);
+            return;
+        }
+        $this->orders->claim($found['email'], $found['id']);
+        $this->signIn($found);
+        if ($found['new']) {
+            $this->flash('success', ($this->t)('shop.welcome', $lang));
+        }
+        $this->go('/' . ($this->prefixFor)($lang) . $return);
     }
 
     /** @param array<string, mixed> $data */

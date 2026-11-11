@@ -83,6 +83,7 @@ Starting templates: `themes/default/single-templates/products.yaml` (the product
 
 - Customers live in a separate `shop_customers` table. They are never admin `users`, have no admin capabilities, and get their own session cookie name.
 - Accounts are at `/account`: sign up, sign in, email verification, password reset, profile, addresses, orders (with status and tracking), downloads, subscriptions (cancel, change card), and delete my account (GDPR).
+- **Sign in with Google** (Shop settings › Accounts): a Continue with Google button; Google sends the shopper back to `/account/google/callback`. The customer is found by their Google account (`google_sub`), else by their address, which links the two; a new one is made only when sign-up is on. Google confirms the address, so guest orders with it join the account. The shop may use its own OAuth client (secret in `ShopSecrets`) or, with a blank client ID, the admin's Google Sign-In client.
 - **Sign-in protection** reuses `LoginThrottle` (with a separate bucket) and `password_hash`.
 - **Migration from WooCommerce:** imported customers keep their WordPress phpass hash. On first sign-in it is verified and then rehashed, so nobody has to reset their password.
 - Guest orders are tied to an email address. Signing up with the same email takes them over.

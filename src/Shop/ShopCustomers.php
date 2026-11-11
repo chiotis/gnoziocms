@@ -10,7 +10,8 @@ use PDO;
 /**
  * The shop's customers (table shop_customers, docs/shop-plan.md, section 4): people who buy, never admin users. They sign in
  * with an email and a password (password_hash); a link sent by email confirms the address or sets a new password, and only
- * the hash of its token is kept, for an hour (a new password) or two days (the address).
+ * the hash of its token is kept, for an hour (a new password) or two days (the address). They may sign in with Google too
+ * (fromGoogle()): the Google account's `sub` is kept in google_sub, and an account made that way has no password until they set one.
  */
 final class ShopCustomers
 {
@@ -205,6 +206,41 @@ final class ShopCustomers
         return is_array($row) ? self::row($row) : null;
     }
 
+    /**
+     * The customer a Google account signs in as, by its `sub`, else by its address (Google has checked it), which then links the
+     * two; else a new customer, when $mayCreate. Google proves the address, so the account counts as confirmed. An account that was
+     * never confirmed loses its password when it is linked: someone else may have made it with this address. Returns the customer
+     * with `new` true when made now, or 'signup' when there is none and none may be made.
+     *
+     * @return array<string, mixed>|string
+     */
+    public function fromGoogle(string $sub, string $email, string $name, string $lang, bool $mayCreate): array|string
+    {
+        $sub = trim($sub);
+        $email = mb_strtolower(trim($email));
+        if ($sub === '' || strlen($sub) > 255 || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+            return 'email';
+        }
+        $stmt = $this->pdo()->prepare('SELECT * FROM shop_customers WHERE google_sub = :sub');
+        $stmt->execute(['sub' => $sub]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        $found = is_array($row) ? self::row($row) : $this->byEmail($email);
+        if ($found !== null) {
+            $clear = !$found['verified'] && $found['google_sub'] === '' ? ", password_hash = ''" : '';
+            $this->pdo()->prepare("UPDATE shop_customers SET google_sub = :sub, last_login_at = :now{$clear} WHERE id = :id")
+                ->execute(['sub' => $sub, 'now' => time(), 'id' => $found['id']]);
+            $this->markVerified($found['id']);
+            return ($this->get($found['id']) ?? $found) + ['new' => false];
+        }
+        if (!$mayCreate) {
+            return 'signup';
+        }
+        $now = time();
+        $this->pdo()->prepare("INSERT INTO shop_customers (email, password_hash, name, lang, google_sub, verified_at, created_at, last_login_at) VALUES (:email, '', :name, :lang, :sub, :now, :now2, :now3)")
+            ->execute(['email' => $email, 'name' => mb_substr(trim($name), 0, 120), 'lang' => $lang, 'sub' => $sub, 'now' => $now, 'now2' => $now, 'now3' => $now]);
+        return ($this->get((int)$this->pdo()->lastInsertId()) ?? []) + ['new' => true];
+    }
+
     public function markVerified(int $id): void
     {
         $this->pdo()->prepare("UPDATE shop_customers SET verified_at = COALESCE(verified_at, :now), token_hash = '', token_kind = '', token_expires = 0 WHERE id = :id")->execute(['now' => time(), 'id' => $id]);
@@ -250,6 +286,8 @@ final class ShopCustomers
             'id' => (int)$row['id'],
             'email' => (string)$row['email'],
             'password_hash' => (string)$row['password_hash'],
+            'has_password' => (string)$row['password_hash'] !== '',
+            'google_sub' => (string)($row['google_sub'] ?? ''),
             'name' => (string)$row['name'],
             'phone' => (string)$row['phone'],
             'lang' => (string)$row['lang'],

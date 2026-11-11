@@ -24,6 +24,13 @@
             <div class="shop-field"><label for="in-password">{{ t('shop.password', 'Password') }}</label><input id="in-password" type="password" name="password" autocomplete="current-password" required></div>
             <button class="btn btn-primary shop-wide" type="submit">{{ t('shop.sign_in', 'Sign in') }}</button>
             <a class="text-link" href="{{ url(prefix ~ 'account/forgot') }}">{{ t('shop.forgot', 'Forgot your password?') }}</a>
+            {% if google|default(false) %}
+              <p class="shop-or"><span>{{ t('shop.or', 'or') }}</span></p>
+              <a class="btn btn-secondary shop-wide shop-google" href="{{ url(prefix ~ 'account/google') }}?return={{ return|url_encode }}">
+                <svg aria-hidden="true" width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.2 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.8c4.3-4 6.9-9.9 6.9-17.2z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.8c-2.1 1.4-4.8 2.3-8.5 2.3-6.2 0-11.5-4.1-13.4-9.9l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg>
+                {{ t('shop.with_google', 'Continue with Google') }}
+              </a>
+            {% endif %}
           </form>
           {% if signup %}
             <form class="shop-box" id="signup" method="post" action="{{ url(prefix ~ 'account/signup') }}">
@@ -107,9 +114,10 @@
           <h3 class="shop-sub">{{ t('shop.address', 'Address') }}</h3>
           {% include 'templates/shop/_address.twig' with {name: 'address', values: customer.address, required: false, with_company: true} %}
           <details class="shop-field">
-            <summary>{{ t('shop.change_password', 'Change the password') }}</summary>
+            <summary>{{ customer.has_password ? t('shop.change_password', 'Change the password') : t('shop.set_password', 'Set a password') }}</summary>
+            {% if not customer.has_password %}<p class="shop-muted">{{ t('shop.set_password_text', 'You sign in with Google. A password lets you sign in with your email too.') }}</p>{% endif %}
             <div class="shop-fields">
-              <div class="shop-field is-half"><label for="d-current">{{ t('shop.current_password', 'Current password') }}</label><input id="d-current" type="password" name="password" autocomplete="current-password"></div>
+              {% if customer.has_password %}<div class="shop-field is-half"><label for="d-current">{{ t('shop.current_password', 'Current password') }}</label><input id="d-current" type="password" name="password" autocomplete="current-password"></div>{% endif %}
               <div class="shop-field is-half"><label for="d-new">{{ t('shop.new_password', 'A new password') }}</label><input id="d-new" type="password" name="new_password" autocomplete="new-password" minlength="8"></div>
             </div>
           </details>
@@ -121,7 +129,11 @@
           <form method="post" action="{{ url(prefix ~ 'account/delete') }}">
             {{ csrf_field() }}
             <p>{{ t('shop.delete_text', 'Your account and your details are deleted. Orders stay with the shop for its accounts, no longer linked to you.') }}</p>
-            <div class="shop-field"><label for="x-password">{{ t('shop.password', 'Password') }}</label><input id="x-password" type="password" name="password" autocomplete="current-password" required></div>
+            {% if customer.has_password %}
+              <div class="shop-field"><label for="x-password">{{ t('shop.password', 'Password') }}</label><input id="x-password" type="password" name="password" autocomplete="current-password" required></div>
+            {% else %}
+              <div class="shop-field"><label for="x-email">{{ t('shop.confirm_email', 'Write your email to confirm') }}</label><input id="x-email" type="email" name="confirm_email" autocomplete="off" required></div>
+            {% endif %}
             <button class="btn btn-secondary" type="submit">{{ t('shop.delete_account', 'Delete the account') }}</button>
           </form>
         </details>

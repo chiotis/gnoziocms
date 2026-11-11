@@ -7,7 +7,7 @@ namespace GnozioCMS\Shop;
 /**
  * System > Shop settings (docs/shop-plan.md, section 8): the screen and its forms. General (the store, VAT, orders), Shipping
  * (zones and their methods), Payments (Viva Wallet, Cardlink, bank transfer, cash on delivery), Accounts and Marketing (the product
- * feed and the Meta Pixel).
+ * feed and the Meta Pixel). Accounts holds signing in with Google too.
  */
 final class ShopSettingsAdmin
 {
@@ -82,6 +82,9 @@ final class ShopSettingsAdmin
             ($this->log)('shop.settings', 'info', 'shop', $tab, 'Shop settings saved (Marketing).', []);
             return ['ok' => true, 'tab' => $tab, 'message' => 'Shop settings saved.'];
         }
+        if ($tab === 'accounts') {
+            $this->secrets?->save('google', is_array($post['google_secret'] ?? null) ? $post['google_secret'] : [], !empty($post['google_clear']));
+        }
         if ($tab === 'payments') {
             $this->secrets?->save(Payments\VivaWallet::ID, is_array($post['viva_secret'] ?? null) ? $post['viva_secret'] : [], !empty($post['viva_clear']));
             $this->secrets?->save(Payments\Cardlink::ID, is_array($post['cardlink_secret'] ?? null) ? $post['cardlink_secret'] : [], !empty($post['cardlink_clear']));
@@ -154,6 +157,8 @@ final class ShopSettingsAdmin
                 'cancel' => rtrim($this->siteUrl, '/') . '/_shop/pay/cardlink/cancel',
             ],
             'meta_secrets' => $this->secrets?->view('meta') ?? [],
+            'google_secrets' => $this->secrets?->view('google') ?? [],
+            'google_redirect' => rtrim($this->siteUrl, '/') . '/account/google/callback',
             'consent_modes' => ShopMarketing::CONSENT,
             'feed_urls' => array_map(fn(string $lang): array => ['lang' => $lang, 'url' => rtrim($this->siteUrl, '/') . '/feeds/products.xml' . ($lang === $this->languages[0] ? '' : '?lang=' . $lang)], $this->languages),
             'email_kinds' => self::EMAIL_LABELS,

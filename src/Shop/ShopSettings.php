@@ -116,7 +116,12 @@ final class ShopSettings
             return;
         }
         $stored = $this->meta->getJson(self::META) ?? [];
-        $stored['accounts'] = ['signup' => !empty($post['signup']), 'verify' => !empty($post['verify'])];
+        $stored['accounts'] = [
+            'signup' => !empty($post['signup']),
+            'verify' => !empty($post['verify']),
+            'google' => !empty($post['google']),
+            'google_client_id' => trim((string)($post['google_client_id'] ?? '')),
+        ];
         $this->meta->setJson(self::META, self::normalize($stored));
     }
 
@@ -253,6 +258,9 @@ final class ShopSettings
             'accounts' => [
                 'signup' => array_key_exists('signup', $accounts) ? (bool)$accounts['signup'] : true,
                 'verify' => !empty($accounts['verify']),
+                // Signing in with Google; a blank client ID uses the admin's Google sign-in client (Settings).
+                'google' => !empty($accounts['google']),
+                'google_client_id' => $code($accounts['google_client_id'] ?? '', '/^[A-Za-z0-9._-]{8,200}$/'),
             ],
             'emails' => self::emails(is_array($stored['emails'] ?? null) ? $stored['emails'] : []),
             'marketing' => ShopMarketing::normalize(is_array($stored['marketing'] ?? null) ? $stored['marketing'] : []),

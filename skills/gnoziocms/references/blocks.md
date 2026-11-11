@@ -1,4 +1,4 @@
-# Blocks of this installation (GnozioCMS 0.1.265)
+# Blocks of this installation (GnozioCMS 0.1.290)
 
 ## Fields every block has
 
@@ -731,9 +731,9 @@ A button that lets readers signed in to Google pick the site as a preferred sour
 
 | field | kind and choices | notes |
 |---|---|---|
-| `heading` | text; only when `variant` is `card` |  |
-| `text` | text (several lines); only when `variant` is `card` |  |
-| `align` | choice: `start` (Start), `center` (Centre); default `start` |  |
+| `heading` | text; only when `variant` is `c` or `a` or `r` or `d` |  |
+| `text` | text (several lines); only when `variant` is `c` or `a` or `r` or `d` |  |
+| `align` | choice; one of `start`, `center`; default `start` |  |
 
 ### `pricing` — Pricing
 Plans or price lists, as cards side by side or as clean rows. One plan can be highlighted.
@@ -876,7 +876,7 @@ A look: its picture with a point on each piece, the pieces with their prices, th
 | `eyebrow` | text |  |
 | `heading` | text |  |
 | `intro` | text (several lines) |  |
-| `look` | choice; a choice the site offers | Empty on a look's own page, or on a product's page for its first look. |
+| `look` | choice; a choice the site offers | Empty on a look's own page, or on a product's page for the first look in its Looks (or, with none chosen there, the newest look it is a piece of). |
 
 ### `stats` — Stats
 Key numbers with a short label, e.g. years of experience or completed projects.
