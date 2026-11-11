@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.266 — 2026-11-11 — Preferred source on Google
+- **SEO › Social › Preferred source on Google:** a button that lets readers signed in to Google pick the site as a preferred source, so its articles show up more often for them in Top Stories. Off by default; once on, a card after the article and a link in the footer, and a chip above the title when chosen, on the content types chosen (Posts when none is). A plain link to Google's page for the site's domain, with no script of Google's; a site with no domain of its own (in a folder, no address, a local name) shows none, and the screen says why.
+- **Preferred source on Google block** (Convert): the button for an About or "Follow us" page, as a card with a line of text or a button alone, whether the setting is on or off.
+- Texts in Greek and English, the theme's colours and dark mode; `docs/seo.md`.
+
 ## 0.1.265 — 2026-11-10 — Coupons for chosen products
 - Shop › Coupons: a coupon can be limited to products, as many as wanted, chosen with a search picker (as Complete the look in the product editor). With collections too, a piece counts when it is in one of them or is one of the products. The list shows how many.
 

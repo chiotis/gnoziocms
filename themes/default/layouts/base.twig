@@ -153,6 +153,11 @@
 
     <main class="main-shell" id="main" tabindex="-1">
       {% block content %}{% endblock %}
+      {# After the text of an entry: the "preferred source on Google" card, when Admin > SEO > Social puts it there for this type. #}
+      {% set preferred_after = item is defined and item and not is_home_page ? preferred_source('after', item.type) : '' %}
+      {% if preferred_after %}
+        <div class="site-wrap preferred-after">{% include 'components/preferred-source.twig' with {url: preferred_after, style: 'card'} only %}</div>
+      {% endif %}
     </main>
 
     {% block footer %}{% include 'components/footer.twig' %}{% endblock %}

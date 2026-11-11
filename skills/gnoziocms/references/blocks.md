@@ -724,6 +724,17 @@ A grid of work with filter buttons for the categories. Type the pieces in, or sh
 | &nbsp;&nbsp;`items[].text` | text (several lines) |  |
 | &nbsp;&nbsp;`items[].url` | link |  |
 
+### `preferred-source` — Preferred source on Google
+A button that lets readers signed in to Google pick the site as a preferred source, so its articles show up more often for them in Top Stories. For an About or "Follow us" page; Admin > SEO > Social can also put it after every article and in the footer.
+
+**Layouts** (`variant`): `card` (Card with a line of text), `button` (Button only). First is the default.
+
+| field | kind and choices | notes |
+|---|---|---|
+| `heading` | text; only when `variant` is `card` |  |
+| `text` | text (several lines); only when `variant` is `card` |  |
+| `align` | choice: `start` (Start), `center` (Centre); default `start` |  |
+
 ### `pricing` — Pricing
 Plans or price lists, as cards side by side or as clean rows. One plan can be highlighted.
 

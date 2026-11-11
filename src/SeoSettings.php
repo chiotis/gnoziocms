@@ -72,8 +72,18 @@ final class SeoSettings
             'identity' => ['type' => 'Organization', 'name' => '', 'alternate_name' => '', 'description' => '', 'street' => '', 'locality' => '', 'region' => '', 'postal' => '', 'country' => '', 'price_range' => ''],
             'schema' => ['article_type' => 'BlogPosting', 'breadcrumbs' => true, 'search_box' => true],
             'verification' => array_fill_keys(array_keys(self::VERIFICATION), ''),
+            'preferred_source' => self::PREFERRED_DEFAULTS,
         ];
     }
+
+    /**
+     * The "Add as a preferred source on Google" button: off until it is turned on; then under the text of an entry and in
+     * the footer, and in the line above the title when asked, on the content types chosen (posts when none is).
+     */
+    public const PREFERRED_DEFAULTS = ['enabled' => false, 'after' => true, 'header' => false, 'footer' => true, 'types' => ['posts']];
+
+    /** The places the button can take on its own (a block can put it anywhere else). */
+    public const PREFERRED_PLACES = ['after', 'header', 'footer'];
 
     /**
      * The settings as the site has them: what was stored over the defaults, each value checked, so a hand-edited or
@@ -138,6 +148,7 @@ final class SeoSettings
         foreach (array_keys(self::VERIFICATION) as $key) {
             $out['verification'][$key] = self::code($codes[$key] ?? '');
         }
+        $out['preferred_source'] = self::preferred(is_array($stored['preferred_source'] ?? null) ? $stored['preferred_source'] : []);
         return $out;
     }
 
@@ -179,6 +190,14 @@ final class SeoSettings
             $seo['twitter_card'] = array_key_exists($line('twitter_card'), self::TWITTER_CARDS) ? $line('twitter_card') : 'auto';
             $seo['twitter_site'] = self::handle($line('twitter_site'));
             $seo['facebook_app_id'] = preg_match('/^\d{1,24}$/', $line('facebook_app_id')) ? $line('facebook_app_id') : '';
+            $chosen = is_array($post['preferred_types'] ?? null) ? array_values(array_intersect(array_map('strval', $post['preferred_types']), $types)) : [];
+            $seo['preferred_source'] = [
+                'enabled' => $on($post['preferred_enabled'] ?? null),
+                'after' => $on($post['preferred_after'] ?? null),
+                'header' => $on($post['preferred_header'] ?? null),
+                'footer' => $on($post['preferred_footer'] ?? null),
+                'types' => $chosen,
+            ];
         } elseif ($tab === 'crawling') {
             $seo['discourage'] = $on($post['discourage'] ?? null);
             $seo['block_ai'] = $on($post['block_ai'] ?? null);
@@ -314,6 +333,65 @@ final class SeoSettings
             $out .= '<meta name="twitter:site" content="@' . htmlspecialchars($seo['twitter_site'], ENT_QUOTES) . '">' . "\n  ";
         }
         return rtrim($out);
+    }
+
+    // ---- the preferred source button
+
+    /** @param array<string, mixed> $stored */
+    private static function preferred(array $stored): array
+    {
+        $out = self::PREFERRED_DEFAULTS;
+        foreach (['enabled', 'after', 'header', 'footer'] as $key) {
+            if (array_key_exists($key, $stored)) {
+                $out[$key] = Format::isTruthy($stored[$key]);
+            }
+        }
+        if (is_array($stored['types'] ?? null)) {
+            $out['types'] = array_values(array_filter(array_map(static fn($t): string => is_scalar($t) ? (string)$t : '', $stored['types']), static fn(string $t): bool => preg_match('/^[a-z][a-z0-9_-]*$/', $t) === 1));
+        }
+        return $out;
+    }
+
+    /**
+     * The domain Google is told about: the host of the site's address, without "www.". Google takes whole domains and
+     * subdomains only, so a site that lives in a folder of a domain (or has no address yet, or runs on a local name) has none.
+     */
+    public static function preferredDomain(string $baseUrl): string
+    {
+        $parts = parse_url(trim($baseUrl));
+        $host = strtolower((string)($parts['host'] ?? ''));
+        $path = trim((string)($parts['path'] ?? ''), '/');
+        if ($host === '' || $path !== '' || !str_contains($host, '.') || filter_var($host, FILTER_VALIDATE_IP) !== false
+            || preg_match('/(^|\.)(localhost|test|local|example|invalid)$/', $host) === 1) {
+            return '';
+        }
+        return (string)preg_replace('/^www\./', '', $host);
+    }
+
+    /** The address of Google's page where a reader picks the site as a preferred source ('' when the site has no domain to give). */
+    public static function preferredUrl(string $baseUrl): string
+    {
+        $domain = self::preferredDomain($baseUrl);
+        return $domain === '' ? '' : 'https://www.google.com/preferences/source?q=' . rawurlencode($domain);
+    }
+
+    /**
+     * Where the button goes on its own: the address of Google's page when the button is on, the place is chosen and (under
+     * the text and above the title) the page is an entry of a chosen type; '' otherwise. The footer is on every page.
+     */
+    public static function preferredFor(array $seo, string $baseUrl, string $place, string $type = ''): string
+    {
+        $ps = $seo['preferred_source'] ?? self::PREFERRED_DEFAULTS;
+        if (!$ps['enabled'] || !in_array($place, self::PREFERRED_PLACES, true) || !$ps[$place]) {
+            return '';
+        }
+        if ($place !== 'footer') {
+            $types = $ps['types'] !== [] ? $ps['types'] : self::PREFERRED_DEFAULTS['types'];
+            if ($type === '' || !in_array($type, $types, true)) {
+                return '';
+            }
+        }
+        return self::preferredUrl($baseUrl);
     }
 
     /** Whether a path is one the sitemap is told to leave out: each rule matches the start of the address, `*` and a closing `$` as in robots.txt. */

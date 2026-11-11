@@ -1,0 +1,29 @@
+{#
+  The "Add as a preferred source on Google" button (Admin > SEO > Social): a plain link to Google's page where a reader signed in
+  to Google picks the site as a preferred source. No script of Google's is loaded.
+  Context:
+    url      the address of Google's page (preferred_source() or preferred_source_url()); nothing is drawn without one
+    style    card (a short line of text and the button, after an article), button, chip (above the title), link (the footer)
+    heading  the card's line (default: the theme's text)
+    text     the card's smaller line (default: the theme's text)
+    align    start or center (card and button)
+#}
+{% set url = url|default('') %}
+{% if url %}
+  {% set style = style|default('button') in ['card', 'button', 'chip', 'link'] ? style|default('button') : 'button' %}
+  {% set label = t('preferred.label', 'Add as a preferred source on Google') %}
+  {% set g %}<svg class="preferred-g" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path fill="#4285F4" d="M23.5 12.27c0-.85-.08-1.67-.22-2.45H12v4.64h6.45a5.52 5.52 0 0 1-2.4 3.62v3h3.88c2.27-2.09 3.57-5.17 3.57-8.81z"/><path fill="#34A853" d="M12 24c3.24 0 5.96-1.07 7.94-2.9l-3.88-3.02c-1.07.72-2.45 1.15-4.06 1.15-3.12 0-5.77-2.11-6.71-4.95H1.28v3.11A12 12 0 0 0 12 24z"/><path fill="#FBBC05" d="M5.29 14.28a7.2 7.2 0 0 1 0-4.56V6.61H1.28a12 12 0 0 0 0 10.78l4.01-3.11z"/><path fill="#EA4335" d="M12 4.77c1.76 0 3.34.61 4.59 1.8l3.44-3.44A11.53 11.53 0 0 0 12 0 12 12 0 0 0 1.28 6.61l4.01 3.11C6.23 6.88 8.88 4.77 12 4.77z"/></svg>{% endset %}
+  {% set link_attrs %}href="{{ url }}" target="_blank" rel="noopener"{% endset %}
+  {% if style == 'card' %}
+    <aside class="preferred-card{% if align|default('start') == 'center' %} is-center{% endif %}" aria-label="{{ label }}">
+      <p class="preferred-card-text"><strong>{{ heading|default('') ?: t('preferred.heading', 'Read us more often on Google') }}</strong><span>{{ text|default('') ?: t('preferred.text', 'Choose us as a preferred source and our articles show up more often in your Top Stories.') }}</span></p>
+      <a class="preferred-button" {{ link_attrs }}>{{ g }}<span>{{ label }}</span></a>
+    </aside>
+  {% elseif style == 'chip' %}
+    <a class="preferred-chip" {{ link_attrs }} title="{{ label }}">{{ g }}<span>{{ t('preferred.short', 'Preferred source') }}</span></a>
+  {% elseif style == 'link' %}
+    <a class="preferred-link" {{ link_attrs }}>{{ g }}<span>{{ label }}</span></a>
+  {% else %}
+    <p class="preferred-wrap{% if align|default('start') == 'center' %} is-center{% endif %}"><a class="preferred-button" {{ link_attrs }}>{{ g }}<span>{{ label }}</span></a></p>
+  {% endif %}
+{% endif %}

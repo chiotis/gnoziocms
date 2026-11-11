@@ -187,6 +187,37 @@
                 {{ f.text('Facebook app ID', 'facebook_app_id', seo.facebook_app_id, '', 'Only if you use Facebook Insights for the domain. Numbers only.', 24) }}
               </div>
             </section>
+
+            {% set ps = seo.preferred_source %}
+            <section class="{{ card }} pb-3" aria-labelledby="seo-h-ps">
+              <h2 id="seo-h-ps" class="{{ card_title }}">Preferred source on Google</h2>
+              <p class="{{ card_note }}">A button that lets readers signed in to Google pick the site as a preferred source, so its articles show up more often for them in Top Stories. It is a plain link to Google's page, with no script of Google's on the site.{% if preferred_url %} Readers go to <a class="{{ link }}" href="{{ preferred_url }}" target="_blank" rel="noopener">google.com/preferences/source?q={{ preferred_domain }}</a>.{% endif %}</p>
+              {% if not preferred_domain %}
+                <div class="px-3 pt-2"><p class="m-0 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[11px] leading-4 text-amber-800">The button needs the site's own domain or subdomain, set as its address in <a class="{{ link }}" href="{{ url('admin/settings') }}">Settings</a>. Google does not take a site in a folder of another domain, and nothing is shown until there is one.</p></div>
+              {% endif %}
+              <div class="space-y-1 p-3 pb-0">
+                {{ f.flag('preferred_enabled', 'Show the button', 'Turn it on for a magazine or news site. The Preferred source block can put it on any page, whether this is on or off.', ps.enabled) }}
+              </div>
+              <div class="seo-row px-3 pt-2">
+                <span class="seo-label">Places</span>
+                <div class="flex flex-wrap gap-1.5">
+                  <label class="lc-chip"><input type="checkbox" name="preferred_after" value="1"{% if ps.after %} checked{% endif %}><span>After the article</span></label>
+                  <label class="lc-chip"><input type="checkbox" name="preferred_header" value="1"{% if ps.header %} checked{% endif %}><span>Above the title</span></label>
+                  <label class="lc-chip"><input type="checkbox" name="preferred_footer" value="1"{% if ps.footer %} checked{% endif %}><span>Footer, every page</span></label>
+                </div>
+              </div>
+              <div class="seo-row px-3 pt-2">
+                <span class="seo-label">On</span>
+                <div class="min-w-0">
+                  <div class="flex flex-wrap gap-1.5">
+                    {% for t in type_rows %}
+                      <label class="lc-chip"><input type="checkbox" name="preferred_types[]" value="{{ t.key }}"{% if t.key in ps.types %} checked{% endif %}><span>{{ t.label }}</span></label>
+                    {% endfor %}
+                  </div>
+                  <p class="seo-help">The content types that show it after the article and above the title. None ticked means Posts.</p>
+                </div>
+              </div>
+            </section>
           </div>
 
           <aside class="bp-preview" aria-label="Shared link preview" data-seo-preview="social" data-site="{{ site_title }}" data-tagline="{{ site_tagline }}" data-url="{{ site_url }}" data-brand-image="{{ brand_share_image }}">

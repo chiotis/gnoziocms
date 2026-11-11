@@ -89,5 +89,18 @@ $ai = RobotsTxt::render('https://x.test/sitemap.xml', [], false, ['GPTBot', 'bad
 check('AI crawlers are closed out one by one, before everyone else', $ai, "User-agent: GPTBot\nDisallow: /\n\nUser-agent: *\nAllow: /\nSitemap: https://x.test/sitemap.xml\n");
 check('every crawler of the list is a name that is safe to write', count(array_filter(S::AI_CRAWLERS, fn($a) => preg_match('/^[A-Za-z0-9._-]{2,40}$/', $a))), count(S::AI_CRAWLERS));
 
+// ---- the "preferred source on Google" button
+check('the button is off by default, after the article and in the footer once on, for posts', $none['preferred_source'], ['enabled' => false, 'after' => true, 'header' => false, 'footer' => true, 'types' => ['posts']]);
+check('Google is given the domain without www', S::preferredUrl('https://www.Magazine.gr/'), 'https://www.google.com/preferences/source?q=magazine.gr');
+check('a subdomain is a domain of its own', S::preferredDomain('https://news.example.org'), 'news.example.org');
+check('a site in a folder, a local name, an address and no address have none', [S::preferredDomain('https://example.org/blog'), S::preferredDomain('http://localhost:8080'), S::preferredDomain('http://127.0.0.1'), S::preferredDomain('https://site.test'), S::preferredDomain('')], ['', '', '', '', '']);
+$on = S::from(['seo' => ['preferred_source' => ['enabled' => true, 'header' => true, 'footer' => false, 'types' => ['posts', 'news']]]]);
+$url = 'https://www.google.com/preferences/source?q=mag.gr';
+check('the places follow the choices and the types', [S::preferredFor($on, 'https://mag.gr', 'after', 'posts'), S::preferredFor($on, 'https://mag.gr', 'header', 'news'), S::preferredFor($on, 'https://mag.gr', 'after', 'pages'), S::preferredFor($on, 'https://mag.gr', 'footer'), S::preferredFor($on, 'https://mag.gr', 'sidebar', 'posts')], [$url, $url, '', '', '']);
+check('nothing while it is off, nor without a domain', [S::preferredFor($none, 'https://mag.gr', 'footer'), S::preferredFor($on, 'http://localhost', 'after', 'posts')], ['', '']);
+$saved = S::from(['seo' => S::apply([], 'social', ['preferred_enabled' => '1', 'preferred_footer' => '1', 'preferred_types' => ['posts', 'nonsense', 'projects']], ['pages', 'posts', 'projects'])]);
+check('the Social tab saves it: unticked places are off, only types the site has are kept', $saved['preferred_source'], ['enabled' => true, 'after' => false, 'header' => false, 'footer' => true, 'types' => ['posts', 'projects']]);
+check('a hand-edited file cannot give it anything odd', S::from(['seo' => ['preferred_source' => ['enabled' => 'yes', 'types' => ['ok', 'Bad Type', ['x']]]]])['preferred_source']['types'], ['ok']);
+
 echo $fail === 0 ? "\nALL PASSED\n" : "\n$fail FAILED\n";
 exit($fail === 0 ? 0 : 1);

@@ -1,0 +1,8 @@
+{# Preferred source on Google: the button, alone or in a card with a line of text (BlockRenderer gives block.url, '' without a domain). #}
+<div class="container-narrow">
+  {% if block.url %}
+    {% include 'components/preferred-source.twig' with {url: block.url, style: block.variant == 'button' ? 'button' : 'card', heading: block.heading|default(''), text: block.text|default(''), align: block.align|default('start')} only %}
+  {% elseif block.admin %}
+    <p class="preferred-missing">Preferred source on Google: the site needs its own domain as its address (Settings) before the button can be shown. Visitors see nothing here until then.</p>
+  {% endif %}
+</div>

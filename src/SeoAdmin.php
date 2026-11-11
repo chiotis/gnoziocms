@@ -88,6 +88,8 @@ final class SeoAdmin
             'twitter_cards' => SeoSettings::TWITTER_CARDS,
             'verification' => SeoSettings::VERIFICATION,
             'ai_crawlers' => SeoSettings::AI_CRAWLERS,
+            'preferred_domain' => SeoSettings::preferredDomain((string)($site['base_url'] ?? '')),
+            'preferred_url' => SeoSettings::preferredUrl((string)($site['base_url'] ?? '')),
             'brand_share_image' => (string)(($this->themeSettings)()['brand']['share_image'] ?? ''),
             'robots_text' => implode("\n", $seo['robots_disallow']),
             'sitemap_exclude_text' => implode("\n", $seo['sitemap']['exclude']),
