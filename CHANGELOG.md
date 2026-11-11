@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.287 — 2026-11-11 — Draft products can be picked again
+- **Admin:** in a relation picker (a Look's pieces, a coupon's products, any relation field), choosing a draft or hidden entry seemed to do nothing: it was chosen, but a leftover style hid its chip. The chip now shows, with its Draft or Hidden label. Looks saved meanwhile may already hold such products; their chips show up now.
+- **Blocks:** a block switched off in the builder no longer vanishes from it; it shows dashed and faded, as intended.
+
 ## 0.1.286 — 2026-11-11 — No flash of light mode behind Cloudflare
 - **Admin and default theme:** on sites where Cloudflare's Rocket Loader is on, the dark mode showed a moment of light mode on every page load, because Rocket Loader ran the colour-mode script after the first paint. The script is now marked for Rocket Loader to leave alone (`data-cfasync="false"`), so dark pages load dark again.
 
