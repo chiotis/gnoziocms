@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.268 — 2026-11-11 — The Mosaic hero fits its column
+- Hero › Mosaic: the three pictures stay inside their column. The grid took its height from the row and its 5:4 shape then made it wider than the column, so the two small pictures were cut at the right edge; it now takes the column's width and the shape sets the height.
+
 ## 0.1.267 — 2026-11-11 — Two tests brought up to date
 - The analytics test ran its clean-up at a date counted from a fixed day, so from 11 November the visits of the day it ran were newer and stayed; it now counts from the day it runs.
 - The permission check lists the Shop manager (0.1.263) among the built-in roles, with a column of what it may open: the dashboard, content, media, taxonomies, Analytics, Shop settings and its own profile. No change to the CMS itself.
