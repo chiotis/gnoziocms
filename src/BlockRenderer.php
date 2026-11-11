@@ -27,7 +27,7 @@ final class BlockRenderer
 
     /**
      * @param \Closure(string): string $markdown
-     * @param array<string, \Closure> $providers dynamic data: 'items' (type, lang, limit, category or tag, how many of the first to skip, order), 'form' (slug), 'youtube' (playlist id, picture source), 'file' (a site file's size in bytes), 'term' (a category's name), 'geo' (entries as a map draws them), 'geo_items' (given entries as a map draws them), 'geo_load' (when maps load), 'gallery' (the pictures of an entry's gallery field: entry, field key or '' for its gallery, language), 'shop' (the data of a shop block: type, values, context) and 'admin' (whether someone is signed in)
+     * @param array<string, \Closure> $providers dynamic data: 'items' (type, lang, limit, category or tag, how many of the first to skip, order), 'form' (slug), 'youtube' (playlist id, picture source), 'file' (a site file's size in bytes), 'term' (a category's name), 'geo' (entries as a map draws them), 'geo_items' (given entries as a map draws them), 'geo_load' (when maps load), 'gallery' (the pictures of an entry's gallery field: entry, field key or '' for its gallery, language), 'shop' (the data of a shop block: type, values, context), 'preferred' (the address of Google's preferred source page) and 'admin' (whether someone is signed in)
      */
     public function __construct(
         private BlockRegistry $registry,
@@ -693,6 +693,12 @@ final class BlockRenderer
             // A sign-up drawn with one of the site's forms; without a form there is nothing to sign up with.
             $values['form_html'] = isset($this->providers['form']) ? ($this->providers['form'])((string)($values['form'] ?? '')) : '';
             $values['_empty'] = trim((string)$values['form_html']) === '';
+        }
+        if ($type === 'preferred-source') {
+            // The "preferred source on Google" button needs the site's own domain; without one only an editor sees why it is missing.
+            $values['url'] = isset($this->providers['preferred']) ? (string)($this->providers['preferred'])() : '';
+            $values['admin'] = isset($this->providers['admin']) && ($this->providers['admin'])() === true;
+            $values['_empty'] = $values['url'] === '' && !$values['admin'];
         }
         if ($type === 'next-term') {
             // The next term of a taxonomy, from the page of a term; any other page has none.

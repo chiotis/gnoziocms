@@ -4463,3 +4463,166 @@ p[align="justify"] { text-align: justify; hyphens: auto; }
 .header-thread > span {
   flex: 1 1 0;
 }
+
+/* The "Add as a preferred source on Google" button (Admin > SEO > Social, the Preferred source block): a card after an
+   article, a button, a chip in the line above the title and a quiet link in the footer. Colours come from the tokens, so
+   the palette and dark mode apply; the Google "G" keeps its own colours. */
+.preferred-g {
+  flex: none;
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.preferred-button,
+.preferred-chip,
+.preferred-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+}
+
+.preferred-button {
+  min-height: 2.75rem;
+  padding: 0.5rem 1.1rem 0.5rem 0.9rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-button);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--step--1);
+  font-weight: 600;
+  line-height: 1.2;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.06);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.preferred-button:hover {
+  border-color: var(--accent);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
+}
+
+.preferred-button:active {
+  transform: translateY(1px);
+}
+
+.preferred-button:focus-visible,
+.preferred-chip:focus-visible,
+.preferred-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.preferred-wrap {
+  margin: 0;
+}
+
+.preferred-wrap.is-center {
+  text-align: center;
+}
+
+.preferred-after {
+  margin-block: var(--space-l);
+}
+
+/* After an article the card lines up with its text, which starts at the left of the page. */
+.preferred-after .preferred-card {
+  margin-inline: 0;
+}
+
+.preferred-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-s) var(--space-m);
+  max-width: 46rem;
+  margin-inline: auto;
+  padding: var(--space-s) var(--space-m);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-l);
+  background: var(--color-surface-2);
+}
+
+.preferred-card.is-center {
+  flex-direction: column;
+  text-align: center;
+}
+
+.preferred-card.is-center .preferred-card-text {
+  flex: none;
+}
+
+.preferred-card-text {
+  display: grid;
+  gap: 0.2rem;
+  flex: 1 1 18rem;
+  margin: 0;
+}
+
+.preferred-card-text strong {
+  color: var(--color-text);
+  font-size: var(--step-0);
+}
+
+.preferred-card-text span {
+  color: var(--color-muted);
+  font-size: var(--step--1);
+  line-height: 1.45;
+}
+
+.preferred-chip {
+  padding: 0.15rem 0.6rem 0.15rem 0.4rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.preferred-chip .preferred-g {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+.preferred-chip:hover {
+  border-color: var(--accent);
+}
+
+/* Over a dark title area the chip keeps a light background, so it reads like the rest of the line. */
+.byline-preferred a.preferred-chip {
+  color: var(--color-text);
+}
+
+.preferred-link {
+  color: inherit;
+  font-size: inherit;
+}
+
+.preferred-link .preferred-g {
+  width: 1rem;
+  height: 1rem;
+  padding: 0.1rem;
+  border-radius: 999px;
+  background: #fff;
+}
+
+.preferred-link:hover span {
+  text-decoration: underline;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .preferred-button {
+    transition: none;
+  }
+}
+
+.preferred-missing {
+  margin: 0;
+  padding: var(--space-xs) var(--space-s);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-m);
+  color: var(--color-muted);
+  font-size: var(--step--1);
+}

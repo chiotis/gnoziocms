@@ -202,6 +202,8 @@ final class BlockRuntime
                     $view = $this->geoView();
                     return $view->dataset(array_values(array_filter($items, static fn($item): bool => $item instanceof ContentItem)), $itemLang, ['limit' => ArchiveQuery::MAP_LIMIT, 'filters' => $filters]);
                 },
+                // The Preferred source block: the address of Google's page for this site's domain ('' when it has none).
+                'preferred' => fn(): string => SeoSettings::preferredUrl((string)(($this->settings)()['base_url'] ?? '')),
                 'geo_load' => fn(): string => (($this->settings)()['apis']['maps']['load'] ?? 'click') === 'auto' ? 'auto' : 'click',
                 'term' => fn(string $id, string $itemLang): string => ($this->termLabel)('categories', $id, $itemLang),
                 // The Gallery block that shows the entry's gallery: its pictures, in order (a field key, or '' for the type's gallery).

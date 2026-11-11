@@ -1,0 +1,23 @@
+label: Preferred source on Google
+description: 'A button that lets readers signed in to Google pick the site as a preferred source, so its articles show up more often for them in Top Stories. For an About or "Follow us" page; Admin > SEO > Social can also put it after every article and in the footer.'
+category: Convert
+spacing: compact
+variants:
+  card: Card with a line of text
+  button: Button only
+fields:
+  heading:
+    type: text
+    label: Heading
+    placeholder: Read us more often on Google
+    when: { variant: card }
+  text:
+    type: textarea
+    label: Text
+    placeholder: Choose us as a preferred source and our articles show up more often in your Top Stories.
+    when: { variant: card }
+  align:
+    type: select
+    label: Alignment
+    default: start
+    options: { start: Start, center: Centre }

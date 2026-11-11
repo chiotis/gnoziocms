@@ -45,6 +45,10 @@ final class PageTwigFunctions
         $add('seo_robots', static fn(bool $pageNoindex, mixed $kind): string => SeoSettings::robots(SeoSettings::from($settings()), $pageNoindex, (string)$kind));
         $add('seo_head', static fn(): string => SeoSettings::head(SeoSettings::from($settings())), true);
         $add('seo_share_image', static fn(): string => (string)SeoSettings::from($settings())['share_image']);
+        // The "Add as a preferred source on Google" button: the address of Google's page for one of the places it takes on its
+        // own ('after', 'header', 'footer', with the content type of the page), or for a block that puts it anywhere ('' when none).
+        $add('preferred_source', static fn(string $place, mixed $type = ''): string => SeoSettings::preferredFor(SeoSettings::from($settings()), (string)($settings()['base_url'] ?? ''), $place, (string)$type));
+        $add('preferred_source_url', static fn(): string => SeoSettings::preferredUrl((string)($settings()['base_url'] ?? '')));
         $add('seo_twitter_card', static fn(bool $hasImage): string => SeoSettings::twitterCard(SeoSettings::from($settings()), $hasImage));
     }
 }

@@ -54,6 +54,8 @@
 {% endset %}
 {% set social_markup %}{% if show_social %}{% include 'components/social-links.twig' with {list_class: 'footer-icons'} %}{% endif %}{% endset %}
 {% set extras_markup %}
+  {% set preferred_footer = preferred_source('footer') %}
+  {% if preferred_footer %}{% include 'components/preferred-source.twig' with {url: preferred_footer, style: 'link'} only %}{% endif %}
   {% if footer.show_language|default(false) %}{% include 'components/language-links.twig' with {links_class: 'lang-switcher'} %}{% endif %}
   {% if footer.back_to_top|default(false) %}<a class="footer-top" href="#">{{ t('footer.top', 'Back to top') }} <span aria-hidden="true">↑</span></a>{% endif %}
 {% endset %}
