@@ -66,9 +66,9 @@ check('a term links to the entries filed under it', re.search(r'/admin/content\?
 check('the dialog fields are never submitted', not re.search(r'<dialog[^>]*data-term-dialog.*?name="', html, re.S))
 # ---- the entries under a term
 st, _, html = root.get('/admin/content?type=posts&lang=en&taxonomy=tags&term=strategy')
-check('the content list can be narrowed to a term', st == 200 and 'Filed under' in html and 'Tags: Strategy' in html and 'Rebrand' in html, st)
+check('the content list can be narrowed to a term', st == 200 and 'Tags: Strategy' in html and 'aria-label="Remove Tags Strategy"' in html and 'Rebrand' in html, st)
 st, _, html = root.get('/admin/content?type=posts&lang=en&taxonomy=tags&term=growth')
-check('a term nothing in that list uses gives an empty list', st == 200 and 'Filed under' in html and 'When Is It Time' not in html)
+check('a term nothing in that list uses gives an empty list', st == 200 and 'aria-label="Remove Tags ' in html and 'When Is It Time' not in html)
 st, _, html = root.get('/admin/content?type=posts&lang=en&taxonomy=tags&term=nonexistent')
 check('an unknown term is ignored, not an error', st == 200 and 'Filed under' not in html)
 st, _, html = root.get('/admin/content?type=posts&lang=en&taxonomy=nothing&term=strategy')

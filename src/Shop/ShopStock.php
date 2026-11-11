@@ -77,6 +77,44 @@ final class ShopStock
         return $rows;
     }
 
+    /** @return array<string, array<string, array{on_hand: int, reserved: int}>> every product's stock, by product id, then variant key */
+    public function all(): array
+    {
+        if (!$this->database->isAvailable()) {
+            return [];
+        }
+        $rows = [];
+        foreach ($this->pdo()->query('SELECT product_id, variant_key, on_hand, reserved FROM shop_stock')->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $rows[(string)$row['product_id']][(string)$row['variant_key']] = ['on_hand' => (int)$row['on_hand'], 'reserved' => (int)$row['reserved']];
+        }
+        return $rows;
+    }
+
+    /**
+     * How a product stands, as the list's stock filter reads it: [] when its stock is not tracked, else 'out' when it or one of
+     * its variants has nothing left, 'low' when one is at or under its low-stock mark, 'in' when one still has some.
+     *
+     * @param array<string, array{on_hand: int, reserved: int}> $stored the product's rows (forProduct)
+     * @param array<string, mixed> $custom the product's custom_fields
+     * @return list<string>
+     */
+    public static function states(array $stored, array $custom): array
+    {
+        if (empty($custom['track_stock'])) {
+            return [];
+        }
+        $low = is_numeric($custom['low_stock_at'] ?? null) ? (int)$custom['low_stock_at'] : null;
+        $states = [];
+        foreach (array_keys(self::variantLabels($custom)) as $key) {
+            $free = max(0, (int)($stored[$key]['on_hand'] ?? 0) - (int)($stored[$key]['reserved'] ?? 0));
+            $states[] = $free === 0 ? 'out' : 'in';
+            if ($low !== null && $free <= $low) {
+                $states[] = 'low';
+            }
+        }
+        return array_values(array_unique($states));
+    }
+
     /** The stock an order's line was held from: its variant's, or the product's one stock when it was a choice of options with no variants. */
     public function keyHeld(string $productId, string $variantKey): string
     {
