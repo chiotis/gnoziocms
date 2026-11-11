@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.273 — 2026-11-11 — Picture quality
+- **Settings › Basics › Picture quality:** Standard (as before: WebP at 72, AVIF at 50), High (85 and 65) or Best (92 and 80). The copies of the pictures in the sizes a page needs are made at that quality, so photos keep more detail, at the cost of larger files. A change applies to every picture: the new copies are made as pages ask for them, and the old ones are removed after a week.
+
 ## 0.1.272 — 2026-11-11 — Import & export in Shop settings
 - **Shop settings › Import & export:** a new tab that holds the products' CSV (Export CSV, Import CSV) and the WooCommerce import, which moves here from its own item in the Shop menu. The old address opens the tab.
 - The products list no longer has the Import CSV and Export CSV buttons; the other content types keep them.
