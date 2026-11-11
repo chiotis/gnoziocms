@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.280 — 2026-11-11 — Categories, collections and deleting through MCP
+- **MCP:** assistants can add, rename and change product categories and collections (names and texts in each language, address, picture, a collection's number, colours and quote), and remove them. They work as in the admin: a new address keeps the old one working, and a removed category is taken off its products.
+- `archive_product` takes a product off sale in every language and keeps its prices and stock; `delete_product` deletes it as Delete in the admin does, kept in History and with its visitors sent to the shop.
+- Deleting and removing need a new permission, **Shop: delete**, unticked until you tick it.
+- Stock set through MCP now shows on the site at once.
+- Step 4 of `docs/mcp-shop-plan.md`.
+
 ## 0.1.279 — 2026-11-11 — The shop through MCP
 - **MCP:** Claude, ChatGPT and other assistants can work on the shop: `shop_info`, `list_products` (with filters for category, collection, stock, sale and more) and `get_product` read it; `update_prices` changes up to 200 prices at once (a price, a "was" price, a sale started or ended, per product or variant), showing what would change first and saving only when told; `set_stock` sets or adjusts stock. Products are made and changed with `create_entry` and `update_entry`.
 - Two new permissions, **Shop: read** and **Shop: prices and stock**, are unticked until you tick them, on the consent screen and in Admin > MCP. The tools appear only while the shop is on.
