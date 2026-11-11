@@ -3158,6 +3158,10 @@ final class App
                 $this->redirect($gone['ok'] ? '/admin/taxonomies?deleted=' . urlencode($gone['title']) : '/admin/taxonomies?taxonomy=' . urlencode($taxonomy));
                 return;
             }
+            if (isset($_POST['clean_stale_terms'])) {
+                $this->redirect($editor->cleanUp($taxonomy, $this->currentUsername()));
+                return;
+            }
             if (isset($_POST['new_taxonomy'])) {
                 $made = $editor->create(
                     (string)($_POST['new_title'] ?? ''),
@@ -3195,7 +3199,10 @@ final class App
             $this->redirects,
             $this->content,
             fn(): Menus => $this->menus(),
-            fn(string $action, string $level, ?string $type, ?string $id, string $message, array $context) => $this->logActivity($action, $level, $type, $id, $message, $context)
+            fn(string $action, string $level, ?string $type, ?string $id, string $message, array $context) => $this->logActivity($action, $level, $type, $id, $message, $context),
+            function (): void {
+                $this->rebuildContentIndex();
+            }
         );
     }
 

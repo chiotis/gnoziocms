@@ -287,7 +287,7 @@
     note.classList.toggle('hidden', !removed);
     var below = tree && removed ? childrenOf(row).length : 0;
     note.textContent = removed
-      ? (used > 0 ? 'Removed when you save. ' + used + (used === 1 ? ' entry keeps' : ' entries keep') + ' this term in its file.' : 'Removed when you save.')
+      ? (used > 0 ? 'Removed when you save, and taken off the ' + used + (used === 1 ? ' entry' : ' entries') + ' filed under it.' : 'Removed when you save.')
         + (below > 0 ? ' Its ' + (below === 1 ? 'sub-term moves' : below + ' sub-terms move') + ' up a level.' : '')
       : '';
     markDirty();

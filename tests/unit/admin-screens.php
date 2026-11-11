@@ -219,7 +219,7 @@ $post['term_slug'] = ['news', 'fresh'];
 $post['term_label'] = ['el' => ['Νέα', 'Φρέσκο'], 'en' => ['News', 'Fresh']];
 $post['term_description'] = ['el' => ['', ''], 'en' => ['', '']];
 $loc = $editor->save('tags', $post, ['el', 'en'], 'el', 'tester');
-check('removing a term that entries use is counted in the way back', $loc, '/admin/taxonomies?taxonomy=tags&saved=1&removed=1&orphaned=1');
+check('removing a term that entries use takes it off them, counted in the way back', $loc, '/admin/taxonomies?taxonomy=tags&saved=1&removed=1&unfiled=1');
 $quiet = new TaxonomyEditor($store, new RedirectRepository($db), $content, fn() => $menus);
 check('without a log the form is still saved', str_starts_with($quiet->save('tags', $post, ['el', 'en'], 'el', 'tester'), '/admin/taxonomies?taxonomy=tags&saved=1'), true);
 

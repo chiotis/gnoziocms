@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace GnozioCMS;
 
+use Symfony\Component\Yaml\Yaml;
+
 /**
  * What the Taxonomies screen does with a submitted form: the terms and the page layout are checked and saved, a term
  * whose address changed leaves the old one behind as a redirect (in every language) and its links in menus are
- * updated, and the entries filed under each term are counted.
+ * updated, a removed term is taken off the entries filed under it, and the entries filed under each term are counted.
  */
 final class TaxonomyEditor
 {
@@ -17,13 +19,15 @@ final class TaxonomyEditor
     /**
      * @param callable(): Menus $menus
      * @param callable(string, string, ?string, ?string, string, array<string, mixed>): void|null $log records an activity: action, level, subject type, subject id, message, context
+     * @param callable(): void|null $entriesChanged after entries' files were rewritten (the content index is rebuilt)
      */
     public function __construct(
         private Taxonomies $store,
         private RedirectRepository $redirects,
         private ContentRepository $content,
         private $menus,
-        private $log = null
+        private $log = null,
+        private $entriesChanged = null
     ) {
     }
 
@@ -51,13 +55,14 @@ final class TaxonomyEditor
                 'added' => $result['added'],
                 'renamed' => $result['moved'],
                 'removed' => $result['removed'],
+                'unfiled' => $result['unfiled'],
                 'refused' => $result['refused'],
             ]);
         }
         return '/admin/taxonomies?taxonomy=' . urlencode($taxonomy) . '&saved=1'
             . ($result['moved'] > 0 ? '&moved=' . $result['moved'] : '')
             . ($result['refused'] > 0 ? '&refused=' . $result['refused'] : '')
-            . ($result['removed'] > 0 ? '&removed=' . $result['removed'] . '&orphaned=' . $result['orphaned'] : '');
+            . ($result['removed'] > 0 ? '&removed=' . $result['removed'] . '&unfiled=' . $result['unfiled'] : '');
     }
 
     /**
@@ -85,6 +90,15 @@ final class TaxonomyEditor
             $term['depth'] ??= 0;
             $term['path'] = $this->store->slug($taxonomy, $term['id']);
             $terms[] = $term;
+        }
+        // Terms the entries still name that this taxonomy no longer has (removed before they were taken off the entries,
+        // or written by hand): the site shows them under their address, so the screen offers to take them off.
+        $known = array_column($current['terms'], 'id');
+        $stale = [];
+        foreach ($usage[$taxonomy] ?? [] as $value => $byType) {
+            if (!in_array(Slug::plain((string)$value), $known, true)) {
+                $stale[(string)$value] = array_sum($byType);
+            }
         }
         $tabs = [];
         foreach ($names as $name) {
@@ -124,7 +138,9 @@ final class TaxonomyEditor
             'new_error' => trim((string)($get['new_error'] ?? '')),
             'moved' => (int)($get['moved'] ?? 0),
             'removed' => (int)($get['removed'] ?? 0),
-            'orphaned' => (int)($get['orphaned'] ?? 0),
+            'unfiled' => (int)($get['unfiled'] ?? 0),
+            'stale_terms' => $stale,
+            'cleaned' => (int)($get['cleaned'] ?? -1),
             'refused' => (int)($get['refused'] ?? 0),
             'can_redirects' => $canRedirects,
             'title_layouts' => $titleLayouts,
@@ -352,7 +368,7 @@ final class TaxonomyEditor
      *
      * @param array<string, mixed> $post
      * @param string[] $languages
-     * @return array{title: string, terms: int, moved: int, removed: int, added: int, orphaned: int, refused: int}
+     * @return array{title: string, terms: int, moved: int, removed: int, added: int, unfiled: int, refused: int}
      */
     public function apply(string $taxonomy, array $post, array $languages, string $defaultLang, string $by): array
     {
@@ -392,15 +408,84 @@ final class TaxonomyEditor
             }
         }
 
-        $usage = $this->usage([$taxonomy])[$taxonomy];
+        // A removed term is taken off the entries filed under it, in every type and language, so they stop showing it.
+        $unfiled = $prepared['removed'] !== [] ? $this->unfile($taxonomy, $prepared['removed']) : 0;
         return [
             'title' => $title,
             'terms' => count($prepared['terms']),
             'moved' => count($prepared['moved']),
             'removed' => count($prepared['removed']),
             'added' => count($prepared['added']),
-            'orphaned' => array_sum(array_map(static fn(string $id): int => $usage[$id] ?? 0, $prepared['removed'])),
+            'unfiled' => $unfiled,
             'refused' => count($prepared['refused']),
         ];
+    }
+
+    /**
+     * Takes off the entries the terms they name that the taxonomy no longer has, and says where to go next.
+     */
+    public function cleanUp(string $taxonomy, string $by): string
+    {
+        $known = array_column($this->store->load($taxonomy)['terms'], 'id');
+        $stale = array_values(array_filter(
+            array_map('strval', array_keys($this->usage([$taxonomy])[$taxonomy] ?? [])),
+            static fn(string $value): bool => !in_array(Slug::plain($value), $known, true)
+        ));
+        $changed = $stale !== [] ? $this->unfile($taxonomy, $stale) : 0;
+        if ($this->log !== null && $changed > 0) {
+            ($this->log)('taxonomies.cleanup', 'info', 'taxonomy', $taxonomy, 'Terms that no longer exist were taken off entries.', ['terms' => $stale, 'entries' => $changed, 'by' => $by]);
+        }
+        return '/admin/taxonomies?taxonomy=' . urlencode($taxonomy) . '&cleaned=' . $changed;
+    }
+
+    /**
+     * Takes terms off every entry filed under them: the taxonomy's field in the entry's file keeps its other terms, and goes
+     * when none is left. Only the files that name one of the terms are written. How many entries changed.
+     *
+     * @param string[] $termIds
+     */
+    public function unfile(string $taxonomy, array $termIds): int
+    {
+        $termIds = array_map('strval', $termIds);
+        $changed = 0;
+        foreach ($this->content->getTypes() as $type) {
+            if ($type === 'forms') {
+                continue;
+            }
+            foreach ($this->content->getItems($type, null, true, false) as $item) {
+                if (array_intersect(Format::list($item->meta[$taxonomy] ?? null), $termIds) === [] || !is_file($item->filePath)) {
+                    continue;
+                }
+                $raw = (string)file_get_contents($item->filePath);
+                [$frontmatter, $body] = FrontMatter::split($raw);
+                try {
+                    $meta = $frontmatter !== '' ? Yaml::parse($frontmatter) : null;
+                } catch (\Throwable) {
+                    continue;
+                }
+                if (!is_array($meta) || !array_key_exists($taxonomy, $meta)) {
+                    continue;
+                }
+                $kept = array_values(array_filter(Format::list($meta[$taxonomy]), static fn(string $id): bool => !in_array($id, $termIds, true)));
+                if ($kept === []) {
+                    unset($meta[$taxonomy]);
+                } else {
+                    // A field that held one term as text keeps that shape when one is left.
+                    $meta[$taxonomy] = is_array($meta[$taxonomy]) || count($kept) > 1 ? $kept : $kept[0];
+                }
+                // Same layout the editor writes: front matter, one blank line, body.
+                $body = preg_replace('/\A\R/', '', $body) ?? $body;
+                if (@file_put_contents($item->filePath, "---\n" . trim(Yaml::dump($meta, 10, 2, Yaml::DUMP_MULTI_LINE_LITERAL_BLOCK)) . "\n---\n\n" . rtrim($body) . "\n") !== false) {
+                    $changed++;
+                }
+            }
+        }
+        if ($changed > 0) {
+            $this->content->forget();
+            if ($this->entriesChanged !== null) {
+                ($this->entriesChanged)();
+            }
+        }
+        return $changed;
     }
 }

@@ -134,11 +134,22 @@
 
   {% if saved %}<template data-flash data-type="success">Saved.{% if moved %} {{ moved }} address{{ moved == 1 ? '' : 'es' }} changed: the old {{ moved == 1 ? 'one keeps' : 'ones keep' }} working{% if can_redirects %} (see Redirects){% endif %}.{% endif %}</template>{% endif %}
   {% if refused %}<template data-flash data-type="warning">{{ refused }} term{{ refused == 1 ? ' was' : 's were' }} not moved: a term cannot be placed under itself or under one of its own sub-terms.</template>{% endif %}
-  {% if removed and orphaned %}<template data-flash data-type="warning">{{ removed }} term{{ removed == 1 ? '' : 's' }} removed, but {{ orphaned }} {{ orphaned == 1 ? 'entry is' : 'entries are' }} still filed under {{ removed == 1 ? 'it' : 'them' }}. The entries keep the old term in their files, and the term no longer has a page.</template>{% endif %}
+  {% if removed and unfiled %}<template data-flash data-type="success">{{ removed }} term{{ removed == 1 ? '' : 's' }} removed, and taken off the {{ unfiled }} {{ unfiled == 1 ? 'entry' : 'entries' }} filed under {{ removed == 1 ? 'it' : 'them' }}.</template>{% endif %}
   {% if deleted %}<template data-flash data-type="success">Taxonomy “{{ deleted }}” deleted.</template>{% endif %}
   {% if created %}<template data-flash data-type="success">Taxonomy created. Add its first terms below; its pages will be at /{{ taxonomy_kind }}/term.</template>{% endif %}
   {% if error %}
     <div class="mb-4 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{{ error }}</div>
+  {% endif %}
+
+  {% if cleaned >= 0 %}<template data-flash data-type="success">{{ cleaned }} {{ cleaned == 1 ? 'entry' : 'entries' }} no longer {{ cleaned == 1 ? 'names' : 'name' }} terms that were removed.</template>{% endif %}
+  {% if stale_terms is not empty %}
+    {% set stale_count = stale_terms|reduce((carry, n) => carry + n, 0) %}
+    <form method="post" class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+      {{ csrf_field() }}
+      <input type="hidden" name="taxonomy" value="{{ taxonomy }}">
+      <p class="m-0 min-w-0 flex-1"><span class="font-medium">{{ stale_count }} {{ stale_count == 1 ? 'entry still names' : 'entries still name' }} terms this taxonomy no longer has:</span> {{ stale_terms|keys|join(', ') }}. The site shows them under those names.</p>
+      <button type="submit" name="clean_stale_terms" value="1" class="inline-flex shrink-0 items-center rounded-md bg-amber-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-amber-700">Take them off the entries</button>
+    </form>
   {% endif %}
 
   <header class="mb-4 flex flex-wrap items-end justify-between gap-3">
@@ -265,7 +276,7 @@
         </div>
 
         <p class="border-t border-slate-100 px-4 py-3 text-xs text-slate-500">
-          The page address is made from the name (Greek letters become Latin) and can be changed: the old address keeps working and leads to the new one. Entries are filed under a term by an internal id that never changes. Changes here, including removals, are applied when you press Save. Removing a term does not remove it from the entries that use it.
+          The page address is made from the name (Greek letters become Latin) and can be changed: the old address keeps working and leads to the new one. Entries are filed under a term by an internal id that never changes. Changes here, including removals, are applied when you press Save. Removing a term also takes it off the entries filed under it.
         </p>
       </div>
 
