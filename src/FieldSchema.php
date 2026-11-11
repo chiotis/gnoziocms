@@ -193,6 +193,8 @@ final class FieldSchema
                 $field['multiple'] = ($definition['multiple'] ?? false) === true;
                 $field['max'] = $field['multiple'] && isset($definition['max']) && is_numeric($definition['max']) && (int)$definition['max'] > 0 ? (int)$definition['max'] : null;
                 $field['reverse_label'] = trim((string)($definition['reverse_label'] ?? ''));
+                // `published_only: true`: the picker offers only entries visitors can see (published and not hidden).
+                $field['published_only'] = ($definition['published_only'] ?? false) === true;
             }
             if ($type === 'repeater') {
                 // The fields of a row; a row of a top-level repeater may hold a repeater of its own (MAX_DEPTH).

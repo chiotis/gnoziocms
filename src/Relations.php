@@ -387,12 +387,12 @@ final class Relations
      * @param string[] $allowed the content types the person may open
      * @return list<array<string, mixed>> value (the id, or `@type/slug` while the entry has none), title, type, status, hidden
      */
-    public function search(string $query, array $types, array $allowed, int $limit = 20): array
+    public function search(string $query, array $types, array $allowed, int $limit = 20, bool $publishedOnly = false): array
     {
         $this->fresh();
         $types = array_values(array_intersect($types !== [] ? $types : $allowed, $allowed, $this->enabledTypes()));
         $found = [];
-        foreach ($this->index->choices($types, $this->defaultLang(), max(1, min(50, $limit)), $query) as $row) {
+        foreach ($this->index->choices($types, $this->defaultLang(), max(1, min(50, $limit)), $query, $publishedOnly) as $row) {
             $id = (string)$row['translation_id'];
             $found[] = [
                 'value' => $id !== '' ? $id : '@' . $row['type'] . '/' . $row['slug'],

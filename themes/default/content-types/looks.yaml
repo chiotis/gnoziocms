@@ -17,6 +17,7 @@ fields:
       product:
         type: relation
         types: [products]
+        published_only: true
         label: { el: Προϊόν, en: Product }
       x:
         type: number

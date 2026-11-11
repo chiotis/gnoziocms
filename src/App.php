@@ -3378,7 +3378,7 @@ final class App
         header('Cache-Control: no-store');
         $types = array_values(array_filter(array_map(static fn(string $t): string => Slug::plain($t), explode(',', (string)($_GET['types'] ?? '')))));
         $allowed = array_values(array_filter($this->content->getTypes(), fn(string $type): bool => $this->canAccessContentType($type) && $type !== 'forms'));
-        echo json_encode($this->relations()->search((string)($_GET['q'] ?? ''), $types, $allowed), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+        echo json_encode($this->relations()->search((string)($_GET['q'] ?? ''), $types, $allowed, 20, (string)($_GET['published'] ?? '') === '1'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
     }
 
     /** The references that lead to an entry that is gone, so they can be fixed or cleared. */
