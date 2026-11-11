@@ -98,7 +98,7 @@ $post = [
     'archive' => ['layout' => 'list', 'per_page' => '5', 'types' => ['posts']],
 ];
 $r = $editor->apply('tags', $post, ['el', 'en'], 'el', 'tester');
-check('the summary counts what happened', $r, ['title' => 'Topics', 'terms' => 3, 'moved' => 1, 'removed' => 1, 'added' => 1, 'orphaned' => 0, 'refused' => 0]);
+check('the summary counts what happened', $r, ['title' => 'Topics', 'terms' => 3, 'moved' => 1, 'removed' => 1, 'added' => 1, 'unfiled' => 0, 'refused' => 0]);
 $saved = $store->load('tags');
 check('title and terms are stored, in the order sent', [$saved['title'], array_column($saved['terms'], 'id')], ['Topics', ['news', 'design', 'neos-oros']]);
 check('the description is stored', $saved['terms'][0]['descriptions']['el'], 'Όλα τα νέα');
@@ -108,9 +108,23 @@ foreach ($redirects->all() as $row) { $rd[$row['source']] = $row['target']; }
 check('a moved address leaves a redirect in each language', [$rd['tag/news'] ?? null, $rd['en/tag/news'] ?? null], ['/tag/nea', '/en/tag/nea']);
 check('the menu link follows', $menus->load('main')['items'][0]['url'], 'tag/nea');
 
-// ---- removing a term that entries use reports them
+// ---- removing a term that entries use takes it off them
 $r = $editor->apply('tags', ['taxonomy_title' => 'Topics', 'term_id' => ['design'], 'term_slug' => ['design'], 'term_label' => ['el' => ['Σχεδιασμός'], 'en' => ['Design']], 'archive' => ['types' => ['posts', 'projects']]], ['el', 'en'], 'el', 'tester');
-check('removed terms and the entries still filed under them', [$r['removed'], $r['orphaned']], [2, 4]);
+check('removed terms, and the entries they were taken off', [$r['removed'], $r['unfiled']], [2, 4]);
+$front = fn(string $f): string => explode("---", (string)file_get_contents("$dir/content/$f"))[1];
+check('an entry keeps its other terms and fields', [str_contains($front('posts/one.md'), 'news'), str_contains($front('posts/one.md'), 'design'), str_contains($front('posts/one.md'), 'insights'), str_contains($front('posts/one.md'), 'title: One')], [false, true, true, true]);
+check('a field left without terms goes, whether it was a list or one term as text', [str_contains($front('posts/one.en.md'), 'tags'), str_contains($front('projects/p.md'), 'tags'), str_contains($front('pages/about.md'), 'tags')], [false, false, false]);
+check('the body is kept', str_ends_with((string)file_get_contents("$dir/content/posts/one.md"), "---\n\nBody\n"), true);
+check('forms are never filed, so they are left alone', str_contains($front('forms/contact.md'), 'news'), true);
+check('and nothing is counted under the removed terms any more', array_keys($editor->usage(['tags'])['tags']), ['design']);
+
+// ---- terms removed before: the screen names them and takes them off
+file_put_contents("$dir/content/posts/old.md", "---\ntitle: Old\nstatus: published\ntags: [gone, design]\n---\nBody\n");
+$content->forget();
+check('the screen names the terms the entries still have that the taxonomy does not', $editor->screen('tags', [], ['el', 'en'], 'el', false, fn(string $t): string => $t)['stale_terms'], ['gone' => 1]);
+check('taking them off says how many entries changed', $editor->cleanUp('tags', 'tester'), '/admin/taxonomies?taxonomy=tags&cleaned=1');
+check('  and the entry keeps the terms that exist', [str_contains($front('posts/old.md'), 'gone'), str_contains($front('posts/old.md'), 'design')], [false, true]);
+check('  and the screen has nothing left to offer', $editor->screen('tags', [], ['el', 'en'], 'el', false, fn(string $t): string => $t)['stale_terms'], []);
 check('choosing every type stores no type list', isset($store->load('tags')['archive']['types']), false);
 $editor->apply('tags', ['taxonomy_title' => 'Topics', 'term_id' => ['design'], 'term_slug' => ['design'], 'term_label' => ['el' => ['Σχεδιασμός'], 'en' => ['Design']], 'archive' => ['layout' => 'magazine', 'per_page' => '12']], ['el', 'en'], 'el', 'tester');
 $editor->apply('tags', ['taxonomy_title' => 'Topics', 'term_id' => ['design'], 'term_slug' => ['design'], 'term_label' => ['el' => ['Σχεδιασμός'], 'en' => ['Design']]], ['el', 'en'], 'el', 'tester');
