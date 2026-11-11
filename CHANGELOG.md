@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.291 — 2026-11-11 — Customers sign in with Google
+- **Shop:** customers can sign in with Google. Turn it on in Shop settings › Accounts, with the shop's own OAuth client or, leaving the Client ID blank, the admin's Google Sign-In client; add the address shown there (`/account/google/callback`) to the client's redirect URIs in Google Cloud. A Google account finds the customer with its address and links to them; a new one gets an account when customers can create one. Google confirms the address, so earlier guest orders with it join the account. An account made with Google can set a password later, and confirms deleting with its email.
+
 ## 0.1.290 — 2026-11-11 — A product shows the Look it is part of
 - **Shop:** on a product's page, Shop the look no longer needs the Look picked in the product's Looks. With none picked there, it shows the newest Look that has the product among its pieces. A Look picked in the block or in the product's Looks still comes first.
 
