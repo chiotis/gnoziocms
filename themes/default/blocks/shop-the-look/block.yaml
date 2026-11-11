@@ -44,4 +44,4 @@ fields:
     type: select
     label: Look
     options_from: looks
-    help: Empty on a look's own page, or on a product's page for its first look.
+    help: Empty on a look's own page, or on a product's page for the first look in its Looks (or, with none chosen there, the newest look it is a piece of).

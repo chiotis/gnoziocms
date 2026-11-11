@@ -57,7 +57,8 @@ final class ShopCatalogue
             return $values;
         }
         if ($type === 'shop-the-look') {
-            // The look chosen in the block; otherwise the page's own look, the first look of the page's product, the first with a piece of
+            // The look chosen in the block; otherwise the page's own look, the first look of the page's product (or the newest look the
+            // product is a piece of), the first with a piece of
             // the collection whose page this is, or on any other page the newest look.
             $look = $this->lookById((string)($values['look'] ?? ''), $lang);
             if ($look === null && $item !== null && $item->type === Shop::LOOKS) {
@@ -66,6 +67,8 @@ final class ShopCatalogue
             if ($look === null && $product !== null) {
                 $ids = array_map('strval', (array)($this->custom($product)['looks'] ?? []));
                 $look = $ids === [] ? null : $this->lookById($ids[0], $lang);
+                // No Look picked in the product's Looks: the newest Look that has the product among its pieces.
+                $look ??= $this->lookWithProduct($product, $lang);
             }
             if ($look === null && $product === null) {
                 $look = $this->lookOfPage($context, $lang);
@@ -484,6 +487,24 @@ final class ShopCatalogue
         foreach ($variants as $variant) {
             if ($variant['key'] === $key) {
                 return $variant['price'];
+            }
+        }
+        return null;
+    }
+
+    /** The newest Look that has the product among its pieces. */
+    private function lookWithProduct(ContentItem $product, string $lang): ?ContentItem
+    {
+        $id = (string)($product->meta['translation_id'] ?? '');
+        if ($id === '') {
+            return null;
+        }
+        foreach ($this->content->getItems(Shop::LOOKS, $lang, $this->includeHidden, true) as $look) {
+            foreach (is_array($this->custom($look)['pieces'] ?? null) ? $this->custom($look)['pieces'] : [] as $piece) {
+                $pieceId = is_array($piece) ? (string)(is_array($piece['product'] ?? null) ? ($piece['product'][0] ?? '') : ($piece['product'] ?? '')) : '';
+                if ($pieceId === $id) {
+                    return $look;
+                }
             }
         }
         return null;
