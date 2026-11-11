@@ -28,7 +28,7 @@
             <div class="space-y-1.5">
               {% for key, text in scopes %}
                 {% if key in asked %}
-                  <label class="flex items-start gap-2 text-sm text-slate-700"><input type="checkbox" name="scopes[]" value="{{ key }}" checked class="mt-0.5 h-4 w-4 rounded border-slate-300">{{ text }}</label>
+                  <label class="flex items-start gap-2 text-sm text-slate-700"><input type="checkbox" name="scopes[]" value="{{ key }}"{% if key not in scopes_off|default([]) %} checked{% endif %} class="mt-0.5 h-4 w-4 rounded border-slate-300">{{ text }}</label>
                 {% endif %}
               {% endfor %}
             </div>

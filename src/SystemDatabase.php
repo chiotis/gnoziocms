@@ -123,6 +123,16 @@ final class SystemDatabase
         $this->applyMigration($pdo, '202611080001_shop_payments', fn(PDO $db) => $this->createShopPaymentTables($db));
         $this->applyMigration($pdo, '202611080002_shop_downloads', fn(PDO $db) => $this->createShopDownloadTables($db));
         $this->applyMigration($pdo, '202611080003_shop_subscriptions', fn(PDO $db) => $this->createShopSubscriptionTables($db));
+        $this->applyMigration($pdo, '202611110001_mcp_shop_changes', function (PDO $db): void {
+            // What a connection changed in the shop (prices, stock), for its limit of changes in 24 hours.
+            $db->exec('CREATE TABLE IF NOT EXISTS mcp_shop_changes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                connection_id INTEGER NOT NULL,
+                changes INTEGER NOT NULL,
+                changed_at TEXT NOT NULL
+            )');
+            $db->exec('CREATE INDEX IF NOT EXISTS idx_mcp_shop_changes_connection ON mcp_shop_changes (connection_id, changed_at)');
+        });
         // A coupon can be limited to products too, not only to collections.
         $this->applyMigration($pdo, '202611100002_shop_coupon_products', function (PDO $db): void {
             $columns = array_column($db->query('PRAGMA table_info(shop_coupons)')->fetchAll(PDO::FETCH_ASSOC), 'name');

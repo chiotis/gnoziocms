@@ -68,6 +68,7 @@ final class McpAdmin
             'connections' => $connections,
             'accounts' => $accounts,
             'scopes' => McpOAuth::scopes(),
+            'scopes_off' => McpOAuth::OFF_BY_DEFAULT,
             'new_token' => $newToken,
             'done' => (string)($get['done'] ?? ''),
             'message' => trim((string)($get['msg'] ?? '')),
@@ -114,7 +115,8 @@ final class McpAdmin
         }
         if ($action === 'policy') {
             $list = static fn(string $key): array => array_values(array_filter(array_map(static fn(mixed $v): string => Slug::plain((string)$v), is_array($post[$key] ?? null) ? $post[$key] : [])));
-            $policy = ['types' => $list('types'), 'languages' => $list('languages'), 'daily_limit' => (int)($post['daily_limit'] ?? McpStore::DEFAULT_DAILY_LIMIT), 'byline' => (string)($post['byline'] ?? '')];
+            $policy = ['types' => $list('types'), 'languages' => $list('languages'), 'daily_limit' => (int)($post['daily_limit'] ?? McpStore::DEFAULT_DAILY_LIMIT), 'byline' => (string)($post['byline'] ?? ''),
+                'price_limit' => (int)($post['price_limit'] ?? McpStore::policy($connection)['price_limit']), 'shop_limit' => (int)($post['shop_limit'] ?? McpStore::policy($connection)['shop_limit'])];
             $this->store->setPolicy($id, $policy);
             ($this->log)('mcp.connection_policy', 'info', 'mcp_connection', (string)$id, 'MCP connection rules changed: ' . $connection['name'] . '.', McpStore::policy(['policy' => json_encode($policy)]));
             return $done(true, 'Rules of ' . $connection['name'] . ' saved.');

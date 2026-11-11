@@ -20,6 +20,10 @@ final class McpStore
     public const REFRESH_GRACE_SECONDS = 60;
     public const MAX_TOKEN_DAYS = 365;
     public const DEFAULT_DAILY_LIMIT = 10;
+    /** The most a price may move in one change, in percent (0: no limit). */
+    public const DEFAULT_PRICE_LIMIT = 50;
+    /** Changes to the shop (a product's prices, a row of stock) in 24 hours. */
+    public const DEFAULT_SHOP_LIMIT = 500;
 
     /** @param \Closure(): int|null $clock the time, for tests */
     public function __construct(private SystemDatabase $database, private ?\Closure $clock = null)
@@ -212,10 +216,11 @@ final class McpStore
 
     /**
      * What a connection may do beyond its scopes, set in Admin > MCP: the content types and languages it may write (none: all),
-     * at most how many entries it publishes or schedules in 24 hours, and the byline written as `author` when the job gives none.
+     * at most how many entries it publishes or schedules in 24 hours, the byline written as `author` when the job gives none, the
+     * most a price may move in one change (percent) and at most how many changes to the shop it makes in 24 hours.
      *
      * @param array<string, mixed> $connection
-     * @return array{types: string[], languages: string[], daily_limit: int, byline: string}
+     * @return array{types: string[], languages: string[], daily_limit: int, byline: string, price_limit: int, shop_limit: int}
      */
     public static function policy(array $connection): array
     {
@@ -226,10 +231,12 @@ final class McpStore
             'languages' => array_values(array_map('strval', is_array($raw['languages'] ?? null) ? $raw['languages'] : [])),
             'daily_limit' => max(0, min(500, (int)($raw['daily_limit'] ?? self::DEFAULT_DAILY_LIMIT))),
             'byline' => mb_substr(trim((string)($raw['byline'] ?? '')), 0, 120),
+            'price_limit' => max(0, min(1000, (int)($raw['price_limit'] ?? self::DEFAULT_PRICE_LIMIT))),
+            'shop_limit' => max(0, min(10000, (int)($raw['shop_limit'] ?? self::DEFAULT_SHOP_LIMIT))),
         ];
     }
 
-    /** @param array{types: string[], languages: string[], daily_limit: int, byline: string} $policy */
+    /** @param array{types?: string[], languages?: string[], daily_limit?: int, byline?: string, price_limit?: int, shop_limit?: int} $policy */
     public function setPolicy(int $id, array $policy): bool
     {
         $stmt = $this->pdo()->prepare('UPDATE mcp_connections SET policy = :policy WHERE id = :id AND revoked_at IS NULL');
@@ -266,6 +273,22 @@ final class McpStore
     {
         $this->pdo()->prepare('INSERT INTO mcp_publications (connection_id, type, slug, lang, published_at) VALUES (:connection, :type, :slug, :lang, :now)')
             ->execute(['connection' => $connectionId, 'type' => $type, 'slug' => $slug, 'lang' => $lang, 'now' => $this->stamp()]);
+    }
+
+    /** How many changes to the shop a connection made in the last 24 hours. */
+    public function shopChangesToday(int $connectionId): int
+    {
+        $stmt = $this->pdo()->prepare('SELECT COALESCE(SUM(changes), 0) FROM mcp_shop_changes WHERE connection_id = :connection AND changed_at > :since');
+        $stmt->execute(['connection' => $connectionId, 'since' => $this->stamp(-86400)]);
+        return (int)$stmt->fetchColumn();
+    }
+
+    public function recordShopChanges(int $connectionId, int $changes): void
+    {
+        if ($changes > 0) {
+            $this->pdo()->prepare('INSERT INTO mcp_shop_changes (connection_id, changes, changed_at) VALUES (:connection, :changes, :now)')
+                ->execute(['connection' => $connectionId, 'changes' => $changes, 'now' => $this->stamp()]);
+        }
     }
 
     // ---- rate limits
@@ -307,6 +330,7 @@ final class McpStore
             ->execute(['now' => $this->stamp(), 'day' => $day]);
         $this->pdo()->prepare('DELETE FROM mcp_rate_limits WHERE window_start < :old')->execute(['old' => $this->now() - 86400]);
         $this->pdo()->prepare('DELETE FROM mcp_publications WHERE published_at < :day')->execute(['day' => $this->stamp(-2 * 86400)]);
+        $this->pdo()->prepare('DELETE FROM mcp_shop_changes WHERE changed_at < :day')->execute(['day' => $this->stamp(-2 * 86400)]);
     }
 
     private function now(): int

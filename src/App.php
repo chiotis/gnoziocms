@@ -4433,6 +4433,47 @@ final class App
         return $this->mcpAdminService ??= new McpAdmin($this->mcpStore(), $this->mcpOAuth(), $this->systemMeta, $this->users, fn(string $action, string $level, ?string $type, ?string $id, string $message, array $context) => $this->logActivity($action, $level, $type, $id, $message, $context), $this->basePath . '/public');
     }
 
+    private ?McpContent $mcpContentService = null;
+
+    /** The content tools of MCP, as the server and the shop's tools use them. */
+    private function mcpContent(): McpContent
+    {
+        return $this->mcpContentService ??= new McpContent(
+            $this->content,
+            $this->contentEditor(),
+            $this->contentIndex,
+            $this->contentTypes(),
+            $this->taxonomies(),
+            $this->mcpStore(),
+            $this->settings,
+            $this->basePath . '/public',
+            fn(string $path): string => $this->buildAbsoluteUrl($path),
+            function (array $entry, array $connection, bool $published): void {
+                // What visitors see may have changed: the same as a save in the admin.
+                $this->frontCache()->purgeAll();
+                $this->contentIndex->bump();
+                $this->aiAutoPicture((string)$entry['type'], (string)$entry['slug'], (string)$entry['lang'], (string)$connection['username'] . ' (MCP: ' . $connection['name'] . ')');
+                if ($published) {
+                    $this->notifications->create([
+                        'type' => 'content',
+                        'title' => ($entry['status'] === ScheduledPublishing::STATUS ? 'Scheduled by ' : 'Published by ') . $connection['name'] . ': ' . $entry['title'],
+                        'body' => $entry['status'] === ScheduledPublishing::STATUS ? 'Goes public at ' . $entry['publish_at'] . '.' : (string)($entry['address'] ?? ''),
+                        'target_url' => '/admin/edit?' . http_build_query(['type' => $entry['type'], 'slug' => $entry['slug'], 'lang' => $entry['lang']]),
+                    ]);
+                }
+            },
+            $this->media,
+            new SafeHttp(),
+            fn(int $bytes): bool => $this->siteLimits()->allows($bytes),
+            fn(int $bytes) => $this->siteLimits()->uploadsChanged($bytes),
+            requestPicture: $this->aiSettings()->hasKey()
+                ? fn(string $entry, string $brief, bool $replace, string $by): array => $this->aiPictures()->requestForEntry($entry, $brief, [], $by, null, 'mcp', $replace)
+                : null,
+            pictureState: fn(string $entry): ?array => $this->aiPictures()->entryState($entry),
+            relations: $this->relations()
+        );
+    }
+
     private function mcpServer(): McpServer
     {
         return new McpServer(
@@ -4442,40 +4483,17 @@ final class App
             fn(array $account, string $permission): bool => $this->permissions->can(['role' => (string)$account['role'], 'status' => (string)$account['user_status']], $permission),
             fn(array $connection): array => $this->mcpSiteInfo($connection),
             fn(string $action, string $level, ?string $type, ?string $id, string $message, array $context) => $this->logActivity($action, $level, $type, $id, $message, $context),
-            fn(): McpContent => new McpContent(
+            fn(): McpContent => $this->mcpContent(),
+            fn(): ?McpShop => Shop::enabled($this->content->getTypes()) ? new McpShop(
                 $this->content,
-                $this->contentEditor(),
-                $this->contentIndex,
+                $this->mcpContent(),
                 $this->contentTypes(),
                 $this->taxonomies(),
+                $this->shopStock(),
+                $this->shopSettings(),
                 $this->mcpStore(),
-                $this->settings,
-                $this->basePath . '/public',
-                fn(string $path): string => $this->buildAbsoluteUrl($path),
-                function (array $entry, array $connection, bool $published): void {
-                    // What visitors see may have changed: the same as a save in the admin.
-                    $this->frontCache()->purgeAll();
-                    $this->contentIndex->bump();
-                    $this->aiAutoPicture((string)$entry['type'], (string)$entry['slug'], (string)$entry['lang'], (string)$connection['username'] . ' (MCP: ' . $connection['name'] . ')');
-                    if ($published) {
-                        $this->notifications->create([
-                            'type' => 'content',
-                            'title' => ($entry['status'] === ScheduledPublishing::STATUS ? 'Scheduled by ' : 'Published by ') . $connection['name'] . ': ' . $entry['title'],
-                            'body' => $entry['status'] === ScheduledPublishing::STATUS ? 'Goes public at ' . $entry['publish_at'] . '.' : (string)($entry['address'] ?? ''),
-                            'target_url' => '/admin/edit?' . http_build_query(['type' => $entry['type'], 'slug' => $entry['slug'], 'lang' => $entry['lang']]),
-                        ]);
-                    }
-                },
-                $this->media,
-                new SafeHttp(),
-                fn(int $bytes): bool => $this->siteLimits()->allows($bytes),
-                fn(int $bytes) => $this->siteLimits()->uploadsChanged($bytes),
-                requestPicture: $this->aiSettings()->hasKey()
-                    ? fn(string $entry, string $brief, bool $replace, string $by): array => $this->aiPictures()->requestForEntry($entry, $brief, [], $by, null, 'mcp', $replace)
-                    : null,
-                pictureState: fn(string $entry): ?array => $this->aiPictures()->entryState($entry),
-                relations: $this->relations()
-            )
+                $this->defaultLanguage()
+            ) : null
         );
     }
 
@@ -4593,6 +4611,8 @@ final class App
                 'byline' => $policy['byline'],
                 'publications_per_24h' => $policy['daily_limit'] ?: 'no limit',
                 'publications_left' => $policy['daily_limit'] > 0 ? max(0, $policy['daily_limit'] - $this->mcpStore()->publishedToday((int)$connection['id'])) : null,
+                'shop' => !Shop::enabled($this->content->getTypes()) ? 'off'
+                    : (McpOAuth::allows((string)$connection['scope'], [McpOAuth::SCOPE_SHOP_READ, McpOAuth::SCOPE_SHOP_WRITE]) ? 'on: call shop_info for products, prices and stock' : 'on, but this connection has no shop scopes'),
             ],
         ];
     }
@@ -4631,6 +4651,7 @@ final class App
             'problem' => $problem,
             'request' => $request,
             'scopes' => McpOAuth::scopes(),
+            'scopes_off' => McpOAuth::OFF_BY_DEFAULT,
             'accounts' => $this->mcpAdmin()->accounts($this->auth->user()),
             'types' => $this->content->getTypes(),
             'user' => $this->auth->user(),
