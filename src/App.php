@@ -199,7 +199,7 @@ final class App
         $this->media = new MediaLibrary($this->contentDir, $this->basePath . '/public/uploads');
         $this->media->restrictTo(is_array($this->settings['limits']['upload_types'] ?? null) ? $this->settings['limits']['upload_types'] : []);
         $this->mediaUsage = new MediaUsage($this->contentDir, fn(): array => $this->mediaUsageSettingsSources(), (string)($this->settings['languages']['default'] ?? 'en'), $this->systemMeta);
-        $this->images = new Images($this->basePath . '/public', $this->contentDir . '/media');
+        $this->images = new Images($this->basePath . '/public', $this->contentDir . '/media', (string)($this->settings['media']['quality'] ?? 'standard'));
         $this->content = new ContentRepository($this->contentDir, $markdown, $this->settings, fn(): array => $this->contentTypes()->catalogue());
         $this->content->storeParsedIn($this->basePath . '/storage/cache/content', trim((string)@file_get_contents($this->basePath . '/VERSION')));
         $this->content->onUnreadable(fn(string $type, string $path, string $message) => $this->reportUnreadableContent($type, $path, $message));

@@ -16,7 +16,8 @@ namespace GnozioCMS;
  * answers 404 for a missing .webp itself); `handle()` writes the file and serves it.
  * The version is derived from the source mtime, so a replaced source gets new URLs; the format tag
  * (`w72`: WebP at quality 72, `a50`: AVIF at 50) changes with the encoding, so files of an older
- * encoding are not reused. Names without a tag (`<width>-<version>`) are the WebP of older releases,
+ * encoding are not reused. The site's picture quality (Settings > Media: standard, high, best; QUALITIES)
+ * sets the encoding, so changing it gives every picture new addresses, written as pages ask for them. Names without a tag (`<width>-<version>`) are the WebP of older releases,
  * still answered for pages kept from before.
  *
  * A page names a missing variant by its pending address. The variants a page asked for are written
@@ -31,8 +32,12 @@ final class Images
     /** The address of a variant that is not written yet; see the class comment. */
     public const PENDING_PREFIX = '/_image/';
     private const MAX_PIXELS = 36_000_000;
-    private const WEBP_QUALITY = 72;
-    private const AVIF_QUALITY = 50;
+    /** The picture quality a site can choose: the WebP and AVIF qualities of its variants. `standard` is what every site had. */
+    public const QUALITIES = [
+        'standard' => ['webp' => 72, 'avif' => 50],
+        'high' => ['webp' => 85, 'avif' => 65],
+        'best' => ['webp' => 92, 'avif' => 80],
+    ];
     private const AVIF_SPEED = 6;
     /** How long a kept page that still names a pending variant is used (PageCache). */
     public const PENDING_PAGE_TTL = 60;
@@ -48,8 +53,10 @@ final class Images
     /** Variants this request named by their pending address. @var array<string, array{relative: string, width: int, format: string}> */
     private array $pending = [];
 
-    public function __construct(private string $publicDir, private string $mediaMetaDir = '')
+    /** @param string $quality a key of QUALITIES; anything else is standard */
+    public function __construct(private string $publicDir, private string $mediaMetaDir = '', private string $quality = 'standard')
     {
+        $this->quality = isset(self::QUALITIES[$quality]) ? $quality : 'standard';
     }
 
     public static function webpSupported(): bool
@@ -71,16 +78,28 @@ final class Images
         return self::avifSupported() ? ['avif', 'webp'] : ['webp'];
     }
 
-    /** The tag of the current encoding of a format, in a variant's name. */
-    private static function tag(string $format): string
+    /** The tag of this site's encoding of a format, in a variant's name. */
+    private function tag(string $format): string
     {
-        return $format === 'avif' ? 'a' . self::AVIF_QUALITY : 'w' . self::WEBP_QUALITY;
+        return ($format === 'avif' ? 'a' : 'w') . self::QUALITIES[$this->quality][$format === 'avif' ? 'avif' : 'webp'];
+    }
+
+    /** The quality a variant's tag names, when it is one a site can choose; null otherwise (an address made up to make work). */
+    private static function qualityOfTag(string $tag): ?int
+    {
+        $format = str_starts_with($tag, 'a') ? 'avif' : 'webp';
+        foreach (self::QUALITIES as $qualities) {
+            if (($format === 'avif' ? 'a' : 'w') . $qualities[$format] === $tag) {
+                return $qualities[$format];
+            }
+        }
+        return null;
     }
 
     /** A variant's name without its extension. */
-    private static function variantName(int $width, int $mtime, string $format): string
+    private function variantName(int $width, int $mtime, string $format): string
     {
-        return $width . '-' . base_convert((string)$mtime, 10, 36) . '-' . self::tag($format);
+        return $width . '-' . base_convert((string)$mtime, 10, 36) . '-' . $this->tag($format);
     }
 
     /**
@@ -206,7 +225,7 @@ final class Images
     {
         $format = $format === 'avif' ? 'avif' : 'webp';
         $path = implode('/', array_map('rawurlencode', explode('/', $info['relative'])));
-        $name = self::variantName($width, $info['mtime'], $format);
+        $name = $this->variantName($width, $info['mtime'], $format);
         if (!is_file($this->publicDir . '/uploads/' . self::VARIANT_DIR . '/' . $info['relative'] . '/' . $name . '.' . $format)) {
             $this->pending[$info['relative'] . "\0" . $name] = ['relative' => $info['relative'], 'width' => $width, 'format' => $format];
             return self::PENDING_PREFIX . $path . '/' . $name;
@@ -243,9 +262,9 @@ final class Images
             if ($file === null || !is_array($size)) {
                 continue;
             }
-            $name = self::variantName($variant['width'], (int)filemtime($file), $variant['format']);
+            $name = $this->variantName($variant['width'], (int)filemtime($file), $variant['format']);
             $target = $this->publicDir . '/uploads/' . self::VARIANT_DIR . '/' . $variant['relative'] . '/' . $name . '.' . $variant['format'];
-            if (!is_file($target) && self::generate($file, (int)$size[2], $variant['width'], $target, $variant['format'])) {
+            if (!is_file($target) && self::generate($file, (int)$size[2], $variant['width'], $target, $variant['format'], self::QUALITIES[$this->quality][$variant['format'] === 'avif' ? 'avif' : 'webp'])) {
                 $written++;
             }
         }
@@ -287,7 +306,7 @@ final class Images
             $current = [];
             foreach (self::widthsFor($sourceWidth) as $width) {
                 foreach (self::formats() as $format) {
-                    $name = self::variantName($width, $mtime, $format) . '.' . $format;
+                    $name = $this->variantName($width, $mtime, $format) . '.' . $format;
                     $current[$name] = true;
                     if (is_file($dir . '/' . $name)) {
                         continue;
@@ -295,7 +314,7 @@ final class Images
                     if (microtime(true) >= $deadline) {
                         return $written;
                     }
-                    if (self::generate($file, (int)$size[2], $width, $dir . '/' . $name, $format)) {
+                    if (self::generate($file, (int)$size[2], $width, $dir . '/' . $name, $format, self::QUALITIES[$this->quality][$format === 'avif' ? 'avif' : 'webp'])) {
                         $written++;
                     }
                 }
@@ -356,7 +375,9 @@ final class Images
         }
         $tag = (string)($m[3] ?? '');
         $format = str_starts_with($tag, 'a') ? 'avif' : 'webp';
-        if ((!$pending && $m[4] !== $format) || ($tag !== '' && $tag !== self::tag($format)) || ($format === 'avif' && !self::avifSupported())) {
+        // Any quality a site can choose is answered (the address says which); a name without a tag is the WebP of an older release.
+        $quality = $tag !== '' ? self::qualityOfTag($tag) : self::QUALITIES['standard']['webp'];
+        if ((!$pending && $m[4] !== $format) || $quality === null || ($format === 'avif' && !self::avifSupported())) {
             self::notFound();
             return true;
         }
@@ -379,7 +400,7 @@ final class Images
         // A name without a tag is the WebP of an older release, still asked for by pages kept from before.
         $name = $width . '-' . $version . ($tag !== '' ? '-' . $tag : '');
         $target = $uploads . '/' . self::VARIANT_DIR . '/' . $relative . '/' . $name . '.' . $format;
-        if (!is_file($target) && !self::generate($file, (int)$size[2], $width, $target, $format)) {
+        if (!is_file($target) && !self::generate($file, (int)$size[2], $width, $target, $format, $quality)) {
             // Never break the page: fall back to the original file.
             header('Location: /uploads/' . implode('/', array_map('rawurlencode', explode('/', $relative))), true, 302);
             header('Cache-Control: no-store');
@@ -420,7 +441,7 @@ final class Images
         return $this->altIndex[(string)(parse_url($src, PHP_URL_PATH) ?? '')] ?? '';
     }
 
-    private static function generate(string $file, int $type, int $width, string $target, string $format = 'webp'): bool
+    private static function generate(string $file, int $type, int $width, string $target, string $format, int $quality): bool
     {
         if (!self::webpSupported() || ($format === 'avif' && !self::avifSupported())) {
             return false;
@@ -461,8 +482,8 @@ final class Images
         }
         $temp = $target . '.' . bin2hex(random_bytes(4)) . '.tmp';
         $ok = $format === 'avif'
-            ? @imageavif($canvas, $temp, self::AVIF_QUALITY, self::AVIF_SPEED)
-            : imagewebp($canvas, $temp, self::WEBP_QUALITY);
+            ? @imageavif($canvas, $temp, $quality, self::AVIF_SPEED)
+            : imagewebp($canvas, $temp, $quality);
         clearstatcache(true, $temp);
         if (!$ok || (int)@filesize($temp) === 0 || !@rename($temp, $target)) {
             @unlink($temp);

@@ -2,7 +2,8 @@
 /*
  * Picture sizes (Images): the widths offered, AVIF before WebP where GD has it, names that carry the encoding, the WebP of older
  * releases still answered, a deferred picture (the slides of a slider after the first), the sizes a page named written after the
- * response, and the cron job's fill (every size written, files of an older encoding removed once they are old).
+ * response, and the cron job's fill (every size written, files of an older encoding removed once they are old). The site's picture
+ * quality (standard, high, best): names, files and the qualities answered.
  *   php tests/unit/image-variants.php
  */
 $root = dirname(__DIR__, 2);
@@ -90,6 +91,24 @@ check('a file of an older encoding is removed once it is old', is_file($old), fa
 check('a recent one is kept (a page kept from before may still name it)', is_file($fresh), true);
 check('a second run has nothing to do', (new Images($public))->fill(microtime(true) + 120), 0);
 check('variants are never taken for pictures to fill', is_dir($public . '/uploads/_v/_v'), false);
+
+// ---- the site's picture quality
+$photo = $public . '/uploads/media/photo.jpg';
+$im = imagecreatetruecolor(800, 600);
+for ($y = 0; $y < 600; $y += 2) { for ($x = 0; $x < 800; $x += 2) { imagefilledrectangle($im, $x, $y, $x + 1, $y + 1, imagecolorallocate($im, ($x * 7 + $y) % 256, ($y * 3) % 256, ($x ^ $y) % 256)); } }
+imagejpeg($im, $photo, 95);
+$pv = base_convert((string)filemtime($photo), 10, 36);
+check('an unknown quality is standard', str_contains((new Images($public, '', 'nonsense'))->render('/uploads/media/photo.jpg', ['alt' => '']), '-w72'), true);
+$high = new Images($public, '', 'high');
+$html = $high->render('/uploads/media/photo.jpg', ['alt' => '', 'sizes' => '100vw']);
+check('high: the names carry its encoding', [str_contains($html, '/_image/media/photo.jpg/720-' . $pv . '-w85 720w'), str_contains($html, '-w72')], [true, false]);
+$sizes = [];
+foreach (['w72', 'w85', 'w92'] as $tag) {
+    check("a quality a site can choose is answered ($tag)", $handle('/_image/media/photo.jpg/720-' . $pv . '-' . $tag), [true, 200]);
+    $sizes[$tag] = (int)filesize($public . '/uploads/_v/media/photo.jpg/720-' . $pv . '-' . $tag . '.webp');
+}
+check('a higher quality keeps more: larger files', $sizes['w72'] < $sizes['w85'] && $sizes['w85'] < $sizes['w92'], true);
+check('a quality no site can choose is not answered', $handle('/_image/media/photo.jpg/720-' . $pv . '-w80'), [true, 404]);
 
 echo $fail === 0 ? "ALL PASSED\n" : "$fail FAILED\n";
 exit($fail === 0 ? 0 : 1);

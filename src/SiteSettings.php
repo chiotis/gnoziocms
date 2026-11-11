@@ -253,6 +253,7 @@ final class SiteSettings
             'storage_limit_mb' => max(0, (int)($merged['limits']['storage_mb'] ?? 1024)),
             'robots_disallow' => implode("\n", RobotsTxt::rules(is_array($merged['seo']['robots_disallow'] ?? null) ? $merged['seo']['robots_disallow'] : [])),
             'upload_limit_mb' => max(0, (int)($merged['limits']['upload_mb'] ?? $merged['media']['max_upload_mb'] ?? 20)),
+            'picture_quality' => isset(Images::QUALITIES[(string)($merged['media']['quality'] ?? '')]) ? (string)$merged['media']['quality'] : 'standard',
             'upload_types' => is_array($merged['limits']['upload_types'] ?? null) ? array_values(array_intersect(array_keys(MediaLibrary::UPLOAD_GROUPS), array_map('strval', $merged['limits']['upload_types']))) : array_keys(MediaLibrary::UPLOAD_GROUPS),
             'languages_default' => (string)($merged['languages']['default'] ?? 'el'),
             'languages_available' => implode(', ', $merged['languages']['available'] ?? []),
@@ -318,6 +319,7 @@ final class SiteSettings
             'robots_disallow' => isset($post['robots_disallow']) ? implode("\n", RobotsTxt::rules((string)$post['robots_disallow'])) : null,
             'languages_default' => (string)($post['languages_default'] ?? ''),
             'languages_available' => (string)($post['languages_available'] ?? ''),
+            'picture_quality' => (string)($post['picture_quality'] ?? ''),
             'mail_driver' => (string)($post['mail_driver'] ?? ''),
             'mail_from' => (string)($post['mail_from'] ?? ''),
             'mail_from_name' => (string)($post['mail_from_name'] ?? ''),
@@ -528,6 +530,17 @@ final class SiteSettings
         }
         if (is_numeric($form['upload_limit_mb'] ?? null)) {
             $data['limits']['upload_mb'] = (int)$form['upload_limit_mb'];
+        }
+        // Only when the choice was on the form that was sent; standard is the default and is not written.
+        if (isset(Images::QUALITIES[(string)($form['picture_quality'] ?? '')])) {
+            if ($form['picture_quality'] === 'standard') {
+                unset($data['media']['quality']);
+                if (($data['media'] ?? null) === []) {
+                    unset($data['media']);
+                }
+            } else {
+                $data['media']['quality'] = $form['picture_quality'];
+            }
         }
         if (is_string($form['upload_types'] ?? null) && $form['upload_types'] !== '') {
             $data['limits']['upload_types'] = explode(',', $form['upload_types']);

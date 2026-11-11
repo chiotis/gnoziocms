@@ -138,6 +138,14 @@ check('and the places already set stay', $s->load()['menu_locations']['header'],
 check('a place made only of the settings is kept too', [$s->setMenuLocation('Side Bar', 'Other Menu'), $s->load()['menu_locations']['side-bar']], [true, 'other-menu']);
 check('a place or a menu with no name is refused', [$s->setMenuLocation('', 'x'), $s->setMenuLocation('x', ' ')], [false, false]);
 
+// ---- picture quality
+$s->save($s->raw('site_settings', $s->defaults()), ['picture_quality' => 'high'] + $base);
+check('a picture quality is kept', [$s->load()['media']['quality'] ?? null, $s->formValues($s->load())['picture_quality']], ['high', 'high']);
+$s->save($s->raw('site_settings', $s->defaults()), ['picture_quality' => 'nonsense'] + $base);
+check('an unknown one leaves it as it was', $s->load()['media']['quality'] ?? null, 'high');
+$s->save($s->raw('site_settings', $s->defaults()), ['picture_quality' => 'standard'] + $base);
+check('standard, the default, is not written', [isset($s->load()['media']['quality']), $s->formValues($s->load())['picture_quality']], [false, 'standard']);
+
 exec('rm -rf ' . escapeshellarg($dir));
 echo $fail === 0 ? "\nALL PASSED\n" : "\n$fail FAILED\n";
 exit($fail === 0 ? 0 : 1);
