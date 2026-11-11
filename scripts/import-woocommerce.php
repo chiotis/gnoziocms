@@ -91,7 +91,7 @@ if ($opt['customers'] !== '') {
     }
 }
 $importer = new WooCommerceImporter(
-    new WooCommerceReader($site, static fn(string $url): ?array => WordPressHttp::get($url), $key, $secret),
+    new WooCommerceReader($site, static fn(string $url, array $headers): ?array => WordPressHttp::get($url, $headers), $key, $secret),
     (string)$opt['content'],
     new MediaLibrary((string)$opt['content'], (string)$opt['uploads']),
     new Taxonomies((string)$opt['content'], array_values(array_unique([$defaultLang, $lang]))),

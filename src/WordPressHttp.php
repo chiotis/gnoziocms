@@ -12,15 +12,18 @@ final class WordPressHttp
 {
     private const AGENT = 'GnozioCMS-import (+https://github.com/chiotis/gnoziocms)';
 
-    /** @return array{status: int, body: string}|null null when the site could not be reached */
-    public static function get(string $url, int $maxBytes = 20 * 1024 * 1024): ?array
+    /**
+     * @param list<string> $headers e.g. an Authorization header
+     * @return array{status: int, body: string}|null null when the site could not be reached
+     */
+    public static function get(string $url, array $headers = [], int $maxBytes = 20 * 1024 * 1024): ?array
     {
         $file = tempnam(sys_get_temp_dir(), 'wpget');
         if ($file === false) {
             return null;
         }
         try {
-            $status = self::fetch($url, $file, $maxBytes);
+            $status = self::fetch($url, $file, $maxBytes, $headers);
             return $status === null ? null : ['status' => $status, 'body' => (string)file_get_contents($file)];
         } finally {
             @unlink($file);
@@ -33,7 +36,8 @@ final class WordPressHttp
         return self::fetch($url, $to, $maxBytes) ?? 0;
     }
 
-    private static function fetch(string $url, string $to, int $maxBytes): ?int
+    /** @param list<string> $headers curl does not carry an Authorization header to another host; without curl, a request with headers follows no redirect */
+    private static function fetch(string $url, string $to, int $maxBytes, array $headers = []): ?int
     {
         if (!preg_match('#^https?://#i', $url)) {
             return null;
@@ -55,6 +59,7 @@ final class WordPressHttp
                 CURLOPT_CONNECTTIMEOUT => 15,
                 CURLOPT_TIMEOUT => 60,
                 CURLOPT_USERAGENT => self::AGENT,
+                CURLOPT_HTTPHEADER => $headers,
                 CURLOPT_NOPROGRESS => false,
                 CURLOPT_PROGRESSFUNCTION => static fn($r, int $total, int $got): int => $got > $maxBytes ? 1 : 0,
             ]);
@@ -64,7 +69,7 @@ final class WordPressHttp
             fclose($out);
             return $ok === false ? null : $status;
         }
-        $context = stream_context_create(['http' => ['timeout' => 60, 'follow_location' => 1, 'max_redirects' => 5, 'ignore_errors' => true, 'user_agent' => self::AGENT]]);
+        $context = stream_context_create(['http' => ['timeout' => 60, 'follow_location' => $headers === [] ? 1 : 0, 'max_redirects' => 5, 'ignore_errors' => true, 'user_agent' => self::AGENT, 'header' => $headers]]);
         $in = @fopen($url, 'rb', false, $context);
         if ($in === false) {
             return null;
