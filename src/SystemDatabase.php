@@ -133,6 +133,13 @@ final class SystemDatabase
             )');
             $db->exec('CREATE INDEX IF NOT EXISTS idx_mcp_shop_changes_connection ON mcp_shop_changes (connection_id, changed_at)');
         });
+        // A customer may sign in with Google: the account's `sub` is kept, so a changed address still finds them.
+        $this->applyMigration($pdo, '202611110002_shop_customers_google', function (PDO $db): void {
+            $columns = array_column($db->query('PRAGMA table_info(shop_customers)')->fetchAll(PDO::FETCH_ASSOC), 'name');
+            if ($columns !== [] && !in_array('google_sub', $columns, true)) {
+                $db->exec("ALTER TABLE shop_customers ADD COLUMN google_sub TEXT NOT NULL DEFAULT ''");
+            }
+        });
         // A coupon can be limited to products too, not only to collections.
         $this->applyMigration($pdo, '202611100002_shop_coupon_products', function (PDO $db): void {
             $columns = array_column($db->query('PRAGMA table_info(shop_coupons)')->fetchAll(PDO::FETCH_ASSOC), 'name');

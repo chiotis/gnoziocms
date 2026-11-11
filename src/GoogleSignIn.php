@@ -19,8 +19,9 @@ final class GoogleSignIn
      * @param callable(): array<string, mixed> $settings the site settings, read each time
      * @param callable(string): string $absolute the full address of a path of this site
      * @param (callable(string, array<int, mixed>, string): array{body: mixed, status: int, error: string})|null $http url, curl options, and the kind of call: replaced in tests
+     * @param string $callback where Google sends the person back: the admin's, or the shop's for customers (ShopFront)
      */
-    public function __construct(private $settings, private $absolute, private $http = null)
+    public function __construct(private $settings, private $absolute, private $http = null, private string $callback = '/admin/google-callback')
     {
     }
 
@@ -37,7 +38,7 @@ final class GoogleSignIn
             'client_id' => $clientId,
             'client_secret' => $clientSecret,
             'allowed_domain' => strtolower(trim((string)($config['allowed_domain'] ?? ''))),
-            'redirect_uri' => ($this->absolute)('/admin/google-callback'),
+            'redirect_uri' => ($this->absolute)($this->callback),
             'ready' => $enabled && $clientId !== '' && $clientSecret !== '',
         ];
     }

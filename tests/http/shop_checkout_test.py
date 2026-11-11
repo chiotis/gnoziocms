@@ -6,7 +6,7 @@ pages, as JSON for the script; the cart, a coupon, the checkout working out ship
 orders with their screen, status changes, shipping with tracking, the timeline and the CSV; customers' accounts (sign up, sign
 in, a wrong password, details, the account's orders, signing out); coupons; Shop the look; and an editor kept out.
 """
-import json, os, re, sqlite3, sys
+import json, os, re, sqlite3, sys, urllib.parse
 sys.path.insert(0, '.')
 from client import Client, has_field, BASE
 
@@ -265,6 +265,31 @@ check('the admin\'s Customers list her with one order', 'eleni@example.test' in 
 cid = db("select id from shop_customers where email = 'eleni@example.test'")[0][0]
 st, _, html = root.get('/admin/shop-customers?id=%d' % cid)
 check('and her screen lists it', second[0] in html and 'Not confirmed' in html)
+
+# ---- signing in with Google (up to Google itself, which the test cannot reach)
+guest = Client()
+st, _, html = guest.get('/account')
+st2, _, _ = guest.get('/account/google')
+check('with Google off: no button, and its address is not there', 'account/google' not in html and st2 == 404, st2)
+st, _, html = root.get('/admin/shop-settings?tab=accounts')
+check('the Accounts tab offers Google, with the address to give Google', 'name="google"' in html and '/account/google/callback' in html)
+st, hdr, _ = root.submit('/admin/shop-settings?tab=accounts', has_field('tab'), {'google': '1', 'google_client_id': '1234-abc.apps.googleusercontent.com', 'google_secret[client_secret]': 'GOCSPX-secret-9876'})
+st, _, html = root.get('/admin/shop-settings?tab=accounts')
+check('Google is saved, its secret only shown by its end', re.search(r'name="google" value="1"[^>]*checked', html) is not None and 'ends in 9876' in html and 'GOCSPX-secret' not in html)
+check('the secret is kept apart from the Shop settings', 'GOCSPX' not in json.dumps(db("select value from system_meta where key = 'shop_settings'")) and any('GOCSPX' in str(r) for r in db("select value from system_meta where key = 'shop_secrets'")))
+st, _, html = guest.get('/en/account?return=checkout')
+check('the sign-in page offers Continue with Google', 'Continue with Google' in html and '/en/account/google?return=checkout' in html)
+st, hdr, _ = guest.get('/en/account/google?return=checkout')
+to = hdr.get('Location') or ''
+q = dict(urllib.parse.parse_qsl(urllib.parse.urlparse(to).query))
+check('which sends the shopper to Google, with the client, the shop\'s way back and a state', st == 303 and to.startswith('https://accounts.google.com/') and q.get('client_id') == '1234-abc.apps.googleusercontent.com' and q.get('redirect_uri', '').endswith('/account/google/callback') and '/en/' not in q.get('redirect_uri', '') and len(q.get('state', '')) == 32, (st, to))
+st, hdr, _ = guest.get('/account/google/callback?state=forged&code=abc')
+st, _, html = guest.get(local(hdr.get('Location')))
+check('a way back with another state signs in nobody, in the shopper\'s language, back to the checkout', local(hdr.get('Location')) == '/en/account?return=checkout' and 'did not work' in html and 'action="/en/account/signin"' in html, hdr.get('Location'))
+st, hdr, _ = guest.get('/account/google/callback?state=' + q.get('state', '') + '&code=abc')
+st, _, html = guest.get(local(hdr.get('Location')))
+check('and the state is forgotten after that, so the real one no longer works either', 'δεν ολοκληρώθηκε' in html and 'action="/account/signin"' in html, hdr.get('Location'))
+root.submit('/admin/shop-settings?tab=accounts', has_field('tab'), {'google': None, 'google_clear': '1'})
 
 # ---- ready-made layouts and sections (the shop's): complete pages in the editor, and each one a page that opens
 st, _, edit = root.get('/admin/edit?type=pages&slug=the-look&lang=el')

@@ -120,7 +120,7 @@ $zoneId = $shop->all()['shipping'][0]['id'];
 $shop->savePayments(['bank_transfer' => ['enabled' => '1', 'accounts' => "Eurobank GR16 0110 1250 0000 0001 2300 695"], 'cod' => ['enabled' => '1', 'fee' => '2', 'zones' => [$zoneId, 'nope']]]);
 $all = $shop->all();
 check('the payments keep the accounts, the fee and real zones only', [$all['payments']['bank_transfer']['enabled'], $all['payments']['cod']['fee'], $all['payments']['cod']['zones']], [true, 200, [$zoneId]]);
-check('the General tab keeps the shipping that was set', [count($all['shipping']), $all['order_prefix'], $all['accounts']], [1, 'AL', ['signup' => true, 'verify' => false]]);
+check('the General tab keeps the shipping that was set', [count($all['shipping']), $all['order_prefix'], $all['accounts']], [1, 'AL', ['signup' => true, 'verify' => false, 'google' => false, 'google_client_id' => '']]);
 $shop->saveGeneral(['store_name' => 'Aleon', 'store_email' => 'shop@example.com', 'order_prefix' => 'AL', 'terms_page' => 'terms', 'guest_checkout' => '1']);
 check('and saving it again does too', count($shop->all()['shipping']), 1);
 
@@ -206,6 +206,23 @@ check('the customers\' list counts orders', $customers->search('maria')['rows'][
 $orders->unlink($id);
 $customers->delete($id);
 check('a deleted account leaves its orders, linked to nobody', [$customers->get($id), $orders->get($order['id'])['customer_id'], $orders->get($order['id'])['number']], [null, null, $order['number']]);
+
+// ---- customers signing in with Google
+check('a Google account with no customer, where none may be made', $customers->fromGoogle('g-1', 'nikos@example.com', 'Nikos', 'el', false), 'signup');
+check('a bad profile', [$customers->fromGoogle('', 'nikos@example.com', '', 'el', true), $customers->fromGoogle('g-1', 'not an address', '', 'el', true)], ['email', 'email']);
+$g = $customers->fromGoogle('g-1', 'Nikos@Example.com', 'Nikos', 'el', true);
+check('a new one makes a customer, confirmed, with no password, who cannot sign in with one', [$g['new'], $g['email'], $g['name'], $g['verified'], $g['has_password'], $g['google_sub'], $customers->authenticate('nikos@example.com', '')], [true, 'nikos@example.com', 'Nikos', true, false, 'g-1', null]);
+$db->connection()->prepare('UPDATE shop_customers SET email = :e WHERE id = :id')->execute(['e' => 'nikos@new.example', 'id' => $g['id']]);
+check('the same Google account finds them again by its sub, whatever the address', [$customers->fromGoogle('g-1', 'nikos@example.com', '', 'el', false)['id'] ?? null, $customers->fromGoogle('g-1', 'nikos@example.com', '', 'el', false)['new'] ?? null], [$g['id'], false]);
+$pw = $customers->create('eleni@example.com', 'long enough', 'Eleni', 'el');
+$customers->markVerified($pw);
+$linked = $customers->fromGoogle('g-2', 'ELENI@example.com', 'Other', 'en', false);
+check('a confirmed customer with the address is linked, keeping their password and name', [$linked['id'], $linked['new'], $linked['google_sub'], $customers->authenticate('eleni@example.com', 'long enough')['id'] ?? null, $linked['name']], [$pw, false, 'g-2', $pw, 'Eleni']);
+$squat = $customers->create('kostas@example.com', 'someone elses', '', 'el');
+$taken = $customers->fromGoogle('g-3', 'kostas@example.com', '', 'el', false);
+check('an unconfirmed one is linked and confirmed, and loses the password someone else may have set', [$taken['id'], $taken['verified'], $taken['has_password'], $customers->authenticate('kostas@example.com', 'someone elses')], [$squat, true, false, null]);
+$customers->setPassword($squat, 'my own password');
+check('a Google customer may set a password, and then signs in either way', [$customers->authenticate('kostas@example.com', 'my own password')['id'] ?? null, $customers->fromGoogle('g-3', 'kostas@example.com', '', 'el', false)['has_password'] ?? null], [$squat, true]);
 
 // ---- options with no variants: any combination, at the product's price, from its one stock
 $charm = static fn(string $key, int $q = 1): array => $pricing->lines([['product_id' => 'charm000000000001', 'variant_key' => $key, 'quantity' => $q]], 'el');
