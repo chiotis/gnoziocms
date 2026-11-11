@@ -16,6 +16,7 @@
  *   form[data-confirm="message"]     -> confirmation modal before submitting
  *   [data-copy="text"]               -> copy text to the clipboard
  *   [data-select-all="name"]         -> checkbox toggling every input[name] in its form
+ *   shift-click on a checkbox        -> ticks or clears every box of its group between it and the last one clicked
  */
 (function () {
   'use strict';
@@ -479,6 +480,40 @@
     toggle.indeterminate = false;
     boxesOf(scope, name).forEach(function (box) { box.checked = toggle.checked; });
     selectRest(scope, name, toggle.checked ? 'page' : 'none');
+  });
+
+  /* Shift-click ticks a range: clicking one row's box, then shift-clicking another, gives every visible box between
+   * them the state of the second. Boxes belong together when they share a name (or, without one, a class or a
+   * data-term-select) in the same form. Each box that changes gets a change event, so counters and bulk bars follow. */
+  var lastRangeBox = null;
+  function rangeKey(box) {
+    if (box.name) return 'name:' + box.name;
+    if (box.hasAttribute('data-term-select')) return 'term';
+    return box.className ? 'class:' + box.className : '';
+  }
+  function rangeGroup(box) {
+    var key = rangeKey(box);
+    var scope = box.form || document;
+    return Array.prototype.filter.call(scope.querySelectorAll('input[type="checkbox"]'), function (b) {
+      return !b.disabled && !b.hasAttribute('data-select-all') && !b.closest('[hidden], .hidden') && rangeKey(b) === key;
+    });
+  }
+  document.addEventListener('click', function (e) {
+    var box = e.target;
+    if (!box || box.tagName !== 'INPUT' || box.type !== 'checkbox' || box.hasAttribute('data-select-all') || !rangeKey(box)) return;
+    var last = lastRangeBox;
+    lastRangeBox = box;
+    if (!e.shiftKey || !last || last === box || !document.contains(last) || rangeKey(last) !== rangeKey(box) || (last.form || null) !== (box.form || null)) return;
+    var group = rangeGroup(box);
+    var from = group.indexOf(last);
+    var to = group.indexOf(box);
+    if (from < 0 || to < 0) return;
+    if (window.getSelection) { try { window.getSelection().removeAllRanges(); } catch (err) { /* nothing selected */ } }
+    group.slice(Math.min(from, to), Math.max(from, to) + 1).forEach(function (b) {
+      if (b === box || b.checked === box.checked) return;
+      b.checked = box.checked;
+      b.dispatchEvent(new Event('change', { bubbles: true }));
+    });
   });
 
   document.addEventListener('click', function (e) {
