@@ -246,6 +246,8 @@ final class ShopCatalogue
                 continue;
             }
             $price = self::number($variant['price'] ?? null) ?? $base;
+            // A variant on sale has a "was" price of its own; without one it has the product's.
+            $was = self::number($variant['compare_at_price'] ?? null) ?? self::number($custom['compare_at_price'] ?? null);
             $free = isset($stock[$key]) ? max(0, $stock[$key]['on_hand'] - $stock[$key]['reserved']) : 0;
             $variants[] = [
                 'key' => $key,
@@ -253,6 +255,8 @@ final class ShopCatalogue
                 'sku' => (string)($variant['sku'] ?? ''),
                 'price' => $price,
                 'price_text' => $price === null ? '' : self::money($price, $lang),
+                'was' => $was !== null && $price !== null && $was > $price ? $was : null,
+                'was_text' => $was !== null && $price !== null && $was > $price ? self::money($was, $lang) : '',
                 'image' => (string)($variant['image'] ?? ''),
                 'available' => !$tracked || $backorder || $free > 0,
             ];

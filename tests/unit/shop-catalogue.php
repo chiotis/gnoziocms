@@ -112,7 +112,7 @@ check('the CSS of the tones', [ShopCatalogue::toneStyle($balos['tones']), ShopCa
 $put('ring.md', "title: Lampi Ring\ntranslation_id: aaaa000000000001\ndate: 2026-01-01\ncollections: [balos]\ncustom_fields:\n  price: 125\n  track_stock: true");
 @unlink("$root/content/products/ring.en.md");
 $put('cuff.md', "title: Balos Cuff\ntranslation_id: aaaa000000000002\ndate: 2026-02-01\ncollections: [balos]\ncustom_fields:\n  price: 210\n  compare_at_price: 240\n  hover_image: /uploads/worn.jpg");
-$put('earrings.md', "title: Balos Earrings\ntranslation_id: aaaa000000000003\ndate: 2026-03-01\ncollections: [balos]\ncustom_fields:\n  price: 145\n  options:\n    - { name: Finish, values: \"Gold\\nSilver\" }\n  variants:\n    - { values: Gold, price: 160 }\n    - { values: Silver }\n  option_labels: \"Finish = Φινίρισμα\\nGold = Χρυσό\"\n  track_stock: true\n  details:\n    - { title: Care, text: 'Keep it **dry**.' }\n    - { title: '', text: 'no title' }");
+$put('earrings.md', "title: Balos Earrings\ntranslation_id: aaaa000000000003\ndate: 2026-03-01\ncollections: [balos]\ncustom_fields:\n  price: 145\n  options:\n    - { name: Finish, values: \"Gold\\nSilver\" }\n  variants:\n    - { values: Gold, price: 160 }\n    - { values: Silver, price: 120, compare_at_price: 145 }\n  option_labels: \"Finish = Φινίρισμα\\nGold = Χρυσό\"\n  track_stock: true\n  details:\n    - { title: Care, text: 'Keep it **dry**.' }\n    - { title: '', text: 'no title' }");
 $put('studs.md', "title: Kampos Studs\ntranslation_id: aaaa000000000004\ndate: 2026-04-01\ncollections: [kampos]\ncustom_fields:\n  price: 95.5");
 $put('draft.md', "title: Draft\nstatus: draft\ntranslation_id: aaaa000000000005\ndate: 2026-05-01\ncustom_fields:\n  price: 1");
 $stock = new ShopStock($db);
@@ -132,7 +132,7 @@ check('prices in Greek and English', [ShopCatalogue::money(95.5, 'el'), ShopCata
 check('a tracked product with nothing on hand is sold out', $catalogue->available($content()->find('products', 'ring', 'el')), false);
 $earrings = $catalogue->details($content()->find('products', 'earrings', 'el'), 'el');
 check('options in this language', $earrings['options'], [['index' => 0, 'name' => 'Finish', 'label' => 'Φινίρισμα', 'choices' => [['value' => 'Gold', 'label' => 'Χρυσό'], ['value' => 'Silver', 'label' => 'Silver']]]]);
-check('variants with their own price or the product\'s, and their stock', array_map(static fn(array $v): array => [$v['key'], $v['price_text'], $v['available']], $earrings['variants']), [['gold', '€160', false], ['silver', '€145', true]]);
+check('variants with their own price, "was" price and stock', array_map(static fn(array $v): array => [$v['key'], $v['price_text'], $v['was_text'], $v['available']], $earrings['variants']), [['gold', '€160', '', false], ['silver', '€120', '€145', true]]);
 check('a card says "from" when the variants differ in price', [$earrings['from'], $card['from']], [true, false]);
 check('Details sections without a title are left out', $earrings['details'], [['title' => 'Care', 'text' => 'Keep it **dry**.']]);
 check('the grid block lists products; the page blocks need a product', [count($catalogue->blockData('product-grid', ['source' => 'all', 'limit' => 2], ['lang' => 'el'])['products']), $catalogue->blockData('product-summary', [], ['lang' => 'el'])['_empty']], [2, true]);
@@ -160,7 +160,7 @@ $product = static function (array $graph): ?array {
 $p = $product($structured->forItem($cuff, 'el', 'https://shop.test/products/cuff', false));
 check('a product has a Product with its Offer in euro', [$p['name'] ?? null, $p['offers']['@type'] ?? null, $p['offers']['price'] ?? null, $p['offers']['priceCurrency'] ?? null, $p['offers']['availability'] ?? null, $p['brand']['name'] ?? null], ['Balos Cuff', 'Offer', '210.00', 'EUR', 'https://schema.org/InStock', 'ALALEON']);
 $e = $product($structured->forItem($content()->find('products', 'earrings', 'el'), 'el', 'https://shop.test/products/earrings', false));
-check('variants that differ in price give an AggregateOffer', [$e['offers']['@type'], $e['offers']['lowPrice'], $e['offers']['highPrice']], ['AggregateOffer', '145.00', '160.00']);
+check('variants that differ in price give an AggregateOffer', [$e['offers']['@type'], $e['offers']['lowPrice'], $e['offers']['highPrice']], ['AggregateOffer', '120.00', '160.00']);
 $r = $product($structured->forItem($content()->find('products', 'ring', 'el'), 'el', 'https://shop.test/products/ring', false));
 check('a sold-out product says so', $r['offers']['availability'], 'https://schema.org/OutOfStock');
 $put('free.md', "title: No price\ntranslation_id: aaaa000000000006\n");

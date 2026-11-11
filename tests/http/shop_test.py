@@ -90,7 +90,7 @@ custom_fields:
     - { name: Finish, values: "Gold\\nSilver" }
   variants:
     - { values: Gold, price: 160 }
-    - { values: Silver }
+    - { values: Silver, compare_at_price: 175 }
   details:
     - { title: Care, text: 'Keep it **dry**.' }
 ---
@@ -140,6 +140,7 @@ st, _, page = pub.get('/products/balos-earrings')
 check('the product page opens', st == 200, st)
 check('it shows the pictures, the collection, the name and the price', 'product-gallery' in page and 'Μπάλος' in page and 'class="product-summary-title">Balos Earrings' in page and '€145' in page, page[:300])
 check('the options as choices, with the variant data the script reads', 'value="Gold"' in page and 'value="Silver"' in page and 'data-variants' in page and '"key":"gold"' in page, re.findall(r'data-variants>[^<]*', page))
+check('a variant on sale: its "was" price waits, hidden, for the script to show when it is chosen', re.search(r'<s class="product-was" data-was hidden>', page) is not None and re.search(r'"key":"silver"[^}]*"was":"(?:€|\\u20ac)175"', page) is not None and re.search(r'"key":"gold"[^}]*"was":""', page) is not None, re.findall(r'data-variants>[^<]*', page))
 check('the Details sections with the Accordion styles', 'Keep it <strong>dry</strong>.' in page and 'accordion-item' in page)
 check('more from the same collection, without the product itself', 'Balos Cuff' in page and page.count('class="product-card"') == 1)
 m = re.search(r'<script type="application/ld\+json">(.*?)</script>', page, re.S)

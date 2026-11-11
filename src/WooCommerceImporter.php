@@ -335,12 +335,13 @@ final class WooCommerceImporter
                     $problems[] = 'a variation for "any ' . implode('/', array_keys(array_filter(array_combine($optionNames, $values), static fn(string $v): bool => $v === ''))) . '" is left out; make one per value.';
                     continue;
                 }
-                [$vPrice] = self::prices($v['regular'], $v['sale']);
+                [$vPrice, $vWas] = self::prices($v['regular'], $v['sale']);
                 $combination = implode(' / ', $values);
                 $variants[] = array_filter([
                     'values' => $combination,
                     'sku' => $v['sku'],
                     'price' => $vPrice !== null ? ShopMoney::plain($vPrice) : null,
+                    'compare_at_price' => $vWas !== null ? ShopMoney::plain($vWas) : null,
                     'image' => $v['image'] !== '' ? $this->picture($v['image'], $product['name'] . ' ' . $combination) : null,
                     'weight_g' => $v['grams'],
                 ], static fn(mixed $x): bool => $x !== null && $x !== '');

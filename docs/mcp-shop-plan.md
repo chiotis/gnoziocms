@@ -101,7 +101,7 @@ The connection's policy (Admin › MCP) gets shop limits:
 Each step is a merge and a version of its own.
 
 1. **All field types through MCP** (3.1). Products become fully writable through `update_entry`, except stock. *Built in 0.1.277 (`McpContent::fieldValue`, `tests/http/mcp_fields_test.py`).*
-2. **Sale prices on variants** (3.2), in the admin and on the product page.
+2. **Sale prices on variants** (3.2), in the admin and on the product page. *Built in 0.1.278: the variant's `compare_at_price`, shown when the variant is chosen, in the product feed, and brought from WooCommerce variations on sale.*
 3. **Shop scopes, `shop_info`, product and stock tools, `update_prices`** with the price guard.
 4. **Term tools**, then `archive_product` / `delete_product`.
 5. **Orders and coupons.**

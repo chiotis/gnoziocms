@@ -40,7 +40,7 @@ The type is `themes/default/content-types/products.yaml`. It is a catalogue type
 | Price | `price` (decimal), `compare_at_price` (the "was" price), `tax_class` (standard 24%, reduced 13%, super-reduced 6%, editable in settings) |
 | Identity | `sku`, `barcode` (GTIN, for feeds and structured data), `brand` |
 | Media | `gallery` (it already adds the gallery strip), `hover_image` (the second picture a card shows on hover, as in the design's "still · hover: worn") |
-| Options and variants | `options`: a repeater of up to 3 options (name plus values, e.g. Finish: Gold, Silver). `variants`: a nested repeater with the values, SKU, price override, image and weight. The admin gets a **Generate variants** button. |
+| Options and variants | `options`: a repeater of up to 3 options (name plus values, e.g. Finish: Gold, Silver). `variants`: a nested repeater with the values, SKU, price override, "was" price (empty: the product's), image and weight. The admin gets a **Generate variants** button. |
 | Shipping | `weight_g`, `dimensions`, `ships_separately`, `gift_wrap` (allowed) |
 | Stock | edited in the product editor, but **stored in SQLite** `shop_stock` (per product × variant) so concurrent orders can't oversell. Also `track_stock`, `allow_backorder` and `low_stock_at`. |
 | Digital | `files` (private files, `kind: download`), `download_limit`, `download_days` |

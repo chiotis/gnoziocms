@@ -190,6 +190,11 @@ fields:
         type: decimal
         label: { el: Τιμή (€), en: Price (€) }
         min: 0
+      compare_at_price:
+        type: decimal
+        label: { el: 'Αρχική τιμή (€)', en: 'Was (€)' }
+        min: 0
+        help: { el: 'Κενό: η αρχική τιμή του προϊόντος.', en: 'Empty: the product''s.' }
       image:
         type: image
         label: { el: Φωτογραφία, en: Picture }

@@ -36,7 +36,7 @@ $meta = new SystemMetaRepository($db);
 $put = static function (string $file, string $front) use ($root): void {
     file_put_contents("$root/content/products/$file", "---\n$front\n---\n\nThe long text.\n");
 };
-$put('ring.md', "title: Δαχτυλίδι\nstatus: published\ntranslation_id: ring0000000000001\nmain_image: /uploads/ring.jpg\ncustom_fields:\n  price: '124'\n  compare_at_price: '150'\n  sku: RG-1\n  brand: Maria\n  track_stock: true\n  options:\n    - { name: Χρώμα, values: \"Gold\\nSilver\" }\n  variants:\n    - { values: Gold, price: '130', sku: RG-G, image: /uploads/gold.jpg }\n    - { values: Silver }");
+$put('ring.md', "title: Δαχτυλίδι\nstatus: published\ntranslation_id: ring0000000000001\nmain_image: /uploads/ring.jpg\ncustom_fields:\n  price: '124'\n  compare_at_price: '150'\n  sku: RG-1\n  brand: Maria\n  track_stock: true\n  options:\n    - { name: Χρώμα, values: \"Gold\\nSilver\" }\n  variants:\n    - { values: Gold, price: '130', sku: RG-G, image: /uploads/gold.jpg }\n    - { values: Silver, price: '120', compare_at_price: '135' }");
 $put('charm.md', "title: Charm\nstatus: published\ntranslation_id: charm000000000001\ncustom_fields:\n  price: '30'\n  short_description: A small charm.\n  barcode: '5201234567890'\n  options:\n    - { name: Colour, values: \"Red\\nBlue\" }");
 $put('guide.md', "title: Guide\nstatus: published\ntranslation_id: guide000000000001\ncustom_fields:\n  price: '9'\n  kind: digital");
 $put('draft.md', "title: Draft\nstatus: draft\ntranslation_id: draft000000000001\ncustom_fields:\n  price: '9'");
@@ -76,6 +76,7 @@ $want = [$gold, $silver, 'charm000000000001'];
 sort($want);
 check('physical products only: each variant, and the product with only options as one', $ids, $want);
 check('a variant: its group, title, own price under the "was" price, picture, sku and colour', [$byId[$gold]['item_group_id'], $byId[$gold]['title'], $byId[$gold]['price'], $byId[$gold]['sale_price'], $byId[$gold]['image_link'], $byId[$gold]['mpn'], $byId[$gold]['color']], ['ring0000000000001', 'Δαχτυλίδι - Gold', '150.00 EUR', '130.00 EUR', 'https://shop.example/uploads/gold.jpg', 'RG-G', 'Gold']);
+check('a variant with a "was" price of its own uses it', [$byId[$silver]['price'], $byId[$silver]['sale_price']], ['135.00 EUR', '120.00 EUR']);
 check('a variant with none left is out of stock; the other in stock', [$byId[$silver]['availability'], $byId[$gold]['availability']], ['out of stock', 'in stock']);
 check('brand, condition, category, link', [$byId[$gold]['brand'], $byId[$gold]['condition'], $byId[$gold]['google_product_category'], $byId[$gold]['link']], ['Maria', 'new', '188', 'https://shop.example/products/ring']);
 check('a product of its own: the store as brand, its barcode, short description and price', [$byId['charm000000000001']['brand'], $byId['charm000000000001']['gtin'], $byId['charm000000000001']['description'], $byId['charm000000000001']['price'], isset($byId['charm000000000001']['sale_price'])], ['Aleon', '5201234567890', 'A small charm.', '30.00 EUR', false]);

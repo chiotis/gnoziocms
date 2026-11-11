@@ -20,7 +20,7 @@
       <p class="product-summary-price">
         {% if product.from %}<span class="product-card-from" data-from>{{ t('shop.from', 'from') }}</span> {% endif %}
         <span class="product-price" data-price>{{ product.price_text }}</span>{% if product.plan %} <span class="product-card-from">{{ t('shop.every_' ~ product.plan.interval ~ (product.plan.count > 1 ? 's' : ''), '')|replace({'{n}': product.plan.count}) }}</span>{% endif %}
-        {% if product.was_text %}<s class="product-was"><span class="visually-hidden">{{ t('shop.was', 'was') }}</span> {{ product.was_text }}</s>{% endif %}
+        {% if product.was_text or product.variants|filter(v => v.was_text)|length %}<s class="product-was" data-was{% if not product.was_text %} hidden{% endif %}><span class="visually-hidden">{{ t('shop.was', 'was') }}</span> <span data-was-text>{{ product.was_text }}</span></s>{% endif %}
       </p>
     {% endif %}
     {% if product.short_description %}<p class="product-summary-text">{{ product.short_description|nl2br }}</p>{% endif %}
@@ -62,7 +62,7 @@
     {% if block.note|default('') %}<p class="product-summary-note">{{ block.note }}</p>{% endif %}
     {% if block.show_sku and product.sku %}<p class="product-summary-sku">SKU <span data-sku>{{ product.sku }}</span></p>{% endif %}
     {% if product.variants is not empty %}
-      <script type="application/json" data-variants>{{ product.variants|map(v => {key: v.key, values: v.values, price: v.price_text, sku: v.sku, available: v.available})|json_encode|raw }}</script>
+      <script type="application/json" data-variants>{{ product.variants|map(v => {key: v.key, values: v.values, price: v.price_text, was: v.was_text, sku: v.sku, available: v.available})|json_encode|raw }}</script>
     {% endif %}
   </div>
 </div>
