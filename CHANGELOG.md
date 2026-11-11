@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.290 — 2026-11-11 — A product shows the Look it is part of
+- **Shop:** on a product's page, Shop the look no longer needs the Look picked in the product's Looks. With none picked there, it shows the newest Look that has the product among its pieces. A Look picked in the block or in the product's Looks still comes first.
+
 ## 0.1.289 — 2026-11-11 — Block settings show their defaults
 - **Blocks:** in every block editor (pages, single and archive templates, footer blocks), a setting left at its default looked empty when a block was opened again: a blank number, no choice selected, an unticked box. Saving leaves defaults out of the file, and the panel did not show them. It now shows the default, so what you see is what the page uses. Nothing was lost; saved pages are unchanged.
 
