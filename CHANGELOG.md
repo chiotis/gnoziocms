@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.284 — 2026-11-11 — A filter bar and taxonomy columns in content lists
+- **Admin:** every content list has a filter bar that is always open: search, Status and one dropdown for each taxonomy the type uses (products: Product categories and Collections; posts: Categories and Tags; any custom taxonomy too). Each dropdown takes several values, shows how many entries each term has, and a term takes in the terms below it. The list updates when a dropdown closes, a choice changes, or typing stops.
+- **More filters:** main image (with or without), last updated between two days, author (when entries have one) and, for products, stock (in, low, out or not tracked).
+- The filters in use show as chips you can remove one by one, and stay in the address, so a filtered list can be bookmarked or shared. Bulk actions and "select all" follow them.
+- The product search also looks at the SKU.
+- **Columns:** a list shows a column for each of its taxonomies in use, with the terms of each entry; clicking a term filters the list by it.
+
 ## 0.1.283 — 2026-11-11 — Shift-click in admin lists
 - **Admin:** in the lists of every content type, Media, Redirects, form submissions and taxonomy terms, tick one box and shift-click another to tick (or clear) every row between them. "Select all", the counters and the bulk bars follow.
 
