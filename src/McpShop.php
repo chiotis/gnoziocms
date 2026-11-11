@@ -36,6 +36,7 @@ final class McpShop
         private ?\Closure $deleteEntry = null,
         /** @var (\Closure(): void)|null what visitors see changed: the page cache is cleared */
         private ?\Closure $changed = null,
+        private ?McpShopOrders $orders = null,
     ) {
     }
 
@@ -132,7 +133,7 @@ final class McpShop
                 ], ['product']),
                 'annotations' => ['readOnlyHint' => false, 'destructiveHint' => true, 'idempotentHint' => true, 'openWorldHint' => false],
             ],
-        ];
+        ] + McpShopOrders::definitions();
     }
 
     /**
@@ -190,6 +191,9 @@ final class McpShop
         $unknown = array_diff(array_map('strval', array_keys($args)), $known);
         if ($unknown !== []) {
             throw new \InvalidArgumentException($tool . ' does not take ' . implode(', ', $unknown) . '. It takes: ' . implode(', ', $known) . '.');
+        }
+        if (isset(McpShopOrders::definitions()[$tool])) {
+            return ($this->orders ?? throw new \InvalidArgumentException('Orders and coupons cannot be reached on this site.'))->call($tool, $args, $connection);
         }
         return match ($tool) {
             'shop_info' => $this->info($connection),
