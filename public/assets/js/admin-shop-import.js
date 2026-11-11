@@ -1,5 +1,5 @@
 /*
- * Shop > Import (admin/templates/shop-import.twig): while the shop is read or imported, asks /admin/shop-import?work=1 again and
+ * Shop settings > Import & export (admin/templates/partials/shop-import.twig): while the shop is read or imported, asks /admin/shop-import?work=1 again and
  * again, which works the next slice of the job, and ?status=1 every second for the progress; when the step changes, the screen is
  * drawn again.
  * Buttons are disabled once pressed, so a slow answer does not send a form twice.

@@ -1,12 +1,10 @@
-{% extends '@admin/base.twig' %}
-{% set page_heading = 'Import from WooCommerce' %}
-{% import '@admin/partials/ui.twig' as ui %}
 {#
-  Shop > Import (WooCommerceImport): a WooCommerce shop brought over in three steps. Connect, review what the dry run found, import.
-  Reading and importing are background jobs; admin-shop-import.js polls ?work while one runs, which works it and says how far it is.
+  Shop settings > Import & export (included by shop-settings.twig): the products as a CSV (the content import and export), and a
+  WooCommerce shop brought over in three steps (WooCommerceImport): connect, review what the dry run found, import. Reading and
+  importing are background jobs; admin-shop-import.js asks /admin/shop-import?work and ?status while one runs. The forms post to
+  /admin/shop-import, which comes back to this tab.
 #}
 
-{% block content %}
   {% set btn = 'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium shadow-sm' %}
   {% set primary = btn ~ ' bg-blue-600 text-white hover:bg-blue-700' %}
   {% set secondary = btn ~ ' border border-slate-300 bg-white text-slate-700 hover:bg-slate-50' %}
@@ -20,9 +18,24 @@
   {% set sum = state.summary %}
   {% set step = s in ['idle', 'failed'] ? 1 : (s in ['reading', 'ready'] ? 2 : 3) %}
 
-  {{ ui.flash(message, done == 'ok' ? 'success' : 'error') }}
+  <section class="{{ card }} mb-6" aria-labelledby="imp-csv">
+    <div class="{{ card_head }}"><h2 id="imp-csv" class="text-sm font-semibold text-slate-900">Products as a spreadsheet</h2><span class="text-xs text-slate-400">CSV, one row a product</span></div>
+    <div class="flex flex-wrap items-center gap-3 px-4 py-3">
+      <a class="{{ secondary }}" href="{{ url('admin/export?type=products') }}">
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21V9m0 12 4-4m-4 4-4-4M4 7V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2"/></svg>
+        Export CSV
+      </a>
+      <a class="{{ secondary }}" href="{{ url('admin/import?type=products') }}">
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+        Import CSV
+      </a>
+      <span class="text-xs text-slate-500">Export the products to edit them in a spreadsheet, then import the file back: you see what changes before anything is saved.</span>
+    </div>
+  </section>
 
-  <header class="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
+  <h2 class="mb-2 text-sm font-semibold text-slate-900">From a WooCommerce shop</h2>
+
+  <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
     <p class="max-w-2xl text-xs text-slate-500">Brings a WooCommerce shop's product categories, products with their variants, prices, pictures and stock, and the redirects from its old addresses into this shop. Nothing changes here until you confirm the import, and running it again updates what it brought instead of making copies.</p>
     <ol class="m-0 flex list-none items-center gap-1.5 p-0 text-xs" aria-label="Steps">
       {% for n, name in {1: 'Connect', 2: 'Review', 3: 'Import'} %}
@@ -34,7 +47,7 @@
         </li>
       {% endfor %}
     </ol>
-  </header>
+  </div>
 
   {# ---- 1. Connect #}
   {% if s in ['idle', 'failed'] %}
@@ -63,9 +76,9 @@
               </ol>
             </details>
           </div>
-          {% if languages|length > 1 %}
+          {% if import_languages|length > 1 %}
             <div><label class="{{ label }}" for="imp-lang">Language of the shop's texts</label>
-              <select id="imp-lang" name="lang" class="{{ input }}">{% for l in languages %}<option value="{{ l }}"{% if l == (state.lang ?: languages[0]) %} selected{% endif %}>{{ l|upper }}</option>{% endfor %}</select>
+              <select id="imp-lang" name="lang" class="{{ input }}">{% for l in import_languages %}<option value="{{ l }}"{% if l == (state.lang ?: import_languages[0]) %} selected{% endif %}>{{ l|upper }}</option>{% endfor %}</select>
             </div>
           {% endif %}
         </div>
@@ -233,7 +246,7 @@
       <p class="m-0 font-medium text-slate-900">Next</p>
       <ul class="m-0 grid gap-1 pl-4 text-slate-700">
         <li>Look the products over in <a class="text-blue-700 hover:underline" href="{{ url('admin/content?type=products') }}">Products</a> and their <a class="text-blue-700 hover:underline" href="{{ url('admin/taxonomies?taxonomy=product-categories') }}">Product categories</a>.</li>
-        <li>Set the payments and shipping in <a class="text-blue-700 hover:underline" href="{{ url('admin/shop-settings') }}">Shop settings</a>.</li>
+        <li>Set the <a class="text-blue-700 hover:underline" href="{{ url('admin/shop-settings?tab=payments') }}">payments</a> and <a class="text-blue-700 hover:underline" href="{{ url('admin/shop-settings?tab=shipping') }}">shipping</a>.</li>
         {% if state.options.redirects %}<li>The redirects are in <a class="text-blue-700 hover:underline" href="{{ url('admin/redirects') }}">Redirects</a>. They work once the shop's domain points at this site.</li>{% endif %}
         <li>Changed something in WooCommerce? Import again: it updates what it brought.</li>
       </ul>
@@ -245,4 +258,3 @@
   {% endif %}
 
   <script src="{{ asset('js/admin-shop-import.js') }}" defer></script>
-{% endblock %}

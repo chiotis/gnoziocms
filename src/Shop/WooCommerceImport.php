@@ -8,7 +8,7 @@ use GnozioCMS\JobRunner;
 use GnozioCMS\WooCommerceImporter;
 
 /**
- * Shop > Import: the WooCommerce import (WooCommerceImporter) as three steps on a screen instead of a command. Connect (the shop's
+ * Shop settings > Import & export: the WooCommerce import (WooCommerceImporter) as three steps on a screen instead of a command. Connect (the shop's
  * address, its read keys, the customers' CSV), review what the dry run found, import. Reading the shop and fetching its pictures
  * take minutes, so both are background jobs that the screen works while it is open (and cron when it is not): the pictures go a
  * few at a time, each job queuing the next, so no request runs into a time limit.

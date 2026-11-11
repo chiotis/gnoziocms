@@ -29,6 +29,8 @@
 
     <div class="flex flex-wrap items-center gap-2">
       {{ ui.filter_button('contentFilter', filters_active) }}
+      {# The products' CSV is in Shop settings > Import & export, beside the WooCommerce import. #}
+      {% if current_type != 'products' %}
       <a class="{{ btn_secondary }}" href="{{ url('admin/import?type=' ~ current_type) }}">
         <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
         Import CSV
@@ -37,6 +39,7 @@
         <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21V9m0 12 4-4m-4 4-4-4M4 7V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2"/></svg>
         Export CSV
       </a>
+      {% endif %}
       <a class="{{ btn_primary }}" href="{{ url('admin/new?type=' ~ current_type ~ '&lang=' ~ lang) }}">
         <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>
         New {{ singular|title }}
