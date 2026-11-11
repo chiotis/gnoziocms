@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.283 — 2026-11-11 — Shift-click in admin lists
+- **Admin:** in the lists of every content type, Media, Redirects, form submissions and taxonomy terms, tick one box and shift-click another to tick (or clear) every row between them. "Select all", the counters and the bulk bars follow.
+
 ## 0.1.282 — 2026-11-11 — Sales summary through MCP
 - **MCP:** `sales_summary` tells an assistant what the shop sold between two days: orders, units, sales, discounts, shipping, VAT, refunds and the average order, per day, week or month, and the best sellers by product, variant, category or collection. Only paid orders count unless asked otherwise, and no customer is named.
 - Step 6 of `docs/mcp-shop-plan.md`; what is left is a real run on the demo shop.
