@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.275 — 2026-11-11 — Drafts only on their own page
+- Someone signed in to the admin no longer sees drafts in the site's lists: type archives such as /products, search, product grids, latest entries, looks and maps show what visitors see. A draft still opens at its own address and in the editor's Preview.
+
 ## 0.1.274 — 2026-11-11 — Removed terms leave the entries too
 - **Taxonomies:** removing a term (a category, a tag, a product category, any taxonomy's) and saving now also takes it off every entry filed under it, in every content type and language, so the site stops showing it. Only that field of each entry changes.
 - Terms removed before this release are named on their taxonomy's screen, with **Take them off the entries**.
