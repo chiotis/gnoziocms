@@ -222,6 +222,9 @@ $book = $catalogue->product('book0000000000001', 'el');
 $lookOf = static fn(string $id): array => $catalogue->blockData('shop-the-look', ['look' => $id], ['item' => $book, 'lang' => 'el']);
 check('a look of only this product still shows', [$lookOf('lookown000000001')['_empty'], count($lookOf('lookown000000001')['look']['pieces'])], [false, 1]);
 check('with others, it lists the others', array_column($lookOf('looktwo000000001')['look']['pieces'], 'id'), ['charm000000000001']);
+$charmItem = $catalogue->product('charm000000000001', 'el');
+check('with no Look picked, a product shows the Look it is a piece of', array_column($catalogue->blockData('shop-the-look', [], ['item' => $charmItem, 'lang' => 'el'])['look']['pieces'] ?? [], 'id'), ['book0000000000001']);
+check('a product in no Look shows none', $catalogue->blockData('shop-the-look', [], ['item' => $catalogue->product('ring0000000000001', 'el'), 'lang' => 'el'])['_empty'], true);
 
 echo $fail === 0 ? "ALL PASSED\n" : "$fail FAILED\n";
 exit($fail === 0 ? 0 : 1);
