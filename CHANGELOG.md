@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.279 — 2026-11-11 — The shop through MCP
+- **MCP:** Claude, ChatGPT and other assistants can work on the shop: `shop_info`, `list_products` (with filters for category, collection, stock, sale and more) and `get_product` read it; `update_prices` changes up to 200 prices at once (a price, a "was" price, a sale started or ended, per product or variant), showing what would change first and saving only when told; `set_stock` sets or adjusts stock. Products are made and changed with `create_entry` and `update_entry`.
+- Two new permissions, **Shop: read** and **Shop: prices and stock**, are unticked until you tick them, on the consent screen and in Admin > MCP. The tools appear only while the shop is on.
+- Each connection's **Rules** gain two limits: how far a price may move in one change (50% by default, also when a product is changed with `update_entry`) and how many shop changes it may make in 24 hours (500).
+- Step 3 of `docs/mcp-shop-plan.md`.
+
 ## 0.1.278 — 2026-11-11 — Variants on sale
 - **Shop:** each variant has a **Was (€)** price of its own, so one finish or size can be put on sale alone. Left empty, the variant has the product's. On the product page the old price shows, struck through, when a variant on sale is chosen, and hides for one that is not.
 - The product feed (Google, Meta) gives each variant its own "was" price and sale price.
