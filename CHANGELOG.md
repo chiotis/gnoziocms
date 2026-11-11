@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.267 — 2026-11-11 — Two tests brought up to date
+- The analytics test ran its clean-up at a date counted from a fixed day, so from 11 November the visits of the day it ran were newer and stayed; it now counts from the day it runs.
+- The permission check lists the Shop manager (0.1.263) among the built-in roles, with a column of what it may open: the dashboard, content, media, taxonomies, Analytics, Shop settings and its own profile. No change to the CMS itself.
+
 ## 0.1.266 — 2026-11-11 — Preferred source on Google
 - **SEO › Social › Preferred source on Google:** a button that lets readers signed in to Google pick the site as a preferred source, so its articles show up more often for them in Top Stories. Off by default; once on, a card after the article and a link in the footer, and a chip above the title when chosen, on the content types chosen (Posts when none is). A plain link to Google's page for the site's domain, with no script of Google's; a site with no domain of its own (in a folder, no address, a local name) shows none, and the screen says why.
 - **Preferred source on Google block** (Convert): the button for an About or "Follow us" page, as a card with a line of text or a button alone, whether the setting is on or off.
