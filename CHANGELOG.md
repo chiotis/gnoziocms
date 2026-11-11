@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.276 — 2026-11-11 — Tests follow the last two releases
+- The search, geo, relations and taxonomies tests now expect what 0.1.274 and 0.1.275 do: lists, search and maps show someone signed in what visitors see, and a removed term is taken off its entries. No change to the site.
+
 ## 0.1.275 — 2026-11-11 — Drafts only on their own page
 - Someone signed in to the admin no longer sees drafts in the site's lists: type archives such as /products, search, product grids, latest entries, looks and maps show what visitors see. A draft still opens at its own address and in the editor's Preview.
 
