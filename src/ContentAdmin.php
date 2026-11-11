@@ -375,8 +375,24 @@ final class ContentAdmin
         if (!$isPost || !$chosen['valid']) {
             return $back;
         }
-        if (!in_array($action, ['publish', 'draft', 'delete'], true) || $slugs === []) {
+        if ((!in_array($action, ['publish', 'draft', 'delete'], true) && !str_starts_with($action, 'term_')) || $slugs === []) {
             return $back . '&' . http_build_query(['bulk' => 'fail', 'bulk_msg' => 'Choose a bulk action and select at least one item.']);
+        }
+        // Add to a term, or remove from one: term_add:<taxonomy>:<term id> or term_remove:…
+        if (str_starts_with($action, 'term_')) {
+            [$kind, $taxonomy, $term] = array_pad(explode(':', $action, 3), 3, '');
+            $add = $kind === 'term_add';
+            $problem = ($kind === 'term_add' || $kind === 'term_remove') ? $this->termProblem($type, $taxonomy, $term) : 'Choose a bulk action.';
+            if ($problem !== null) {
+                return $back . '&' . http_build_query(['bulk' => 'fail', 'bulk_msg' => $problem]);
+            }
+            $result = $this->fileUnderTerm($type, $lang, $slugs, $taxonomy, $term, $add, $actor);
+            $label = ($this->taxonomies)()->label($taxonomy, $term, $lang) ?: $term;
+            $n = count($result['changed']);
+            $message = $n . ' item' . ($n === 1 ? '' : 's') . ($add ? ' added to ' : ' taken out of ') . $label . '.'
+                . ($result['unchanged'] !== [] ? ' ' . count($result['unchanged']) . ($add ? ' already were in it.' : ' were not in it.') : '')
+                . ($result['skipped'] !== [] ? ' ' . count($result['skipped']) . ' skipped.' : '');
+            return $back . '&' . http_build_query(['bulk' => $n > 0 || $result['unchanged'] !== [] ? 'ok' : 'fail', 'bulk_msg' => $message]);
         }
 
         $paths = new ContentPaths($settings);
@@ -649,6 +665,76 @@ final class ContentAdmin
         $this->revisions->capture($type, $slug, $lang, $payload, 'save', $actor);
         $this->reindex($type, $path);
         return 'set';
+    }
+
+    /** Why entries of a type cannot be filed under a term of a taxonomy; null when they can. */
+    public function termProblem(string $type, string $taxonomy, string $term): ?string
+    {
+        $taxonomies = ($this->taxonomies)();
+        if ($type === 'pages' || $type === 'forms' || !in_array($taxonomy, $taxonomies->names($type), true)) {
+            $names = $type === 'pages' || $type === 'forms' ? [] : $taxonomies->names($type);
+            return ucfirst($type) . ' are not filed under "' . $taxonomy . '"' . ($names !== [] ? ' (they can be: ' . implode(', ', $names) . ').' : '.');
+        }
+        if (!in_array($term, array_column($taxonomies->load($taxonomy)['terms'], 'id'), true)) {
+            return 'There is no "' . $term . '" in ' . $taxonomy . '.';
+        }
+        return null;
+    }
+
+    /**
+     * Adds entries of one language to a term, keeping the other terms they have under that taxonomy, or takes them out of it. Only
+     * that field of each file changes; the history keeps the text before. The language's own files: the editor keeps an entry's
+     * terms per language too. Check the term with termProblem first.
+     *
+     * @param string[] $slugs
+     * @return array{changed: list<string>, unchanged: list<string>, skipped: list<string>}
+     */
+    public function fileUnderTerm(string $type, string $lang, array $slugs, string $taxonomy, string $term, bool $add, string $actor): array
+    {
+        $result = ['changed' => [], 'unchanged' => [], 'skipped' => []];
+        foreach (array_values(array_unique($slugs)) as $slug) {
+            $path = $this->path($type, $slug, $lang);
+            if (!is_file($path)) {
+                $result['skipped'][] = $slug;
+                continue;
+            }
+            [$frontmatter, $body] = FrontMatter::split((string)file_get_contents($path));
+            try {
+                $meta = $frontmatter !== '' ? (Yaml::parse($frontmatter) ?: []) : [];
+            } catch (\Throwable) {
+                $meta = null;
+            }
+            if (!is_array($meta)) {
+                $result['skipped'][] = $slug;
+                continue;
+            }
+            $terms = Format::list($meta[$taxonomy] ?? null);
+            $has = in_array($term, $terms, true);
+            if ($has === $add) {
+                $result['unchanged'][] = $slug;
+                continue;
+            }
+            $terms = $add ? [...$terms, $term] : array_values(array_filter($terms, static fn(string $t): bool => $t !== $term));
+            if ($terms === []) {
+                unset($meta[$taxonomy]);
+            } else {
+                $meta[$taxonomy] = $terms;
+            }
+            $body = preg_replace('/\A\R/', '', $body) ?? $body;
+            $this->revisions->baseline($type, $slug, $lang, $path, $actor);
+            $payload = "---\n" . trim(Yaml::dump($meta, 10, 2, Yaml::DUMP_MULTI_LINE_LITERAL_BLOCK)) . "\n---\n\n" . rtrim($body) . "\n";
+            file_put_contents($path, $payload);
+            $this->revisions->capture($type, $slug, $lang, $payload, 'save', $actor);
+            $this->reindex($type, $path);
+            $result['changed'][] = $slug;
+        }
+        if ($result['changed'] !== []) {
+            $this->content->forget();
+            ($this->log)('content.bulk_terms', 'info', $type, $lang, ($add ? 'Bulk added to ' : 'Bulk taken out of ') . $taxonomy . ': ' . $term . '.', [
+                'type' => $type, 'lang' => $lang, 'taxonomy' => $taxonomy, 'term' => $term, 'slugs' => $result['changed'], 'by' => $actor,
+            ]);
+        }
+        return $result;
     }
 
     private function path(string $type, string $slug, string $lang): string

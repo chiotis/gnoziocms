@@ -58,6 +58,7 @@ final class McpContent
         private ?\Closure $requestPicture = null,
         private ?\Closure $pictureState = null,
         private ?Relations $relations = null,
+        private ?ContentAdmin $admin = null,
     ) {
     }
 
@@ -176,6 +177,97 @@ final class McpContent
                 ], ['type', 'slug']),
                 'annotations' => ['readOnlyHint' => false, 'destructiveHint' => true, 'openWorldHint' => true],
             ],
+        ] + self::batchDefinitions();
+    }
+
+    public const MAX_FILE_ENTRIES = 500;
+
+    /** file_entries: entries filed under a term, or taken out of it, many at once. @return array<string, array<string, mixed>> */
+    private static function batchDefinitions(): array
+    {
+        return [
+            'file_entries' => [
+                'scopes' => [McpOAuth::SCOPE_WRITE, McpOAuth::SCOPE_PUBLISH, McpOAuth::SCOPE_SHOP_WRITE], 'permission' => 'content.manage', 'title' => 'File entries under a term',
+                'description' => 'Adds up to ' . self::MAX_FILE_ENTRIES . ' entries of one type and language to a term of a taxonomy (their other terms stay), or takes them out of it, in one call. '
+                    . 'Every entry is checked first; nothing changes while one is wrong. Changing published entries needs content:publish, except products under the shop\'s '
+                    . 'collections and product categories, which shop:write may change. An entry\'s terms are kept per language, as in the admin.',
+                'inputSchema' => ['type' => 'object', 'properties' => [
+                    'type' => ['type' => 'string', 'description' => 'The content type (see site_info).'],
+                    'lang' => ['type' => 'string', 'description' => 'The language of the entries; the default when left out.'],
+                    'entries' => ['type' => 'array', 'minItems' => 1, 'maxItems' => self::MAX_FILE_ENTRIES, 'items' => ['type' => 'string'], 'description' => 'Their addresses (slugs), as list_entries or list_products gives them.'],
+                    'taxonomy' => ['type' => 'string', 'description' => 'The taxonomy (see site_info).'],
+                    'term' => ['type' => 'string', 'description' => 'The term id (list_terms or shop_info).'],
+                    'action' => ['type' => 'string', 'enum' => ['add', 'remove'], 'default' => 'add'],
+                ], 'required' => ['type', 'entries', 'taxonomy', 'term'], 'additionalProperties' => false],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'idempotentHint' => true, 'openWorldHint' => false],
+            ],
+        ];
+    }
+
+    /** @param array<string, mixed> $args @param array<string, mixed> $connection @return array<string, mixed> */
+    private function fileEntries(array $args, array $connection): array
+    {
+        if ($this->admin === null) {
+            throw new \InvalidArgumentException('Entries cannot be filed in bulk on this site.');
+        }
+        $type = $this->type($args['type'] ?? null);
+        $lang = isset($args['lang']) ? $this->lang($args['lang']) : $this->defaultLang();
+        $taxonomy = (string)($args['taxonomy'] ?? '');
+        $term = (string)($args['term'] ?? '');
+        $add = ($args['action'] ?? 'add') !== 'remove';
+        $slugs = is_array($args['entries'] ?? null) && array_is_list($args['entries']) ? array_values(array_unique(array_map(static fn(mixed $s): string => (string)$s, $args['entries']))) : [];
+        $problems = [];
+        if ($slugs === [] || count($slugs) > self::MAX_FILE_ENTRIES) {
+            $problems[] = 'entries must be a list of 1 to ' . self::MAX_FILE_ENTRIES . ' addresses.';
+        }
+        if (($problem = $this->admin->termProblem($type, $taxonomy, $term)) !== null) {
+            $problems[] = $problem . ' list_terms gives the ids.';
+        }
+        $policy = McpStore::policy($connection);
+        $scope = (string)$connection['scope'];
+        $shopFiling = $type === Shop\Shop::TYPE && in_array($taxonomy, McpShop::TAXONOMIES, true) && McpOAuth::allows($scope, [McpOAuth::SCOPE_SHOP_WRITE]);
+        if (!$shopFiling && !McpOAuth::allows($scope, [McpOAuth::SCOPE_WRITE, McpOAuth::SCOPE_PUBLISH])) {
+            $problems[] = 'Filing ' . $type . ' under ' . $taxonomy . ' needs content:write' . ($type === Shop\Shop::TYPE ? ' (shop:write files products only under collections and product categories).' : '.');
+        }
+        if (!$shopFiling && $policy['types'] !== [] && !in_array($type, $policy['types'], true)) {
+            $problems[] = 'This connection may not write ' . $type . ' (it may write: ' . implode(', ', $policy['types']) . ').';
+        }
+        if ($policy['languages'] !== [] && !in_array($lang, $policy['languages'], true)) {
+            $problems[] = 'This connection may not write in ' . $lang . '.';
+        }
+        $missing = [];
+        $published = 0;
+        foreach ($slugs as $slug) {
+            $item = $this->content->find($type, Slug::plain($slug), $lang, true, false);
+            if ($item === null || $item->slug !== $slug) {
+                $missing[] = $slug;
+            } elseif ($this->statusOf($item) !== 'draft') {
+                $published++;
+            }
+        }
+        if ($missing !== []) {
+            $problems[] = 'There is no ' . $type . ' in ' . $lang . ' at: ' . implode(', ', array_slice($missing, 0, 20)) . (count($missing) > 20 ? ' and ' . (count($missing) - 20) . ' more' : '') . '.';
+        }
+        if ($published > 0 && !$shopFiling && !McpOAuth::allows($scope, [McpOAuth::SCOPE_PUBLISH])) {
+            $problems[] = $published . ' of them are published; changing them needs content:publish.';
+        }
+        if ($shopFiling && ($limit = $this->store->shopLimitProblem($connection, count($slugs))) !== null) {
+            $problems[] = $limit;
+        }
+        if ($problems !== []) {
+            throw new \InvalidArgumentException(implode("\n", $problems));
+        }
+        $result = $this->admin->fileUnderTerm($type, $lang, $slugs, $taxonomy, $term, $add, (string)$connection['username'] . ' (MCP: ' . $connection['name'] . ')');
+        if ($shopFiling) {
+            $this->store->recordShopChanges((int)$connection['id'], count($result['changed']));
+        }
+        return [
+            'action' => $add ? 'add' : 'remove',
+            'taxonomy' => $taxonomy,
+            'term' => $term,
+            'changed' => $result['changed'],
+            ($add ? 'already_filed' : 'not_filed') => $result['unchanged'],
+            'skipped' => $result['skipped'],
         ];
     }
 
@@ -194,6 +286,7 @@ final class McpContent
             'update_entry' => $this->update($args, $connection),
             'add_image_from_url' => $this->addImage($args, $connection),
             'generate_main_image' => $this->generatePicture($args, $connection),
+            'file_entries' => $this->fileEntries($args, $connection),
         };
     }
 

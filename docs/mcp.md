@@ -61,6 +61,7 @@ A tool needs one of its scopes and, on every call, the permission it asks of the
 | `validate_entry` | write | the arguments of `create_entry`, checked, nothing saved |
 | `create_entry` | write | a new entry; `status` (draft, published, scheduled with `publish_at`) is required; `source_key` returns the entry made before for the same source; `translation_of` makes it a translation |
 | `update_entry` | write | changes what is given and keeps the rest; `expected_updated_at` refuses a change made meanwhile |
+| `file_entries` | write | files up to 500 entries of one type and language under a term (their other terms stay) or takes them out of it, in one call; every entry is checked first. Published entries need `content:publish`; `shop:write` alone may file products under collections and product categories |
 | `add_image_from_url` | media | fetches a picture from a public address (`url`) or a file from the chat (`file`) into the media library, with its alt text, and gives its address for `main_image` or the body |
 | `generate_main_image` | media | has the site make the entry's main picture in its own house style (Manage > AI publishing) and set it as `main_image`, in the background; takes `brief` (the subject, no style words) and `replace`. `get_entry` shows `image_status` and `image_brief`. Needs an OpenAI key in AI publishing |
 
