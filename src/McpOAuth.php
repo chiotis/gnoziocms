@@ -16,6 +16,10 @@ final class McpOAuth
     public const SCOPE_WRITE = 'content:write';
     public const SCOPE_PUBLISH = 'content:publish';
     public const SCOPE_MEDIA = 'media:write';
+    public const SCOPE_SHOP_READ = 'shop:read';
+    public const SCOPE_SHOP_WRITE = 'shop:write';
+    /** Scopes a person ticks on purpose: unticked on the consent screen and in Admin > MCP until then. */
+    public const OFF_BY_DEFAULT = [self::SCOPE_SHOP_READ, self::SCOPE_SHOP_WRITE];
 
     public const AUTHORIZE_PATH = '/admin/mcp-authorize';
     public const TOKEN_PATH = '/_mcp/token';
@@ -42,6 +46,8 @@ final class McpOAuth
             self::SCOPE_WRITE => 'Write and edit drafts and scheduled entries',
             self::SCOPE_PUBLISH => 'Publish, schedule and change published entries',
             self::SCOPE_MEDIA => 'Add pictures to the media library',
+            self::SCOPE_SHOP_READ => 'Read the shop: products with their prices and stock',
+            self::SCOPE_SHOP_WRITE => 'Change prices, sales and stock in the shop',
         ];
     }
 

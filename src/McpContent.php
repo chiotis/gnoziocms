@@ -14,7 +14,7 @@ use Symfony\Component\Yaml\Yaml;
  */
 final class McpContent
 {
-    private const STATUSES = ['draft', ScheduledPublishing::STATUS, 'published'];
+    public const STATUSES = ['draft', ScheduledPublishing::STATUS, 'published'];
     /** Field kinds a job can write; the others (lists, relations, galleries) are kept as they are. */
     private const WRITABLE_FIELDS = ['text', 'textarea', 'markdown', 'number', 'decimal', 'date', 'select', 'toggle', 'url', 'email', 'color', 'image', 'gallery', 'repeater', 'relation'];
     /** What a field of each kind takes, for site_info. */
@@ -360,7 +360,25 @@ final class McpContent
      * @param array<string, mixed> $connection
      * @return array<string, mixed>
      */
-    private function write(array $args, array $connection, ?ContentItem $existing, bool $dryRun): array
+    /**
+     * Changes fields of an entry that McpShop has checked itself (a product's prices), through the same save as update_entry:
+     * the history, the cache and the translations that share the fields. Changing a published product's price is the shop's
+     * work, so it does not need content:publish; its status stays as it is.
+     *
+     * @param array<string, mixed> $fields
+     * @param array<string, mixed> $connection
+     * @return array<string, mixed>
+     */
+    public function changeFields(ContentItem $item, array $fields, array $connection): array
+    {
+        $connection['scope'] = trim((string)$connection['scope'] . ' ' . McpOAuth::SCOPE_WRITE . ' ' . McpOAuth::SCOPE_PUBLISH);
+        return $this->write([], $connection, $item, false, $fields);
+    }
+
+    /**
+     * @param array<string, mixed> $trusted fields set as they are, already checked by the caller
+     */
+    private function write(array $args, array $connection, ?ContentItem $existing, bool $dryRun, array $trusted = []): array
     {
         $policy = McpStore::policy($connection);
         $type = $existing?->type ?? $this->type($args['type'] ?? null);
@@ -457,6 +475,15 @@ final class McpContent
                     $custom[$key] = $clean;
                 }
             }
+        }
+
+        foreach ($trusted as $key => $value) {
+            // Kept in the shape the admin keeps it: a row with every field of its kind, in their order.
+            $custom[$key] = isset($declared[$key]) ? FieldSchema::clean($declared[$key], $value) : $value;
+        }
+        // However a product's price is changed, it moves at most as far as the connection allows in one change.
+        if ($existing !== null && $type === Shop\Shop::TYPE) {
+            $problems = array_merge($problems, McpShop::priceProblems(is_array($meta['custom_fields'] ?? null) ? $meta['custom_fields'] : [], $custom, $policy['price_limit']));
         }
 
         $mainImage = null;

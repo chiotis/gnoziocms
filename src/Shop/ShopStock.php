@@ -126,6 +126,21 @@ final class ShopStock
         }
     }
 
+    /**
+     * Adds to or takes from what is on hand (goods came in, a piece broke), in one statement so an order placed meanwhile is not
+     * lost; never below zero or above MAX. A variant without a row yet starts from zero.
+     */
+    public function adjust(string $productId, string $variantKey, int $delta): void
+    {
+        if (!$this->database->isAvailable() || $productId === '' || $delta === 0) {
+            return;
+        }
+        $this->pdo()->prepare(
+            'INSERT INTO shop_stock (product_id, variant_key, on_hand, reserved, updated_at) VALUES (:id, :key, MAX(0, MIN(:max, CAST(:delta AS INTEGER))), 0, :now)
+             ON CONFLICT (product_id, variant_key) DO UPDATE SET on_hand = MAX(0, MIN(:max2, on_hand + CAST(:delta2 AS INTEGER))), updated_at = excluded.updated_at'
+        )->execute(['id' => $productId, 'key' => $variantKey, 'delta' => $delta, 'delta2' => $delta, 'max' => self::MAX, 'max2' => self::MAX, 'now' => time()]);
+    }
+
     /** Holds pieces for an order waiting to be paid; false (nothing held) when fewer are free. */
     public function reserve(string $productId, string $variantKey, int $quantity): bool
     {

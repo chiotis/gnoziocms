@@ -39,6 +39,10 @@ On the consent screen you choose whom the connection **acts as** (yourself, or a
 | `content:write` | write and edit drafts and scheduled entries |
 | `content:publish` | publish, schedule and change published entries |
 | `media:write` | add pictures to the media library |
+| `shop:read` | read the shop: products with their prices, variants and stock (while the shop is on) |
+| `shop:write` | change prices, sales and stock (while the shop is on) |
+
+The shop scopes are unticked on the consent screen and in *Make a token by hand*: a person gives them on purpose.
 
 A tool needs one of its scopes and, on every call, the permission it asks of the account's role at that moment (a role that loses `content.manage` takes it from its connections at once).
 
@@ -58,7 +62,18 @@ A tool needs one of its scopes and, on every call, the permission it asks of the
 | `add_image_from_url` | media | fetches a picture from a public address (`url`) or a file from the chat (`file`) into the media library, with its alt text, and gives its address for `main_image` or the body |
 | `generate_main_image` | media | has the site make the entry's main picture in its own house style (Manage > AI publishing) and set it as `main_image`, in the background; takes `brief` (the subject, no style words) and `replace`. `get_entry` shows `image_status` and `image_brief`. Needs an OpenAI key in AI publishing |
 
+| `shop_info` | shop | the currency and VAT rates, a product's fields, the shop's taxonomies with their term ids, and the connection's shop limits (how far a price may move, changes left) |
+| `list_products` | shop | products, drafts included, with price, "was" price, sale, variants and stock; filters: category, collection, status, kind, words in title or SKU, stock (out, low, in), on sale; paged |
+| `get_product` | shop | one product: what `list_products` gives, plus its entry as `get_entry` gives it, in the language asked |
+| `update_prices` | shop write | up to 200 changes: `price` and/or `compare_at_price`, `sale_price` (starts a sale: the current price becomes the "was" price), or `end_sale`; per product or per variant. `dry_run` is the default and returns the table of what would change; `dry_run: false` saves it |
+| `set_stock` | shop write | up to 200 changes: `on_hand`, or `adjust` (+/-, in one statement, so an order placed meanwhile is not lost); a product with variants needs the variant; `dry_run` optional |
+
 The read tools need `content.manage` on the account (they show drafts). Writing needs `content.manage`; published and scheduled entries, and changing them, need `content:publish` too. `add_image_from_url` and `generate_main_image` need `media:write` and `media.manage`; `create_entry` and `update_entry` take `image_brief`, the subject a picture made by the site will show; `main_image` takes a picture of the library (one added this way, or any other).
+
+**The shop** (`src/McpShop.php`, `docs/mcp-shop-plan.md`). Its tools are listed only while the shop is on, and need `content.manage` like the product editor. Products themselves are entries of the type `products`, made and changed with `create_entry` and `update_entry`; `update_prices` and `set_stock` are the batch tools. Prices and stock are written as the admin writes them: the history keeps each change, prices reach every translation, and a published product's price can change without `content:publish`. Every problem in a batch is named at once and nothing is saved while there is one. Two rules of the connection (Admin > MCP, shown with `shop:write`) hold whatever the job asks:
+
+- **Price limit:** a price (the product's or a variant's) may move at most this far in one change, 50% by default; 0 means no limit. It applies to `update_entry` too. A price set where there was none is not a move.
+- **Shop changes in 24 hours:** each product whose prices change and each row of stock set counts; 500 by default.
 
 **Pictures from an address** (`src/SafeHttp.php`). The address is someone else's choice, so it never reaches the site's own network: http or https on ports 80 and 443 only, no name and password in it, every address its host resolves to must be public (private, loopback, link-local, carrier-grade NAT, documentation, multicast and reserved ranges are refused, IPv6 too), the connection goes to the very address that was checked, at most 3 redirects, each checked the same way, no cookies, 10 MB and 15 seconds. What arrives is kept only if its first bytes are a JPEG, PNG, WebP, GIF or AVIF the site takes, and only if the storage limit leaves room. The picture's id is its fingerprint, so the same picture fetched again (from any address) is the one already kept. Alt text is required; the uploader is the account and the connection.
 

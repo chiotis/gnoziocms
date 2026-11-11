@@ -6,7 +6,7 @@
   {% set btn = 'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium shadow-sm' %}
   {% set small_btn = 'rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50' %}
   {% set input_class = 'block w-full rounded-md border border-slate-300 px-2.5 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500' %}
-  {% set scope_names = {'content:read': 'Read', 'content:write': 'Write drafts', 'content:publish': 'Publish', 'media:write': 'Pictures'} %}
+  {% set scope_names = {'content:read': 'Read', 'content:write': 'Write drafts', 'content:publish': 'Publish', 'media:write': 'Pictures', 'shop:read': 'Shop: read', 'shop:write': 'Shop: prices and stock'} %}
 
   {{ ui.flash(message, done == 'ok' ? 'success' : 'error') }}
 
@@ -84,6 +84,10 @@
                     <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
                       <label class="block text-xs"><span class="mb-0.5 block font-medium text-slate-700">Publications in 24 h (0: no limit)</span><input type="number" name="daily_limit" value="{{ c.policy.daily_limit }}" min="0" max="500" class="{{ input_class }}"></label>
                       <label class="block text-xs sm:col-span-2"><span class="mb-0.5 block font-medium text-slate-700">Byline when the job gives none</span><input type="text" name="byline" value="{{ c.policy.byline }}" maxlength="120" placeholder="e.g. Newsroom" class="{{ input_class }}"></label>
+                      {% if 'shop:write' in c.scopes %}
+                        <label class="block text-xs"><span class="mb-0.5 block font-medium text-slate-700">Most a price may move, % (0: no limit)</span><input type="number" name="price_limit" value="{{ c.policy.price_limit }}" min="0" max="1000" class="{{ input_class }}"></label>
+                        <label class="block text-xs"><span class="mb-0.5 block font-medium text-slate-700">Shop changes in 24 h (0: no limit)</span><input type="number" name="shop_limit" value="{{ c.policy.shop_limit }}" min="0" max="10000" class="{{ input_class }}"></label>
+                      {% endif %}
                     </div>
                     <button type="submit" class="{{ small_btn }}">Save rules</button>
                   </form>
@@ -122,7 +126,7 @@
         </div>
         <fieldset class="flex flex-wrap gap-2">
           {% for key, text in scopes %}
-            <label class="inline-flex items-center gap-1.5 rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-700" title="{{ text }}"><input type="checkbox" name="scopes[]" value="{{ key }}" checked class="h-3.5 w-3.5 rounded border-slate-300">{{ scope_names[key] }}</label>
+            <label class="inline-flex items-center gap-1.5 rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-700" title="{{ text }}"><input type="checkbox" name="scopes[]" value="{{ key }}"{% if key not in scopes_off|default([]) %} checked{% endif %} class="h-3.5 w-3.5 rounded border-slate-300">{{ scope_names[key] }}</label>
           {% endfor %}
         </fieldset>
         <button type="submit" class="{{ btn }} bg-blue-600 text-white hover:bg-blue-700">Make token</button>

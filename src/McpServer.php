@@ -28,6 +28,8 @@ final class McpServer
         private \Closure $siteInfo,
         private \Closure $log,
         private ?\Closure $content = null,
+        /** @var (\Closure(): ?McpShop)|null the shop's tools; null from the closure while the shop is off */
+        private ?\Closure $shop = null,
     ) {
     }
 
@@ -118,7 +120,7 @@ final class McpServer
         $tools = [];
         foreach (self::definitions() as $name => $tool) {
             if ($this->mayUse($tool, $connection)) {
-                $tools[] = ['name' => $name] + array_diff_key($tool, ['scopes' => 1, 'permission' => 1]);
+                $tools[] = ['name' => $name] + array_diff_key($tool, ['scopes' => 1, 'permission' => 1, 'shop' => 1]);
             }
         }
         return $tools;
@@ -141,7 +143,11 @@ final class McpServer
             if (!$this->mayUse($tool, $connection)) {
                 throw new \InvalidArgumentException('This connection may not use ' . $name . '.');
             }
-            $data = $name === 'site_info' ? ($this->siteInfo)($connection) : ($this->content ?? throw new \InvalidArgumentException('Unknown tool: ' . $name . '.'))()->call($name, $arguments, $connection);
+            $data = match (true) {
+                $name === 'site_info' => ($this->siteInfo)($connection),
+                !empty($tool['shop']) => ($this->shopTools() ?? throw new \InvalidArgumentException('The shop is off on this site.'))->call($name, $arguments, $connection),
+                default => ($this->content ?? throw new \InvalidArgumentException('Unknown tool: ' . $name . '.'))()->call($name, $arguments, $connection),
+            };
             ($this->log)('mcp.tool_called', 'info', 'mcp_connection', (string)$connection['id'], 'MCP: ' . $name . '.', $context);
             return ['content' => [['type' => 'text', 'text' => json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)]], 'structuredContent' => $data, 'isError' => false];
         } catch (\InvalidArgumentException $e) {
@@ -158,7 +164,21 @@ final class McpServer
     private function mayUse(array $tool, array $connection): bool
     {
         return McpOAuth::allows((string)$connection['scope'], $tool['scopes'])
-            && ($tool['permission'] === null || ($this->can)($connection, $tool['permission']));
+            && ($tool['permission'] === null || ($this->can)($connection, $tool['permission']))
+            && (empty($tool['shop']) || $this->shopTools() !== null);
+    }
+
+    private ?McpShop $shopTools = null;
+    private bool $shopLooked = false;
+
+    /** The shop's tools, while the shop is on. */
+    private function shopTools(): ?McpShop
+    {
+        if (!$this->shopLooked) {
+            $this->shopLooked = true;
+            $this->shopTools = $this->shop !== null ? ($this->shop)() : null;
+        }
+        return $this->shopTools;
     }
 
     /**
@@ -178,7 +198,7 @@ final class McpServer
                 'inputSchema' => ['type' => 'object', 'properties' => new \stdClass(), 'additionalProperties' => false],
                 'annotations' => ['readOnlyHint' => true, 'destructiveHint' => false, 'openWorldHint' => false],
             ],
-        ] + McpContent::definitions();
+        ] + McpContent::definitions() + McpShop::definitions();
     }
 
     public static function origin(string $url): string
