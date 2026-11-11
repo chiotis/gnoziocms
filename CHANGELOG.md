@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.277 — 2026-11-11 — Every kind of field through MCP
+- **MCP:** a connection can now write prices and other decimals, pictures, galleries, lists of rows (a product's variants and options) and links to other entries, so a product can be made or changed in full from Claude or ChatGPT. Pictures must be in the media library (`add_image_from_url` first); other entries are given by their address, such as `makers/acme`. A bad value is refused with the reason, inside rows too, and nothing is written.
+- Fields shared by the translations (a product's price) change in every language at once, as in the admin.
+- `site_info` says what each field takes and whether it is shared; `get_entry` gives linked entries as addresses.
+- First step of `docs/mcp-shop-plan.md`: running the shop through MCP.
+
 ## 0.1.276 — 2026-11-11 — Tests follow the last two releases
 - The search, geo, relations and taxonomies tests now expect what 0.1.274 and 0.1.275 do: lists, search and maps show someone signed in what visitors see, and a removed term is taken off its entries. No change to the site.
 
