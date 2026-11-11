@@ -198,6 +198,28 @@
             </div>
           </div>
         {% endif %}
+
+        <div class="{{ section_class }}">
+          <div class="{{ section_header_class }}">
+            <h2 class="text-sm font-semibold text-slate-900">Picture quality</h2>
+            <p class="mt-0.5 text-xs text-slate-400">The site makes a lighter copy of each picture in the sizes a page needs. Higher quality keeps more detail, for example in product photos, and makes the copies larger. A change applies to every picture: the new copies are made as pages ask for them.</p>
+          </div>
+          <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            {% for key, option in {
+              standard: {label: 'Standard', help: 'Light pages. Fine for most photos.'},
+              high: {label: 'High', help: 'Sharper detail; copies about half as large again.'},
+              best: {label: 'Best', help: 'Closest to the originals; copies about twice as large.'}
+            } %}
+              <label class="flex items-start gap-2.5 rounded-md border border-slate-200 px-3 py-2.5 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50/40">
+                <input type="radio" name="picture_quality" value="{{ key }}" {% if settings_form.picture_quality|default('standard') == key %}checked{% endif %} class="mt-0.5 h-4 w-4 border-slate-300 text-blue-600 focus:ring-blue-500">
+                <span>
+                  <span class="block text-sm font-medium text-slate-800">{{ option.label }}</span>
+                  <span class="block text-xs text-slate-400">{{ option.help }}</span>
+                </span>
+              </label>
+            {% endfor %}
+          </div>
+        </div>
       </div>
 
       <div class="{{ panel_class }}{% if active_tab != 'smtp' %} hidden{% else %} active{% endif %}" data-panel="smtp">
