@@ -224,8 +224,8 @@ rows = terms_of('tags')
 # ---- removing a term
 rows = [(i, s, l['el'], l['en']) for i, s, l in terms_of('tags') if i != 'growth']
 st, hdr, _ = save_terms(root, 'tags', rows)
-check('removing a term that entries use warns about them', 'removed=1' in loc(hdr) and 'orphaned=1' in loc(hdr), loc(hdr))
-st, _, html = root.get('/admin/taxonomies?taxonomy=tags&saved=1&removed=1&orphaned=1'); check('the warning is shown', 'still filed under' in html)
+check('removing a term that entries use takes it off them', 'removed=1' in loc(hdr) and 'unfiled=' in loc(hdr), loc(hdr))
+st, _, html = root.get(loc(hdr)); check('the screen says so, and names no entry still filed under it', 'taken off the' in html and 'no longer has:' not in html)
 check('the removed term has no page', pub.get('/tag/growth')[0] == 404)
 
 # ---- a bad id cannot smuggle anything in

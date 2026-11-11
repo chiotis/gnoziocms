@@ -257,7 +257,7 @@ check('and a new position moves it: no longer near, and on the map where it is n
 time.sleep(1.1)  # a file of the same size saved in the same second is not told apart from the one before (the parsed copy goes by time and size)
 root.submit('/admin/edit?type=points&slug=fresh-pin&lang=en', retitle, {'details[location]': '35.032, 26.001', 'status': 'draft'})
 check('a draft is not on the maps of visitors', 'points/fresh-pin' not in ids('/en/points') and 'Renamed pin' not in aside('/en/businesses/hotel'))
-check('but is for someone signed in, whose maps are kept apart', 'points/fresh-pin' in ids('/en/points', root) and 'Renamed pin' in aside('/en/businesses/hotel', root))
+check('nor on the maps of someone signed in, who sees what visitors see', 'points/fresh-pin' not in ids('/en/points', root) and 'Renamed pin' not in aside('/en/businesses/hotel', root))
 check('and the visitor is still not shown it afterwards', 'points/fresh-pin' not in ids('/en/points') and 'Renamed pin' not in aside('/en/businesses/hotel'))
 # edited outside the admin (a copied folder, git): seen within half a minute
 text = open('app/content/points/fresh-pin.en.md', encoding='utf-8').read()
