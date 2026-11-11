@@ -295,6 +295,9 @@
     var id = idBase + '-' + field.key;
     var type = field.type;
     var control;
+    // A value equal to the field's default is left out when the block is saved (BlockRegistry), so nothing stored means the default:
+    // the control shows it instead of an empty field, no choice or an unticked box.
+    if (value == null && field['default'] != null && type !== 'repeater') value = field['default'];
 
     if (type === 'repeater') return repeaterControl(field, Array.isArray(value) ? value : [], onChange, id);
 
