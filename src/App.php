@@ -4147,7 +4147,8 @@ final class App
     }
 
     /**
-     * Shop > Import: a WooCommerce shop brought over in three steps (WooCommerceImport). While the shop is read or imported, the
+     * The WooCommerce import's requests (WooCommerceImport); its screen is Shop settings > Import & export, where the forms and a
+     * plain visit come back to. While the shop is read or imported, the
      * screen asks ?work again and again, which works the next slice of the job, and ?status every second, which only says how far
      * it is (the session is let go first, so the two do not wait for each other).
      */
@@ -4174,7 +4175,7 @@ final class App
         if (isset($_GET['download'])) {
             $file = $import->reportFile((string)$_GET['download']);
             if ($file === null) {
-                $this->redirect('/admin/shop-import');
+                $this->redirect('/admin/shop-settings?tab=import');
                 return;
             }
             header('Content-Type: ' . (str_ends_with($file, '.json') ? 'application/json' : 'text/plain') . '; charset=utf-8');
@@ -4183,22 +4184,23 @@ final class App
             readfile($file);
             return;
         }
-        $languages = array_values(array_unique(array_merge([$this->defaultLanguage()], array_map('strval', $this->settings['languages']['available'] ?? []))));
         if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             $result = match ((string)($_POST['action'] ?? '')) {
-                'start' => $import->start($_POST, is_array($_FILES['customers'] ?? null) ? $_FILES['customers'] : null, $languages),
+                'start' => $import->start($_POST, is_array($_FILES['customers'] ?? null) ? $_FILES['customers'] : null, $this->importLanguages()),
                 'confirm' => $import->confirm($_POST),
                 'reset' => $import->reset(),
                 default => ['ok' => false, 'message' => 'Unknown action.'],
             };
-            $this->redirect('/admin/shop-import' . ($result['ok'] ? '' : '?' . http_build_query(['done' => 'fail', 'msg' => $result['message']])));
+            $this->redirect('/admin/shop-settings?' . http_build_query(['tab' => 'import'] + ($result['ok'] ? [] : ['done' => 'fail', 'msg' => $result['message']])));
             return;
         }
-        $this->render('@admin/shop-import.twig', $import->view() + $this->shopScreen('shop-import', 'Import from WooCommerce') + [
-            'languages' => $languages,
-            'done' => (string)($_GET['done'] ?? ''),
-            'message' => mb_substr((string)($_GET['msg'] ?? ''), 0, 300),
-        ]);
+        $this->redirect('/admin/shop-settings?tab=import');
+    }
+
+    /** The site's languages for the import, its default first. @return list<string> */
+    private function importLanguages(): array
+    {
+        return array_values(array_unique(array_merge([$this->defaultLanguage()], array_map('strval', $this->settings['languages']['available'] ?? []))));
     }
 
     /** Shop > Files: the private files the digital products sell (docs/shop-plan.md, section 6). */
@@ -4282,7 +4284,11 @@ final class App
             echo $preview['html'];
             return;
         }
-        $this->render('@admin/shop-settings.twig', $this->shopSettingsAdmin()->screen($_GET) + [
+        $screen = $this->shopSettingsAdmin()->screen($_GET);
+        if ($screen['tab'] === 'import') {
+            $screen += $this->wooImport()->view() + ['import_languages' => $this->importLanguages()];
+        }
+        $this->render('@admin/shop-settings.twig', $screen + [
             'title' => 'Shop settings',
             'types' => $this->content->getTypes(),
             'user' => $this->auth->user(),

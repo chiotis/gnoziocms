@@ -3,8 +3,8 @@
 {% import '@admin/partials/ui.twig' as ui %}
 {#
   System > Shop settings (docs/shop-plan.md, section 8). Only while the shop is on (the Products content type): General, Shipping
-  (zones with their methods; admin-shop.js adds zones and methods), Payments, Emails, Accounts and Marketing (the product feed
-  for Meta and Google, the Meta Pixel).
+  (zones with their methods; admin-shop.js adds zones and methods), Payments, Emails, Accounts, Marketing (the product feed
+  for Meta and Google, the Meta Pixel) and Import & export (partials/shop-import.twig).
 #}
 
 {% block content %}
@@ -312,5 +312,9 @@
       </section>
       <div><button type="submit" class="{{ primary }}">Save</button></div>
     </form>
+  {% endif %}
+
+  {% if tab == 'import' %}
+    {% include '@admin/partials/shop-import.twig' %}
   {% endif %}
 {% endblock %}
