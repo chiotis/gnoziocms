@@ -287,15 +287,16 @@ final class Cardlink implements PaymentProvider, ChecksPayments
         if (!$this->configured($settings)) {
             return ['ok' => false, 'message' => 'Fill in the Merchant ID and the shared secret first.'];
         }
+        // Named in every answer, so a wrong bank or test mode shows at once (a live Merchant ID is "not found" on the test host).
+        $where = self::ACQUIRERS[self::acquirer($settings)]['label'] . (!empty($settings['test']) ? ', test' : ', live') . ', ' . (string)parse_url($this->host($settings), PHP_URL_HOST);
         $answer = $this->xml($settings, 'StatusRequest', '<TransactionInfo><OrderId>GZCHECK' . time() . '</OrderId></TransactionInfo>');
         if ($answer['error'] !== '') {
-            return ['ok' => false, 'message' => 'Cardlink could not be asked: ' . $answer['error']];
+            return ['ok' => false, 'message' => 'Cardlink could not be asked (' . $where . '): ' . $answer['error']];
         }
         $said = (string)($answer['data']['ErrorMessage'] ?? $answer['data']['Description'] ?? '');
         if (preg_match('/digest|auth|merchant|\bmid\b|signature|permission|denied/i', $said) === 1) {
-            return ['ok' => false, 'message' => 'Cardlink did not accept the Merchant ID and shared secret: ' . mb_substr($said, 0, 160)];
+            return ['ok' => false, 'message' => 'Cardlink did not accept the Merchant ID and shared secret (' . $where . '): ' . mb_substr($said, 0, 160) . (!empty($settings['test']) ? ' Test mode is on: the test host knows only test Merchant IDs.' : '')];
         }
-        $where = self::ACQUIRERS[self::acquirer($settings)]['label'] . (!empty($settings['test']) ? ', test' : ', live');
         return ['ok' => true, 'message' => 'Cardlink answers (' . $where . ')' . ($said !== '' ? ': "' . mb_substr($said, 0, 120) . '"' : '') . '. The keys look right; a test payment proves it.'];
     }
 
