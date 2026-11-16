@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.292 — 2026-11-16 — Cardlink's check names the host it asked
+- **Shop:** Check connection for Cardlink now names the acquirer, live or test, and the host it asked, when it fails too. A Merchant ID "not found in system" usually means the wrong acquirer is chosen or test mode is on (the test host knows only test Merchant IDs); the message now says so.
+
 ## 0.1.291 — 2026-11-11 — Customers sign in with Google
 - **Shop:** customers can sign in with Google. Turn it on in Shop settings › Accounts, with the shop's own OAuth client or, leaving the Client ID blank, the admin's Google Sign-In client; add the address shown there (`/account/google/callback`) to the client's redirect URIs in Google Cloud. A Google account finds the customer with its address and links to them; a new one gets an account when customers can create one. Google confirms the address, so earlier guest orders with it join the account. An account made with Google can set a password later, and confirms deleting with its email.
 
