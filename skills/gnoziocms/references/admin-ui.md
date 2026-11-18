@@ -6,11 +6,11 @@ What you can see depends on the person's role (superadmin, admin, editor, user).
 
 ## Screens
 
-Left menu: **Content** (Pages, Posts, Projects… the types that are on, Media), **Forms**, **Menus**, **Theme**, **Taxonomies**, **Content types**, **SEO**, **Redirects**, **Translations**, **History**, then **Users & Roles**, **Analytics**, **Logs**, **Backups**, **Updates**, **System**, **Omni** (superadmin), **Settings**. Every form ends in one fixed Save bar (it also shows the messages). Dashboard (`/admin`) lists what needs attention.
+Left menu: **Content** (Pages, Posts, Projects… the types that are on, Media), **Shop** (Orders, Customers, Subscriptions, Files, Coupons, when Products is on), **AI publishing** and **MCP** (in the Manage group), **Forms**, **Menus**, **Theme**, **Taxonomies**, **Content types**, **SEO**, **Redirects**, **Translations**, **History**, then **Users & Roles**, **Analytics**, **Logs**, **Backups**, **Updates**, **System**, **Omni** (superadmin), **Settings**. Every form ends in one fixed Save bar (it also shows the messages). Dashboard (`/admin`) lists what needs attention.
 
 | Screen | Address | Use it for |
 |---|---|---|
-| Content list | `/admin/content?type=pages&lang=el` | search, filter by status, bulk publish / draft / delete |
+| Content list | `/admin/content?type=pages&lang=el` | filter bar (search, status, a dropdown per taxonomy, more filters: main image, dates, author, stock; kept in the address), a column per taxonomy, bulk publish / draft / delete and **Add to / Remove from** a term; shift-click ticks a range |
 | New entry | `/admin/new?type=pages&lang=el` | start a page, post or project |
 | Edit entry | `/admin/edit?type=pages&slug=about&lang=el` | tabs: Content, (type) details, **Blocks**, Media, Taxonomies, Custom Fields, SEO, Translations, History, Advanced |
 | Import / Export | `/admin/import?type=posts`, `/admin/export?type=posts` | CSV in and out (see `importing.md`) |
@@ -27,6 +27,9 @@ Left menu: **Content** (Pages, Posts, Projects… the types that are on, Media),
 | Settings | `/admin/settings?tab=basics` | tabs basics (General), smtp, auth, backup, updates, apis, limits |
 | Backups | `/admin/backups` | create, verify, download, restore; *Remote storage* lists and fetches backups kept only remotely |
 | System | `/admin/system` | health checks, content index, the cron job line, **Page cache** (*Empty the page cache*) |
+| Shop settings | `/admin/shop-settings?tab=general` | General, Shipping, Payments, Emails, Accounts, Marketing, Import & export (see `shop.md`) |
+| Orders | `/admin/shop-orders` | orders, timeline, shipping, refunds (a person's job) |
+| MCP | `/admin/mcp` | superadmin: on/off, connections, their scopes and rules, tokens (see `mcp.md`) |
 | Omni | `/admin/omni` | superadmin only: the site's connection to an Omni monitor; leave it to the person |
 
 ## Make a page with blocks, in the browser
@@ -35,7 +38,7 @@ Left menu: **Content** (Pages, Posts, Projects… the types that are on, Media),
 2. Open the **Blocks** tab. *Add block* opens a picker with three tabs: **Blocks** (each with a description and a small drawing), **Ready-made sections**, and **Page layouts** (a whole page; *Replace* or *Add after*). Choosing one adds it with default values.
 3. Each block is a card: drag or use the arrows to reorder; *Duplicate*, *Hide*, *Remove* (with undo). Open it to fill its fields. The **Design** tab of a block holds its layout drawings (`variant`), background, **width** (25 / 33 / 50 / 66 / 75 / 100%: narrow blocks that follow each other are drawn side by side, as they sit on the page) and spacing. A **Hero slider** is a list of slides, each with its own hero layout (picked from the same drawings), buttons, highlights and picture or video. Repeaters (items, buttons) have *Add* and *Remove* per row; a row can hold a list of its own (a slide's buttons), edited inside the open row the same way. Image fields open the media library (*Library…*) or take an address.
 4. The Content tab holds the Markdown body (visual or Markdown mode; the choice is remembered).
-5. **Save** (bottom bar). Check the message. Use *View* to see the page; a signed-in person sees drafts.
+5. **Save** (bottom bar). Check the message. Use *View* to see the page; a signed-in person sees a draft at its own address (not in lists). A setting at its default shows its default value when the block is opened again; defaults are left out of the file.
 6. For the translation: **Translations** tab, *Create* next to the language; it opens a new entry already linked (same `translation_id`) and with the same address.
 
 Typing blocks as YAML into the **Advanced** tab (the raw front matter) does **not** work reliably: the Blocks tab's own state is sent with the form and replaces what the YAML says. Use the Blocks tab, a page layout, or the CSV import.
@@ -49,7 +52,8 @@ Typing blocks as YAML into the **Advanced** tab (the raw front matter) does **no
 - **Upload a picture**: Media > Upload (drag files), then open the file to write its description (alt text) and tags.
 - **SEO of one page**: the entry's SEO tab (title, description, canonical, share image, noindex) with a search-result preview and a character count.
 - **Redirect after changing an address**: the editor offers it when a published address changes; or Redirects > Add / Import lines `old-path new-path`.
-- **Publish many**: Content list > tick > Publish.
+- **Publish many**: Content list > tick (shift-click for a range) > Publish.
+- **File many under a term**: Content list > tick > Bulk action > *Add to* (or *Remove from*) > the term. Their other terms stay.
 - **After changing files outside the admin** on a site behind Varnish/CloudPanel: System > Page cache > *Empty the page cache*.
 - **Build the page of a content type with blocks**: Theme > Single Layouts > the type's card > *Built with blocks* (it starts from a ready template: the theme's for its own types, one made from the type's fields for any other) > *Edit template*. The chain button beside a block's field shows a field of the entry instead of a typed value; on a list (the buttons of a Hero, the Buttons block) it binds the list to a list of the entry (the buy links of a book) and a small table maps each column. *Start again from the default* puts the ready template back (confirm first: it replaces the blocks of every language). Entries are not changed.
 - **Undo a mistake**: History > the entry > compare > Restore; or Backups.
