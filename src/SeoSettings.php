@@ -237,6 +237,66 @@ final class SeoSettings
         return $seo;
     }
 
+    /**
+     * What a tab's form would send for these settings (as `from` gives them): the reverse of `apply`, so a change to one value
+     * can be made through the same checks as the screen while the rest of the tab stays as it is.
+     *
+     * @param array<string, mixed> $seo the settings as `from` gives them
+     * @param string[] $types the content types the site has
+     * @return array<string, mixed>
+     */
+    public static function toPost(array $seo, string $tab, array $types): array
+    {
+        $on = static fn(mixed $value): string => $value === true ? '1' : '';
+        $post = [];
+        if ($tab === 'search') {
+            foreach (['separator', 'title_format', 'home_title', 'home_description', 'default_description'] as $key) {
+                $post[$key] = (string)($seo[$key] ?? '');
+            }
+            $post['noindex_search'] = $on($seo['noindex_search'] ?? false);
+            $post['noindex_taxonomies'] = $on($seo['noindex_taxonomies'] ?? false);
+            foreach ($types as $type) {
+                $row = is_array($seo['types'][$type] ?? null) ? $seo['types'][$type] : [];
+                $post['types'][$type] = ['title_format' => (string)($row['title_format'] ?? ''), 'noindex' => $on($row['noindex'] ?? false), 'sitemap' => $on($row['sitemap'] ?? true)];
+            }
+        } elseif ($tab === 'social') {
+            foreach (['share_image', 'twitter_card', 'twitter_site', 'facebook_app_id'] as $key) {
+                $post[$key] = (string)($seo[$key] ?? '');
+            }
+            $preferred = is_array($seo['preferred_source'] ?? null) ? $seo['preferred_source'] : self::PREFERRED_DEFAULTS;
+            foreach (['enabled', 'after', 'header', 'footer'] as $key) {
+                $post['preferred_' . $key] = $on($preferred[$key] ?? false);
+            }
+            $post['preferred_types'] = array_values(array_map('strval', is_array($preferred['types'] ?? null) ? $preferred['types'] : []));
+        } elseif ($tab === 'crawling') {
+            foreach (['discourage', 'block_ai', 'snippets'] as $key) {
+                $post[$key] = $on($seo[$key] ?? false);
+            }
+            $post['robots_disallow'] = implode("\n", array_map('strval', is_array($seo['robots_disallow'] ?? null) ? $seo['robots_disallow'] : []));
+            $map = is_array($seo['sitemap'] ?? null) ? $seo['sitemap'] : [];
+            foreach (['enabled', 'images', 'taxonomies'] as $key) {
+                $post['sitemap_' . $key] = $on($map[$key] ?? false);
+            }
+            $post['sitemap_exclude'] = implode("\n", array_map('strval', is_array($map['exclude'] ?? null) ? $map['exclude'] : []));
+            $post['feed_enabled'] = $on($seo['feed']['enabled'] ?? false);
+            $post['feed_items'] = (string)($seo['feed']['items'] ?? 20);
+        } elseif ($tab === 'identity') {
+            $identity = is_array($seo['identity'] ?? null) ? $seo['identity'] : [];
+            $post['identity_type'] = (string)($identity['type'] ?? 'Organization');
+            foreach (['name', 'alternate_name', 'description', 'street', 'locality', 'region', 'postal', 'country', 'price_range'] as $key) {
+                $post['identity_' . $key] = (string)($identity[$key] ?? '');
+            }
+            $post['article_type'] = (string)($seo['schema']['article_type'] ?? 'BlogPosting');
+            $post['breadcrumbs'] = $on($seo['schema']['breadcrumbs'] ?? false);
+            $post['search_box'] = $on($seo['schema']['search_box'] ?? false);
+        } elseif ($tab === 'verification') {
+            foreach (array_keys(self::VERIFICATION) as $key) {
+                $post['verify_' . $key] = (string)($seo['verification'][$key] ?? '');
+            }
+        }
+        return $post;
+    }
+
     /** How many entries a feed lists: a whole number from 5 to 100, 20 when nothing usable was given. */
     private static function feedItems(mixed $value): int
     {

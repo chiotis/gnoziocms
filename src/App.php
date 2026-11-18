@@ -4529,8 +4529,6 @@ final class App
                 $this->shopSettings(),
                 $this->mcpStore(),
                 $this->defaultLanguage(),
-                $this->taxonomyEditor(),
-                array_values(array_map('strval', (array)($this->settings['languages']['available'] ?? [$this->defaultLanguage()]))),
                 fn(string $slug, string $lang, string $after, string $target, array $connection): array => $this->contentAdmin()->delete(
                     Shop::TYPE,
                     ['slug' => $slug, 'lang' => $lang, 'after' => $after, 'after_target' => $target],
@@ -4554,7 +4552,43 @@ final class App
                         $this->frontCache()->purgeAll();
                     }
                 )
-            ) : null
+            ) : null,
+            fn(): McpTerms => new McpTerms(
+                $this->taxonomies(),
+                $this->taxonomyEditor(),
+                $this->mcpContent(),
+                $this->mcpStore(),
+                $this->defaultLanguage(),
+                array_values(array_map('strval', (array)($this->settings['languages']['available'] ?? [$this->defaultLanguage()]))),
+                fn(): bool => Shop::enabled($this->content->getTypes()),
+                function (): void {
+                    $this->frontCache()->purgeAll();
+                    $this->contentIndex->bump();
+                }
+            ),
+            fn(): McpSite => new McpSite(
+                $this->content,
+                $this->contentEditor(),
+                $this->menus(),
+                $this->theme,
+                $this->siteSettings(),
+                $this->redirectAdmin(),
+                $this->redirects,
+                $this->mcpContent(),
+                fn(): array => $this->siteSettings()->load(),
+                fn(): array => $this->loadThemeSettings(),
+                fn(array $input): array => $this->saveThemeSettings($input),
+                fn(array $account, string $permission): bool => $this->permissions->can(['role' => (string)$account['role'], 'status' => (string)$account['user_status']], $permission),
+                fn(string $action, string $level, ?string $type, ?string $id, string $message, array $context) => $this->logActivity($action, $level, $type, $id, $message, $context),
+                function (): void {
+                    $this->settings = $this->siteSettings()->load();
+                    $this->themeSettings = $this->loadThemeSettings();
+                    $this->menus()->forget();
+                    $this->frontCache()->purgeAll();
+                },
+                $this->defaultLanguage(),
+                array_values(array_map('strval', (array)($this->settings['languages']['available'] ?? [$this->defaultLanguage()])))
+            )
         );
     }
 

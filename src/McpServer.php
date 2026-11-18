@@ -30,6 +30,10 @@ final class McpServer
         private ?\Closure $content = null,
         /** @var (\Closure(): ?McpShop)|null the shop's tools; null from the closure while the shop is off */
         private ?\Closure $shop = null,
+        /** @var (\Closure(): McpTerms)|null the term tools of every taxonomy */
+        private ?\Closure $terms = null,
+        /** @var (\Closure(): McpSite)|null menus, redirects, the site's name, SEO and Theme settings, and forms */
+        private ?\Closure $site = null,
     ) {
     }
 
@@ -120,7 +124,7 @@ final class McpServer
         $tools = [];
         foreach (self::definitions() as $name => $tool) {
             if ($this->mayUse($tool, $connection)) {
-                $tools[] = ['name' => $name] + array_diff_key($tool, ['scopes' => 1, 'permission' => 1, 'shop' => 1]);
+                $tools[] = ['name' => $name] + array_diff_key($tool, ['scopes' => 1, 'permission' => 1, 'shop' => 1, 'terms' => 1, 'site' => 1]);
             }
         }
         return $tools;
@@ -146,6 +150,8 @@ final class McpServer
             $data = match (true) {
                 $name === 'site_info' => ($this->siteInfo)($connection),
                 !empty($tool['shop']) => ($this->shopTools() ?? throw new \InvalidArgumentException('The shop is off on this site.'))->call($name, $arguments, $connection),
+                !empty($tool['terms']) => ($this->terms ?? throw new \InvalidArgumentException('Terms cannot be changed on this site.'))()->call($name, $arguments, $connection),
+                !empty($tool['site']) => ($this->site ?? throw new \InvalidArgumentException('Unknown tool: ' . $name . '.'))()->call($name, $arguments, $connection),
                 default => ($this->content ?? throw new \InvalidArgumentException('Unknown tool: ' . $name . '.'))()->call($name, $arguments, $connection),
             };
             ($this->log)('mcp.tool_called', 'info', 'mcp_connection', (string)$connection['id'], 'MCP: ' . $name . '.', $context);
@@ -165,7 +171,11 @@ final class McpServer
     {
         return McpOAuth::allows((string)$connection['scope'], $tool['scopes'])
             && ($tool['permission'] === null || ($this->can)($connection, $tool['permission']))
-            && (empty($tool['shop']) || $this->shopTools() !== null);
+            && (empty($tool['shop']) || $this->shopTools() !== null)
+            // The shop's categories and collections are changed with the shop's scopes only while the shop is on.
+            && (empty($tool['terms']) || McpOAuth::allows((string)$connection['scope'], [McpOAuth::SCOPE_TERMS]) || $this->shopTools() !== null)
+            && (empty($tool['terms']) || $this->terms !== null)
+            && (empty($tool['site']) || $this->site !== null);
     }
 
     private ?McpShop $shopTools = null;
@@ -198,7 +208,7 @@ final class McpServer
                 'inputSchema' => ['type' => 'object', 'properties' => new \stdClass(), 'additionalProperties' => false],
                 'annotations' => ['readOnlyHint' => true, 'destructiveHint' => false, 'openWorldHint' => false],
             ],
-        ] + McpContent::definitions() + McpShop::definitions();
+        ] + McpContent::definitions() + McpTerms::definitions() + McpSite::definitions() + McpShop::definitions();
     }
 
     public static function origin(string $url): string
