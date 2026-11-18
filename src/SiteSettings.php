@@ -459,6 +459,23 @@ final class SiteSettings
         return $this->setSection('seo', $seo);
     }
 
+    /** Changes the site's name and tagline (null: as it is). Returns false when the settings cannot be written. */
+    public function setTitle(?string $title, ?string $tagline): bool
+    {
+        if (!$this->meta->isAvailable()) {
+            return false;
+        }
+        $data = $this->parse($this->raw('site_settings', $this->defaults()));
+        if ($title !== null && trim($title) !== '') {
+            $data['title'] = trim($title);
+        }
+        if ($tagline !== null) {
+            $data['tagline'] = trim($tagline);
+        }
+        $this->meta->set('site_settings', Yaml::dump($data, 5, 2));
+        return true;
+    }
+
     /** Shows a menu in a place of the theme ("header", "footer"). Returns false when the settings cannot be written. */
     public function setMenuLocation(string $location, string $menu): bool
     {

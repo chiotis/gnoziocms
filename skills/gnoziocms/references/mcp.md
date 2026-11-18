@@ -14,6 +14,9 @@ It gives the site's name, address, languages, time zone and current time, every 
 | `content:write` | write drafts and scheduled entries |
 | `content:publish` | publish, schedule and change published entries |
 | `media:write` | add pictures to the media library, have the site make a main picture |
+| `terms:write` | add, change, remove categories, tags and the site's own terms |
+| `site:read` | read menus, redirects, site name, SEO and Theme settings, forms |
+| `site:write` | change those |
 | `shop:read` | read products, prices, variants and stock (shop on) |
 | `shop:write` | prices, sales, stock, product categories and collections, take products off sale |
 | `shop:delete` | delete products and coupons, remove categories and collections |
@@ -41,9 +44,23 @@ A tool that is missing or refused means the scope or the account's role does not
 - a repeater takes **every row** it keeps (rows replace the old ones), each an object of its fields;
 - `""` or `[]` clears a field;
 - a **shared** field (a product's price, its variants) changes in every language at once;
-- video, file, location, link, icon and tone fields are a person's job in the admin; new taxonomy terms too (except the shop's own, below).
+- video, file, location, link, icon and tone fields are a person's job in the admin.
 
 New entries get `generated_by` (marked *MCP* in the admin) and the connection's byline as author. Respect the connection's rules: types and languages it may write, and its daily limit of publications (drafts never count). Create drafts unless the task says publish.
+
+## Terms and the site itself
+
+| Tool | Use |
+|---|---|
+| `create_term`, `update_term`, `remove_term` | terms of any taxonomy (`terms:write`; the shop's product categories and collections with `shop:write`/`shop:delete`). Call `list_terms` first: a name the taxonomy already has is refused with the id to use. A new address keeps the old one working |
+| `get_site_settings`, `update_site_settings` | the site's name and tagline |
+| `get_seo_settings`, `update_seo_settings` | Admin > SEO. Send only the parts to change, in the shape `get_seo_settings` gives |
+| `list_redirects`, `save_redirect`, `delete_redirect` | redirects; the target must be an address of the site |
+| `list_menus`, `get_menu`, `save_menu` | `save_menu` replaces **all** items: read with `get_menu`, change, send the whole tree back. `places` shows it in the theme's places |
+| `get_theme_settings`, `update_theme_settings` | Admin > Theme by section; send only the fields to change. Lists, links and galleries are the admin's |
+| `list_forms`, `get_form`, `save_form` | `fields` replaces the whole list; keep each field's `name` (answers are filed under it) |
+
+Left to a person, by design: redirects to other websites, where a form's emails go and where it sends visitors, what visitors sent, the codes that prove who owns the site. Say so instead of looking for a way around it.
 
 ## Shop tools (only while the shop is on)
 
@@ -53,7 +70,7 @@ New entries get `generated_by` (marked *MCP* in the admin) and the connection's 
 | `list_products`, `get_product` | products with price, "was" price, sale, variants and stock; filters by category, collection, status, kind, words or SKU, stock (out, low, in), on sale |
 | `update_prices` | up to 200 changes: `price`, `compare_at_price`, `sale_price` (starts a sale: the current price becomes the "was" price) or `end_sale`, per product or variant. **`dry_run` is the default**: show the person the table, then call again with `dry_run: false` |
 | `set_stock` | up to 200 rows: `on_hand`, or `adjust` (+/−, safe while orders come in); a product with variants needs the variant |
-| `create_term`, `update_term`, `remove_term` | product categories and collections (names and texts per language, address, parent, picture, SEO texts; a collection's number, tones and quote). A new address keeps the old one working |
+| `create_term`, `update_term`, `remove_term` | product categories and collections (as above; a collection also takes its number, tones and quote) |
 | `archive_product` | off sale in every language, prices and stock kept |
 | `delete_product` | as Delete in the admin; visitors of its address go to `redirect_to` (the shop by default) |
 | `list_coupons`, `save_coupon`, `delete_coupon` | coupons; products by address, collections by id |

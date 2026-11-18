@@ -39,12 +39,15 @@ On the consent screen you choose whom the connection **acts as** (yourself, or a
 | `content:write` | write and edit drafts and scheduled entries |
 | `content:publish` | publish, schedule and change published entries |
 | `media:write` | add pictures to the media library |
+| `terms:write` | add, change and remove the terms of every taxonomy: categories, tags and the site's own (the shop's need the shop scopes) |
+| `site:read` | read the menus, redirects, the site's name and tagline, the SEO and Theme settings, and the forms (not what visitors sent) |
+| `site:write` | change those (and read them) |
 | `shop:read` | read the shop: products with their prices, variants and stock (while the shop is on) |
 | `shop:write` | change prices, sales, stock, product categories and collections, and take products off sale (while the shop is on) |
 | `shop:delete` | delete products and coupons, remove product categories and collections |
 | `shop:orders` | see orders, with customers' names and addresses, and move them along (status, tracking, notes) |
 
-The shop scopes are unticked on the consent screen and in *Make a token by hand*: a person gives them on purpose.
+The shop scopes, `terms:write`, `site:read` and `site:write` are unticked on the consent screen and in *Make a token by hand*: a person gives them on purpose.
 
 A tool needs one of its scopes and, on every call, the permission it asks of the account's role at that moment (a role that loses `content.manage` takes it from its connections at once).
 
@@ -63,15 +66,21 @@ A tool needs one of its scopes and, on every call, the permission it asks of the
 | `update_entry` | write | changes what is given and keeps the rest; `expected_updated_at` refuses a change made meanwhile |
 | `file_entries` | write | files up to 500 entries of one type and language under a term (their other terms stay) or takes them out of it, in one call; every entry is checked first. Published entries need `content:publish`; `shop:write` alone may file products under collections and product categories |
 | `add_image_from_url` | media | fetches a picture from a public address (`url`) or a file from the chat (`file`) into the media library, with its alt text, and gives its address for `main_image` or the body |
+| `create_term` | terms write, or shop write | adds a term to a taxonomy: names and texts by language, address, parent, picture, texts for search engines; a collection's number, tones (a deep tone hard to read on its background is warned about) and quote. A name the taxonomy already has is refused with the id to use. Gives its id |
+| `update_term` | terms write, or shop write | changes what is given and keeps the rest (a language left out keeps its text); a new address keeps the old one working, as in the admin |
+| `remove_term` | terms write, or shop delete | removes one, as the admin does: it is taken off the entries filed under it, its terms below move up |
+| `get_site_settings`, `update_site_settings` | site | the site's name and tagline (with its address, languages and time zone to read) |
+| `get_seo_settings`, `update_seo_settings` | site | the settings of Admin > SEO: titles, the home page's title and description, share picture, crawling, sitemap, feed, identity. An update gives only the parts to change, in the shape `get_seo_settings` gives |
+| `list_redirects`, `save_redirect`, `delete_redirect` | site | the redirects: list (words, paged), add or change one (source, target, code, enabled, note), remove one |
+| `list_menus`, `get_menu`, `save_menu` | site | the menus and the theme's places for them; a menu's items as a tree; `save_menu` replaces a menu's items (or adds a menu) and may place it (`places`, needs `settings.manage`) |
+| `get_theme_settings`, `update_theme_settings` | site | the settings of Admin > Theme by section, each field with its kind, choices and value; an update gives only the fields to change |
+| `list_forms`, `get_form`, `save_form` | site | the forms; one form's fields, button, messages and translations; `save_form` changes them or adds a form |
 | `generate_main_image` | media | has the site make the entry's main picture in its own house style (Manage > AI publishing) and set it as `main_image`, in the background; takes `brief` (the subject, no style words) and `replace`. `get_entry` shows `image_status` and `image_brief`. Needs an OpenAI key in AI publishing |
 
 | `shop_info` | shop | the currency and VAT rates, a product's fields, the shop's taxonomies with their term ids, and the connection's shop limits (how far a price may move, changes left) |
 | `list_products` | shop | products, drafts included, with price, "was" price, sale, variants and stock; filters: category, collection, status, kind, words in title or SKU, stock (out, low, in), on sale; paged |
 | `get_product` | shop | one product: what `list_products` gives, plus its entry as `get_entry` gives it, in the language asked |
 | `update_prices` | shop write | up to 200 changes: `price` and/or `compare_at_price`, `sale_price` (starts a sale: the current price becomes the "was" price), or `end_sale`; per product or per variant. `dry_run` is the default and returns the table of what would change; `dry_run: false` saves it |
-| `create_term` | shop write | adds a product category or a collection: names and texts by language, address, parent, picture, texts for search engines; a collection's number, tones (a deep tone hard to read on its background is warned about) and quote. Gives its id |
-| `update_term` | shop write | changes what is given and keeps the rest (a language left out keeps its text); a new address keeps the old one working, as in the admin |
-| `remove_term` | shop delete | removes one, as the admin does: it is taken off the products filed under it, its terms below move up |
 | `archive_product` | shop write | makes a product a draft in every language: off sale, kept with its history, prices and stock |
 | `delete_product` | shop delete | deletes a product in every language, as Delete in the admin does: the text stays in the history; visitors of its address go to `redirect_to` (the shop by default, home, none, or an address of the site) |
 | `list_orders` | orders | orders, newest first, with status, total, customer, payment, carrier and tracking; filters: status, dates, words in number, email or name; paged; the count in each status |
@@ -85,7 +94,16 @@ A tool needs one of its scopes and, on every call, the permission it asks of the
 
 The read tools need `content.manage` on the account (they show drafts). Writing needs `content.manage`; published and scheduled entries, and changing them, need `content:publish` too. `add_image_from_url` and `generate_main_image` need `media:write` and `media.manage`; `create_entry` and `update_entry` take `image_brief`, the subject a picture made by the site will show; `main_image` takes a picture of the library (one added this way, or any other).
 
-**The shop** (`src/McpShop.php`, `docs/mcp-shop-plan.md`). Its tools are listed only while the shop is on, and need `content.manage` like the product editor. The term tools work on the shop's two taxonomies only and need `taxonomies.manage`; they save through the admin's own taxonomy save, so renamed addresses, menus and products filed under a removed term are handled as there. Products themselves are entries of the type `products`, made and changed with `create_entry` and `update_entry`; `update_prices` and `set_stock` are the batch tools. Prices and stock are written as the admin writes them: the history keeps each change, prices reach every translation, and a published product's price can change without `content:publish`. Every problem in a batch is named at once and nothing is saved while there is one. Two rules of the connection (Admin > MCP, shown with `shop:write`) hold whatever the job asks:
+**Terms** (`src/McpTerms.php`) need `taxonomies.manage` and save through the admin's own taxonomy save, so renamed addresses, menus and entries filed under a removed term are handled as there. Categories, tags and the site's own taxonomies need `terms:write`. The shop's product categories and collections need the shop on and `shop:write` (`shop:delete` to remove one), and count towards the connection's shop changes.
+
+**The site** (`src/McpSite.php`). Each part needs the permission its admin screen needs: `settings.manage` (the site's name, Theme settings), `seo.manage`, `redirects.manage`, `menus.manage`, `forms.manage`. Every change goes through the screen's own checks, every problem is named at once and nothing is saved while there is one; a change is in the activity log with the connection's name, and the page cache is emptied. A Theme setting or SEO setting left out stays as it is (a switch is never turned off by being left out). What could be used against the site's visitors or its owner stays with a person in the admin:
+
+- a redirect to another website (a redirect's target must be an address of the site);
+- where a form's emails go, its auto-reply, where it sends people after sending, whether it keeps what is sent, and what visitors sent (none of it is read or written; a new form sends no emails until a person sets them);
+- the codes that prove who owns the site (Admin > SEO > Verification);
+- Theme settings that are lists, links or galleries, the site's address, languages, limits, mail, backups and keys.
+
+**The shop** (`src/McpShop.php`, `docs/mcp-shop-plan.md`). Its tools are listed only while the shop is on, and need `content.manage` like the product editor. Its categories and collections are changed with the term tools above. Products themselves are entries of the type `products`, made and changed with `create_entry` and `update_entry`; `update_prices` and `set_stock` are the batch tools. Prices and stock are written as the admin writes them: the history keeps each change, prices reach every translation, and a published product's price can change without `content:publish`. Every problem in a batch is named at once and nothing is saved while there is one. Two rules of the connection (Admin > MCP, shown with `shop:write`) hold whatever the job asks:
 
 **Orders** (`src/McpShopOrders.php`) hold shoppers' personal data: they need `shop:orders` and the account's `shop.orders`, and coupons need `shop.manage`. An order changes through the order screen's own actions, so stock, coupons, the customer's email and the timeline follow as there (a cancelled order gives its stock back). Money stays with a person: an order is never marked paid or refunded through MCP, and refunds are made in the admin.
 
@@ -129,4 +147,4 @@ Tables of the system database (`SystemDatabase::createMcpTables`): `mcp_clients`
 
 ## Code and tests
 
-`src/McpStore.php` (tables), `src/McpOAuth.php` (OAuth), `src/McpServer.php` (the endpoint, `site_info`), `src/McpContent.php` (the content tools), `src/SafeHttp.php` (fetching pictures), `src/McpAdmin.php` (the screen), `App::handleMcp`, `App::handleMcpAuthorize`, `admin/templates/mcp.twig`, `admin/templates/mcp-authorize.twig`. Tests: `tests/unit/mcp.php`, `tests/unit/mcp-images.php`, `tests/http/mcp_oauth_test.py`, `tests/http/mcp_tools_test.py`. Security notes: `docs/security.md` (*MCP*).
+`src/McpStore.php` (tables), `src/McpOAuth.php` (OAuth), `src/McpServer.php` (the endpoint, `site_info`), `src/McpContent.php` (the content tools), `src/McpTerms.php` (terms), `src/McpSite.php` (menus, redirects, the site's name, SEO and Theme settings, forms), `src/SafeHttp.php` (fetching pictures), `src/McpAdmin.php` (the screen), `App::handleMcp`, `App::handleMcpAuthorize`, `admin/templates/mcp.twig`, `admin/templates/mcp-authorize.twig`. Tests: `tests/unit/mcp.php`, `tests/unit/mcp-images.php`, `tests/http/mcp_oauth_test.py`, `tests/http/mcp_tools_test.py`, `tests/http/mcp_site_test.py`. Security notes: `docs/security.md` (*MCP*).

@@ -20,8 +20,14 @@ final class McpOAuth
     public const SCOPE_SHOP_WRITE = 'shop:write';
     public const SCOPE_SHOP_DELETE = 'shop:delete';
     public const SCOPE_SHOP_ORDERS = 'shop:orders';
+    public const SCOPE_TERMS = 'terms:write';
+    public const SCOPE_SITE_READ = 'site:read';
+    public const SCOPE_SITE_WRITE = 'site:write';
     /** Scopes a person ticks on purpose: unticked on the consent screen and in Admin > MCP until then. */
-    public const OFF_BY_DEFAULT = [self::SCOPE_SHOP_READ, self::SCOPE_SHOP_WRITE, self::SCOPE_SHOP_DELETE, self::SCOPE_SHOP_ORDERS];
+    public const OFF_BY_DEFAULT = [
+        self::SCOPE_SHOP_READ, self::SCOPE_SHOP_WRITE, self::SCOPE_SHOP_DELETE, self::SCOPE_SHOP_ORDERS,
+        self::SCOPE_TERMS, self::SCOPE_SITE_READ, self::SCOPE_SITE_WRITE,
+    ];
 
     public const AUTHORIZE_PATH = '/admin/mcp-authorize';
     public const TOKEN_PATH = '/_mcp/token';
@@ -48,6 +54,9 @@ final class McpOAuth
             self::SCOPE_WRITE => 'Write and edit drafts and scheduled entries',
             self::SCOPE_PUBLISH => 'Publish, schedule and change published entries',
             self::SCOPE_MEDIA => 'Add pictures to the media library',
+            self::SCOPE_TERMS => 'Add, change and remove categories, tags and the terms of the site\'s other taxonomies',
+            self::SCOPE_SITE_READ => 'Read the menus, redirects, site title, SEO and Theme settings, and the forms (not what visitors sent)',
+            self::SCOPE_SITE_WRITE => 'Change the menus, redirects, site title, SEO and Theme settings, and the forms\' fields and texts',
             self::SCOPE_SHOP_READ => 'Read the shop: products with their prices and stock',
             self::SCOPE_SHOP_WRITE => 'Change prices, sales, stock, coupons, categories and collections in the shop, and take products off sale',
             self::SCOPE_SHOP_DELETE => 'Delete products and coupons, and remove categories and collections',
