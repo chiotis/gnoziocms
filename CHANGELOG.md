@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.293 — 2026-11-19 — MCP reaches terms, menus, redirects, SEO, Theme settings and forms
+- **MCP:** three new scopes, unticked until a person gives them in Admin > MCP. **Terms: change** (`terms:write`) lets `create_term`, `update_term` and `remove_term` work on every taxonomy (categories, tags, the site's own), not only the shop's; a name the taxonomy already has is refused with the id to use. **Site: read** and **Site: change** (`site:read`, `site:write`) add tools for the site's name and tagline, the SEO settings, redirects, menus (read and replaced as a tree, placed in the theme's places), the Theme settings and forms (fields, button, messages, translations; a new form too). Each needs the permission of its admin screen and goes through the same checks; what is left out stays as it is.
+- Left to a person on purpose: redirects to another website, where a form's emails go and where it sends visitors, what visitors sent, the codes that prove who owns the site, and Theme settings that are lists, links or galleries. See `docs/mcp.md`.
+
 ## 0.1.292 — 2026-11-16 — Cardlink's check names the host it asked
 - **Shop:** Check connection for Cardlink now names the acquirer, live or test, and the host it asked, when it fails too. A Merchant ID "not found in system" usually means the wrong acquirer is chosen or test mode is on (the test host knows only test Merchant IDs); the message now says so.
 
