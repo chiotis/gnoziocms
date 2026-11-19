@@ -74,4 +74,4 @@ click(t[0], false);
 check('a plain click changes only its own box', ticked(t) === '0,1,2,3,4', ticked(t));
 
 if (failed) { console.log(failed + ' check(s) failed'); process.exit(1); }
-console.log('all shift-select checks passed');
+console.log('\nALL PASSED');
