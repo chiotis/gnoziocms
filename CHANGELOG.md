@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.300 — 2026-11-19 — The strip's settings in the Design tab
+- **Latest content:** Columns, Card style, Move by itself, Each move goes and Controls are in the **Design** tab beside the layout, each shown only for the layouts it applies to (the strip's settings for the Sliding strip, Columns for cards, image tiles and the strip). Saved blocks keep their values.
+
 ## 0.1.299 — 2026-11-19 — Sliding strip in image tiles; a counter for long strips
 - **Latest content:** the Sliding strip has a **Card style**: Cards (as before) or **Image tiles**, the text on the picture like the archive layout *Image tiles with text on top* (they share their styles).
 - With more than seven positions (a long list, or a phone with one card in view) the dots no longer run off the screen: a counter such as **3 / 18** between the arrows takes their place. Short strips keep their dots.
