@@ -62,7 +62,7 @@ check('saveCustom writes', $ok, true);
 $ct2 = new ContentTypes(new Theme($root, 'default'));
 $m = $ct2->definition('projects', 'el', 'el');
 check('origin merged', $m['origin'], 'theme+custom');
-check('archive merged', [$m['archive']['layout'], $m['archive']['per_page'], $m['archive']['title'], $m['archive']['columns']], ['magazine', 60, 'Our work', '3']);
+check('archive merged', [$m['archive']['layout'], $m['archive']['per_page'], $m['archive']['title'], $m['archive']['columns']], ['magazine', 500, 'Our work', '3']);  // no upper limit on a page's size
 check('taxonomies kept from theme', $m['archive']['taxonomies'], ['categories']);
 check('order by declared field kept', $m['archive']['order'], 'field:budget:desc');
 check('theme field flag overridden', $m['fields']['client']['card'], false);

@@ -77,7 +77,7 @@ check('at most three buttons', count(FieldSchema::resolve($registry->get('hero-s
 check('the cards of an old Slider are split slides', $registry->migrate(['type' => 'slider', 'variant' => 'multi', 'items' => [['title' => 'T']]])['items'][0]['layout'], 'split');
 check('it is stored as a Hero slider', array_column($registry->sanitizeForStorage([['type' => 'slider', 'variant' => 'full', 'items' => [['title' => 'T']]]]), 'type'), ['hero-slider']);
 $r = FieldSchema::resolve($registry->get('latest')['fields'], ['limit' => 99, 'source' => 'evil', 'term' => "a\nb", 'show_image' => 'no']);
-check('latest limit capped', $r['limit'], 12);
+check('latest limit has no upper cap (0 is all)', [$r['limit'], FieldSchema::resolve($registry->get('latest')['fields'], ['limit' => -5])['limit']], [99, 0]);
 check('latest source invalid -> posts', $r['source'], 'posts');
 check('latest term single line', $r['term'], 'a b');
 $r = FieldSchema::resolve($registry->get('video')['fields'], ['videos' => [['url' => 'javascript:alert(1)', 'poster' => 'javascript:x'], ['url' => 'https://youtu.be/dQw4w9WgXcQ']]]);
@@ -99,7 +99,7 @@ check('downloads variants, and a field that is a file', [array_keys($registry->g
 check('a file is kept as a safe address, empty or not', [FieldSchema::clean($registry->get('downloads')['fields']['items']['fields']['file'], ' /uploads/media/a.pdf '), FieldSchema::clean($registry->get('downloads')['fields']['items']['fields']['file'], 'javascript:alert(1)'), FieldSchema::clean($registry->get('downloads')['fields']['items']['fields']['file'], 'https://x.test/a b.pdf')], ['/uploads/media/a.pdf', '', '']);
 check('checklist variants, and its mark', [array_keys($registry->get('checklist')['variants']), $registry->get('checklist')['fields']['icon']['default']], [['plain', 'cards', 'split'], 'check']);
 check('portfolio variants, and its source takes the content types', [array_keys($registry->get('portfolio')['variants']), array_keys($registry->get('portfolio')['fields']['source']['options'])], [['grid', 'overlay'], ['manual', 'posts', 'projects']]);
-check('portfolio has at most 24 entries from a content type', $registry->get('portfolio')['fields']['limit']['max'], 24);
+check('portfolio has no upper limit on entries from a content type, and 0 shows all', [$registry->get('portfolio')['fields']['limit']['max'], $registry->get('portfolio')['fields']['limit']['min']], [null, 0]);
 check('table variants', array_keys($registry->get('table')['variants']), ['lines', 'striped', 'boxed']);
 check('marquee variants, speed and direction', [array_keys($registry->get('marquee')['variants']), $registry->get('marquee')['fields']['speed']['default'], $registry->get('marquee')['fields']['direction']['default']], [['text', 'logos'], 'normal', 'left']);
 check('logos let the colour be chosen: black and white with colour on hover (as it was), always black and white, or their own', [array_keys($registry->get('logos')['fields']['colors']['options']), $registry->get('logos')['fields']['colors']['default']], [['hover', 'mono', 'color'], 'hover']);

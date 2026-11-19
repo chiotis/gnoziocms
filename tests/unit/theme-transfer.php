@@ -127,7 +127,7 @@ $bad['settings']['design']['shadows'] = 'javascript:alert(1)';
 $checked = $t->preview(['document' => $bad, 'files' => []]);
 $t->apply(['document' => $bad, 'files' => []], ['archive_layouts', 'branding']);
 $archive = $b['types']->customRaw('posts')['archive'];
-check('archive values are checked against the schema; unknown keys and taxonomies dropped', [$archive['layout'], $archive['per_page'] <= 60, isset($archive['order']), $archive['taxonomies'], isset($archive['evil'])], ['cards', true, false, ['categories'], false]);
+check('archive values are checked against the schema; unknown keys and taxonomies dropped', [$archive['layout'], $archive['per_page'] === 9999, isset($archive['order']), $archive['taxonomies'], isset($archive['evil'])], ['cards', true, false, ['categories'], false]);
 check('a value the schema does not offer is not taken', $b['store']['settings']['design']['shadows'] === 'javascript:alert(1)', false);
 
 // ---- undo
