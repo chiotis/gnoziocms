@@ -46,11 +46,21 @@
     var dots = document.createElement('div');
     dots.className = 'latest-strip-dots';
     var toggle = autoplay ? button('latest-strip-btn is-toggle', attr('data-label-pause', 'Pause automatic movement'), ICONS.pause) : null;
-    var arrows = nav === 'both' || nav === 'arrows';
-    if (arrows) controls.appendChild(prev);
-    if (nav === 'both' || nav === 'dots') controls.appendChild(dots);
+    // With more positions than MAX_DOTS (a long list, or a phone with one card in view) the dots would run off the screen:
+    // a counter ("3 / 18") takes their place, with the arrows beside it even when only dots were asked for.
+    var MAX_DOTS = 7;
+    var count = document.createElement('span');
+    count.className = 'latest-strip-count';
+    count.setAttribute('aria-hidden', 'true');
+    var wantArrows = nav === 'both' || nav === 'arrows';
+    var wantDots = nav === 'both' || nav === 'dots';
+    if (nav !== 'none') {
+      controls.appendChild(prev);
+      controls.appendChild(dots);
+      controls.appendChild(count);
+    }
     if (toggle) controls.appendChild(toggle);
-    if (arrows) controls.appendChild(next);
+    if (nav !== 'none') controls.appendChild(next);
     root.appendChild(controls);
     root.classList.add('is-enhanced');
 
@@ -80,6 +90,10 @@
           return dot;
         });
       }
+      var many = list.length > MAX_DOTS;
+      dots.hidden = !wantDots || many;
+      count.hidden = !wantDots || !many;
+      prev.hidden = next.hidden = !(wantArrows || many);
       // Nothing to slide (every card fits): no controls.
       controls.hidden = list.length < 2;
       return list;
@@ -95,6 +109,7 @@
 
     function mark() {
       var i = index();
+      count.textContent = (i + 1) + ' / ' + dotButtons.length;
       dotButtons.forEach(function (dot, n) {
         if (n === i) dot.setAttribute('aria-current', 'true'); else dot.removeAttribute('aria-current');
       });

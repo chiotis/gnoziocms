@@ -209,8 +209,17 @@
 }
 
 .latest-strip-controls[hidden],
-.latest-strip-dot[hidden] {
+.latest-strip-controls [hidden] {
   display: none;
+}
+
+/* In place of the dots when there are too many for the screen: "3 / 18". */
+.latest-strip-count {
+  min-width: 4.5rem;
+  color: var(--color-muted);
+  font-size: var(--step--1);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
 }
 
 .latest-strip-btn {
@@ -251,7 +260,10 @@
 
 .latest-strip-dots {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   align-items: center;
+  min-width: 0;
 }
 
 /* A comfortable 24px target around a small dot. */
@@ -387,8 +399,9 @@
   -webkit-line-clamp: 2;
 }
 
-/* Image tiles: the title sits on the picture */
+/* Image tiles: the title sits on the picture (also the Sliding strip's tiles, so a strip matches an archive in tiles) */
 .block-latest.block--overlay .latest-item,
+.block-latest .latest-strip--tiles .latest-item,
 .block-latest.block--magazine .latest-lead .latest-item {
   display: flex;
   align-items: flex-end;
@@ -400,12 +413,14 @@
   isolation: isolate;
 }
 
-.block-latest.block--overlay .latest-item {
+.block-latest.block--overlay .latest-item,
+.block-latest .latest-strip--tiles .latest-item {
   aspect-ratio: 4 / 5;
   min-height: 0;
 }
 
 .block-latest.block--overlay .latest-media,
+.block-latest .latest-strip--tiles .latest-media,
 .block-latest.block--magazine .latest-lead .latest-media {
   position: absolute;
   inset: 0;
@@ -413,6 +428,7 @@
 }
 
 .block-latest.block--overlay .latest-item::before,
+.block-latest .latest-strip--tiles .latest-item::before,
 .block-latest.block--magazine .latest-lead .latest-item::before {
   content: "";
   position: absolute;
@@ -422,32 +438,59 @@
 }
 
 .block-latest.block--overlay .latest-body,
+.block-latest .latest-strip--tiles .latest-body,
 .block-latest.block--magazine .latest-lead .latest-body {
   width: 100%;
   padding: var(--space-m);
 }
 
 .block-latest.block--overlay .latest-title a,
+.block-latest .latest-strip--tiles .latest-title a,
 .block-latest.block--magazine .latest-lead .latest-title a,
 .block-latest.block--overlay .latest-meta,
+.block-latest .latest-strip--tiles .latest-meta,
 .block-latest.block--magazine .latest-lead .latest-meta,
 .block-latest.block--overlay .latest-cat,
+.block-latest .latest-strip--tiles .latest-cat,
 .block-latest.block--magazine .latest-lead .latest-cat,
 .block-latest.block--magazine .latest-lead .latest-excerpt {
   color: #ffffff;
 }
 
 .block-latest.block--overlay .latest-meta,
+.block-latest .latest-strip--tiles .latest-meta,
 .block-latest.block--magazine .latest-lead .latest-meta {
   opacity: 0.9;
 }
 
-.block-latest.block--overlay .latest-excerpt {
+.block-latest.block--overlay .latest-excerpt,
+.block-latest .latest-strip--tiles .latest-excerpt {
   display: none;
 }
 
-.block-latest.block--overlay .latest-title {
+.block-latest.block--overlay .latest-title,
+.block-latest .latest-strip--tiles .latest-title {
   font-size: var(--step-2);
+}
+
+/* The strip's tiles: the text at the foot of the picture, no border; the card's lift on hover stays. */
+.block-latest .latest-strip--tiles .latest-item {
+  flex-direction: column;
+  justify-content: flex-end;
+  border: 0;
+}
+
+.block-latest .latest-strip--tiles .latest-body {
+  flex: 0 0 auto;
+}
+
+/* The picture covers the whole tile, not the card's 16:10 shape. */
+.block-latest .latest-strip--tiles .latest-media {
+  aspect-ratio: auto;
+}
+
+@media (max-width: 560px) {
+  .block-latest .latest-strip--tiles .latest-item { aspect-ratio: 4 / 3; }
 }
 
 /* Featured story and a list */

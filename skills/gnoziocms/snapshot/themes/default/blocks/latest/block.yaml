@@ -72,6 +72,13 @@ fields:
       '12': 'Every 12 seconds'
     help: It stops while a visitor points at it or uses it, a pause button is shown, and visitors who prefer reduced motion never get automatic movement.
     when: { variant: strip }
+  strip_style:
+    type: select
+    label: Card style
+    default: cards
+    options: { cards: Cards (picture above the text), tiles: Image tiles (text on the picture) }
+    help: Image tiles look like the archive layout of the same name.
+    when: { variant: strip }
   strip_step:
     type: select
     label: Each move goes

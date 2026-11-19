@@ -13,5 +13,5 @@
   </div>
   {% endif %}
 
-  {% include 'components/entry-list.twig' with {entries: entries, variant: block.variant, columns: block.columns, show_image: block.show_image, show_excerpt: block.show_excerpt, show_meta: block.show_meta, prefix: prefix, lang: lang|default(''), heading_tag: item_heading_tag, label: block.heading ?: t('latest.label', 'Latest content'), strip: {autoplay: block.autoplay in ['3', '5', '8', '12'] ? block.autoplay : '', step: block.strip_step|default('one'), nav: block.strip_nav|default('both')}} only %}
+  {% include 'components/entry-list.twig' with {entries: entries, variant: block.variant, columns: block.columns, show_image: block.show_image, show_excerpt: block.show_excerpt, show_meta: block.show_meta, prefix: prefix, lang: lang|default(''), heading_tag: item_heading_tag, label: block.heading ?: t('latest.label', 'Latest content'), strip: {autoplay: block.autoplay in ['3', '5', '8', '12'] ? block.autoplay : '', step: block.strip_step|default('one'), nav: block.strip_nav|default('both'), style: block.strip_style|default('cards')}} only %}
 </div>

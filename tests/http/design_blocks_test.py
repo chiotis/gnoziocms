@@ -54,6 +54,7 @@ blocks:
       - { title: Shipping, text: Worldwide. }
   - { type: latest, variant: strip, source: posts, columns: '4', autoplay: '5', strip_step: page, strip_nav: dots, heading: 'From the journal' }
   - { type: latest, variant: strip, source: posts, autoplay: '7', heading: 'Plain strip' }
+  - { type: latest, variant: strip, source: posts, strip_style: tiles, heading: 'Tiles strip' }
   - { type: term-tiles, taxonomy: collections, heading: 'Five coasts' }
   - { type: term-tiles, variant: list, taxonomy: collections }
   - { type: newsletter, heading: 'Letters from the Aegean', form: contact, dots: true }
@@ -74,7 +75,9 @@ check('the Statement: the words, the second line, the dots', 'block--statement' 
 check('the Mosaic: the Split\'s styles and three pictures', 'block--mosaic block--split' in page and 'hero-mosaic has-3' in page and page.count('hero-mosaic-more') == 2, re.findall(r'class="section block[^"]*block-hero[^"]*"', page))
 check('the Story: the quote and the eyebrow\'s dots', 'block--story' in page and 'class="ti-pull">I make each piece like a lion.' in page and 'eyebrow-dots' in page)
 check('the Strip: a dot before each title', 'block--strip' in page and page.count('class="feature-dot"') == 2, page.count('class="feature-dot"'))
-strips = re.findall(r'<div class="latest-strip" data-strip[^>]*>', page)
+strips = re.findall(r'<div class="latest-strip[^"]*" data-strip[^>]*>', page)
+check('the strip in image tiles carries the tiles class; the others do not', len(re.findall(r'class="latest-strip latest-strip--tiles"', page)) == 1, re.findall(r'class="latest-strip[^"]*"', page))
+strips = [x for x in strips if 'Tiles strip' not in x]
 check('the Sliding strip: a carousel group with its timing, its step and its controls for the script', len(strips) == 2 and 'data-step="page" data-nav="dots" data-autoplay="5"' in strips[0] and 'aria-roledescription="' in strips[0] and 'aria-label="From the journal"' in strips[0], strips)
 check('a timing that is not one of the choices does not move it; the defaults are one card on, arrows and dots', 'data-autoplay' not in strips[1] and 'data-step="one" data-nav="both"' in strips[1], strips[1:])
 check('the cards are still a list that scrolls without the script, inside the strip', re.search(r'data-strip[^>]*>\s*<ul class="latest-list cols-4" role="list" tabindex="0"', page) is not None)
