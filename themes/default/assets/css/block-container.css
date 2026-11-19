@@ -39,6 +39,44 @@
   position: absolute;
   inset: 0;
 }
+/* Where the picture sits, how it fills the section, how much of the background colour shows through, and whether it stays still. */
+.bkc--picture { --bkc-pos: 50% 50%; }
+.bkc--pic-top-left { --bkc-pos: 0% 0%; }
+.bkc--pic-top { --bkc-pos: 50% 0%; }
+.bkc--pic-top-right { --bkc-pos: 100% 0%; }
+.bkc--pic-left { --bkc-pos: 0% 50%; }
+.bkc--pic-right { --bkc-pos: 100% 50%; }
+.bkc--pic-bottom-left { --bkc-pos: 0% 100%; }
+.bkc--pic-bottom { --bkc-pos: 50% 100%; }
+.bkc--pic-bottom-right { --bkc-pos: 100% 100%; }
+.bkc-media :is(picture, img) { object-position: var(--bkc-pos); }
+.bkc--pic-contain .bkc-media :is(picture, img) { object-fit: contain; }
+.bkc--pic-natural .bkc-media :is(picture, img) { object-fit: none; }
+.bkc-pattern {
+  position: absolute;
+  inset: 0;
+  background-image: var(--bkc-pic);
+  background-position: var(--bkc-pos);
+  background-repeat: repeat;
+}
+.bkc--pic-o75 .bkc-media > * { opacity: 0.75; }
+.bkc--pic-o50 .bkc-media > * { opacity: 0.5; }
+.bkc--pic-o25 .bkc-media > * { opacity: 0.25; }
+.bkc--pic-o10 .bkc-media > * { opacity: 0.1; }
+/* Still while scrolling: the picture is fixed to the screen and the section shows the part of it behind it (clip-path clips
+   a fixed child, overflow does not). Phones and tablets scroll it with the page: they draw fixed backgrounds badly. */
+@media (min-width: 961px) and (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .bkc--pic-fixed .bkc-media { clip-path: inset(0); }
+  .bkc--pic-fixed .bkc-media > :is(picture, img) {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+  }
+  .bkc--pic-fixed .bkc-pattern { background-attachment: fixed; }
+}
+
 .bkc--overlay-light .bkc-media::after { background: color-mix(in srgb, var(--color-bg) 80%, transparent); }
 .bkc--overlay-dark .bkc-media::after { background: rgb(0 0 0 / 0.55); }
 
@@ -136,6 +174,9 @@
 .bkc-col--r-m { border-radius: var(--radius-m); }
 .bkc-col--r-l { border-radius: var(--radius-l); }
 .bkc-col[class*="bkc-col--r-"] { overflow: hidden; }
+
+/* A block on the default background lets the container's colour or picture show through; a block with a tone of its own is a card. */
+.bkc-col > .block.tone-default { background: transparent; }
 
 /* Blocks stacked in a column are separated like the sections of a page are. */
 .bkc-col > .block + .block { margin-top: var(--space-l); }

@@ -1,13 +1,18 @@
 {#
   Section wrapper for a container (rendered by BlockRenderer): a row of columns, with blocks inside each column.
-  Variables: container (checked settings: tone, spacing, inner, min_height, overlay, image, has_picture, anchor, class),
+  Variables: container (checked settings: tone, spacing, inner, min_height, overlay, image, image_position, image_size,
+  image_opacity, image_fixed, has_picture, picture_url (the url() for Repeat), anchor, class),
   container_row (the classes of the row of columns), container_columns (each: class, style, html), plus the page context.
   The column markup is drawn by BlockRenderer; this file only places it. In the editor's live preview (block_preview) the
   section also says where it stands in the editor's list (data-bk-block).
 #}
-<section class="block block-container bkc tone-{{ container.tone }} space-{{ container.spacing }}{% if container.min_height != 'none' %} bkc--min bkc--min-{{ container.min_height }}{% endif %}{% if container.has_picture %} bkc--picture{% if container.overlay != 'none' %} bkc--overlay-{{ container.overlay }}{% endif %}{% endif %}{% if container.class %} {{ container.class }}{% endif %}"{% if container.anchor %} id="{{ container.anchor }}"{% endif %}{% if block_preview|default(false) %} data-bk-block="{{ container_source }}"{% endif %}>
+<section class="block block-container bkc tone-{{ container.tone }} space-{{ container.spacing }}{% if container.min_height != 'none' %} bkc--min bkc--min-{{ container.min_height }}{% endif %}{% if container.has_picture %} bkc--picture bkc--pic-{{ container.image_position }} bkc--pic-{{ container.image_size }}{% if container.image_opacity != '100' %} bkc--pic-o{{ container.image_opacity }}{% endif %}{% if container.image_fixed %} bkc--pic-fixed{% endif %}{% if container.overlay != 'none' %} bkc--overlay-{{ container.overlay }}{% endif %}{% endif %}{% if container.class %} {{ container.class }}{% endif %}"{% if container.anchor %} id="{{ container.anchor }}"{% endif %}{% if block_preview|default(false) %} data-bk-block="{{ container_source }}"{% endif %}>
   {% if container.has_picture %}
+  {% if container.picture_url %}
+  <div class="bkc-media" aria-hidden="true"><div class="bkc-pattern" style="--bkc-pic: {{ container.picture_url }}"></div></div>
+  {% else %}
   <div class="bkc-media" aria-hidden="true">{{ image(container.image, {alt: '', sizes: '100vw', max_width: 2000}) }}</div>
+  {% endif %}
   {% endif %}
   <div class="bkc-inner bkc-inner--{{ container.inner }}">
     <div class="{{ container_row }}">

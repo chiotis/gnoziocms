@@ -27,9 +27,12 @@ final class BlockContainer
     public const STACKS = ['row' => 'Stay in a row', 'two' => 'Wrap to 2 columns', 'one' => 'Stack to 1 column'];
     public const ALIGNS = ['stretch' => 'Stretch', 'start' => 'Top', 'center' => 'Middle', 'end' => 'Bottom', 'baseline' => 'Baseline'];
     public const JUSTIFY = ['start' => 'Start', 'center' => 'Center', 'end' => 'End', 'between' => 'Space between', 'around' => 'Space around', 'evenly' => 'Space evenly'];
+    /** Where the background picture sits (object-position / background-position). */
+    public const POSITIONS = ['top-left' => 'Top left', 'top' => 'Top', 'top-right' => 'Top right', 'left' => 'Left', 'center' => 'Center', 'right' => 'Right', 'bottom-left' => 'Bottom left', 'bottom' => 'Bottom', 'bottom-right' => 'Bottom right'];
     public const MIN_HEIGHTS = ['none' => 'Auto', 's' => 'Small', 'm' => 'Medium', 'l' => 'Large', 'screen' => 'Screen'];
     /** Ready-made column layouts: id => [label, column widths]. */
     public const PRESETS = [
+        'full' => ['100', ['']],                  // one column at the full width: no width stored, like a column left as it is
         '50-50' => ['50 / 50', ['1/2', '1/2']],
         '33-67' => ['33 / 67', ['1/3', '2/3']],
         '67-33' => ['67 / 33', ['2/3', '1/3']],
@@ -60,6 +63,10 @@ final class BlockContainer
             'reverse_phone' => ['type' => 'toggle', 'label' => 'Reverse the order when stacked on a phone'],
             'tone' => ['type' => 'select', 'label' => 'Background', 'options' => BlockRegistry::TONES, 'default' => 'default'],
             'image' => ['type' => 'image', 'label' => 'Background picture'],
+            'image_position' => ['type' => 'select', 'label' => 'Picture position', 'options' => self::POSITIONS, 'default' => 'center', 'help' => 'The part of the picture that stays in view.'],
+            'image_size' => ['type' => 'select', 'label' => 'Picture size', 'options' => ['cover' => 'Cover', 'contain' => 'Contain', 'natural' => 'Natural size', 'repeat' => 'Repeat'], 'default' => 'cover', 'help' => 'Cover fills the section and may crop; Contain shows all of it; Repeat tiles it (patterns, textures).'],
+            'image_opacity' => ['type' => 'select', 'label' => 'Picture opacity', 'options' => ['100' => '100%', '75' => '75%', '50' => '50%', '25' => '25%', '10' => '10%'], 'default' => '100', 'help' => 'Under 100% the background colour shows through.'],
+            'image_fixed' => ['type' => 'toggle', 'label' => 'Picture stays still while the page scrolls', 'help' => 'Not on phones and tablets, and not for someone who asked for less motion.'],
             'overlay' => ['type' => 'select', 'label' => 'Overlay', 'options' => ['none' => 'None', 'light' => 'Light', 'dark' => 'Dark'], 'default' => 'none', 'help' => 'Over the picture, so the text stays readable. Dark also makes the text light.'],
             'inner' => ['type' => 'select', 'label' => 'Inner width', 'options' => ['container' => 'Container', 'narrow' => 'Narrow', 'full' => 'Full bleed'], 'default' => 'container'],
             'spacing' => ['type' => 'select', 'label' => 'Spacing', 'options' => BlockRegistry::SPACINGS, 'default' => 'default'],
@@ -68,6 +75,18 @@ final class BlockContainer
             'class' => ['type' => 'text', 'label' => 'CSS class', 'help' => 'Optional class names (letters, digits, - and _) for the site\'s own stylesheet.'],
             'hidden' => ['type' => 'toggle', 'label' => 'Hide this container'],
         ]);
+    }
+
+    /**
+     * The CSS `url()` of a background picture for Repeat, or '' when its address has characters that do not belong in one (Repeat
+     * then falls back to the natural size, drawn as an <img>). Only plain paths and http(s) addresses are used.
+     */
+    public static function pictureUrl(string $image): string
+    {
+        if (!preg_match('#^(?:/|https?://)[A-Za-z0-9._~/:%+@=&?,;!-]*$#', $image) || str_contains($image, '..')) {
+            return '';
+        }
+        return 'url("' . $image . '")';
     }
 
     /** The fields of one column. @return array<string, array<string, mixed>> */

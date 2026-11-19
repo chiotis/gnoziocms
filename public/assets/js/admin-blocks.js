@@ -1511,6 +1511,9 @@
     return container.columns.length === widths.length && container.columns.every(function (column, c) { return (column.settings.width || '') === (widths[c] || ''); });
   }
 
+  /** Short labels of the nine picture positions, drawn as a 3 × 3 grid (the full name is the button's label). */
+  var POSITION_ARROWS = { 'top-left': '↖', top: '↑', 'top-right': '↗', left: '←', center: '•', right: '→', 'bottom-left': '↙', bottom: '↓', 'bottom-right': '↘' };
+
   /** A choice as a row of buttons, whatever the number of options; `short` gives the text on a button, the full label is its name. */
   function chipsField(def, value, onChange, short) {
     var wrapper = el('div', { class: 'bk-field' }, [el('span', { class: 'bk-label', text: def.label })]);
@@ -1735,7 +1738,18 @@
         changed(true);
       }, idBase);
       var section = [swatches, pictureField];
-      if (container.settings.image) section.push(chipsField(d('overlay'), settingValue(container, d('overlay')), function (value) { container.settings.overlay = value; changed(false); }));
+      if (container.settings.image) {
+        var setPic = function (key) { return function (value) { container.settings[key] = value; changed(false); }; };
+        var position = chipsField(d('image_position'), settingValue(container, d('image_position')), setPic('image_position'), POSITION_ARROWS);
+        position.querySelector('.bk-seg').classList.add('bk-pos3');
+        section.push(
+          position,
+          chipsField(d('image_size'), settingValue(container, d('image_size')), setPic('image_size')),
+          chipsField(d('image_opacity'), settingValue(container, d('image_opacity')), setPic('image_opacity')),
+          fieldControl(Object.assign({}, d('image_fixed'), { span: '' }), !!container.settings.image_fixed, setPic('image_fixed'), idBase),
+          chipsField(d('overlay'), settingValue(container, d('overlay')), setPic('overlay'))
+        );
+      }
       section.push(
         chipsField(d('inner'), settingValue(container, d('inner')), function (value) { container.settings.inner = value; changed(false); }),
         valueSetting(d('spacing'), container, idBase, changed),
