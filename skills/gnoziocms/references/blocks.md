@@ -1,4 +1,4 @@
-# Blocks of this installation (GnozioCMS 0.1.298)
+# Blocks of this installation (GnozioCMS 0.1.299)
 
 ## Fields every block has
 
@@ -570,10 +570,10 @@ The newest posts, projects, or any content type, shown from a quiet text list to
 | `offset` | whole number; 0 to 50; default `0` | Leaves out this many of the first entries in the order above (with Newest first, the newest), for example the ones another block of the page already shows. |
 | `skip_shown` | true / false; default `false` | Entries that a block higher on the page already shows (or the page itself) are left out, and the next ones take their place. |
 | `autoplay` | choice; one of `off`, `3`, `5`, `8`, `12`; default `off`; only when `variant` is `s` or `t` or `r` or `i` or `p` | It stops while a visitor points at it or uses it, a pause button is shown, and visitors who prefer reduced motion never get automatic movement. |
-| `strip_style` | choice; one of `cards`, `tiles`; default `cards`; only when `variant` is `s` or `t` or `r` or `i` or `p` | Image tiles look like the archive layout of the same name. |
+| `strip_style` | choice; one of `cards`, `tiles`; default `cards`; only when `variant` is `s` or `t` or `r` or `i` or `p` | Cards have the picture above the text; image tiles put the text on the picture, like the archive layout. |
 | `strip_step` | choice; one of `one`, `page`; default `one`; only when `variant` is `s` or `t` or `r` or `i` or `p` |  |
 | `strip_nav` | choice; one of `both`, `arrows`, `dots`, `none`; default `both`; only when `variant` is `s` or `t` or `r` or `i` or `p` |  |
-| `columns` | choice; one of `2`, `3`, `4`; default `3` |  |
+| `columns` | choice; one of `2`, `3`, `4`; default `3`; only when `variant` is `cards` or `overlay` or `strip` | For the strip, the cards in view at once. |
 | `show_image` | true / false; default `true` |  |
 | `show_excerpt` | true / false; default `true` |  |
 | `show_meta` | true / false; default `true` |  |
