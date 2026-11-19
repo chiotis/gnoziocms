@@ -3,7 +3,7 @@
 {% set columns = block.items|filter(c => c.title or c.text or c.image) %}
 <div class="container">
   {{ ui.section_header(block, heading_tag, block_uid, 'left') }}
-  <div class="cols cols-{{ columns|length }}">
+  <div class="cols cols-{{ columns|length }} ratio-{{ block.image_ratio|default('landscape') }}">
     {% for col in columns %}
       {% set href = link_url(col.url, prefix) %}
       {# A picture with no text and no link has nothing to sit beside: it takes the whole column. #}

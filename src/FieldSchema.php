@@ -143,8 +143,8 @@ final class FieldSchema
                 $field['drawn'] = $definition['drawn'] === true ? '*' : (is_string($definition['drawn']) && preg_match('/^[a-z][a-z0-9-]*$/', $definition['drawn']) ? $definition['drawn'] : '');
             }
             if ($type === 'file') {
-                // Which files the Library offers for it: all of them, or only route files (GPX, KML, GeoJSON).
-                $field['kind'] = ($definition['kind'] ?? '') === 'track' ? 'track' : 'all';
+                // Which files the Library offers for it: all of them, only route files (GPX, KML, GeoJSON) or only sound (MP3, WAV, OGG, M4A).
+                $field['kind'] = in_array($definition['kind'] ?? '', ['track', 'audio'], true) ? (string)$definition['kind'] : 'all';
             }
             if ($type === 'gallery') {
                 // A list of pictures from the library, in the order chosen; `max` caps it.

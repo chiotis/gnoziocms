@@ -223,13 +223,13 @@ final class MediaAdmin
     /**
      * A page of pictures for the image picker.
      *
-     * @param array<string, mixed> $get kind (image, video or all), tag, q, page, per_page
+     * @param array<string, mixed> $get kind (image, video, audio, track or all), tag, q, page, per_page
      * @return array{items: array<int, array<string, mixed>>, total: int, page: int, pages: int, per_page: int, tags: string[]}
      */
     public function picker(array $get): array
     {
         $asked = (string)($get['kind'] ?? 'image');
-        $kind = in_array($asked, ['all', 'video', 'track'], true) ? $asked : 'image';
+        $kind = in_array($asked, ['all', 'video', 'track', 'audio'], true) ? $asked : 'image';
         $perPage = max(6, min(48, (int)($get['per_page'] ?? 24)));
         $all = $this->media->list(['type' => $kind, 'tag' => $this->media->sanitizeTag((string)($get['tag'] ?? '')), 'q' => trim((string)($get['q'] ?? ''))]);
         $total = count($all);

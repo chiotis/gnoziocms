@@ -389,14 +389,15 @@
       });
       wrapper.appendChild(el('div', { class: 'bk-image' }, [control, chooseVideo]));
     } else if (type === 'file') {
-      // A file to download: its address with a Library button for every kind of file.
+      // A file: its address with a Library button for the files of its kind (`kind`: all, audio or track).
       control = el('input', { id: id, type: 'text', placeholder: field.placeholder || '/uploads/…', class: 'lc-input' });
       control.value = value == null ? '' : String(value);
       control.addEventListener('input', function () { onChange(control.value); });
       var chooseFile = el('button', { type: 'button', class: CLS.btn, html: svg('image') + '<span>Library</span>' });
-      chooseFile.setAttribute('aria-label', 'Choose a file from the media library');
+      var fileKind = field.kind === 'audio' || field.kind === 'track' ? field.kind : 'all';
+      chooseFile.setAttribute('aria-label', fileKind === 'audio' ? 'Choose a sound file from the media library' : 'Choose a file from the media library');
       chooseFile.addEventListener('click', function () {
-        openMediaPicker(function (url) { control.value = url; onChange(url); }, 'all');
+        openMediaPicker(function (url) { control.value = url; onChange(url); }, fileKind);
       });
       wrapper.appendChild(el('div', { class: 'bk-image' }, [control, chooseFile]));
     } else {

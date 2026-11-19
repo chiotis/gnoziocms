@@ -1,6 +1,7 @@
 label: Columns
 description: Two or three columns side by side, each with an optional picture, a heading, text and a link. Stacks on a phone.
 category: Content
+design_fields: [image_ratio]
 variants:
   image-side: Picture beside the text
   image-top: Picture above the text
@@ -14,6 +15,12 @@ fields:
   intro:
     type: textarea
     label: Introduction
+  image_ratio:
+    type: select
+    label: Picture shape
+    default: landscape
+    options: { landscape: 'Landscape (4:3)', wide: 'Wide (16:9)', portrait: 'Portrait (4:5)', square: 'Square', natural: 'As uploaded' }
+    help: Every picture of the block takes this shape (cut from the middle), so the columns line up.
   items:
     type: repeater
     label: Columns
