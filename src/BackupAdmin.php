@@ -106,6 +106,7 @@ final class BackupAdmin
             'backup_snapshots' => $snapshots,
             'backup_runs' => $this->runs->recent(20),
             'backup_total' => count($snapshots),
+            'backup_encrypted' => $this->backups->encrypts(),
             'backup_storage_human' => Format::bytes((int)array_sum(array_map(static fn(array $snapshot): int => (int)($snapshot['size'] ?? 0), $snapshots))),
             'last_backup' => $snapshots[0] ?? null,
             'backup_schedule' => [
@@ -180,7 +181,12 @@ final class BackupAdmin
         if (trim((string)($post['confirm_filename'] ?? '')) !== $filename) {
             return $again('Type the archive name exactly as shown to confirm the restore.', $selected);
         }
-        $verification = $this->backups->verify($filename);
+        // An encrypted archive opens with the passphrase typed here, or else the one in Settings.
+        $passphrase = (string)($post['passphrase'] ?? '');
+        $verification = $this->backups->verify($filename, $passphrase);
+        if (!empty($verification['locked'])) {
+            return $again((string)$verification['message'], $selected);
+        }
         if (!$verification['ok']) {
             return $again('The archive failed verification, so nothing was restored.', $selected);
         }
@@ -194,7 +200,7 @@ final class BackupAdmin
             return $again('The safety snapshot failed, so the restore was not started: ' . (string)($safety['message'] ?? ''), $selected);
         }
 
-        $result = $this->backups->restore($filename, $selected);
+        $result = $this->backups->restore($filename, $selected, $passphrase);
         // The system database may have been swapped: bring the request up to date and write the history into the active one.
         ($this->afterRestore)($result['ok']);
         $this->manager->recordRun($safety);

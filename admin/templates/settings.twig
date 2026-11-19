@@ -394,6 +394,11 @@
               <input type="number" min="1" name="backup_keep_local" value="{{ settings_form.backup_keep_local }}" class="{{ input_class }}" aria-describedby="backup-keep-local-help">
               <span id="backup-keep-local-help" class="mt-1 block text-xs text-slate-400">The newest this many stay; older ones are deleted after each backup. A number of backups, not days. Remote storage has its own number.</span>
             </label>
+            <label class="block sm:col-span-2">
+              <span class="mb-1 block text-sm font-medium text-slate-700">Backup passphrase</span>
+              {{ local.secret_input('backup_passphrase', settings_form.backup_passphrase_set, input_class, 'At least 12 characters; none means plain archives', settings_form.backup_passphrase_lost) }}
+              <span class="mt-1 block text-xs text-slate-500">New backups are encrypted with it (AES-256), here and in remote storage. Keep it somewhere safe outside the site: a backup restored on another server needs it, and without it the archive cannot be opened. Earlier backups stay as they were made.</span>
+            </label>
           </div>
           <div class="mt-3 flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
             <p class="text-sm text-slate-500">Last automatic backup: {{ settings_form.backup_last_run ?: 'Never' }}</p>

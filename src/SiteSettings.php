@@ -394,6 +394,7 @@ final class SiteSettings
             'backup_remote_bucket' => (string)($post['backup_remote_bucket'] ?? ''),
             'backup_remote_access_key' => (string)($post['backup_remote_access_key'] ?? ''),
             'backup_remote_secret_key' => (string)($post['backup_remote_secret_key'] ?? ''),
+            'backup_passphrase' => (string)($post['backup_passphrase'] ?? ''),
             'backup_remote_prefix' => (string)($post['backup_remote_prefix'] ?? ''),
             'backup_remote_keep' => (string)($post['backup_remote_keep'] ?? ''),
             'backup_remote_path_style' => isset($post['backup_remote_path_style']) ? '1' : '0',
@@ -446,6 +447,8 @@ final class SiteSettings
             'ses_secret' => ['forms', 'notifications', 'ses', 'secret'],
             'google_client_secret' => ['auth', 'google', 'client_secret'],
             'backup_remote_secret_key' => ['backup', 'remote', 'secret_key'],
+            // Encrypts the backup archives (BackupService); kept sealed like the other secrets.
+            'backup_passphrase' => ['backup', 'passphrase'],
             'update_github_token' => ['updates', 'github_token'],
             'youtube_key' => ['apis', 'youtube', 'key'],
         ];

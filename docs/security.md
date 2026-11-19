@@ -136,7 +136,8 @@ set, and says why. Pages themselves are still built with the request's host when
 - **Keep `storage/key`.** Restoring a backup on the same server works as before. On another server (or after `storage/key` was
   lost) the secrets cannot be opened: they read as empty, nothing fails, and each screen shows them as *to be entered again*.
   To move a site with its secrets, copy `storage/key` to the new server yourself, over a safe channel.
-- The rest of a backup (content, customer data, orders) is still plain: treat archives as sensitive.
+- The rest of a backup (content, customer data, orders) is plain unless **Settings > Backups > Backup passphrase** is set: then
+  each archive is encrypted with AES-256 (`docs/backups.md`, *Encryption*). Without one, treat archives as sensitive.
 
 ### Uploads
 

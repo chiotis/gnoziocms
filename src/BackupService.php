@@ -19,6 +19,11 @@ final class BackupService
 {
     public const MANIFEST_NAME = 'faroscms-backup.json';
     public const MANIFEST_FORMAT = 1;
+    /**
+     * Plain beside an encrypted archive's entries: what the list shows (type, reason, date, version, whether it is encrypted), never
+     * a file name or anything of the site's data.
+     */
+    public const INFO_NAME = 'gnozio-backup-info.json';
     private const DATABASE_ENTRY = 'storage/db/app.sqlite';
     /**
      * The folders of a data snapshot, the one taken before an update: what the new code may write once it runs. Code is left out
@@ -44,10 +49,55 @@ final class BackupService
         'public/_custom/',
     ];
 
+    /** Settings > Backups > passphrase: when set, every entry of a new archive is encrypted with it (AES-256, audit S19). */
+    private string $passphrase = '';
+
     public function __construct(
         private string $basePath,
         private SystemDatabase $database
     ) {
+    }
+
+    public function setPassphrase(string $passphrase): void
+    {
+        $this->passphrase = $passphrase;
+    }
+
+    /** Whether new archives are encrypted. */
+    public function encrypts(): bool
+    {
+        return $this->passphrase !== '';
+    }
+
+    /** Whether this server's zip library can write AES-256 encrypted entries. */
+    public static function canEncrypt(): bool
+    {
+        return class_exists(ZipArchive::class) && ZipArchive::isEncryptionMethodSupported(ZipArchive::EM_AES_256, true);
+    }
+
+    /** Whether an open archive's entries are encrypted (its manifest is). */
+    private static function encrypted(ZipArchive $zip): bool
+    {
+        $stat = $zip->statName(self::MANIFEST_NAME);
+        return is_array($stat) && (int)($stat['encryption_method'] ?? 0) !== ZipArchive::EM_NONE;
+    }
+
+    /**
+     * Sets the passphrase that opens an encrypted archive: the one given (typed on the restore screen), else the site's.
+     * True when the archive is not encrypted or one of them opens it.
+     */
+    private function unlock(ZipArchive $zip, string $given = ''): bool
+    {
+        if (!self::encrypted($zip)) {
+            return true;
+        }
+        foreach (array_unique(array_filter([$given, $this->passphrase], static fn(string $p): bool => $p !== '')) as $candidate) {
+            $zip->setPassword($candidate);
+            if ($zip->getFromName(self::MANIFEST_NAME) !== false) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public function directory(): string
@@ -145,6 +195,7 @@ final class BackupService
                 'reason' => (string)($manifest['reason'] ?? ''),
                 'version' => (string)($manifest['version'] ?? ''),
                 'has_manifest' => $manifest !== null,
+                'encrypted' => !empty($manifest['encrypted']),
             ];
         }
         usort($items, fn(array $a, array $b): int => ((int)$b['mtime']) <=> ((int)$a['mtime']));
@@ -209,11 +260,13 @@ final class BackupService
      *
      * @return array{ok: bool, message: string, has_manifest: bool, manifest: array<string, mixed>|null, checked: int, errors: string[], areas: array<string, int>, uncompressed_bytes: int}
      */
-    public function verify(string $filename): array
+    public function verify(string $filename, string $passphrase = ''): array
     {
         $result = [
             'ok' => false,
             'message' => '',
+            'encrypted' => false,
+            'locked' => false,
             'has_manifest' => false,
             'manifest' => null,
             'checked' => 0,
@@ -231,6 +284,7 @@ final class BackupService
             $result['message'] = 'The archive could not be opened. It may be corrupt.';
             return $result;
         }
+        $result['encrypted'] = self::encrypted($zip);
 
         $entries = [];
         for ($i = 0; $i < $zip->numFiles; $i++) {
@@ -258,6 +312,14 @@ final class BackupService
             ));
         }
 
+        // The names of an encrypted archive's entries can be read without the passphrase (so the areas above are known), their
+        // contents cannot.
+        if (!$this->unlock($zip, $passphrase)) {
+            $zip->close();
+            $result['locked'] = true;
+            $result['message'] = 'This backup is encrypted, and ' . ($passphrase !== '' ? 'that passphrase does' : 'the passphrase in Settings does') . ' not open it. Give the passphrase it was made with.';
+            return $result;
+        }
         $manifestRaw = $zip->getFromName(self::MANIFEST_NAME);
         $manifest = is_string($manifestRaw) ? json_decode($manifestRaw, true) : null;
         if (is_array($manifest) && is_array($manifest['files'] ?? null)) {
@@ -281,7 +343,7 @@ final class BackupService
                 $result['checked']++;
             }
             foreach (array_keys($entries) as $name) {
-                if ($name !== self::MANIFEST_NAME && !array_key_exists($name, $manifest['files'])) {
+                if ($name !== self::MANIFEST_NAME && $name !== self::INFO_NAME && !array_key_exists($name, $manifest['files'])) {
                     $result['errors'][] = 'Unexpected file not listed in the manifest: ' . $name;
                 }
             }
@@ -295,7 +357,7 @@ final class BackupService
         }
         $result['ok'] = true;
         $result['message'] = $result['has_manifest']
-            ? 'Archive verified: ' . $result['checked'] . ' files match their checksums.'
+            ? 'Archive verified: ' . $result['checked'] . ' files match their checksums' . ($result['encrypted'] ? ' (encrypted).' : '.')
             : 'Archive structure is valid, but it has no checksum manifest (created before manifests existed).';
         return $result;
     }
@@ -307,7 +369,7 @@ final class BackupService
      * @param string[] $scopeKeys
      * @return array{ok: bool, message: string, restored: string[], skipped: string[], previous_dir?: string}
      */
-    public function restore(string $filename, array $scopeKeys): array
+    public function restore(string $filename, array $scopeKeys, string $passphrase = ''): array
     {
         $fail = static fn(string $message): array => ['ok' => false, 'message' => $message, 'restored' => [], 'skipped' => []];
         $path = $this->pathFor($filename);
@@ -322,6 +384,10 @@ final class BackupService
         $zip = new ZipArchive();
         if ($zip->open($path, ZipArchive::RDONLY) !== true) {
             return $fail('The archive could not be opened.');
+        }
+        if (!$this->unlock($zip, $passphrase)) {
+            $zip->close();
+            return $fail('This backup is encrypted, and the passphrase does not open it.');
         }
 
         $runId = date('Ymd-His') . '-' . bin2hex(random_bytes(3));
@@ -339,7 +405,7 @@ final class BackupService
         for ($i = 0; $i < $zip->numFiles; $i++) {
             $stat = $zip->statIndex($i);
             $name = is_array($stat) ? (string)$stat['name'] : '';
-            if ($name === '' || str_ends_with($name, '/') || $name === self::MANIFEST_NAME) {
+            if ($name === '' || str_ends_with($name, '/') || $name === self::MANIFEST_NAME || $name === self::INFO_NAME) {
                 continue;
             }
             if (!$this->isSafeEntryName($name)) {
@@ -457,10 +523,20 @@ final class BackupService
         $partialPath = $this->directory() . '/.' . $filename . '.partial';
         $dbCopy = $this->directory() . '/.' . $filename . '.sqlite';
 
+        $secret = $this->passphrase;
+        if ($secret !== '' && !self::canEncrypt()) {
+            // Never a plain archive when an encrypted one was asked for.
+            return ['ok' => false, 'message' => 'A backup passphrase is set, but this server\'s zip library cannot encrypt archives (AES-256). Ask the host for a newer libzip, or remove the passphrase in Settings.'];
+        }
         $zip = new ZipArchive();
         if ($zip->open($partialPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
             return ['ok' => false, 'message' => 'Could not create backup archive.'];
         }
+        $seal = static function (string $name) use ($zip, $secret): void {
+            if ($secret !== '') {
+                $zip->setEncryptionName($name, ZipArchive::EM_AES_256, $secret);
+            }
+        };
 
         $files = [];
         $prefix = rtrim($this->basePath, '/') . '/';
@@ -487,10 +563,11 @@ final class BackupService
                 }
                 $relative = str_replace('\\', '/', substr($pathname, strlen($prefix)));
                 // The archive's own manifest takes this name; a file of the site that has it (a backup unzipped in the project) must not clash with it.
-                if ($relative === self::MANIFEST_NAME || $this->shouldExclude($relative) || str_starts_with($relative, 'storage/db/app.sqlite')) {
+                if ($relative === self::MANIFEST_NAME || $relative === self::INFO_NAME || $this->shouldExclude($relative) || str_starts_with($relative, 'storage/db/app.sqlite')) {
                     continue;
                 }
                 if ($zip->addFile($pathname, $relative)) {
+                    $seal($relative);
                     $files[$relative] = ['size' => (int)$fileInfo->getSize(), 'sha256' => (string)hash_file('sha256', $pathname)];
                 }
             }
@@ -501,6 +578,7 @@ final class BackupService
             $copy = $this->copyDatabase($dbCopy);
             if ($copy['ok']) {
                 $zip->addFile($dbCopy, self::DATABASE_ENTRY);
+                $seal(self::DATABASE_ENTRY);
                 $files[self::DATABASE_ENTRY] = ['size' => (int)(filesize($dbCopy) ?: 0), 'sha256' => (string)hash_file('sha256', $dbCopy)];
                 $databaseAdded = true;
             } elseif ($type !== 'full') {
@@ -533,6 +611,11 @@ final class BackupService
             'files' => $files,
         ];
         $zip->addFromString(self::MANIFEST_NAME, (string)json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+        $seal(self::MANIFEST_NAME);
+        if ($secret !== '') {
+            $info = ['format' => self::MANIFEST_FORMAT, 'encrypted' => true] + array_intersect_key($manifest, array_flip(['type', 'reason', 'created_at', 'version', 'database']));
+            $zip->addFromString(self::INFO_NAME, (string)json_encode($info, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+        }
         $closed = $zip->close();
         @unlink($dbCopy);
         if (!$closed || !@rename($partialPath, $finalPath)) {
@@ -765,14 +848,16 @@ final class BackupService
         if ($zip->open($path, ZipArchive::RDONLY) !== true) {
             return null;
         }
-        $raw = $zip->getFromName(self::MANIFEST_NAME);
+        // An encrypted archive's manifest opens with the passphrase; without it, the plain info says what the list needs.
+        $encrypted = self::encrypted($zip);
+        $raw = $this->unlock($zip) ? $zip->getFromName(self::MANIFEST_NAME) : $zip->getFromName(self::INFO_NAME);
         $zip->close();
         $data = is_string($raw) ? json_decode($raw, true) : null;
         if (!is_array($data)) {
             return null;
         }
         unset($data['files']);
-        return $data;
+        return $data + ['encrypted' => $encrypted];
     }
 
     private function shouldExclude(string $relative): bool

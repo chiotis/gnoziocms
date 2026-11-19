@@ -188,6 +188,7 @@ final class App
         $this->backupRuns = new BackupRunRepository($this->systemDatabase);
         $this->loginThrottle = new LoginThrottle($this->systemDatabase);
         $this->backups = new BackupService($this->basePath, $this->systemDatabase);
+        $this->backups->setPassphrase((string)($this->settings['backup']['passphrase'] ?? ''));
         $this->formSubmissions = new FormSubmissionRepository($this->contentDir, $this->basePath . '/storage/form-uploads');
         $this->formSubmissions->uploads()->configure(
             fn(): int => $this->siteLimits()->maxUploadBytes(),

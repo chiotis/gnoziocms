@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.314 — 2026-11-19 — Encrypted backups
+- **Backup passphrase** (audit S19): a new setting in Settings > Backups. With it, every entry of a new backup (files, database, checksum manifest) is encrypted with AES-256, locally and in remote storage; the passphrase itself is kept sealed like the other secrets. The list marks encrypted archives, and verify and restore open them with the passphrase in Settings, or one typed on the restore screen for an archive made with another. Without the right one nothing is read.
+- Without a passphrase the Backups screen says new archives are plain. Earlier archives stay as they were made.
+
 ## 0.1.313 — 2026-11-19 — Secrets encrypted at rest
 - **Secrets encrypted in the database** (audit S8): the shop's payment keys (Viva Wallet, Cardlink, Meta, Google, WooCommerce), the passwords and keys of Settings (SMTP, SES, Google sign-in, S3, GitHub, YouTube) and the AI provider's key are stored encrypted (AES-256-GCM) under a key in `storage/key`, made on first use. The key is never put in a backup or an update, so a backup, local or on S3, opens no secret.
 - Secrets stored before are read as they are and encrypted the next time their screen is saved.

@@ -28,6 +28,21 @@ Settings > Backup chooses a schedule (daily, weekly or monthly). A PHP site has 
 
 A site that nobody visits, on a server without FPM and with no cron job, takes no scheduled backups: that is the case for a quiet site, and why the cron job is advised. A backup is due when the last one is older than the interval, less two hours, so a job that runs at the same time every day is not found a few seconds early. Only one run goes at a time (a lock in the backups folder).
 
+## Encryption
+
+**Settings > Backups > Backup passphrase** (none by default). With one, every entry of a new archive (the files, the database,
+the checksum manifest) is encrypted with AES-256 inside the zip, and the same file goes to remote storage. A small plain entry,
+`gnozio-backup-info.json`, holds only the type, reason, date and version, so the list can show what an archive is. ZIP encryption
+hides what the files hold, not their names and sizes. The passphrase is kept in Settings like the other secrets (sealed with
+`storage/key`), and is never in a backup in plain text.
+
+- Verify and restore use the passphrase in Settings. One made with another passphrase (an old one, or on another server) shows
+  *Encrypted* and asks for it on the restore screen; without the right one nothing is read or restored.
+- **Keep the passphrase outside the site.** Restored on a new server, an archive opens only with it.
+- Without a passphrase the Backups screen says the archives are plain. Archives made before it was set stay as they were.
+- The server's zip library must write AES-256 (libzip 1.2 or newer, which PHP 8.5 builds have). If it cannot, a backup with a
+  passphrase set fails with that message instead of being written plain.
+
 ## Retention and remote copies
 
 - `Settings > Backups > Backups to keep on this server` limits how many archives stay in `storage/backups/` (all types together). It is a number of backups, not days. Pre-restore safety snapshots never trigger pruning, so the archive being restored cannot be deleted by it.

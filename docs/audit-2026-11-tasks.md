@@ -64,7 +64,7 @@ group. Size: S (an hour or two), M (half a day to a day), L (more).
 - [ ] **S18** (M) The WordPress and WooCommerce imports fetch through `SafeHttp` (public addresses only, redirects checked).
       A setting or a command-line flag allows a local address for a site being moved on the same server. Test: an address that
       redirects to `127.0.0.1` is refused.
-- [ ] **S19** (M) Backups encrypted with a passphrase (a setting; kept out of the backup). Restore asks for it. Without one,
+- [x] **S19** (M) Backups encrypted with a passphrase (a setting; kept out of the backup). Restore asks for it. Without one,
       the Backups screen says the archives are plain. Goes with S8.
 - [ ] **S20** (M) Signed releases: the build signs `release.json` (Ed25519, libsodium) with a key kept off GitHub; the
       installer and the update check verify it against a public key in the code and refuse an unsigned one. One release

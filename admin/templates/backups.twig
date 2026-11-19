@@ -73,6 +73,9 @@
         <h2 class="text-sm font-semibold text-slate-900">Local backups</h2>
         <span class="text-xs text-slate-400">{{ backup_total }} files</span>
       </div>
+      {% if not backup_encrypted %}
+        <p class="border-b border-slate-200 bg-amber-50 px-4 py-2 text-xs text-amber-900">New backups are plain archives: whoever has a copy (a download, the remote bucket) can read the database, customers and orders. Set a backup passphrase in <a class="underline" href="{{ url('admin/settings?tab=backup') }}">Settings &gt; Backups</a> to encrypt them.</p>
+      {% endif %}
       {% if backup_snapshots is empty %}
         <div class="px-4 py-12 text-center text-sm text-slate-400">No local backups yet.</div>
       {% else %}
@@ -100,6 +103,9 @@
                       <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset {{ is_database ? 'bg-violet-50 text-violet-700 ring-violet-200' : (snapshot.type == 'data' ? 'bg-emerald-50 text-emerald-700 ring-emerald-200' : 'bg-blue-50 text-blue-700 ring-blue-200') }}"{% if snapshot.type == 'data' %} title="Database, content, custom/ and form files: no code, no uploads"{% endif %}>{{ is_database ? 'Database' : (snapshot.type == 'data' ? 'Data' : 'Full') }}</span>
                       {% if snapshot.reason and snapshot.reason != 'manual' %}
                         <span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">{{ snapshot.reason|replace({'-': ' '})|capitalize }}</span>
+                      {% endif %}
+                      {% if snapshot.encrypted %}
+                        <span class="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200" title="Encrypted with the backup passphrase (AES-256)">Encrypted</span>
                       {% endif %}
                       {% if not snapshot.has_manifest %}
                         <span class="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 ring-1 ring-inset ring-amber-200" title="Created before checksum manifests existed">No checksums</span>

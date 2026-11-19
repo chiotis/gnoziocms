@@ -5,7 +5,7 @@
   {% set secondary_button = 'inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50' %}
   {% set danger_button = 'inline-flex items-center gap-1.5 rounded-md bg-red-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-red-300' %}
   {% set manifest = verification.manifest|default({}) %}
-  {% set can_restore = verification.ok and (scopes|filter(s => s.available)|length > 0) %}
+  {% set can_restore = (verification.ok or verification.locked|default(false)) and (scopes|filter(s => s.available)|length > 0) %}
 
   <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
     <div class="min-w-0">
@@ -63,6 +63,13 @@
             <label class="flex items-start gap-2 text-sm text-amber-800">
               <input type="checkbox" name="ack_unverified" value="1" class="mt-0.5 h-4 w-4 rounded border-slate-300">
               I understand this archive has no checksum manifest, so its contents cannot be verified.
+            </label>
+          {% endif %}
+          {% if verification.encrypted|default(false) %}
+            <label class="block">
+              <span class="mb-1 block text-sm font-medium text-slate-700">Backup passphrase</span>
+              <input type="password" name="passphrase" autocomplete="off" placeholder="{{ verification.locked ? 'The passphrase this backup was made with' : 'Leave blank to use the one in Settings' }}" class="{{ input_class }}">
+              <span class="mt-1 block text-xs text-slate-500">This archive is encrypted. {{ verification.locked ? 'The passphrase in Settings does not open it.' : 'The passphrase in Settings opens it.' }}</span>
             </label>
           {% endif %}
           <label class="block">
