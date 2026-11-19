@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.294 — 2026-11-19 — WordPress import reads every page of the media list
+- **WordPress import:** the importer stopped reading the media library after the first page that held fewer than 100 files. WordPress leaves out files a visitor may not see after it has counted them, so that can be the first page: posts whose featured picture was further down came over without a main image. It now reads every page. A site imported before: run the same import again; it fills in the main images and fetches only the missing files.
+- A bold line inside a bold paragraph with a line break is now bold once, not `****Title****`.
+
 ## 0.1.293 — 2026-11-19 — MCP reaches terms, menus, redirects, SEO, Theme settings and forms
 - **MCP:** three new scopes, unticked until a person gives them in Admin > MCP. **Terms: change** (`terms:write`) lets `create_term`, `update_term` and `remove_term` work on every taxonomy (categories, tags, the site's own), not only the shop's; a name the taxonomy already has is refused with the id to use. **Site: read** and **Site: change** (`site:read`, `site:write`) add tools for the site's name and tagline, the SEO settings, redirects, menus (read and replaced as a tree, placed in the theme's places), the Theme settings and forms (fields, button, messages, translations; a new form too). Each needs the permission of its admin screen and goes through the same checks; what is left out stays as it is.
 - Left to a person on purpose: redirects to another website, where a form's emails go and where it sends visitors, what visitors sent, the codes that prove who owns the site, and Theme settings that are lists, links or galleries. See `docs/mcp.md`.
