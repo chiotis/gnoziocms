@@ -17,7 +17,6 @@ fields:
     label: Entries on a page
     default: 12
     min: 0
-    max: 60
     help: 0 shows everything on one page.
   order:
     type: text

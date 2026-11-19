@@ -92,5 +92,15 @@ check('a number that is not one is replaced', preg_match('/^\?seed=[1-9]\d*&page
 check('the other orders have no number in their links', [$pg(1)['next'], $b->build(['order' => 'title_asc', 'per_page' => 4, 'taxonomies' => []], [], null, 'en', $many, ['seed' => '9'])['next']], ['?page=2', '?page=2']);
 check('random is one of the orders to choose', isset(\GnozioCMS\ContentTypes::ORDERS['random']) && isset(\GnozioCMS\ContentTypes::orderOptions([])['random']), true);
 
+// Page numbers: all up to eight; with more, the first, the last, two on each side of this one, and gaps.
+$shown = static fn(int $page, int $pages): string => implode(' ', array_map(static fn(array $n): string => ($n['gap_before'] ? '… ' : '') . ($n['current'] ? '[' . $n['number'] . ']' : (string)$n['number']), \GnozioCMS\Pagination::numbers($page, $pages)));
+check('eight pages or fewer: every number', $shown(4, 8), '1 2 3 [4] 5 6 7 8');
+check('more: the first, the last and two each side, gaps between', $shown(8, 26), '1 … 6 7 [8] 9 10 … 26');
+check('at the start and the end, one gap', [$shown(1, 26), $shown(26, 26)], ['[1] 2 3 … 26', '1 … 24 25 [26]']);
+check('a gap that would hide one page shows that page', $shown(5, 9), '1 2 3 4 [5] 6 7 8 9');
+check('one page has no numbers, a page out of range is the nearest', [\GnozioCMS\Pagination::numbers(1, 1), $shown(99, 12)], [[], '1 … 10 11 [12]']);
+$long = $b->build(['order' => 'date_desc', 'per_page' => 1, 'taxonomies' => []], [], null, 'en', $many, ['page' => '5']);
+check('an archive uses them, each with its address', array_map(fn($l) => ($l['gap_before'] ? '…' : '') . $l['number'] . '=' . $l['href'], $long['page_links']), ['1=?', '2=?page=2', '3=?page=3', '4=?page=4', '5=?page=5', '6=?page=6', '7=?page=7', '…10=?page=10']);
+
 echo $fail === 0 ? "\nALL PASSED\n" : "\n$fail FAILED\n";
 exit($fail === 0 ? 0 : 1);

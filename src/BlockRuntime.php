@@ -142,15 +142,15 @@ final class BlockRuntime
                         return [];
                     }
                     $term = Slug::plain($term);
-                    // A block shows 24 at most; more are asked for to make up for the ones it leaves out (shown above).
-                    $limit = max(1, min(100, $limit));
+                    // 0 is all of them (a block's Number of items at 0); otherwise as many as asked for.
+                    $limit = max(0, $limit);
                     $offset = max(0, min(BlockRenderer::MAX_OFFSET, $offset));
                     $order = isset(ContentTypes::ORDERS[$order]) ? $order : 'date_desc';
                     // A random order is new each time the page is made (a cached page keeps it until the cache is renewed).
                     $seed = $order === 'random' ? random_int(1, 2147483647) : 0;
-                    $indexed = $this->latestFromIndex($type, $itemLang, $includeHidden, $offset + $limit, $term, $order, $seed);
+                    $indexed = $this->latestFromIndex($type, $itemLang, $includeHidden, $limit === 0 ? 0 : $offset + $limit, $term, $order, $seed);
                     if ($indexed !== null) {
-                        return array_slice($indexed, $offset, $limit);
+                        return array_slice($indexed, $offset, $limit === 0 ? null : $limit);
                     }
                     $items = $this->content->getItems($type, $itemLang, $includeHidden, false);
                     if ($term !== '') {
@@ -173,7 +173,7 @@ final class BlockRuntime
                     } elseif ($order === 'random') {
                         usort($items, static fn(ContentItem $a, ContentItem $b): int => strcmp(md5($seed . '|' . $a->type . '|' . $a->slug), md5($seed . '|' . $b->type . '|' . $b->slug)));
                     }
-                    return array_slice($items, $offset, $limit);
+                    return array_slice($items, $offset, $limit === 0 ? null : $limit);
                 },
                 'form' => fn(string $slug): string => $slug === '' ? '' : ($this->formEmbed)(Slug::plain($slug), $lang, $path),
                 // The shop blocks (Product grid, gallery, summary, details): their products, while the shop is on.

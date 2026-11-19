@@ -708,7 +708,7 @@ final class ContentTypes
         return self::$archiveSchema ??= FieldSchema::normalize([
             'layout' => ['type' => 'select', 'label' => 'Layout', 'default' => 'cards', 'options' => self::LAYOUTS],
             'columns' => ['type' => 'select', 'label' => 'Columns', 'default' => '3', 'options' => ['2' => '2', '3' => '3', '4' => '4']],
-            'per_page' => ['type' => 'number', 'label' => 'Items per page', 'default' => 12, 'min' => 0, 'max' => 60],
+            'per_page' => ['type' => 'number', 'label' => 'Items per page', 'default' => 12, 'min' => 0],
             'order' => ['type' => 'select', 'label' => 'Order', 'default' => 'date_desc', 'options' => self::ORDERS],
             'show_image' => ['type' => 'toggle', 'label' => 'Show images', 'default' => true],
             'show_excerpt' => ['type' => 'toggle', 'label' => 'Show the excerpt', 'default' => true],

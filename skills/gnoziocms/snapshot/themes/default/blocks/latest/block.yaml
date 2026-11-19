@@ -6,7 +6,7 @@ variants:
   list: Minimal list
   compact: Compact with thumbnails
   overlay: Image tiles with text on top
-  strip: Scrolling strip
+  strip: Sliding strip
   featured: Featured story and a list
   magazine: Magazine (large lead story, cards below)
   editorial: Editorial (large alternating rows)
@@ -36,8 +36,8 @@ fields:
     type: number
     label: Number of items
     default: 3
-    min: 1
-    max: 12
+    min: 0
+    help: 0 shows all of them.
   order:
     type: select
     label: Order
@@ -60,9 +60,33 @@ fields:
     label: Leave out entries shown above
     default: false
     help: 'Entries that a block higher on the page already shows (or the page itself) are left out, and the next ones take their place.'
+  autoplay:
+    type: select
+    label: Move by itself
+    default: 'off'
+    options:
+      'off': No
+      '3': 'Every 3 seconds'
+      '5': 'Every 5 seconds'
+      '8': 'Every 8 seconds'
+      '12': 'Every 12 seconds'
+    help: It stops while a visitor points at it or uses it, a pause button is shown, and visitors who prefer reduced motion never get automatic movement.
+    when: { variant: strip }
+  strip_step:
+    type: select
+    label: Each move goes
+    default: one
+    options: { one: One card on, page: A whole view on }
+    when: { variant: strip }
+  strip_nav:
+    type: select
+    label: Controls
+    default: both
+    options: { both: Arrows and dots, arrows: Arrows, dots: Dots, none: None (swipe and keys only) }
+    when: { variant: strip }
   columns:
     type: select
-    label: Columns (cards and tiles)
+    label: Columns (cards and tiles; cards in view for the strip)
     default: '3'
     options: { '2': '2', '3': '3', '4': '4' }
   show_image:

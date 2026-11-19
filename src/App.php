@@ -1232,18 +1232,8 @@ final class App
             $hit['type_label'] = $this->searchTypeLabel($hit['item']->type, $lang);
         }
         unset($hit);
-        $numbers = $search['pages'] > 1
-            ? array_values(array_unique(array_merge([1], range(max(1, $search['page'] - 2), min($search['pages'], $search['page'] + 2)), [$search['pages']]))) : [];
-        // A gap hiding exactly one page shows that page instead of an ellipsis; wider gaps are flagged so the template can mark them.
-        $links = [];
-        $previous = 0;
-        foreach ($numbers as $n) {
-            if ($previous > 0 && $n - $previous === 2) {
-                $links[] = ['page' => $previous + 1, 'url' => $link($search['type'], $previous + 1), 'current' => false, 'gap_before' => false];
-            }
-            $links[] = ['page' => $n, 'url' => $link($search['type'], $n), 'current' => $n === $search['page'], 'gap_before' => $previous > 0 && $n - $previous > 2];
-            $previous = $n;
-        }
+        // The same page numbers as an archive's: all up to eight, then gaps (Pagination).
+        $links = array_map(static fn(array $n): array => ['page' => $n['number'], 'url' => $link($search['type'], $n['number']), 'current' => $n['current'], 'gap_before' => $n['gap_before']], Pagination::numbers((int)$search['page'], (int)$search['pages']));
         $search['pagination'] = [
             'page' => $search['page'], 'pages' => $search['pages'],
             'previous' => $search['page'] > 1 ? $link($search['type'], $search['page'] - 1) : '',

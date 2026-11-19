@@ -1,7 +1,7 @@
 """
 The design blocks of docs/shop-plan.md (phase 2), for every site, over HTTP: the Divider's band of colours (its own colours or a
 taxonomy's tones), the Quote's Statement with its second line and dots, the Hero's Mosaic, Text and image's Story, Features' Strip,
-Term tiles (tiles and the list with a changing picture), the Newsletter with a form (none without one) and Image hotspots (points that
+Latest content's Sliding strip (its settings for the script, the script loaded), Term tiles (tiles and the list with a changing picture), the Newsletter with a form (none without one) and Image hotspots (points that
 are buttons, and their list). A collection's page takes its tones; built with blocks it opens with the Chapter title (number, name,
 quote), offers its filters as chips and leads to the next collection; and the header's band of colours.
 """
@@ -52,6 +52,8 @@ blocks:
     items:
       - { title: Handmade in Greece, text: Every piece by hand. }
       - { title: Shipping, text: Worldwide. }
+  - { type: latest, variant: strip, source: posts, columns: '4', autoplay: '5', strip_step: page, strip_nav: dots, heading: 'From the journal' }
+  - { type: latest, variant: strip, source: posts, autoplay: '7', heading: 'Plain strip' }
   - { type: term-tiles, taxonomy: collections, heading: 'Five coasts' }
   - { type: term-tiles, variant: list, taxonomy: collections }
   - { type: newsletter, heading: 'Letters from the Aegean', form: contact, dots: true }
@@ -72,6 +74,11 @@ check('the Statement: the words, the second line, the dots', 'block--statement' 
 check('the Mosaic: the Split\'s styles and three pictures', 'block--mosaic block--split' in page and 'hero-mosaic has-3' in page and page.count('hero-mosaic-more') == 2, re.findall(r'class="section block[^"]*block-hero[^"]*"', page))
 check('the Story: the quote and the eyebrow\'s dots', 'block--story' in page and 'class="ti-pull">I make each piece like a lion.' in page and 'eyebrow-dots' in page)
 check('the Strip: a dot before each title', 'block--strip' in page and page.count('class="feature-dot"') == 2, page.count('class="feature-dot"'))
+strips = re.findall(r'<div class="latest-strip" data-strip[^>]*>', page)
+check('the Sliding strip: a carousel group with its timing, its step and its controls for the script', len(strips) == 2 and 'data-step="page" data-nav="dots" data-autoplay="5"' in strips[0] and 'aria-roledescription="' in strips[0] and 'aria-label="From the journal"' in strips[0], strips)
+check('a timing that is not one of the choices does not move it; the defaults are one card on, arrows and dots', 'data-autoplay' not in strips[1] and 'data-step="one" data-nav="both"' in strips[1], strips[1:])
+check('the cards are still a list that scrolls without the script, inside the strip', re.search(r'data-strip[^>]*>\s*<ul class="latest-list cols-4" role="list" tabindex="0"', page) is not None)
+check('the script of the strip is loaded', re.search(r'_blocks/[0-9a-f]+\.js\?b=[^"]*latest', page) is not None, re.findall(r'_blocks/[^"]+\.js[^"]*', page))
 check('Term tiles: the collections, numbered, with their tones and addresses', 'term-tile-name">Balos' in page and '>02<' in page and '/collections/balos' in page and '--c-deep:#3d6b6d' in page)
 check('the list with a changing picture', 'data-term-list' in page and len(re.findall(r'<div class="term-list-picture[ "]', page)) == 3, len(re.findall(r'<div class="term-list-picture[ "]', page)))
 check('the Newsletter draws its form; one without a form is not drawn', 'Letters from the Aegean' in page and 'newsletter-form' in page and '<form' in page.split('Letters from the Aegean', 1)[1][:4000] and 'No form, no block' not in page)

@@ -1,4 +1,4 @@
-# Blocks of this installation (GnozioCMS 0.1.294)
+# Blocks of this installation (GnozioCMS 0.1.297)
 
 ## Fields every block has
 
@@ -32,7 +32,7 @@ blocks:
           - {type: cta, heading: Go on, actions: [{label: Contact, url: contact}]}
 ```
 
-Container `settings` (all optional): `direction` (`row`, `row-reverse`), `justify` (`start center end between around evenly`), `align` (`stretch start center end baseline`), `align_content`, `wrap` (`wrap nowrap wrap-reverse`), `gap` and `row_gap` (`none xs s m l xl`, default `m`), `stack_desktop`, `stack_tablet`, `stack_phone` (how columns stack on that screen: `row`, `two` = wrap to 2, `one` = stack to 1; tablet default `auto`, phone default `one`), `reverse_phone` (`true` reverses the order when stacked), `tone` (`default muted contrast accent`), `image` + `overlay` (`none light dark`), `image_position` (`center`; `top-left top top-right left right bottom-left bottom bottom-right`), `image_size` (`cover contain natural repeat`), `image_opacity` (`100 75 50 25 10`; under 100 the tone shows through), `image_fixed` (`true`: still while the page scrolls, not on phones), `inner` (`container narrow full`), `spacing`, `min_height` (`none s m l screen`), `anchor`, `class`, `hidden`.
+Container `settings` (all optional): `direction` (`row`, `row-reverse`), `justify` (`start center end between around evenly`), `align` (`stretch start center end baseline`), `align_content`, `wrap` (`wrap nowrap wrap-reverse`), `gap` and `row_gap` (`none xs s m l xl`, default `m`), `stack_desktop`, `stack_tablet`, `stack_phone` (how columns stack on that screen: `row`, `two` = wrap to 2, `one` = stack to 1; tablet default `auto`, phone default `one`), `reverse_phone` (`true` reverses the order when stacked), `tone` (`default muted contrast accent`), `image` + `overlay` (`none light dark`), `inner` (`container narrow full`), `spacing`, `min_height` (`none s m l screen`), `anchor`, `class`, `hidden`.
 
 Column `settings` (all optional): `width` (`fill` = an equal share, the default; `auto`; a fraction like `1/3` or `2/3`; a percentage like `37%`; a fixed size like `20rem` or `320px`), `min_width`, `max_width`, `grow`, `shrink`, `basis` (set any of these and the column is `flex: grow shrink basis`, replacing `width`), `align_self` (`auto start center end stretch baseline`), `valign` (`top center bottom`), `order` (-6 to 6), `padding` (`none xs s m l xl`), `tone`, `radius` (`none s m l`). Gaps and paddings are the theme's spacing steps, never free sizes.
 
@@ -122,7 +122,7 @@ Latest posts, projects, or any content type, or hand-picked cards with an image,
 | `heading` | text |  |
 | `intro` | text (several lines) |  |
 | `source` | choice; a content type of the site; default `manual` |  |
-| `limit` | whole number; 1 to 12; default `3` |  |
+| `limit` | whole number; 0 to None; default `3` | 0 shows all of them. |
 | `order` | choice; one of `date_desc`, `date_asc`, `title_asc`, `title_desc`, `random`; default `date_desc`; only when `source` is `!` or `m` or `a` or `n` or `u` or `a` or `l` |  |
 | `offset` | whole number; 0 to 50; default `0`; only when `source` is `!` or `m` or `a` or `n` or `u` or `a` or `l` | Leaves out this many of the first entries in the order above (with Newest first, the newest), for example the ones another block of the page already shows. |
 | `skip_shown` | true / false; default `false`; only when `source` is `!` or `m` or `a` or `n` or `u` or `a` or `l` | Entries that a block higher on the page already shows (or the page itself) are left out, and the next ones take their place. |
@@ -294,7 +294,7 @@ The entries of the list, in pages. Each entry is drawn with the card of the temp
 | field | kind and choices | notes |
 |---|---|---|
 | `columns` | choice; one of `2`, `3`, `4`; default `3` |  |
-| `per_page` | whole number; 0 to 60; default `12` | 0 shows everything on one page. |
+| `per_page` | whole number; 0 to None; default `12` | 0 shows everything on one page. |
 | `order` | text; default `date_desc` |  |
 | `visitor_sort` | true / false; default `false` | Shows a "Sort by" choice above the list. A page in another order is not indexed by search engines. |
 | `sort_choices` | list of rows | Used when visitors can choose the order. Leave empty to offer every order of the list but the random one. |
@@ -556,7 +556,7 @@ A picture with numbered points on it; each opens a short note with a link (the p
 ### `latest` — Latest content
 The newest posts, projects, or any content type, shown from a quiet text list to a magazine layout. Updates by itself when you publish.
 
-**Layouts** (`variant`): `cards` (Cards), `list` (Minimal list), `compact` (Compact with thumbnails), `overlay` (Image tiles with text on top), `strip` (Scrolling strip), `featured` (Featured story and a list), `magazine` (Magazine (large lead story, cards below)), `editorial` (Editorial (large alternating rows)). First is the default.
+**Layouts** (`variant`): `cards` (Cards), `list` (Minimal list), `compact` (Compact with thumbnails), `overlay` (Image tiles with text on top), `strip` (Sliding strip), `featured` (Featured story and a list), `magazine` (Magazine (large lead story, cards below)), `editorial` (Editorial (large alternating rows)). First is the default.
 
 | field | kind and choices | notes |
 |---|---|---|
@@ -565,10 +565,13 @@ The newest posts, projects, or any content type, shown from a quiet text list to
 | `intro` | text (several lines) |  |
 | `source` | choice; a content type of the site; default `posts` |  |
 | `term` | text | Optional. The slug of a category or tag, as in Taxonomies. |
-| `limit` | whole number; 1 to 12; default `3` |  |
+| `limit` | whole number; 0 to None; default `3` | 0 shows all of them. |
 | `order` | choice; one of `date_desc`, `date_asc`, `title_asc`, `title_desc`, `random`; default `date_desc` |  |
 | `offset` | whole number; 0 to 50; default `0` | Leaves out this many of the first entries in the order above (with Newest first, the newest), for example the ones another block of the page already shows. |
 | `skip_shown` | true / false; default `false` | Entries that a block higher on the page already shows (or the page itself) are left out, and the next ones take their place. |
+| `autoplay` | choice; one of `off`, `3`, `5`, `8`, `12`; default `off`; only when `variant` is `s` or `t` or `r` or `i` or `p` | It stops while a visitor points at it or uses it, a pause button is shown, and visitors who prefer reduced motion never get automatic movement. |
+| `strip_step` | choice; one of `one`, `page`; default `one`; only when `variant` is `s` or `t` or `r` or `i` or `p` |  |
+| `strip_nav` | choice; one of `both`, `arrows`, `dots`, `none`; default `both`; only when `variant` is `s` or `t` or `r` or `i` or `p` |  |
 | `columns` | choice; one of `2`, `3`, `4`; default `3` |  |
 | `show_image` | true / false; default `true` |  |
 | `show_excerpt` | true / false; default `true` |  |
@@ -714,7 +717,7 @@ A grid of work with filter buttons for the categories. Type the pieces in, or sh
 | `heading` | text |  |
 | `intro` | text (several lines) |  |
 | `source` | choice; a content type of the site; default `manual` |  |
-| `limit` | whole number; 1 to 24; default `12` |  |
+| `limit` | whole number; 0 to None; default `12` | 0 shows all of them. |
 | `order` | choice; one of `date_desc`, `date_asc`, `title_asc`, `title_desc`, `random`; default `date_desc`; only when `source` is `!` or `m` or `a` or `n` or `u` or `a` or `l` |  |
 | `offset` | whole number; 0 to 50; default `0`; only when `source` is `!` or `m` or `a` or `n` or `u` or `a` or `l` | Leaves out this many of the first entries in the order above (with Newest first, the newest), for example the ones another block of the page already shows. |
 | `skip_shown` | true / false; default `false`; only when `source` is `!` or `m` or `a` or `n` or `u` or `a` or `l` | Entries that a block higher on the page already shows (or the page itself) are left out, and the next ones take their place. |

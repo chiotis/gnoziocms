@@ -24,8 +24,8 @@ fields:
     type: number
     label: Number of items
     default: 3
-    min: 1
-    max: 12
+    min: 0
+    help: 0 shows all of them.
   order:
     type: select
     label: Order

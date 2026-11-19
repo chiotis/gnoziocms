@@ -327,7 +327,8 @@ final class ArchiveBuilder
             'pages' => $pages,
             'prev' => $page > 1 ? $link($page - 1) : '',
             'next' => $page < $pages ? $link($page + 1) : '',
-            'page_links' => $pages > 1 ? array_map(static fn(int $n): array => ['number' => $n, 'href' => $link($n), 'current' => $n === $page], range(1, $pages)) : [],
+            // Every page up to eight; with more, the first, the last and the ones around this one, with gaps (Pagination).
+            'page_links' => array_map(static fn(array $n): array => $n + ['href' => $link($n['number'])], Pagination::numbers($page, $pages)),
         ];
     }
 }

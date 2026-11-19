@@ -172,9 +172,112 @@
   scroll-padding-inline: var(--gutter);
 }
 
+/* As many cards in view as the Columns say (a part of the next one shows on a phone, so it reads as a strip). */
 .block-latest.block--strip .latest-list > li {
-  flex: 0 0 min(80%, 22rem);
+  flex: 0 0 calc((100% - var(--space-s) * (var(--cols) - 1)) / var(--cols));
+  min-width: 0;
+  overflow-wrap: anywhere;   /* a long word never makes a card wider than its share */
   scroll-snap-align: start;
+}
+
+@media (max-width: 860px) {
+  .block-latest.block--strip .latest-list > li { flex-basis: calc((100% - var(--space-s)) / 2); }
+}
+
+@media (max-width: 600px) {
+  .block-latest.block--strip .latest-list > li { flex-basis: 82%; }
+}
+
+/* With the script (arrows, dots, automatic movement) the scroll bar is not shown; swipe, wheel and keys still move the strip. */
+.latest-strip.is-enhanced .latest-list {
+  padding-bottom: var(--space-2xs);
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: 0;   /* a card snaps to the edge, where the arrows and dots put it */
+  scrollbar-width: none;
+}
+
+.latest-strip.is-enhanced .latest-list::-webkit-scrollbar {
+  display: none;
+}
+
+.latest-strip-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-s);
+  margin-top: var(--space-m);
+}
+
+.latest-strip-controls[hidden],
+.latest-strip-dot[hidden] {
+  display: none;
+}
+
+.latest-strip-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 999px;
+  background: var(--card-bg);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: border-color 0.2s var(--ease), background-color 0.2s var(--ease);
+}
+
+.latest-strip-btn svg {
+  display: block;
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
+.latest-strip-btn.is-toggle svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.latest-strip-btn:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.latest-strip-btn:focus-visible,
+.latest-strip-dot:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.latest-strip-dots {
+  display: flex;
+  align-items: center;
+}
+
+/* A comfortable 24px target around a small dot. */
+.latest-strip-dot {
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.latest-strip-dot::before {
+  content: "";
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: var(--color-border-strong);
+  transition: background-color 0.2s var(--ease), transform 0.2s var(--ease);
+}
+
+.latest-strip-dot[aria-current="true"]::before {
+  background: var(--accent);
+  transform: scale(1.35);
 }
 
 .block-latest.block--strip .latest-list:focus-visible {

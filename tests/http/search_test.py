@@ -173,7 +173,7 @@ entry('pages', 'search-only-greek', 'Languageboundaryneedle untranslated')
 for i in range(12):
     entry('posts', 'search-page-%02d' % i, 'Pagingneedle %02d' % i, 'Paging result body.', date='2026-01-%02d' % (i + 1))
 entry('pages', 'search-page-kind', 'Pagingneedle page')
-for i in range(55):
+for i in range(85):  # nine pages: more than eight are shortened with gaps
     entry('posts', 'search-gap-%02d' % i, 'Gapneedle %02d' % i, 'Gap result body.', date='2026-02-%02d' % (i % 28 + 1))
 
 # The route is usable without a query and protects scalar input boundaries.
@@ -238,8 +238,8 @@ check('second page has only the remaining matching entries', status == 200 and l
 filter_links = [a for a in page.links if parse_qs(urlsplit(a['href']).query).get('type') == ['pages']]
 check('changing type preserves the query and resets pagination', bool(filter_links) and all(parse_qs(urlsplit(a['href']).query).get('q') == ['pagingneedle'] and parse_qs(urlsplit(a['href']).query).get('page', ['1']) == ['1'] for a in filter_links), filter_links)
 status, html, page = search('gapneedle', type='posts')
-check('pagination marks skipped pages with an ellipsis', status == 200 and html.count('pagination-gap') == 1, html.count('pagination-gap'))
-status, html, page = search('gapneedle', type='posts', page=3)
+check('pagination marks skipped pages with an ellipsis (more than eight pages)', status == 200 and html.count('pagination-gap') == 1, html.count('pagination-gap'))
+status, html, page = search('gapneedle', type='posts', page=5)
 check('a gap of exactly one page shows the page instead of an ellipsis', status == 200 and html.count('pagination-gap') == 0, html.count('pagination-gap'))
 status, html, page = search('pagingneedle', type='pages')
 check('a different type filter returns only that type', page.paths == ['/search-page-kind'], page.paths)

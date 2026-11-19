@@ -44,6 +44,7 @@
       {% if archive.prev %}<a class="pagination-step" rel="prev" href="{{ archive.prev }}">{{ t('pagination.previous', 'Previous') }}</a>{% endif %}
       <ul class="pagination-pages" role="list">
         {% for link in archive.page_links %}
+          {% if link.gap_before %}<li class="pagination-gap" aria-hidden="true">…</li>{% endif %}
           <li><a href="{{ link.href }}"{% if link.current %} aria-current="page"{% endif %}><span class="visually-hidden">{{ t('pagination.page', 'Page') }} </span>{{ link.number }}</a></li>
         {% endfor %}
       </ul>
