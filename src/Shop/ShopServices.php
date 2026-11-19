@@ -54,7 +54,8 @@ final class ShopServices
         private string $defaultLang,
         private ?SystemMetaRepository $meta = null,
         private ?\Closure $transport = null,
-        private string $siteUrl = ''
+        private string $siteUrl = '',
+        private ?\GnozioCMS\SecretBox $box = null
     ) {
     }
 
@@ -65,7 +66,7 @@ final class ShopServices
 
     public function secrets(): ShopSecrets
     {
-        return $this->secrets ??= new ShopSecrets($this->meta ?? new SystemMetaRepository($this->database));
+        return $this->secrets ??= new ShopSecrets($this->meta ?? new SystemMetaRepository($this->database), $this->box);
     }
 
     public function viva(): VivaWallet

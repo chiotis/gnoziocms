@@ -90,7 +90,7 @@ check('Save and check connection: Cardlink answers', 'done=ok' in loc and 'Cardl
 st, _, html = root.get('/admin/shop-settings?tab=payments')
 check('the secret is never shown again, only its end', SECRET not in html and 'ends in t-42' in html)
 secrets = json.loads(db("select value from system_meta where key = 'shop_secrets'")[0][0])
-check('kept apart from the Shop settings, the fake\'s address kept', SECRET not in db("select value from system_meta where key = 'shop_settings'")[0][0] and secrets['cardlink'] == {'base': FAKE, 'shared_secret': SECRET}, secrets)
+check('kept apart from the Shop settings, encrypted (SecretBox), the fake\'s address kept', SECRET not in db("select value from system_meta where key = 'shop_settings'")[0][0] and SECRET not in json.dumps(secrets) and secrets['cardlink']['shared_secret'].startswith('gzenc:v1:') and secrets['cardlink']['base'] == FAKE and os.path.isfile('app/storage/key'), secrets)
 
 # ---- paying with Cardlink
 pub = Client()

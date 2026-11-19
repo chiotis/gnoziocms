@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.313 — 2026-11-19 — Secrets encrypted at rest
+- **Secrets encrypted in the database** (audit S8): the shop's payment keys (Viva Wallet, Cardlink, Meta, Google, WooCommerce), the passwords and keys of Settings (SMTP, SES, Google sign-in, S3, GitHub, YouTube) and the AI provider's key are stored encrypted (AES-256-GCM) under a key in `storage/key`, made on first use. The key is never put in a backup or an update, so a backup, local or on S3, opens no secret.
+- Secrets stored before are read as they are and encrypted the next time their screen is saved.
+- Restored on another server, the secrets cannot be opened: they read as empty, nothing fails, and the screens show them as *to be entered again*. To move a site with its secrets, copy `storage/key` along (`docs/security.md`).
+
 ## 0.1.312 — 2026-11-19 — Admin sessions end
 - **Signed out after a time without use** (audit S9a): an admin session ends after 2 hours without use (Settings > General > *Sign out after*, 10 minutes to a day) and 24 hours after signing in in any case. The sign-in page says why, and signing in again goes back to the page the person was on. Sessions already open start counting at the update, so nobody is signed out by it.
 

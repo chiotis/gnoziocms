@@ -80,7 +80,7 @@ check('the settings: demo, ids, the source, the installments table (rows that ma
 check('the most installments for an amount', [VivaWallet::maxInstallments($vs['installments'], 9999), VivaWallet::maxInstallments($vs['installments'], 10000), VivaWallet::maxInstallments($vs['installments'], 50000)], [0, 3, 6]);
 check('not offered without its keys', [$viva->configured($vs), $viva->offered($vs, '')], [false, false]);
 $secrets->save('viva', ['api_key' => 'api-key-12345', 'client_secret' => 'client-secret-1', 'base' => 'http://evil.example']);
-check('the keys are kept apart; a screen sees only their ends; nothing else can be set', [$secrets->view('viva'), array_keys($secrets->of('viva'))], [['api_key' => ['set' => true, 'last4' => '2345'], 'client_secret' => ['set' => true, 'last4' => 'et-1']], ['api_key', 'client_secret']]);
+check('the keys are kept apart; a screen sees only their ends; nothing else can be set', [$secrets->view('viva'), array_keys($secrets->of('viva'))], [['api_key' => ['set' => true, 'last4' => '2345', 'lost' => false], 'client_secret' => ['set' => true, 'last4' => 'et-1', 'lost' => false]], ['api_key', 'client_secret']]);
 $secrets->save('viva', ['api_key' => '  ']);
 check('a blank key keeps the stored one', $secrets->of('viva')['api_key'], 'api-key-12345');
 check('the keys are not in the Shop settings', str_contains(json_encode($shop->all()), 'api-key'), false);

@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace GnozioCMS\Shop;
 
+use GnozioCMS\SecretBox;
 use GnozioCMS\SystemMetaRepository;
 
 /**
  * The payment providers' keys (docs/shop-plan.md, section 5), in their own `system_meta` document (`shop_secrets`): never in the
  * Shop settings, never in a settings export, never sent to a browser or written to a log. A screen is told only whether each one
- * is set and its last four characters; a blank input keeps what is stored.
+ * is set and its last four characters; a blank input keeps what is stored. Kept encrypted (SecretBox), so a backup carries no
+ * usable key; one that cannot be opened on this server reads as empty and the screen asks for it again.
  */
 final class ShopSecrets
 {
@@ -17,12 +19,18 @@ final class ShopSecrets
     /** Each provider's secret keys; `google`: the client that signs customers in with Google; `woocommerce`: the read keys of a shop being imported (WooCommerceImport), until it is done. */
     public const KEYS = ['viva' => ['api_key', 'client_secret'], 'cardlink' => ['shared_secret'], 'meta' => ['capi_token'], 'google' => ['client_secret'], 'woocommerce' => ['consumer_key', 'consumer_secret']];
 
-    public function __construct(private SystemMetaRepository $meta)
+    public function __construct(private SystemMetaRepository $meta, private ?SecretBox $box = null)
     {
     }
 
-    /** @return array<string, string> a provider's secrets */
+    /** @return array<string, string> a provider's secrets, in plain text */
     public function of(string $provider): array
+    {
+        return array_map(fn(string $v): string => $this->box?->open($v) ?? $v, $this->stored($provider));
+    }
+
+    /** @return array<string, string> a provider's secrets as they are stored */
+    private function stored(string $provider): array
     {
         $all = $this->meta->isAvailable() ? ($this->meta->getJson(self::META) ?? []) : [];
         $mine = is_array($all[$provider] ?? null) ? $all[$provider] : [];
@@ -46,19 +54,24 @@ final class ShopSecrets
             if ($value !== '') {
                 $mine[$key] = mb_substr($value, 0, 400);
             }
+            // A new one and one kept from before plain text are both stored sealed.
+            if (is_string($mine[$key] ?? null) && $this->box !== null) {
+                $mine[$key] = $this->box->seal($mine[$key]);
+            }
         }
         $all[$provider] = $mine;
         $this->meta->setJson(self::META, $all);
     }
 
-    /** @return array<string, array{set: bool, last4: string}> what a screen may know */
+    /** @return array<string, array{set: bool, last4: string, lost: bool}> what a screen may know; lost: stored, but not openable here */
     public function view(string $provider): array
     {
         $mine = $this->of($provider);
+        $stored = $this->stored($provider);
         $view = [];
         foreach (self::KEYS[$provider] ?? [] as $key) {
             $value = $mine[$key] ?? '';
-            $view[$key] = ['set' => $value !== '', 'last4' => $value !== '' ? substr($value, -4) : ''];
+            $view[$key] = ['set' => $value !== '', 'last4' => $value !== '' ? substr($value, -4) : '', 'lost' => $this->box?->lost($stored[$key] ?? '') ?? false];
         }
         return $view;
     }

@@ -16,8 +16,29 @@ final class SiteSettings
     /** The places backups can be sent to. */
     public const REMOTE_PROVIDERS = ['custom', 'aws_s3', 'backblaze_b2', 'cloudflare_r2', 'wasabi', 'digitalocean_spaces', 'minio'];
 
-    public function __construct(private SystemMetaRepository $meta, private string $contentDir)
+    /** $box: the secrets of secretPaths() are kept encrypted with it (SecretBox); without one they are kept as they come. */
+    public function __construct(private SystemMetaRepository $meta, private string $contentDir, private ?SecretBox $box = null)
     {
+    }
+
+    /**
+     * The secrets of secretPaths() in $data opened (to plain text) or sealed (for storing).
+     *
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    private function secrets(array $data, bool $seal): array
+    {
+        if ($this->box === null) {
+            return $data;
+        }
+        foreach (self::secretPaths() as $path) {
+            $value = ArrayPath::get($data, $path);
+            if (is_string($value) && $value !== '') {
+                ArrayPath::set($data, $path, $seal ? $this->box->seal($value) : $this->box->open($value));
+            }
+        }
+        return $data;
     }
 
     public function load(): array
@@ -40,7 +61,7 @@ final class SiteSettings
         if (is_array($data['updates'] ?? null)) {
             $data['updates'] = UpdateService::normalizeSettings($data['updates']);
         }
-        return self::withDefaults($defaults, $data);
+        return self::withDefaults($defaults, $this->secrets($data, false));
     }
 
     /**
@@ -407,8 +428,12 @@ final class SiteSettings
     {
         $form = [];
         foreach (self::secretPaths() as $field => $path) {
+            $stored = trim((string)ArrayPath::get($settings, $path));
+            $lost = $this->box !== null && $this->box->lost($stored);
             $form[$field] = '';
-            $form[$field . '_set'] = trim((string)ArrayPath::get($settings, $path)) !== '';
+            $form[$field . '_set'] = $stored !== '' && !$lost;
+            // Stored, but not openable on this server (a backup restored elsewhere): to be entered again.
+            $form[$field . '_lost'] = $lost;
         }
         return $form;
     }
@@ -746,6 +771,7 @@ final class SiteSettings
             ];
         }
 
+        $data = $this->secrets($data, true);
         $this->meta->set('site_settings', Yaml::dump($data, 4, 2));
         return true;
     }

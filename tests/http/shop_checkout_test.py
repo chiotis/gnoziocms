@@ -289,7 +289,7 @@ st, hdr, _ = root.submit('/admin/shop-settings?tab=accounts', has_field('tab'), 
 root.submit('/admin/settings', lambda f: any(x[0] == 'title' for x in f['fields']) and any(x[0] == 'date_format' for x in f['fields']), {'base_url': ''})
 st, _, html = root.get('/admin/shop-settings?tab=accounts')
 check('Google is saved, its secret only shown by its end', re.search(r'name="google" value="1"[^>]*checked', html) is not None and 'ends in 9876' in html and 'GOCSPX-secret' not in html)
-check('the secret is kept apart from the Shop settings', 'GOCSPX' not in json.dumps(db("select value from system_meta where key = 'shop_settings'")) and any('GOCSPX' in str(r) for r in db("select value from system_meta where key = 'shop_secrets'")))
+check('the secret is kept apart from the Shop settings, and encrypted', 'GOCSPX' not in json.dumps(db("select value from system_meta where key = 'shop_settings'")) and 'GOCSPX' not in json.dumps(db("select value from system_meta where key = 'shop_secrets'")) and 'gzenc:v1:' in json.dumps(db("select value from system_meta where key = 'shop_secrets'")))
 st, _, html = guest.get('/en/account?return=checkout')
 check('the sign-in page offers Continue with Google', 'Continue with Google' in html and '/en/account/google?return=checkout' in html)
 st, hdr, _ = guest.get('/en/account/google?return=checkout')

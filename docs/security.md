@@ -127,9 +127,16 @@ set, and says why. Pages themselves are still built with the request's host when
 
 ### Settings Secrets
 
-- SMTP password, SES secret, Google client secret, S3 secret key, and the GitHub update token are never rendered back into the Settings page.
+- SMTP password, SES secret, Google client secret, S3 secret key, the GitHub update token and the YouTube key are never rendered back into the Settings page; nor are the shop's payment keys (Viva, Cardlink, Meta, Google, WooCommerce) or the AI provider's key on their screens.
 - Leaving a secret field blank keeps the stored value. Tick "Remove the saved value" to clear it.
-- Secrets are stored in `storage/db/app.sqlite`. Full and database backups contain that file, so treat backup archives (local and remote) as sensitive.
+- **Encrypted at rest** (`src/SecretBox.php`, 0.1.313): all of these are stored in `storage/db/app.sqlite` encrypted with AES-256-GCM
+  under a key in **`storage/key`**, made on first use (mode 0600). The key is never put in a backup or an update package, so a
+  backup alone, local or on S3, opens no secret. Values stored before 0.1.313 are read as they are and encrypted the next time
+  their screen is saved.
+- **Keep `storage/key`.** Restoring a backup on the same server works as before. On another server (or after `storage/key` was
+  lost) the secrets cannot be opened: they read as empty, nothing fails, and each screen shows them as *to be entered again*.
+  To move a site with its secrets, copy `storage/key` to the new server yourself, over a safe channel.
+- The rest of a backup (content, customer data, orders) is still plain: treat archives as sensitive.
 
 ### Uploads
 

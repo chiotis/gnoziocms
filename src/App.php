@@ -55,6 +55,7 @@ final class App
     private NotificationRepository $notifications;
     private BackupRunRepository $backupRuns;
     private LoginThrottle $loginThrottle;
+    private ?SecretBox $secretBoxService = null;
     private ?LoginController $loginControllerService = null;
     private BackupService $backups;
     private FormSubmissionRepository $formSubmissions;
@@ -3710,7 +3711,7 @@ final class App
 
     private function aiSettings(): AiSettings
     {
-        return $this->aiSettingsService ??= new AiSettings($this->systemMeta);
+        return $this->aiSettingsService ??= new AiSettings($this->systemMeta, $this->secretBox());
     }
 
     private function aiUsage(): AiUsage
@@ -3945,7 +3946,8 @@ final class App
             $this->defaultLanguage(),
             $this->systemMeta,
             null,
-            $this->siteAddress()
+            $this->siteAddress(),
+            $this->secretBox()
         );
     }
 
@@ -5768,7 +5770,13 @@ final class App
 
     private function siteSettings(): SiteSettings
     {
-        return $this->siteSettingsService ??= new SiteSettings($this->systemMeta, $this->contentDir);
+        return $this->siteSettingsService ??= new SiteSettings($this->systemMeta, $this->contentDir, $this->secretBox());
+    }
+
+    /** The key that keeps the site's secrets encrypted in the database (SecretBox): storage/key, never in a backup. */
+    private function secretBox(): SecretBox
+    {
+        return $this->secretBoxService ??= new SecretBox($this->basePath . '/storage/key');
     }
 
     private function backupManager(): BackupManager

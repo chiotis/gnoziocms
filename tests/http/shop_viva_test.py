@@ -113,9 +113,9 @@ st, _, html = root.get('/admin/shop-settings?tab=payments')
 check('the keys are never shown again, only their ends', 'API-KEY-abcdef' not in html and 'CLIENT-SECRET-xyz' not in html and 'ends in cdef' in html and 'ends in -xyz' in html)
 stored = json.loads(db("select value from system_meta where key = 'shop_settings'")[0][0])
 secrets = json.loads(db("select value from system_meta where key = 'shop_secrets'")[0][0])
-check('kept apart from the Shop settings, the fake\'s address kept', 'API-KEY' not in json.dumps(stored) and secrets['viva']['api_key'] == 'API-KEY-abcdef' and secrets['viva']['base'] == FAKE)
+check('kept apart from the Shop settings, encrypted (SecretBox), the fake\'s address kept', 'API-KEY' not in json.dumps(stored) and 'API-KEY' not in json.dumps(secrets) and secrets['viva']['api_key'].startswith('gzenc:v1:') and secrets['viva']['base'] == FAKE)
 root.submit('/admin/shop-settings?tab=payments', has_field('tab'), {'viva_secret[api_key]': ''})
-check('saving with the key left blank keeps it', json.loads(db("select value from system_meta where key = 'shop_secrets'")[0][0])['viva']['api_key'] == 'API-KEY-abcdef')
+check('saving with the key left blank keeps it', json.loads(db("select value from system_meta where key = 'shop_secrets'")[0][0])['viva']['api_key'] == secrets['viva']['api_key'] and 'ends in cdef' in root.get('/admin/shop-settings?tab=payments')[2])
 
 # ---- paying with Viva
 pub = Client()

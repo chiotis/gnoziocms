@@ -76,7 +76,7 @@ $shop->savePayments(['cardlink' => ['enabled' => '1', 'test' => '1', 'acquirer' 
 $cs = $shop->all()['payments']['cardlink'];
 check('not offered without the shared secret', $cardlink->offered($cs, ''), false);
 $secrets->save('cardlink', ['shared_secret' => 'Cardlink1', 'base' => 'http://evil.example']);
-check('the secret is kept apart; a screen sees its end; nothing else can be set', [$secrets->view('cardlink'), array_keys($secrets->of('cardlink'))], [['shared_secret' => ['set' => true, 'last4' => 'ink1']], ['shared_secret']]);
+check('the secret is kept apart; a screen sees its end; nothing else can be set', [$secrets->view('cardlink'), array_keys($secrets->of('cardlink'))], [['shared_secret' => ['set' => true, 'last4' => 'ink1', 'lost' => false]], ['shared_secret']]);
 check('the secret is not in the Shop settings', str_contains(json_encode($shop->all()), 'Cardlink1'), false);
 check('now it is offered', $cardlink->offered($cs, ''), true);
 

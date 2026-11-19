@@ -49,6 +49,11 @@ The shield icon in the backups list checks every file against the manifest (size
 
 Restore is limited to superadmins (`backups.restore` capability).
 
+A backup never holds `storage/key`, the key that opens the secrets kept in the database (payment keys, the SMTP password, the S3
+secret key and the others; `docs/security.md`, *Settings Secrets*). Restored on the same server, they work as before. Restored on
+another server, they read as empty and are shown as *to be entered again* in Settings, Shop settings and AI publishing; to keep
+them, copy `storage/key` along by hand.
+
 1. Click the restore icon on an archive. The page shows the manifest, the verification result, and which areas the archive contains.
 2. Choose the areas:
    - **Content**: `content/` (pages, posts, projects, forms and submissions, menus, taxonomies, media metadata)

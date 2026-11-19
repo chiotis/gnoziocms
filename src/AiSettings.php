@@ -26,7 +26,8 @@ final class AiSettings
     public const TEXT_AVOID_EXAMPLE = "invented facts, quotes, prices, dates or statistics\nmedical, legal or financial advice\nnames of competitors\nphrases such as \"in today's fast-paced world\" or \"in conclusion\"\nemojis";
     public const AVOID_EXAMPLE = "text, letters or numbers\nlogos and watermarks\nrecognisable faces\nclichés such as handshakes and light bulbs";
 
-    public function __construct(private SystemMetaRepository $meta)
+    /** $box: the provider's key is kept encrypted with it (SecretBox). */
+    public function __construct(private SystemMetaRepository $meta, private ?SecretBox $box = null)
     {
     }
 
@@ -34,7 +35,9 @@ final class AiSettings
     public function all(): array
     {
         $stored = $this->meta->isAvailable() ? ($this->meta->getJson(self::META) ?? []) : [];
-        return self::normalize($stored);
+        $all = self::normalize($stored);
+        $all['openai_key'] = $this->box?->open((string)$all['openai_key']) ?? $all['openai_key'];
+        return $all;
     }
 
     public function key(): string
@@ -62,7 +65,11 @@ final class AiSettings
         if (!$this->meta->isAvailable()) {
             return;
         }
-        $this->meta->setJson(self::META, self::normalize(array_replace($this->meta->getJson(self::META) ?? [], $values)));
+        $all = self::normalize(array_replace($this->meta->getJson(self::META) ?? [], $values));
+        if ($this->box !== null) {
+            $all['openai_key'] = $this->box->seal((string)$all['openai_key']);
+        }
+        $this->meta->setJson(self::META, $all);
     }
 
     /**

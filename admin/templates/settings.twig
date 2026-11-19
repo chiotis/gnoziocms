@@ -10,8 +10,9 @@
   {% set primary_button_class = 'inline-flex shrink-0 items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700' %}
   {% set danger_button_class = 'inline-flex shrink-0 items-center gap-1.5 rounded-md border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-600 shadow-sm transition hover:bg-red-50' %}
 
-  {% macro secret_input(name, is_set, input_class, empty_placeholder) %}
-    <input type="password" id="{{ name }}" name="{{ name }}" value="" autocomplete="new-password" placeholder="{{ is_set ? 'Saved. Leave blank to keep it.' : empty_placeholder }}" class="{{ input_class }}">
+  {% macro secret_input(name, is_set, input_class, empty_placeholder, lost = false) %}
+    <input type="password" id="{{ name }}" name="{{ name }}" value="" autocomplete="new-password" placeholder="{{ is_set ? 'Saved. Leave blank to keep it.' : (lost ? 'To be entered again' : empty_placeholder) }}" class="{{ input_class }}">
+    {% if lost %}<span class="mt-1 block text-xs text-amber-700">Saved on another server: it cannot be opened here (the site's key is not in backups). Enter it again.</span>{% endif %}
     {% if is_set %}
       <span class="mt-1 flex items-center gap-1.5 text-xs text-slate-400">
         <input type="checkbox" name="clear_secret[]" value="{{ name }}" class="h-3.5 w-3.5 rounded border-slate-300">
@@ -292,7 +293,7 @@
             </label>
             <label class="block">
               <span class="mb-1 block text-sm font-medium text-slate-700">Password</span>
-              {{ local.secret_input('smtp_pass', settings_form.smtp_pass_set, input_class, '') }}
+              {{ local.secret_input('smtp_pass', settings_form.smtp_pass_set, input_class, '', settings_form.smtp_pass_lost) }}
             </label>
             <label class="block">
               <span class="mb-1 block text-sm font-medium text-slate-700">Encryption</span>
@@ -317,7 +318,7 @@
             </label>
             <label class="block">
               <span class="mb-1 block text-sm font-medium text-slate-700">Secret key</span>
-              {{ local.secret_input('ses_secret', settings_form.ses_secret_set, input_class, '') }}
+              {{ local.secret_input('ses_secret', settings_form.ses_secret_set, input_class, '', settings_form.ses_secret_lost) }}
             </label>
             <label class="block">
               <span class="mb-1 block text-sm font-medium text-slate-700">Region</span>
@@ -351,7 +352,7 @@
             </label>
             <label class="block sm:col-span-2">
               <span class="mb-1 block text-sm font-medium text-slate-700">Google Client Secret</span>
-              {{ local.secret_input('google_client_secret', settings_form.google_client_secret_set, input_class, '') }}
+              {{ local.secret_input('google_client_secret', settings_form.google_client_secret_set, input_class, '', settings_form.google_client_secret_lost) }}
             </label>
             <label class="block sm:col-span-2">
               <span class="mb-1 block text-sm font-medium text-slate-700">Allowed domain</span>
@@ -447,7 +448,7 @@
             </label>
             <label class="block">
               <span class="mb-1 block text-sm font-medium text-slate-700">Secret key</span>
-              {{ local.secret_input('backup_remote_secret_key', settings_form.backup_remote_secret_key_set, input_class, '') }}
+              {{ local.secret_input('backup_remote_secret_key', settings_form.backup_remote_secret_key_set, input_class, '', settings_form.backup_remote_secret_key_lost) }}
             </label>
             <label class="block">
               <span class="mb-1 block text-sm font-medium text-slate-700">Path prefix</span>
@@ -513,7 +514,7 @@
             </label>
             <label class="block sm:col-span-2">
               <span class="mb-1 block text-sm font-medium text-slate-700">GitHub token</span>
-              {{ local.secret_input('update_github_token', settings_form.update_github_token_set, input_class, 'Required only for private repositories') }}
+              {{ local.secret_input('update_github_token', settings_form.update_github_token_set, input_class, 'Required only for private repositories', settings_form.update_github_token_lost) }}
               <span class="mt-1 block text-xs text-slate-400">Needed when the repository is private. Leave blank to keep the existing token.</span>
             </label>
           </div>
@@ -535,7 +536,7 @@
           <div class="en-rows">
             <div class="seo-row">
               <label class="seo-label" for="youtube_key">API key</label>
-              <div>{{ local.secret_input('youtube_key', settings_form.youtube_key_set, 'lc-input', 'AIza…') }}</div>
+              <div>{{ local.secret_input('youtube_key', settings_form.youtube_key_set, 'lc-input', 'AIza…', settings_form.youtube_key_lost) }}</div>
             </div>
             <div class="seo-row">
               <label class="seo-label" for="youtube_cache_hours">Keep a playlist for</label>

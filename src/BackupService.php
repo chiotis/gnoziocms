@@ -32,6 +32,8 @@ final class BackupService
         '.claude/',
         'node_modules/',
         'storage/cache/',
+        // The key that opens the site's secrets (SecretBox): a backup alone must open nothing.
+        'storage/key',
         'storage/backups/',
         'storage/restore/',
         'storage/updates/',
