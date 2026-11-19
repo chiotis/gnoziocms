@@ -7,7 +7,12 @@
   {% set filters_active = filters|filter(v => v != '')|length > 0 %}
   {% set btn_primary = 'inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700' %}
   {% set btn_secondary = 'inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50' %}
+  {% set btn_danger = 'inline-flex items-center gap-1.5 rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-red-700' %}
   {% set icon_button = 'rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700' %}
+
+  {% if cleared is not null %}
+    <template data-flash data-type="success">Cleared {{ cleared }} activity logs.</template>
+  {% endif %}
 
   <header class="mb-4 flex flex-col gap-3 border-b border-slate-200 pb-4 lg:flex-row lg:items-center lg:justify-between">
     <div class="min-w-0">
@@ -15,6 +20,14 @@
     </div>
     <div class="flex flex-wrap items-center gap-2">
       {{ ui.filter_button('activityLogFilter', filters_active) }}
+      <form method="post" data-confirm="Clear all activity logs? A new entry will record that you cleared them." data-confirm-button="Clear logs">
+        {{ csrf_field() }}
+        <input type="hidden" name="activity_log_action" value="clear">
+        <button type="submit" class="{{ btn_danger }}">
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2m2 0v14a1 1 0 01-1 1H7a1 1 0 01-1-1V6"/></svg>
+          Clear logs
+        </button>
+      </form>
     </div>
   </header>
 

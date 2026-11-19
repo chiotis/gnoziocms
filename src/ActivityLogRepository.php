@@ -84,6 +84,17 @@ final class ActivityLogRepository
         return (int)$stmt->fetchColumn();
     }
 
+    /** Empties the activity log; how many entries went is returned. */
+    public function clear(): int
+    {
+        if (!$this->database->isAvailable()) {
+            return 0;
+        }
+        $count = $this->count();
+        $this->pdo()->exec('DELETE FROM activity_logs');
+        return $count;
+    }
+
     /** @return array<int, string> */
     public function actions(): array
     {

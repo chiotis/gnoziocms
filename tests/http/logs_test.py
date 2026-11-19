@@ -36,6 +36,16 @@ check('filters keep working inside the tab', st == 200 and 'aria-label="Logs"' i
 st, hdr, _ = root.request('/admin/email-logs', data=[('_csrf', token(root)), ('email_log_action', 'clear')])
 check('clearing the email log still works and returns to its tab', st == 302 and 'admin/email-logs' in (hdr.get('Location') or ''), st)
 
+st, _, html = root.get('/admin/activity-logs')
+check('the activity log has a Clear logs button', 'name="activity_log_action" value="clear"' in html and 'Clear logs' in html)
+st, hdr, _ = root.request('/admin/activity-logs', data=[('_csrf', token(root)), ('activity_log_action', 'clear')])
+m = re.search(r'cleared=(\d+)', hdr.get('Location') or '')
+check('clearing it returns to its tab and says how many went', st == 302 and m is not None and int(m.group(1)) > 0, (st, hdr.get('Location')))
+st, _, html = root.get('/admin/activity-logs?cleared=' + (m.group(1) if m else '0'))
+check('what is left is the entry saying who cleared it', 'Cleared ' in html and 'activity_logs.clear' in html and 'Activity logs cleared.' in html, st)
+st, _, _ = ed.request('/admin/activity-logs', data=[('_csrf', token(ed)), ('activity_log_action', 'clear')])
+check('an editor cannot clear it', st in (302, 403) and root.get('/admin/activity-logs')[2].count('Activity logs cleared.') >= 1, st)
+
 # people without the permissions see neither the entry nor the tabs
 st, _, html = ed.get('/admin')
 check('an editor has no Logs entry', not re.search(r'</svg>\s*Logs\s*</a>', html), st)

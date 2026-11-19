@@ -189,12 +189,29 @@ final class SiteSettings
             }
 
             // Installs upgraded from the YAML settings era keep their values on first load.
-            $raw = trim($legacyRaw) !== '' ? $legacyRaw : Yaml::dump($defaults, 4, 2);
+            $raw = trim($legacyRaw) !== '' ? $legacyRaw : Yaml::dump($this->firstValues($key, $defaults), 4, 2);
             $this->meta->set($key, $raw);
             return $raw;
         }
 
-        return trim($legacyRaw) !== '' ? $legacyRaw : Yaml::dump($defaults, 4, 2);
+        return trim($legacyRaw) !== '' ? $legacyRaw : Yaml::dump($this->firstValues($key, $defaults), 4, 2);
+    }
+
+    /**
+     * What a new site starts with: Athens time and Greek only. Written once, when the site has no settings yet; the
+     * defaults above stay the fallback for settings stored before, so an older site without a zone keeps the server's.
+     *
+     * @param array<string, mixed> $defaults
+     * @return array<string, mixed>
+     */
+    private function firstValues(string $key, array $defaults): array
+    {
+        if ($key !== 'site_settings' || $defaults === []) {
+            return $defaults;
+        }
+        $defaults['timezone'] = 'Europe/Athens';
+        $defaults['languages'] = ['default' => 'el', 'available' => ['el']];
+        return $defaults;
     }
 
     /** @return array<string, mixed> */
@@ -568,7 +585,7 @@ final class SiteSettings
             $available = array_values(array_filter(array_map('strval', $data['languages']['available'])));
         }
         if (empty($available)) {
-            $available = ['el', 'en'];
+            $available = ['el'];
         }
 
         $defaultLang = Slug::plain($form['languages_default']);

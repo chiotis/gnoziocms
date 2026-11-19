@@ -1,0 +1,5 @@
+# The test site: two languages and the server's own time zone (a new site starts Greek only, in Athens time).
+timezone: ''
+languages:
+  default: el
+  available: [el, en]

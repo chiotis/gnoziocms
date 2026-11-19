@@ -1904,6 +1904,10 @@ final class App
 
     private function handleActivityLogs(): void
     {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && trim((string)($_POST['activity_log_action'] ?? '')) === 'clear') {
+            $this->redirect('/admin/activity-logs?cleared=' . $this->logAdmin()->clearActivity());
+            return;
+        }
         $this->render('@admin/activity-logs.twig', $this->logAdmin()->activity($_GET) + ['types' => $this->content->getTypes(), 'user' => $this->auth->user()]);
     }
 

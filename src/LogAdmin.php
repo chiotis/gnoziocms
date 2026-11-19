@@ -34,6 +34,7 @@ final class LogAdmin
             'filters' => $filters,
             'actions' => $this->activity->actions(),
             'subject_types' => $this->activity->subjectTypes(),
+            'cleared' => isset($get['cleared']) ? (int)$get['cleared'] : null,
             'admin_section' => 'activity',
         ] + $paging['view'];
     }
@@ -54,6 +55,14 @@ final class LogAdmin
             'cleared' => isset($get['cleared']) ? (int)$get['cleared'] : null,
             'admin_section' => 'email_logs',
         ] + $paging['view'];
+    }
+
+    /** Empties the activity log, then records who cleared it, so the trail starts with that; how many entries went is returned. */
+    public function clearActivity(): int
+    {
+        $cleared = $this->activity->clear();
+        ($this->log)('activity_logs.clear', 'warning', 'activity_logs', 'all', 'Activity logs cleared.', ['cleared' => $cleared]);
+        return $cleared;
     }
 
     /** Empties the email log; how many entries went is returned. */

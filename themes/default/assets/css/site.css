@@ -2497,6 +2497,11 @@ body.has-transparent-header:not(.header-solid) .site-header.is-on-dark[data-stic
   max-width: var(--container-narrow);
 }
 
+/* An entry's text with no sidebar beside it: the whole width of the container. */
+.single-body.is-full > .prose-block {
+  max-width: none;
+}
+
 /* "With sidebar" template */
 .with-sidebar {
   display: grid;

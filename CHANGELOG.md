@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.304 — 2026-11-19 — New sites in Athens time and Greek; clear the activity log; full-width text
+- **New sites:** a new site starts in the **Europe/Athens** time zone with **Greek** as its only language. Both are written once, when the site first saves its settings; sites that already exist keep what they have, and a site whose stored settings have no time zone still uses the server's. Settings saved with an empty language box now keep Greek only.
+- **Logs > Activity:** a **Clear logs** button, with a confirm, as on the Email tab. The log then starts with one entry saying who cleared it and how many entries went.
+- **Single entries without a sidebar:** the text takes the whole width of the container instead of the narrow reading column. Entries with a sidebar, and the Page content block in templates (with its own Reading or Full width), are as before.
+- **Tests:** the test site keeps Greek and English and the server's time zone through its own settings file; the skill's snapshot has the Gallery block as it is now, so the test run is green again.
+
 ## 0.1.303 — 2026-11-19 — Blocks through MCP
 - **MCP writes blocks:** `create_entry`, `update_entry` and `validate_entry` take `blocks`, the entry's whole list of blocks in order (a Video block with a YouTube link, an Audio block, a Gallery…). A `content` block places the text among them; `[]` removes every block. They are checked as strictly as fields: an unknown block, field or option, or a video link that is not YouTube, Vimeo or a video file, is named and nothing is saved. Markdown in them is checked as the text is.
 - **New tool `list_blocks`:** the theme's blocks, and with a type that block's fields and layouts. `get_entry` now gives an entry's `blocks`.

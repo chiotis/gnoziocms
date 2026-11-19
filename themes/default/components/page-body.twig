@@ -15,7 +15,8 @@
   {{ page_blocks.html|raw }}
   {% if strip.place == 'body' %}<div class="entry-strip entry-strip--after">{{ strip.html|raw }}</div>{% endif %}
 {% else %}
-  <div class="site-wrap single-body">
+  {# Without a sidebar the text takes the whole width of the container. #}
+  <div class="site-wrap single-body is-full">
     <div class="prose-block">{{ item.html|raw }}</div>
     {% if strip.place == 'body' %}<div class="entry-strip entry-strip--body">{{ strip.html|raw }}</div>{% endif %}
   </div>

@@ -29,6 +29,18 @@ check('defaults fill what the file lacks', $loaded['date_format'], 'd/m/Y');
 check('and the value is now kept in the database', str_contains((string)$meta->get('site_settings'), 'Old site'), true);
 unlink($dir . '/content/settings/site.yaml');
 check('later loads come from the database', $s->load()['title'], 'Old site');
+// ---- a new site starts in Athens time, Greek only; settings stored before keep the server's zone
+mkdir($dir . '/new/storage', 0775, true);
+$newDb = new SystemDatabase($dir . '/new/storage');
+$newDb->initialize();
+$newMeta = new SystemMetaRepository($newDb);
+$new = new SiteSettings($newMeta, $dir . '/new/content');
+$first = $new->load();
+check('a new site is in Athens time', [$first['timezone'], SiteSettings::timeZone($first)->getName()], ['Europe/Athens', 'Europe/Athens']);
+check('and has only Greek', $first['languages'], ['default' => 'el', 'available' => ['el']]);
+check('which is kept, not worked out each time', str_contains((string)$newMeta->get('site_settings'), 'Europe/Athens'), true);
+$newMeta->set('site_settings', Yaml::dump(['title' => 'Older site']));
+check('settings stored without a zone still use the server one', $new->load()['timezone'], '');
 check('parse of blank text is empty', $s->parse('  '), []);
 check('parse of broken text is empty', $s->parse("a: [\n"), []);
 
