@@ -230,6 +230,17 @@ check('a column with only a picture is marked and has no empty text area', len(a
 check('a column with a picture and text keeps the picture beside the text', 'is-bare' not in arts[1] and 'col-body' in arts[1], arts[1:])
 check('the narrow picture column applies only to columns that are not bare', ':not(.is-bare) .col-main' in open('app/themes/default/blocks/columns/block.css', encoding='utf-8').read())
 
+# ---- Columns: one picture shape for every column (4:3 unless chosen), in the Design tab
+cdef = defs['columns']
+check('Columns offers a picture shape, 4:3 by default, beside the layout', next(f for f in cdef['fields'] if f['key'] == 'image_ratio')['default'] == 'landscape' and cdef['design_fields'] == ['image_ratio'])
+check('the columns take the default shape', 'class="cols cols-2 ratio-landscape"' in c, re.findall(r'class="cols [^"]*"', c))
+st, _, html = page('cols-square', {'type': 'columns', 'variant': 'image-top', 'image_ratio': 'square', 'items': [{'title': 'A', 'image': '/uploads/a.png'}, {'title': 'B', 'image': '/uploads/b.png'}]})
+check('a chosen shape is a class on the columns', 'class="cols cols-2 ratio-square"' in section(html, 'columns'))
+st, _, html = page('cols-odd', {'type': 'columns', 'image_ratio': '"><b>', 'items': [{'title': 'A', 'image': '/uploads/a.png'}]})
+check('an unknown shape falls back to 4:3', 'ratio-landscape' in section(html, 'columns') and '<b>' not in section(html, 'columns'))
+cols_css = open('app/themes/default/blocks/columns/block.css', encoding='utf-8').read()
+check('the pictures fill their shape, cropped, except As uploaded', '.cols:not(.ratio-natural) .col-media' in cols_css and 'object-fit: cover' in cols_css and '--col-ratio: 1' in cols_css)
+
 # ---- Text and image: the picture can also sit above or below the text
 ti = defs['text-image']
 check('Text and image offers the picture above and below, drawn, and a wide shape', [o[0] for o in next(f for f in ti['common'] if f['key'] == 'variant')['options']] == ['image-right', 'image-left', 'image-top', 'image-bottom', 'story'] and sorted(ti['variant_previews']) == ['image-bottom', 'image-left', 'image-right', 'image-top', 'story'] and 'wide' in [o[0] for o in next(f for f in ti['fields'] if f['key'] == 'image_ratio')['options']], sorted(ti['variant_previews']))
@@ -248,6 +259,29 @@ check('split FAQ, Text and Checklist without a heading are one column with no he
 st, _, html = page('headed', {'type': 'faq', 'variant': 'split', 'heading': 'Questions', 'items': [{'question': 'Why?', 'answer': 'Because.'}]})
 fq = section(html, 'faq')
 check('with a heading the split FAQ keeps its head column', 'faq-head' in fq and 'is-headless' not in fq and '>Questions<' in fq, fq[:300])
+
+# ---- Audio: one sound file or a playlist; native players without the script, one player with it
+ad = defs['audio']
+afile = next(f for f in next(f for f in ad['fields'] if f['key'] == 'tracks')['fields'] if f['key'] == 'file')
+check('Audio is a Media block whose file field offers sound files from the library', ad['category'] == 'Media' and afile['type'] == 'file' and afile.get('kind') == 'audio' and sorted(ad['design_fields']) == ['continuous', 'download', 'podcast'], afile)
+st, _, html = page('audio-list', {'type': 'audio', 'heading': 'Talks', 'cover': '/uploads/a.png', 'podcast': True, 'download': True, 'tracks': [
+    {'file': '/uploads/media/one.mp3', 'title': 'First talk', 'artist': 'A. Speaker', 'duration': '12:34', 'notes': 'About the state.'},
+    {'file': '/uploads/media/two.mp3', 'image': '/uploads/b.png'},
+    {'title': 'No file, no track'},
+    {'file': 'javascript:alert(1)', 'title': 'Unsafe'},
+]})
+a = section(html, 'audio')
+rows = re.findall(r'<li class="audio-track".*?</li>', a, re.S)
+check('a track for each safe file, in order, each a native player until the script runs', st == 200 and len(rows) == 2 and 'src="/uploads/media/one.mp3"' in rows[0] and '<audio class="audio-native" controls preload="none"' in rows[0] and 'javascript:' not in a, len(rows))
+check('the title, speaker, length and description; a file without a title is named after the file', 'First talk' in rows[0] and 'A. Speaker' in rows[0] and '12:34' in rows[0] and 'About the state.' in rows[0] and 'data-title="two.mp3"' in rows[1], rows[1][:300])
+check('a track without its own picture takes the block\'s', 'a.png' in rows[0] and 'b.png' in rows[1] and 'a.png' not in rows[1])
+check('the player\'s settings and labels are on it for the script', re.search(r'class="audio-player" data-audio role="region" aria-label="Talks" data-continuous data-podcast', a) is not None and 'data-label-forward=' in a, re.findall(r'<div class="audio-player[^>]*>', a)[:1])
+check('a download link for each file, named for screen readers', a.count('class="audio-download"') == 2 and ' download>' in a)
+check('the script of the block is loaded', re.search(r'_blocks/[0-9a-f]+\.js\?b=[^"]*audio', html) is not None)
+st, _, html = page('audio-one', {'type': 'audio', 'tracks': [{'file': '/uploads/media/one.mp3'}]})
+check('one track is a single player; without tracks there is no player', 'audio-player is-single' in section(html, 'audio') and 'audio-player' not in section(page('audio-none', {'type': 'audio', 'heading': 'Empty', 'tracks': []})[2], 'audio'))
+st, _, picked = root.get('/admin/media-picker?kind=audio')
+check('the media picker answers for sound files', st == 200 and '"items"' in picked, (st, picked[:200]))
 
 print('\nALL PASSED' if not fails else '\n%d FAILED: %s' % (len(fails), fails))
 sys.exit(1 if fails else 0)

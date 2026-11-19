@@ -27,6 +27,17 @@
   height: auto;
 }
 
+/* One shape for every picture of the block, so the columns line up; "As uploaded" keeps each picture's own. */
+.cols:not(.ratio-natural) .col-media { aspect-ratio: var(--col-ratio, 4 / 3); }
+.cols.ratio-wide { --col-ratio: 16 / 9; }
+.cols.ratio-portrait { --col-ratio: 4 / 5; }
+.cols.ratio-square { --col-ratio: 1; }
+.cols:not(.ratio-natural) .col-media :is(picture, img) {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .col-body {
   display: grid;
   align-content: start;
