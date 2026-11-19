@@ -1,0 +1,50 @@
+label: Audio
+description: One sound file or a playlist (music, a talk, a podcast), each with a picture, a title and who speaks or plays. Plays one after another.
+category: Media
+variants:
+  player: Player with the list of tracks
+  compact: Compact player
+design_fields: [podcast, continuous, download]
+fields:
+  eyebrow:
+    type: text
+    label: Eyebrow
+  heading:
+    type: text
+    label: Heading
+  intro:
+    type: textarea
+    label: Introduction
+  cover:
+    type: image
+    label: Picture for every track
+    help: Used for a track that has no picture of its own.
+  podcast:
+    type: toggle
+    label: Podcast controls
+    default: false
+    help: Back 15 seconds, forward 30 seconds and the playing speed (1× to 2×), for talks and podcasts.
+  continuous:
+    type: toggle
+    label: Play the next track when one ends
+    default: true
+  download:
+    type: toggle
+    label: Offer each file for download
+    default: false
+  tracks:
+    type: repeater
+    label: Tracks
+    item_label: Track
+    max: 100
+    fields:
+      file:
+        type: file
+        kind: audio
+        label: Sound file
+        help: An MP3, M4A, OGG or WAV file from the media library, or its address.
+      title: { type: text, label: Title }
+      artist: { type: text, label: Speaker or artist }
+      image: { type: image, label: Picture }
+      duration: { type: text, label: Length, placeholder: '12:34', help: Shown before the file is loaded. }
+      notes: { type: textarea, label: Description, help: 'Optional: what the track or episode is about.' }

@@ -1,4 +1,4 @@
-# Blocks of this installation (GnozioCMS 0.1.299)
+# Blocks of this installation (GnozioCMS 0.1.300)
 
 ## Fields every block has
 
@@ -65,6 +65,28 @@ The title area of a list of entries: its title and subtitle (for a category or t
 |---|---|---|
 | `image` | image | Optional. Leave empty to use the picture chosen for the list in Archive Layouts (in the Chapter layout, the term's own picture first). |
 | `breadcrumbs` | true / false; default `false` |  |
+
+### `audio` — Audio
+One sound file or a playlist (music, a talk, a podcast), each with a picture, a title and who speaks or plays. Plays one after another.
+
+**Layouts** (`variant`): `player` (Player with the list of tracks), `compact` (Compact player). First is the default.
+
+| field | kind and choices | notes |
+|---|---|---|
+| `eyebrow` | text |  |
+| `heading` | text |  |
+| `intro` | text (several lines) |  |
+| `cover` | image | Used for a track that has no picture of its own. |
+| `podcast` | true / false; default `false` | Back 15 seconds, forward 30 seconds and the playing speed (1× to 2×), for talks and podcasts. |
+| `continuous` | true / false; default `true` |  |
+| `download` | true / false; default `false` |  |
+| `tracks` | list of rows; at most 100 rows |  |
+| &nbsp;&nbsp;`tracks[].file` | file | An MP3, M4A, OGG or WAV file from the media library, or its address. |
+| &nbsp;&nbsp;`tracks[].title` | text |  |
+| &nbsp;&nbsp;`tracks[].artist` | text |  |
+| &nbsp;&nbsp;`tracks[].image` | image |  |
+| &nbsp;&nbsp;`tracks[].duration` | text | Shown before the file is loaded. |
+| &nbsp;&nbsp;`tracks[].notes` | text (several lines) | Optional: what the track or episode is about. |
 
 ### `banner` — Banner
 An announcement or highlight, as a slim strip or a boxed callout with an optional button. Visitors can dismiss it if you allow that.
@@ -164,6 +186,7 @@ Two or three columns side by side, each with an optional picture, a heading, tex
 | `eyebrow` | text |  |
 | `heading` | text |  |
 | `intro` | text (several lines) |  |
+| `image_ratio` | choice; one of `landscape`, `wide`, `portrait`, `square`, `natural`; default `landscape` | Every picture of the block takes this shape (cut from the middle), so the columns line up. |
 | `items` | list of rows; at most 3 rows |  |
 | &nbsp;&nbsp;`items[].eyebrow` | text |  |
 | &nbsp;&nbsp;`items[].title` | text |  |

@@ -1,0 +1,40 @@
+{#
+  Audio: one sound file or a playlist. Without the script each track is a native player in a list. The script (block.js) makes
+  it one player: the picture, title and speaker of the track playing, play and pause, a position bar, the next and previous
+  tracks, and with Podcast controls back 15 s, forward 30 s and the speed. Labels come from the theme's translations.
+#}
+{% import 'components/ui.twig' as ui %}
+{% set tracks = block.tracks|default([])|filter(t => t.file) %}
+{% set label = block.heading ?: t('audio.label', 'Audio player') %}
+<div class="container">
+  {{ ui.section_header(block, heading_tag, block_uid, 'left') }}
+  {% if tracks %}
+  <div class="audio-player{% if tracks|length == 1 %} is-single{% endif %}" data-audio role="region" aria-label="{{ label }}"
+       {%- if block.continuous %} data-continuous{% endif %}{% if block.podcast %} data-podcast{% endif %}
+       data-label-play="{{ t('audio.play', 'Play') }}" data-label-pause="{{ t('audio.pause', 'Pause') }}"
+       data-label-previous="{{ t('audio.previous', 'Previous track') }}" data-label-next="{{ t('audio.next', 'Next track') }}"
+       data-label-back="{{ t('audio.back', 'Back 15 seconds') }}" data-label-forward="{{ t('audio.forward', 'Forward 30 seconds') }}"
+       data-label-speed="{{ t('audio.speed', 'Playing speed') }}" data-label-seek="{{ t('audio.seek', 'Position in the track') }}">
+    <ol class="audio-tracks" role="list" aria-label="{{ t('audio.tracks', 'Tracks') }}">
+      {% for track in tracks %}
+        {% set title = track.title ?: (track.file|split('/')|last|split('?')|first) %}
+        {% set picture = track.image ?: block.cover %}
+        <li class="audio-track" data-src="{{ track.file }}" data-title="{{ title }}" data-artist="{{ track.artist }}">
+          <span class="audio-thumb">
+            {% if picture %}{{ image(picture, {alt: '', sizes: '(min-width: 700px) 11rem, 6rem', max_width: 640}) }}{% else %}<span class="audio-thumb-empty" aria-hidden="true">{{ icon('music') }}</span>{% endif %}
+          </span>
+          <span class="audio-number" aria-hidden="true">{{ loop.index }}</span>
+          <div class="audio-track-body">
+            <p class="audio-track-title">{{ title }}</p>
+            {% if track.artist %}<p class="audio-track-artist">{{ track.artist }}</p>{% endif %}
+            {% if track.notes %}<p class="audio-track-notes">{{ track.notes|nl2br }}</p>{% endif %}
+            <audio class="audio-native" controls preload="none" src="{{ track.file }}"></audio>
+          </div>
+          <span class="audio-track-length" data-length>{{ track.duration }}</span>
+          {% if block.download %}<a class="audio-download" href="{{ track.file }}" download>{{ icon('download') }}<span class="visually-hidden">{{ t('audio.download', 'Download') }}: {{ title }}</span></a>{% endif %}
+        </li>
+      {% endfor %}
+    </ol>
+  </div>
+  {% endif %}
+</div>

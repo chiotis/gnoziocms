@@ -1,0 +1,355 @@
+/* Audio: a card with the track playing on top and the list of tracks below. Colours are the theme's (accent, surfaces), so the
+   player follows the palette, the section's tone and dark mode. Without the script the list holds a native player per track. */
+.audio-player {
+  --audio-cover: clamp(6rem, 4rem + 8vw, 11rem);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-l);
+  background: var(--card-bg);
+}
+
+/* The track playing (made by the script). */
+.audio-now {
+  display: grid;
+  grid-template-columns: var(--audio-cover) minmax(0, 1fr);
+  gap: var(--space-m);
+  align-items: center;
+  padding: var(--space-m);
+}
+
+.audio-now-cover {
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: var(--radius-m);
+  background: var(--color-surface-2);
+}
+
+.audio-now-cover :is(picture, img) {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.audio-now-main {
+  display: grid;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.audio-now-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-s);
+  min-width: 0;
+}
+
+.audio-now-text {
+  min-width: 0;
+}
+
+.audio-now-title {
+  margin: 0;
+  overflow: hidden;
+  font-family: var(--font-heading);
+  font-size: var(--step-1);
+  font-weight: var(--heading-weight, 600);
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.audio-now-artist {
+  margin: 0.15rem 0 0;
+  color: var(--color-muted);
+  font-size: var(--step--1);
+}
+
+.audio-play {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-contrast, #fff);
+  cursor: pointer;
+  transition: transform 0.15s var(--ease), background-color 0.2s var(--ease);
+}
+
+.audio-play:hover {
+  background: var(--accent-hover, var(--accent));
+}
+
+.audio-play:active {
+  transform: scale(0.96);
+}
+
+.audio-play svg {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.audio-progress {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--space-xs);
+  align-items: center;
+  color: var(--color-muted);
+  font-size: var(--step--1);
+  font-variant-numeric: tabular-nums;
+}
+
+.audio-seek {
+  width: 100%;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.audio-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2xs);
+}
+
+.audio-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.5rem;
+  height: 2.5rem;
+  padding: 0 0.6rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--step--1);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.audio-btn:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.audio-btn svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+:is(.audio-play, .audio-btn, .audio-track-play, .audio-download):focus-visible,
+.audio-seek:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.audio-btn[hidden] {
+  display: none;
+}
+
+/* The list of tracks. */
+.audio-tracks {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.audio-player.is-enhanced .audio-tracks {
+  max-height: 26rem;
+  overflow-y: auto;
+  border-top: 1px solid var(--color-border);
+}
+
+.audio-track {
+  position: relative;
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr) auto auto;
+  gap: var(--space-s);
+  align-items: center;
+  padding: var(--space-s) var(--space-m);
+}
+
+.audio-track + .audio-track {
+  border-top: 1px solid var(--color-border);
+}
+
+.audio-thumb {
+  display: block;
+  width: 3rem;
+  height: 3rem;
+  overflow: hidden;
+  border-radius: var(--radius-s);
+  background: var(--color-surface-2);
+}
+
+.audio-thumb :is(picture, img) {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.audio-thumb-empty {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  color: var(--color-muted);
+}
+
+.audio-thumb-empty svg {
+  width: 1.4rem;
+  height: 1.4rem;
+}
+
+.audio-number {
+  display: none;
+}
+
+.audio-track-body {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.audio-track-title,
+.audio-track-artist,
+.audio-track-notes {
+  margin: 0;
+}
+
+.audio-track-title {
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.audio-track-artist,
+.audio-track-length {
+  color: var(--color-muted);
+  font-size: var(--step--1);
+}
+
+.audio-track-length {
+  font-variant-numeric: tabular-nums;
+}
+
+.audio-track-notes {
+  margin-top: 0.2rem;
+  color: var(--color-muted);
+  font-size: var(--step--1);
+  line-height: var(--body-leading, 1.6);
+}
+
+.audio-native {
+  width: 100%;
+  max-width: 28rem;
+  margin-top: var(--space-2xs);
+}
+
+.audio-download {
+  position: relative;
+  z-index: 2;
+  display: inline-grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  color: var(--color-muted);
+}
+
+.audio-download:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.audio-download svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+/* With the script: a row is one button that plays the track; the one playing is marked. */
+.audio-track-play {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.audio-player.is-enhanced .audio-track:hover {
+  background: var(--color-surface);
+}
+
+.audio-player.is-enhanced .audio-track.is-current {
+  background: var(--accent-soft);
+}
+
+.audio-player.is-enhanced .audio-track.is-current .audio-track-title {
+  color: var(--accent);
+}
+
+/* One track: no list, the player is all. */
+.audio-player.is-enhanced.is-single .audio-tracks {
+  display: none;
+}
+
+/* Compact: a small picture and the controls in one band. */
+.block--compact .audio-player {
+  --audio-cover: 4.5rem;
+}
+
+.block--compact .audio-now {
+  padding: var(--space-s);
+}
+
+.block--compact .audio-play {
+  width: 2.75rem;
+  height: 2.75rem;
+}
+
+.block--compact .audio-track-notes {
+  display: none;
+}
+
+@media (max-width: 600px) {
+  .audio-now {
+    grid-template-columns: 1fr;
+  }
+
+  .audio-now-cover {
+    width: min(100%, 14rem);
+    justify-self: center;
+  }
+
+  .block--compact .audio-now {
+    grid-template-columns: var(--audio-cover) minmax(0, 1fr);
+  }
+
+  .block--compact .audio-now-cover {
+    width: 100%;
+  }
+
+  .audio-track {
+    grid-template-columns: 2.5rem minmax(0, 1fr) auto;
+  }
+
+  .audio-thumb {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+
+  .audio-track-length {
+    display: none;
+  }
+}

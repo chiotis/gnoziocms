@@ -134,7 +134,7 @@
     ui.prev.classList.toggle('opacity-50', ui.prev.disabled);
     ui.next.classList.toggle('opacity-50', ui.next.disabled);
     ui.status.textContent = payload.total === 0
-      ? (state.q || state.tag ? 'Nothing matches.' : (state.kind === 'video' ? 'The media library has no videos yet. Upload them in Media.' : state.kind === 'all' ? 'The media library has no files yet. Upload them in Media.' : state.kind === 'track' ? 'The media library has no route files yet. Upload a GPX, KML or GeoJSON file in Media.' : 'The media library has no images yet. Upload them in Media.'))
+      ? (state.q || state.tag ? 'Nothing matches.' : (state.kind === 'video' ? 'The media library has no videos yet. Upload them in Media.' : state.kind === 'audio' ? 'The media library has no sound files yet. Upload an MP3, WAV, OGG or M4A file in Media.' : state.kind === 'all' ? 'The media library has no files yet. Upload them in Media.' : state.kind === 'track' ? 'The media library has no route files yet. Upload a GPX, KML or GeoJSON file in Media.' : 'The media library has no images yet. Upload them in Media.'))
       : '';
   }
 
@@ -163,8 +163,8 @@
     if (!dialog) build();
     callback = onPick;
     options = options || {};
-    state = { q: '', tag: '', page: 1, kind: kind === 'video' || kind === 'all' || kind === 'track' ? kind : 'image', multiple: !!options.multiple, chosen: (options.chosen || []).slice() };
-    var noun = state.kind === 'video' ? 'video' : (state.kind === 'all' ? 'file' : (state.kind === 'track' ? 'route file' : 'image'));
+    state = { q: '', tag: '', page: 1, kind: kind === 'video' || kind === 'all' || kind === 'track' || kind === 'audio' ? kind : 'image', multiple: !!options.multiple, chosen: (options.chosen || []).slice() };
+    var noun = state.kind === 'video' ? 'video' : (state.kind === 'all' ? 'file' : (state.kind === 'track' ? 'route file' : (state.kind === 'audio' ? 'sound file' : 'image')));
     var title = state.multiple ? 'Add ' + noun + 's' : 'Choose a ' + noun;
     dialog.setAttribute('aria-label', title);
     dialog.querySelector('h2').textContent = title;
@@ -188,7 +188,7 @@
     var video = kind !== 'image';
     var thumb = el('img', { alt: '', class: 'h-9 w-9 shrink-0 rounded border border-slate-200 bg-slate-50 object-cover' });
     var choose = el('button', { type: 'button', class: CLS.btn + ' shrink-0', text: 'Library' });
-    choose.setAttribute('aria-label', kind === 'video' ? 'Choose a video from the media library' : (kind === 'image' ? 'Choose from the media library' : 'Choose a file from the media library'));
+    choose.setAttribute('aria-label', kind === 'video' ? 'Choose a video from the media library' : (kind === 'image' ? 'Choose from the media library' : (kind === 'audio' ? 'Choose a sound file from the media library' : 'Choose a file from the media library')));
     input.parentNode.insertBefore(wrap, input);
     wrap.appendChild(thumb);
     wrap.appendChild(input);
