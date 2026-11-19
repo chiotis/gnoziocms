@@ -13,7 +13,9 @@ root = Client(); root.login()
 st, _, html = root.get('/admin/updates')
 items = re.findall(r'<span class="release-item">(.*?)</span></li>', html, re.S)
 check('the screen lists release notes', st == 200 and len(items) > 0, (st, len(items)))
-check('with no Markdown marks left in them', all('`' not in i and '**' not in i for i in items), [i[:100] for i in items if '`' in i or '**' in i][:2])
+# A code span may show marks on purpose (a note quoting `****Title****`): only the text outside code counts.
+prose = [re.sub(r'<code>.*?</code>', '', i, flags=re.S) for i in items]
+check('with no Markdown marks left in them', all('`' not in i and '**' not in i for i in prose), [i[:100] for i in prose if '`' in i or '**' in i][:2])
 check('code and bold are shown as such', any('<code>' in i for i in items) and any('<strong>' in i for i in items), [i[:80] for i in items[:2]])
 check('and nothing typed in a note can add HTML', not re.search(r'<(script|img|iframe)', ' '.join(items), re.I))
 m = re.search(r'<button[^>]*class="([^"]*)"[^>]*>\s*Create verified backup\s*</button>', html)
