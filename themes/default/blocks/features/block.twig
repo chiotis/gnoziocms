@@ -3,7 +3,10 @@
 <div class="container">
   {{ ui.section_header(block, heading_tag, block_uid, block.align) }}
   {% set list_tag = block.variant == 'numbered' ? 'ol' : 'ul' %}
-  <{{ list_tag }} class="features-grid cols-{{ block.columns }}" role="list">
+  {% set media_side = block.media_position|default('top') == 'side' and block.variant not in ['numbered', 'strip'] %}
+  {% set media_size = block.media_size|default('medium') %}
+  {% set media_px = {small: 48, medium: 80, large: 120}[media_size] ?? 80 %}
+  <{{ list_tag }} class="features-grid cols-{{ block.columns }} media-{{ media_size }}{% if media_side %} media-side{% endif %}{% if block.accent_titles|default(false) %} accent-titles{% endif %}" role="list">
     {% for feature in block.items %}
       {% set href = link_url(feature.link, prefix) %}
       <li class="feature{% if href %} has-link{% endif %}">
@@ -11,9 +14,12 @@
           <span class="feature-number" aria-hidden="true">{{ '%02d'|format(loop.index) }}</span>
         {% elseif block.variant == 'strip' %}
           {# A strip of short points: a dot in place of the icon, the title and a line beside it. #}
+        {% elseif feature.image %}
+          <span class="feature-media">{{ image(feature.image, {alt: feature.image_alt|default(''), sizes: media_px ~ 'px', max_width: media_px * 3, class: 'feature-image'}) }}</span>
         {% elseif feature.icon %}
           <span class="icon-badge feature-icon">{{ icon(feature.icon) }}</span>
         {% endif %}
+        {% if media_side %}<div class="feature-body">{% endif %}
         {% if feature.title %}
           <{{ item_heading_tag }} class="feature-title">{% if block.variant == 'strip' %}<span class="feature-dot" aria-hidden="true"></span>{% endif %}
             {% if href %}<a href="{{ href }}">{{ feature.title }}</a>{% else %}{{ feature.title }}{% endif %}
@@ -23,6 +29,7 @@
         {% if href %}
           <span class="feature-more" aria-hidden="true">{{ feature.link_label ?: t('blocks.learn_more', 'Learn more') }}{{ icon('arrow-right', 'btn-icon') }}</span>
         {% endif %}
+        {% if media_side %}</div>{% endif %}
       </li>
     {% endfor %}
   </{{ list_tag }}>

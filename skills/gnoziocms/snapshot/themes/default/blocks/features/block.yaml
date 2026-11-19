@@ -1,5 +1,5 @@
 label: Features
-description: A grid of features or services, each with an icon, a title, a short text, and an optional link.
+description: A grid of features or services, each with an icon or a small picture, a title, a short text, and an optional link.
 category: Showcase
 variants:
   cards: Cards
@@ -26,6 +26,24 @@ fields:
     label: Columns
     default: '3'
     options: { '2': '2', '3': '3', '4': '4' }
+  media_position:
+    type: select
+    label: Icon or picture position
+    default: top
+    options: { top: Above the title, side: Beside the title and text }
+    help: On a phone it goes above.
+    when: { variant: '!numbered' }
+  media_size:
+    type: select
+    label: Picture size
+    default: medium
+    options: { small: 'Small (48px)', medium: 'Medium (80px)', large: 'Large (120px)' }
+    help: The picture keeps its own shape, so logos are not cropped.
+    when: { variant: '!numbered' }
+  accent_titles:
+    type: toggle
+    label: Titles in the accent colour
+    default: false
   items:
     type: repeater
     label: Items
@@ -33,6 +51,8 @@ fields:
     max: 12
     fields:
       icon: { type: icon, label: Icon }
+      image: { type: image, label: Picture, help: Shown in place of the icon. }
+      image_alt: { type: text, label: Picture description, help: Leave empty if the title already says what it shows. }
       title: { type: text, label: Title }
       text: { type: textarea, label: Text }
       link: { type: link, label: Link }
