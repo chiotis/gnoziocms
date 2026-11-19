@@ -23,7 +23,9 @@ use GnozioCMS\Shop\ShopSecrets;
  *
  * Cardlink calls no address of its own: a payment whose answer never came is asked about with the XML API's StatusRequest
  * (/vpos/xmlpayvpos) before the order is let go (ChecksPayments). Refunds use the same API: RefundRequest, or on the day of the
- * payment a CancelRequest (a void) when a refund is not yet possible.
+ * payment a CancelRequest (a void) when a refund is not yet possible. An XML answer is believed as far as it can be: a status
+ * only with its Digest checked and, when it names one, the site's Merchant ID; the bank's own "no such order" lets an order go;
+ * anything else (an error, an empty answer, a wrong digest) is "could not ask", and the order waits to be asked again.
  *
  * Test mode uses the acquirer's -test host. A test may point all of it at a fake on this machine (the `base` secret, which no
  * screen can set).
@@ -232,12 +234,28 @@ final class Cardlink implements PaymentProvider, ChecksPayments
         if ($answer['error'] !== '') {
             return ['error' => $answer['error']] + $none;
         }
+        // Whatever is not believed is "could not ask" (ok false): the checkout keeps the order and asks again, and after six hours
+        // lets it go with a note to look in the bank's back office. Only the bank's own "no such order" lets an order go at once.
+        if ($answer['signed'] === false) {
+            return ['error' => 'Cardlink\'s answer is not signed with this site\'s shared secret.'] + $none;
+        }
         $details = $answer['data']['TransactionDetails'] ?? $answer['data'];
+        $mid = (string)($details['Mid'] ?? $details['MerchantId'] ?? $answer['data']['Mid'] ?? '');
+        if ($mid !== '' && $mid !== (string)($settings['merchant_id'] ?? '')) {
+            return ['error' => 'Cardlink\'s answer is for another merchant.'] + $none;
+        }
         $status = strtoupper((string)($details['Status'] ?? $details['TxStatus'] ?? ''));
         if ($status === '') {
-            // No such order at the acquirer: the customer never got as far as paying.
-            $error = (string)($answer['data']['ErrorMessage'] ?? $answer['data']['Description'] ?? '');
-            return ['ok' => true, 'failed' => true, 'status' => 'NONE', 'error' => $error] + $none;
+            $said = (string)($answer['data']['ErrorMessage'] ?? $answer['data']['Description'] ?? '');
+            if (self::notFound($said)) {
+                // No such order at the acquirer: the customer never got as far as paying.
+                return ['ok' => true, 'failed' => true, 'status' => 'NONE', 'error' => $said] + $none;
+            }
+            return ['error' => 'Cardlink answered without a status' . ($said !== '' ? ': ' . mb_substr($said, 0, 160) : '') . '.'] + $none;
+        }
+        if ($answer['signed'] !== true) {
+            // A status (paid or not) is believed only with the answer's digest checked.
+            return ['error' => 'Cardlink\'s answer has no digest.'] + $none;
         }
         return [
             'ok' => true,
@@ -300,6 +318,54 @@ final class Cardlink implements PaymentProvider, ChecksPayments
         return ['ok' => true, 'message' => 'Cardlink answers (' . $where . ')' . ($said !== '' ? ': "' . mb_substr($said, 0, 120) . '"' : '') . '. The keys look right; a test payment proves it.'];
     }
 
+    /** Whether what the acquirer said is its "no such order" answer (the order id was never used for a payment). */
+    public static function notFound(string $said): bool
+    {
+        return preg_match('/\b(not\s+found|no\s+such|does\s+not\s+exist|unknown\s+order|order\s+id\s+not)\b|δεν\s+βρέθηκε/iu', $said) === 1;
+    }
+
+    /**
+     * Whether an XML answer is signed with the shared secret: its Digest is base64(sha256(the Message element, then the secret)),
+     * as for the requests. The Message element is tried as it came, with the namespaces of the VPOS element written into it (as
+     * this site signs its own requests), and canonicalized; any of them matching is enough. Null when the answer has no Digest.
+     */
+    public static function signedAnswer(string $xml, string $secret): ?bool
+    {
+        if (preg_match('#<(?:\w+:)?Digest>\s*([^<]*?)\s*</(?:\w+:)?Digest>#', $xml, $d) !== 1) {
+            return null;
+        }
+        if ($secret === '' || preg_match('#<((?:\w+:)?)Message\b[^>]*>.*</\1Message>#s', $xml, $m) !== 1) {
+            return false;
+        }
+        $candidates = [$m[0]];
+        if (preg_match('#<(?:\w+:)?VPOS\b([^>]*)>#', $xml, $root) === 1 && preg_match_all('#\sxmlns(?::\w+)?="[^"]*"#', $root[1], $ns) > 0) {
+            $declared = implode('', array_filter($ns[0], static fn(string $n): bool => !str_contains(substr($m[0], 0, (int)strpos($m[0], '>')), trim(explode('=', $n)[0]) . '=')));
+            $candidates[] = (string)preg_replace('#^<((?:\w+:)?)Message\b#', '<$1Message' . $declared, $m[0], 1);
+        }
+        $dom = new \DOMDocument();
+        $previous = libxml_use_internal_errors(true);
+        if ($dom->loadXML($xml, LIBXML_NONET)) {
+            foreach ($dom->getElementsByTagName('*') as $node) {
+                if ($node->localName === 'Message') {
+                    foreach ([$node->C14N(), $node->C14N(true)] as $c14n) {
+                        if (is_string($c14n) && $c14n !== '') {
+                            $candidates[] = $c14n;
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
+        foreach (array_unique($candidates) as $candidate) {
+            if (hash_equals(self::digest($candidate, $secret), $d[1])) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public static function acquirer(array $settings): string
     {
         return isset(self::ACQUIRERS[(string)($settings['acquirer'] ?? '')]) ? (string)$settings['acquirer'] : 'cardlink';
@@ -309,7 +375,7 @@ final class Cardlink implements PaymentProvider, ChecksPayments
      * Sends one message of the XML API, signed: the digest is base64(sha256(the Message element as sent, with the namespaces,
      * then the shared secret)).
      *
-     * @return array{data: array<string, mixed>, error: string}
+     * @return array{data: array<string, mixed>, error: string, signed: ?bool} signed: whether the answer's Digest is right (null: none)
      */
     private function xml(array $settings, string $request, string $info): array
     {
@@ -321,10 +387,12 @@ final class Cardlink implements PaymentProvider, ChecksPayments
         $body = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' . "\n" . '<VPOS xmlns="' . self::XMLNS . '" xmlns:ns2="' . self::XMLNS_SIG . '"><Message ' . $attributes . '>' . $content . '</Message><Digest>' . self::digest($signed, $this->secret()) . '</Digest></VPOS>';
         $answer = $this->http()->raw('POST', $this->host($settings) . '/vpos/xmlpayvpos', $body, 'application/xml; charset=UTF-8');
         if (!$answer['ok']) {
-            return ['data' => [], 'error' => $answer['error']];
+            return ['data' => [], 'error' => $answer['error'], 'signed' => null];
         }
         $data = self::parse($answer['body']);
-        return $data === null ? ['data' => [], 'error' => 'Cardlink\'s answer was not XML.'] : ['data' => $data, 'error' => ''];
+        return $data === null
+            ? ['data' => [], 'error' => 'Cardlink\'s answer was not XML.', 'signed' => null]
+            : ['data' => $data, 'error' => '', 'signed' => self::signedAnswer($answer['body'], $this->secret())];
     }
 
     /**

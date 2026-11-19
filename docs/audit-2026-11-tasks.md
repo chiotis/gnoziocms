@@ -15,7 +15,7 @@ group. Size: S (an hour or two), M (half a day to a day), L (more).
 - [ ] **S2** (S) Keep the Pixel off `/account/*` and off any page whose address carries `key=` or `token=`; for the order's
       page, send the Purchase event with the address cut to its path. Test: the order page with the Pixel on names no key in
       what the script is given.
-- [ ] **S3** (M) Cardlink `lookup()`: only the bank's "no such order" answer counts as not paid; any other error means "could
+- [x] **S3** (M) Cardlink `lookup()`: only the bank's "no such order" answer counts as not paid; any other error means "could
       not ask" (try again, as for a network error). Check the digest of the XML answer and its merchant id. Test with a fake
       bank answering an error for a paid order: the order is not cancelled.
 - [ ] **P1** (S) Turn on Twig's compile cache (`storage/cache/twig`, `auto_reload` on), cleared by an update, a theme change and
@@ -114,5 +114,7 @@ group. Size: S (an hour or two), M (half a day to a day), L (more).
 - [ ] **B5** (S) Starter media: resize and recompress the pictures, one small DOCX; aim under 1.5 MB.
 - [ ] **B6** (S) Move the finished plans to `docs/plans/` and fix the references in comments.
 - [ ] **B7** (S) Gateways: the local test address comes from the injected transport, not from the secrets.
+      Left in 0.1.309: the `base` secret also sends the shopper's browser to the fake's checkout page in three HTTP tests, so
+      the transport alone cannot replace it; the audit found it safe (local hosts only). Worth it only with those tests reworked.
 - [ ] **B8** (S) On this machine: remove the three old worktrees (`git worktree remove`), move `storage/alaleon/` out of the
       checkout.

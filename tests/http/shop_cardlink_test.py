@@ -40,7 +40,10 @@ def digest(values):
 # ---- a fake Cardlink XML API
 BANK = {'requests': []}
 def xml(inner):
-    return ('<?xml version="1.0" encoding="UTF-8"?><VPOS xmlns="http://www.modirum.com/schemas/vposxmlapi41"><Message messageId="M1" timeStamp="t" version="2.1">' + inner + '</Message><Digest>x</Digest></VPOS>').encode()
+    # Signed as the bank signs: the Message element with the VPOS element's namespace, then the shared secret.
+    ns = 'xmlns="http://www.modirum.com/schemas/vposxmlapi41"'
+    signed = digest('<Message ' + ns + ' messageId="M1" timeStamp="t" version="2.1">' + inner + '</Message>')
+    return ('<?xml version="1.0" encoding="UTF-8"?><VPOS ' + ns + '><Message messageId="M1" timeStamp="t" version="2.1">' + inner + '</Message><Digest>' + signed + '</Digest></VPOS>').encode()
 class Fake(BaseHTTPRequestHandler):
     def log_message(self, *a): pass
     def do_POST(self):

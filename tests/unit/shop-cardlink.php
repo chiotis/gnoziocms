@@ -55,7 +55,14 @@ $transport = function (string $method, string $url, array $headers, ?string $bod
     }
     return ['status' => 0, 'body' => '', 'error' => 'Could not resolve host'];
 };
-$xmlAnswer = static fn(string $inner): array => ['status' => 200, 'body' => '<?xml version="1.0" encoding="UTF-8"?><VPOS xmlns="http://www.modirum.com/schemas/vposxmlapi41"><Message messageId="M1" timeStamp="x" version="2.1">' . $inner . '</Message><Digest>abc</Digest></VPOS>', 'error' => ''];
+// Signed as the bank signs: the Message element with the VPOS element's namespaces, then the shared secret. $digest '' sends
+// none, any other string sends that one.
+$xmlAnswer = static function (string $inner, ?string $digest = null): array {
+    $ns = 'xmlns="http://www.modirum.com/schemas/vposxmlapi41" xmlns:ns2="http://www.w3.org/2000/09/xmldsig#"';
+    $message = '<Message messageId="M1" timeStamp="x" version="2.1">' . $inner . '</Message>';
+    $digest ??= Cardlink::digest('<Message ' . $ns . ' messageId="M1" timeStamp="x" version="2.1">' . $inner . '</Message>', 'Cardlink1');
+    return ['status' => 200, 'body' => '<?xml version="1.0" encoding="UTF-8"?><VPOS ' . $ns . '>' . $message . ($digest !== '' ? '<Digest>' . $digest . '</Digest>' : '') . '</VPOS>', 'error' => ''];
+};
 $cardlink = new Cardlink($secrets, $payments, $orders, 'https://shop.example', $transport);
 $checkout = new ShopCheckout($pricing, new ShopCoupons($db), $orders, $stock, $shop, ['cardlink' => $cardlink, 'bank_transfer' => new BankTransfer()], fn(string $k, string $l): string => $k, 'el', $payments);
 
@@ -166,6 +173,49 @@ $pdo->exec('UPDATE shop_orders SET reserve_until = ' . (time() - 7 * 3600) . ' W
 $pdo->exec("DELETE FROM shop_gateway_events WHERE kind = 'lookup'");
 $checkout->expire();
 check('six hours on, it is let go with a note to check the bank', [$orders->get($fourth['order']['id'])['status'], str_contains(json_encode($orders->events($fourth['order']['id'])), 'back office')], ['cancelled', true]);
+
+// ---- what the bank says is believed only as far as it can be (audit S3)
+$captured = static fn(string $ref, string $extra = ''): string => '<StatusResponse><TransactionDetails><OrderId>' . $ref . '</OrderId>' . $extra . '<OrderAmount>124.00</OrderAmount><Currency>EUR</Currency><Status>CAPTURED</Status><TxId>91000777</TxId></TransactionDetails></StatusResponse>';
+$fifth = $checkout->place($form, $cart, null, 'el');
+parse_str((string)parse_url($fifth['redirect'], PHP_URL_QUERY), $go5);
+$late($fifth['order']['id']);
+$fake['next'] = fn(string $body): array => $xmlAnswer('<ErrorMessage><ErrorCode>9</ErrorCode><Description>System is under maintenance</Description></ErrorMessage>');
+$checkout->expire();
+check('an error answer for an order that may be paid: the order is not cancelled, it waits to be asked again', [$orders->get($fifth['order']['id'])['status'], $payments->byReference('cardlink', $go5['ref'])['status']], ['pending_payment', 'started']);
+$checkout->changeStatus((int)$fifth['order']['id'], 'cancelled', 'system', 'Test over.');
+$lookup = fn(string $ref) => $cardlink->lookup(['reference' => $ref], $cs);
+$fake['next'] = fn(string $body): array => $xmlAnswer('<ErrorMessage><ErrorCode>9</ErrorCode><Description>System is under maintenance</Description></ErrorMessage>');
+$r = $lookup('R1');
+check('an error without a status is "could not ask", saying what the bank said', [$r['ok'], $r['failed'], str_contains($r['error'], 'maintenance')], [false, false, true]);
+$fake['next'] = fn(string $body): array => $xmlAnswer('<StatusResponse></StatusResponse>');
+check('an answer with nothing in it too', $lookup('R1')['ok'], false);
+$fake['next'] = fn(string $body): array => $xmlAnswer('<ErrorMessage><ErrorCode>1</ErrorCode><Description>Order not found</Description></ErrorMessage>');
+$r = $lookup('R1');
+check('the bank\'s "no such order" lets the order go', [$r['ok'], $r['failed'], $r['status']], [true, true, 'NONE']);
+$fake['next'] = fn(string $body): array => $xmlAnswer('<ErrorMessage><ErrorCode>1</ErrorCode><Description>Order not found</Description></ErrorMessage>', '');
+check('also when it is not signed (an error message may come without a digest)', $lookup('R1')['failed'], true);
+$fake['next'] = fn(string $body): array => $xmlAnswer('<ErrorMessage><ErrorCode>1</ErrorCode><Description>Order not found</Description></ErrorMessage>', 'bad');
+check('but not with a wrong digest', [$lookup('R1')['ok'], $lookup('R1')['failed']], [false, false]);
+$fake['next'] = fn(string $body): array => $xmlAnswer($captured('R1'));
+$r = $lookup('R1');
+check('a signed CAPTURED is paid', [$r['ok'], $r['paid'], $r['transaction_id']], [true, true, '91000777']);
+$fake['next'] = fn(string $body): array => $xmlAnswer($captured('R1'), Cardlink::digest('something else', 'Cardlink1'));
+$r = $lookup('R1');
+check('a CAPTURED with a wrong digest is refused', [$r['ok'], $r['paid'], str_contains($r['error'], 'not signed')], [false, false, true]);
+$fake['next'] = fn(string $body): array => $xmlAnswer($captured('R1'), '');
+check('and one with no digest', [$lookup('R1')['ok'], $lookup('R1')['paid']], [false, false]);
+$fake['next'] = fn(string $body): array => $xmlAnswer($captured('R1', '<Mid>0099999999</Mid>'));
+$r = $lookup('R1');
+check('an answer for another merchant is refused', [$r['ok'], str_contains($r['error'], 'another merchant')], [false, true]);
+$fake['next'] = fn(string $body): array => $xmlAnswer($captured('R1', '<Mid>0022000230</Mid>'));
+check('the right merchant is fine', $lookup('R1')['paid'], true);
+$raw = '<VPOS xmlns="http://www.modirum.com/schemas/vposxmlapi41"><Message messageId="M2"><StatusResponse/></Message><Digest>' . Cardlink::digest('<Message messageId="M2"><StatusResponse/></Message>', 'k') . '</Digest></VPOS>';
+check('a digest over the Message as it came is accepted too', Cardlink::signedAnswer($raw, 'k'), true);
+$doc = new DOMDocument(); $doc->loadXML('<VPOS xmlns="http://www.modirum.com/schemas/vposxmlapi41"><Message messageId="M3"><StatusResponse/></Message></VPOS>');
+$c14n = $doc->getElementsByTagName('Message')->item(0)->C14N();
+check('and over its canonical form', Cardlink::signedAnswer('<VPOS xmlns="http://www.modirum.com/schemas/vposxmlapi41"><Message messageId="M3"><StatusResponse/></Message><Digest>' . Cardlink::digest($c14n, 'k') . '</Digest></VPOS>', 'k'), true);
+check('no digest is null, another secret false', [Cardlink::signedAnswer('<VPOS><Message/></VPOS>', 'k'), Cardlink::signedAnswer($raw, 'other')], [null, false]);
+check('"no such order" in the words acquirers use', [Cardlink::notFound('Order not found'), Cardlink::notFound('No such order'), Cardlink::notFound('Η παραγγελία δεν βρέθηκε'), Cardlink::notFound('Invalid digest'), Cardlink::notFound('System error')], [true, true, true, false, false]);
 
 // ---- refunds
 $paid = $payments->paidFor($order['id']);

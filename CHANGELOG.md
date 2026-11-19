@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.309 — 2026-11-19 — Cardlink no longer cancels an order that may be paid
+- **Asking Cardlink about a payment** (audit S3): when an order's time runs out and Cardlink is asked whether it was paid, only the bank's own "no such order" answer lets the order go. Any other answer without a status (an error, maintenance, an empty answer) now counts as "could not ask": the order and its stock are kept, it is asked again every ten minutes, and after six hours it is let go with a note to check the bank's back office. Before, such an answer cancelled the order and put its stock back on sale although the customer may have paid.
+- **Cardlink's XML answers are checked**: a status is believed only when the answer's digest is right for the shared secret, and, when the answer names a Merchant ID, it must be the site's.
+- To confirm on the demo shop with a real Cardlink test account: that a paid order's lookup is accepted (the digest of the bank's real answers).
+
 ## 0.1.308 — 2026-11-19 — What the site trusts from a request
 - **Links in emails come from the site address only** (audit S1): password-reset and verify emails, the order's link, download links and the payment gateways' return and webhook addresses are built from Settings > General > Site address, never from the request's `Host` or `X-Forwarded-Host`. With no address set they are paths without a host, so an email can never point to another site.
 - **The shop needs the site address** for card payments (Viva Wallet, Cardlink) and customer accounts (sign-up, Google sign-in): without it they cannot be switched on, and Shop settings says why. What is on already stays on, with a warning.
