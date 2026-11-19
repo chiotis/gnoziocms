@@ -255,7 +255,13 @@ final class BlockRenderer
             return [100, $tone, (string)$settings['spacing'], implode('', array_column($columns, 'html'))];
         }
         $markup = $this->twig->render('components/block-container.twig', $context + [
-            'container' => array_merge($settings, ['tone' => $tone, 'has_picture' => $settings['image'] !== '']),
+            'container' => array_merge($settings, [
+                'tone' => $tone,
+                'has_picture' => $settings['image'] !== '',
+                // Repeat tiles the picture as a CSS background; an address that cannot go in a url() is drawn at its natural size.
+                'picture_url' => $settings['image_size'] === 'repeat' ? BlockContainer::pictureUrl((string)$settings['image']) : '',
+                'image_size' => $settings['image_size'] === 'repeat' && BlockContainer::pictureUrl((string)$settings['image']) === '' ? 'natural' : $settings['image_size'],
+            ]),
             'container_uid' => $settings['anchor'],
             'container_row' => BlockContainer::rowClasses($settings, $count),
             'container_columns' => $columns,

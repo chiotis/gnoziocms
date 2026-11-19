@@ -74,8 +74,20 @@ check('a container with no columns and no blocks draws nothing for visitors', 'b
 
 # ---- picture and overlay
 p = page('c-picture', box([[text('On a picture')]], image='/uploads/media/bg.jpg', overlay='dark'))
-check('a background picture sits behind the columns, decorative', 'class="bkc-media" aria-hidden="true"' in p and 'bg.jpg' in p and 'bkc--picture bkc--overlay-dark' in p and re.search(r'<img[^>]*alt=""', p) is not None, re.findall(r'<div class="bkc-media".*?</div>', p, re.S))
+check('a background picture sits behind the columns, decorative', 'class="bkc-media" aria-hidden="true"' in p and 'bg.jpg' in p and 'bkc--picture bkc--pic-center bkc--pic-cover bkc--overlay-dark' in p and re.search(r'<img[^>]*alt=""', p) is not None, re.findall(r'<div class="bkc-media".*?</div>', p, re.S))
 check('a dark overlay makes the section a contrast one (light text), a light one keeps its tone', 'block-container bkc tone-contrast' in p and 'bkc--overlay-light' in page('c-light', box([[text('x')]], image='/uploads/media/bg.jpg', overlay='light', tone='muted')))
+q = page('c-picset', box([[text('Picture settings')]], image='/uploads/media/bg.jpg', image_position='bottom-right', image_size='contain', image_opacity='25', image_fixed=True, tone='accent'))
+check('picture position, size, opacity and fixed are classes on the section', 'bkc--picture bkc--pic-bottom-right bkc--pic-contain bkc--pic-o25 bkc--pic-fixed' in q and 'tone-accent' in q, re.findall(r'<section class="block block-container[^>]*>', q))
+r = page('c-repeat', box([[text('Pattern')]], image='/uploads/media/bg.jpg', image_size='repeat'))
+check('Repeat tiles the picture as a CSS background, through a custom property only', 'class="bkc-pattern" style="--bkc-pic: url(&quot;/uploads/media/bg.jpg&quot;)"' in r and 'bkc--pic-repeat' in r and '<img' not in re.search(r'<div class="bkc-media".*?</div></div>', r, re.S).group(0), re.findall(r'<div class="bkc-media".*?</div>', r, re.S))
+odd = page('c-repeat-odd', box([[text('Odd')]], image='/uploads/media/b(1)"; color:red.jpg', image_size='repeat'))
+odd_section = re.search(r'<section class="block block-container.*?</section>', odd, re.S).group(0)
+check('an address with quotes or brackets never reaches a style (the picture is left out)', '--bkc-pic' not in odd_section and 'color:red' not in odd_section, odd_section[:300])
+bogus = page('c-picbad', box([[text('Bad')]], image='/uploads/media/bg.jpg', image_position='middle', image_size='huge', image_opacity='33'))
+check('unknown picture values fall back to the defaults', re.search(r'<section class="block block-container[^"]*bkc--pic-center bkc--pic-cover"', bogus) is not None, re.findall(r'<section class="block block-container[^>]*>', bogus))
+url, css = sheet(q)
+check('the stylesheet has the positions, sizes, opacities and the still picture (not on phones or with less motion)', '.bkc--pic-bottom-right' in css and '.bkc--pic-o25' in css and 'background-attachment' in css and 'prefers-reduced-motion' in css.replace(' ', ''))
+check('a block on the default background inside a column lets the container show through', '.bkc-col>.block.tone-default' in css.replace(' ', ''))
 
 # ---- nothing to show, hidden
 check('a container whose blocks have nothing to show leaves nothing for visitors', 'block-container' not in page('c-empty', box([[{'type': 'image', 'image': ''}], []])))
@@ -96,7 +108,7 @@ check('without one the page text is still shown, once', body2.count('The page te
 st, _, edit = root.get('/admin/edit?type=pages&slug=c-three&lang=el')
 data = json.loads(re.search(r'id="block-editor-data"[^>]*>(.*?)</script>', edit, re.S).group(1))
 c = data['container']
-check('the editor gets the container: its settings, the column settings, the presets and the limit', [f['key'] for f in c['settings']][:3] == ['direction', 'justify', 'align'] and 'width' in [f['key'] for f in c['columns']] and [p['id'] for p in c['presets']] == ['50-50', '33-67', '67-33', '3x33', '25-50-25', '4x25'] and c['max_columns'] == 6)
+check('the editor gets the container: its settings, the column settings, the presets and the limit', [f['key'] for f in c['settings']][:3] == ['direction', 'justify', 'align'] and 'width' in [f['key'] for f in c['columns']] and [p['id'] for p in c['presets']] == ['full', '50-50', '33-67', '67-33', '3x33', '25-50-25', '4x25'] and c['max_columns'] == 6, ([f['key'] for f in c['settings']][:3], [p['id'] for p in c['presets']]))
 check('the gap and padding choices are the theme\'s spacing steps', [o[0] for f in c['settings'] if f['key'] == 'gap' for o in f['options']] == ['none', 'xs', 's', 'm', 'l', 'xl'])
 check('the container is not a block type of the theme', 'container' not in [d['type'] for d in data['definitions']])
 check('the page\'s container reaches the editor with its columns and blocks', data['blocks'][1]['type'] == 'container' and len(data['blocks'][1]['columns']) == 3 and data['blocks'][1]['columns'][1]['blocks'][1]['type'] == 'cta')
