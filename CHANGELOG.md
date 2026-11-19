@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.296 — 2026-11-19 — Two tests pass again
+- **Tests:** the Updates screen test no longer counts Markdown marks shown on purpose inside code (a note quoting `****Title****`), and the shift-select test ends with the line the runner looks for, so a pass is reported as one.
+
 ## 0.1.295 — 2026-11-19 — Features items can show a picture
 - **Blocks:** each item of Features can have a picture (a logo, a photo) in place of the icon, with a description. New settings: *Icon or picture position* (above the title as before, or beside the title and text; above on a phone), *Picture size* (48, 80 or 120px; the picture keeps its own shape, so logos are not cropped) and *Titles in the accent colour*. Pages saved before look the same.
 
