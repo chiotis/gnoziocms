@@ -9,8 +9,9 @@ use PDO;
 /**
  * Rate-limits password logins by client address and by username.
  *
- * The address is REMOTE_ADDR on purpose: X-Forwarded-For is client-controlled and would let
- * an attacker rotate addresses for free.
+ * The address is the one RequestOrigin gives: REMOTE_ADDR, unless the request comes from a proxy listed in Settings >
+ * Trusted proxies. X-Forwarded-For from anyone else is written by the client and would let an attacker rotate addresses
+ * for free.
  */
 final class LoginThrottle
 {

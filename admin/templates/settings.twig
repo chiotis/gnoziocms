@@ -154,10 +154,16 @@
             <label class="block">
               <span class="mb-1 block text-sm font-medium text-slate-700">Base URL</span>
               <input type="text" name="base_url" value="{{ settings_form.base_url }}" placeholder="https://example.com" class="{{ input_class }}">
+              <span class="mt-1 block text-xs text-slate-500">Links in emails, payment returns and downloads are built from this address only. The shop's card payments and customer accounts need it.</span>
             </label>
             <label class="block">
               <span class="mb-1 block text-sm font-medium text-slate-700">Home page</span>
               <input type="text" name="home_page" value="{{ settings_form.home_page }}" class="{{ input_class }}">
+            </label>
+            <label class="block sm:col-span-2">
+              <span class="mb-1 block text-sm font-medium text-slate-700">Trusted proxies</span>
+              <textarea name="trusted_proxies" rows="2" placeholder="127.0.0.1" class="{{ input_class }} font-mono text-sm">{{ settings_form.trusted_proxies }}</textarea>
+              <span class="mt-1 block text-xs text-slate-500">Addresses or ranges (10.0.0.0/8) of the proxies in front of the site, one per line: Varnish, nginx, cloudflared. Only requests from them may say who the visitor is (X-Forwarded-For) and whether the visit is on HTTPS. 127.0.0.1 and ::1 (this machine) are listed until the list is changed; empty it when nothing stands in front, so no header is believed.</span>
             </label>
           </div>
         </div>

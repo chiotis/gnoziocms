@@ -9,7 +9,7 @@ group. Size: S (an hour or two), M (half a day to a day), L (more).
       Done before 0.1.307: the Tests run of 0.1.307 is green.
 - [x] **CI-2** (S) Find why `tests/run.sh` lists `shift-select` as FAIL with "0 failed (exit 0)", and why the newest run stays queued.
       Gone by 0.1.307: `tests/run.sh js` passes shift-select (8 checks) and CI is green; the queued run cannot be told from here.
-- [ ] **S1** (S) Never build an emailed link, a gateway's return address or a download link from the `Host` header. With the shop
+- [x] **S1** (S) Never build an emailed link, a gateway's return address or a download link from the `Host` header. With the shop
       on and the site address blank: refuse to turn on a gateway and customer accounts, and show why. Test: "forgot password"
       with a foreign `Host` mails a link to the site's own address or nothing.
 - [ ] **S2** (S) Keep the Pixel off `/account/*` and off any page whose address carries `key=` or `token=`; for the order's
@@ -32,7 +32,7 @@ group. Size: S (an hour or two), M (half a day to a day), L (more).
 - [ ] **S4d** (S) Viva webhook: take an event once by its key before calling Viva, and limit calls per address.
 - [ ] **S5** (M) A session version on `shop_customers`, kept in the session and raised when the password changes or is cleared:
       other browsers are signed out. Test: reset in one browser signs out the other.
-- [ ] **S6 + S12** (M) One "trusted proxies" setting. `X-Forwarded-For`, `-Proto` and `-Host` count only when `REMOTE_ADDR` is
+- [x] **S6 + S12** (M) One "trusted proxies" setting. `X-Forwarded-For`, `-Proto` and `-Host` count only when `REMOTE_ADDR` is
       one of them; `clientIpAddress()` and the sign-in throttle use the same helper. Document it for CloudPanel, Varnish and
       cloudflared.
 - [ ] **S7** (M) Headers: HSTS when the site is on HTTPS (a setting, off by default); a Content-Security-Policy for the admin

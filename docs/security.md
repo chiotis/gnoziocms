@@ -6,7 +6,7 @@ This page lists the protections built into the admin and what the server operato
 
 ### Sessions
 
-- Session cookies are `HttpOnly`, `SameSite=Lax`, and `Secure` when the request arrives over HTTPS (directly or via `X-Forwarded-Proto: https`).
+- Session cookies are `HttpOnly`, `SameSite=Lax`, and `Secure` when the request arrives over HTTPS (directly, or via `X-Forwarded-Proto: https` from a trusted proxy, below).
 - `session.use_strict_mode` is enabled, so unknown session ids are never adopted.
 - The session id is regenerated on every sign-in and sign-out.
 - Every admin request re-reads the signed-in user from SQLite. Deactivating a user or changing their role takes effect on their next click, not when their session expires.
@@ -79,7 +79,31 @@ Admin > History and the editor's History tab need `content.manage`. Restoring or
 
 - Failed password sign-ins are stored in the `login_attempts` SQLite table.
 - 8 failures from one address, or 12 failures for one username, within 15 minutes block further attempts (HTTP 429 with `Retry-After`) until the oldest counted failure ages out.
-- The address is `REMOTE_ADDR`. `X-Forwarded-For` is ignored for throttling because clients can forge it. Behind a reverse proxy all visitors share the proxy address, so configure the proxy to pass the real client address as `REMOTE_ADDR` (for example `mod_remoteip` or nginx `real_ip`).
+- The address is the visitor's address as *Trusted proxies* (below) defines it: `REMOTE_ADDR`, unless the request comes from a listed proxy. MCP's limits and the activity log use the same address.
+
+### Trusted proxies and the site address
+
+`X-Forwarded-For`, `X-Forwarded-Proto` and `X-Forwarded-Host` are written by whoever sends a request, so the site believes them
+only when the connection comes from a proxy listed in **Settings > General > Trusted proxies** (addresses or CIDR ranges, IPv4 or
+IPv6, one per line). Until the list is changed it holds this machine, `127.0.0.1` and `::1`, since only a proxy on the same
+server can connect from there; emptied, no forwarded header is believed. With none listed, the visitor's address is `REMOTE_ADDR`, HTTPS is the connection's own,
+and the host is `Host`. Behind a listed proxy, the visitor is the first address of `X-Forwarded-For` read from the right that is
+not itself a listed proxy, so what a visitor writes in the header (on the left) is never used (`src/RequestOrigin.php`).
+
+What to list:
+
+- **CloudPanel** (nginx in front of PHP-FPM on the same server): PHP sees the visitor's address as `REMOTE_ADDR` (nginx's own,
+  or the one `real_ip` sets), so the default is fine; empty the list if nothing else stands in front.
+- **Varnish** in front of nginx (CloudPanel's Varnish, or one of your own on the same machine): `127.0.0.1` and `::1`, the default, plus the
+  address of Varnish if it runs elsewhere.
+- **cloudflared** (a Cloudflare Tunnel): the default, when the tunnel runs on the server. cloudflared adds the visitor's
+  address to `X-Forwarded-For`.
+
+**Links that leave the request** (password-reset and verify emails, the order's link in an email, download links, the payment
+gateways' return and webhook addresses) are built from **Settings > General > Site address** only, never from `Host` or
+`X-Forwarded-Host`. With no address set they are paths without a host, so an email can never point to another site; and the
+shop refuses to turn on card payments (Viva Wallet, Cardlink) or customer accounts (sign-up, Google sign-in) until the address is
+set, and says why. Pages themselves are still built with the request's host when the address is blank, so a fresh install works.
 
 ### First administrator and default credentials
 

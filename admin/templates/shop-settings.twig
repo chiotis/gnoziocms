@@ -17,6 +17,9 @@
   {% set note = 'mt-1 text-xs text-slate-500' %}
 
   {{ ui.flash(message, done == 'ok' ? 'success' : 'error') }}
+  {% if no_site_address %}
+    <p class="mb-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">The site address is not set (<a class="underline" href="{{ url('admin/settings') }}">Settings &gt; General</a>). Card payments and customer accounts cannot be turned on without it, because links in emails and the payment returns are built from it only.</p>
+  {% endif %}
 
   <header class="mb-4 border-b border-slate-200 pb-4">
     <p class="max-w-3xl text-xs text-slate-500">The shop is on because the <strong>Products</strong> content type is on. Products, Looks, Collections and Product categories are edited like any content; this screen holds what the shop needs besides them. Orders, customers and coupons are in the <strong>Shop</strong> group of the menu.</p>

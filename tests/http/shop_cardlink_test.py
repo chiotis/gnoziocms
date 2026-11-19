@@ -58,6 +58,8 @@ threading.Thread(target=server.serve_forever, daemon=True).start()
 FAKE = 'http://127.0.0.1:%d' % server.server_address[1]
 
 root = Client(); root.login()
+# Card payments and customer accounts are turned on only with a site address (links in emails and the payment returns).
+root.submit('/admin/settings', lambda f: any(x[0] == 'title' for x in f['fields']) and any(x[0] == 'date_format' for x in f['fields']), {'base_url': BASE})
 toggle(root, 'products', True)
 write('app/content/products/ring.md', """---
 title: Δαχτυλίδι

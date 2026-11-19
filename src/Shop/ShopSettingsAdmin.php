@@ -45,6 +45,9 @@ final class ShopSettingsAdmin
     public function act(array $post): array
     {
         $tab = isset(self::TABS[(string)($post['tab'] ?? '')]) ? (string)$post['tab'] : 'general';
+        if (($refused = $this->needsSiteAddress($tab, $post)) !== '') {
+            return ['ok' => false, 'tab' => $tab, 'message' => $refused];
+        }
         if ($tab === 'payments' && ($post['viva_action'] ?? '') === 'check' && $this->viva !== null) {
             // Check connection checks what is stored, after saving what the form holds.
             $this->settings->savePayments($post);
@@ -101,6 +104,38 @@ final class ShopSettingsAdmin
     }
 
     /**
+     * Card payments and customer accounts send people to addresses of the site (the gateways' returns, the links of reset and
+     * verify emails). Those are built from Settings > Site address only, never from the request, so without one they cannot be
+     * turned on: a save that switches one of them from off to on is refused. What is on already stays on (the screen warns),
+     * and switching off is always allowed.
+     *
+     * @param array<string, mixed> $post
+     */
+    private function needsSiteAddress(string $tab, array $post): string
+    {
+        if (trim($this->siteUrl) !== '') {
+            return '';
+        }
+        $now = $this->settings->all();
+        $why = ' Set the site address in Settings > General first: links in emails and the payment returns are built from it only.';
+        if ($tab === 'payments') {
+            foreach ([Payments\VivaWallet::ID, Payments\Cardlink::ID] as $id) {
+                if (!empty($post[$id]['enabled']) && empty($now['payments'][$id]['enabled'])) {
+                    return 'Card payments cannot be turned on yet.' . $why;
+                }
+            }
+        }
+        if ($tab === 'accounts') {
+            foreach (['signup', 'google'] as $key) {
+                if (!empty($post[$key]) && empty($now['accounts'][$key])) {
+                    return 'Customer accounts cannot be turned on yet.' . $why;
+                }
+            }
+        }
+        return '';
+    }
+
+    /**
      * The preview of an email on the Emails tab, as HTML or as its plain text.
      *
      * @return array{subject: string, text: string, html: string}|null
@@ -137,6 +172,7 @@ final class ShopSettingsAdmin
         return [
             'tab' => $tab,
             'tabs' => self::TABS,
+            'no_site_address' => trim($this->siteUrl) === '',
             'shop' => $this->settings->view(),
             'currencies' => ShopSettings::CURRENCIES,
             'tax_labels' => ShopSettings::TAX_LABELS,

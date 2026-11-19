@@ -90,6 +90,9 @@ final class SiteSettings
             'title' => 'GnozioCMS',
             'tagline' => 'A flat-file CMS powered by Markdown and Twig.',
             'base_url' => '',
+            // A proxy on the same machine (Varnish, cloudflared, nginx in front of Apache) is the only thing that connects from here.
+            // Kept as text, so an emptied list stays empty instead of falling back to this default.
+            'trusted_proxies' => "127.0.0.1\n::1",
             'theme' => 'default',
             'home_page' => 'index',
             'date_format' => 'd/m/Y',
@@ -263,6 +266,7 @@ final class SiteSettings
             'title' => (string)($merged['title'] ?? ''),
             'tagline' => (string)($merged['tagline'] ?? ''),
             'base_url' => (string)($merged['base_url'] ?? ''),
+            'trusted_proxies' => implode("\n", RequestOrigin::parseList($merged['trusted_proxies'] ?? [])),
             'theme' => (string)($merged['theme'] ?? ''),
             'home_page' => (string)($merged['home_page'] ?? ''),
             'date_format' => (string)($merged['date_format'] ?? ''),
@@ -328,6 +332,8 @@ final class SiteSettings
             'title' => (string)($post['title'] ?? ''),
             'tagline' => (string)($post['tagline'] ?? ''),
             'base_url' => (string)($post['base_url'] ?? ''),
+            // Only when the box was on the form that was sent, so another form does not clear the list.
+            'trusted_proxies' => array_key_exists('trusted_proxies', $post) ? implode("\n", RequestOrigin::parseList($post['trusted_proxies'])) : null,
             'theme' => (string)($post['theme'] ?? ''),
             'home_page' => (string)($post['home_page'] ?? ''),
             'date_format' => (string)($post['date_format'] ?? ''),
@@ -537,6 +543,9 @@ final class SiteSettings
         $data['title'] = $form['title'] !== '' ? $form['title'] : ($data['title'] ?? 'GnozioCMS');
         $data['tagline'] = $form['tagline'] !== '' ? $form['tagline'] : ($data['tagline'] ?? '');
         $data['base_url'] = $form['base_url'];
+        if (($form['trusted_proxies'] ?? null) !== null) {
+            $data['trusted_proxies'] = $form['trusted_proxies'];
+        }
         $data['theme'] = $form['theme'] !== '' ? $form['theme'] : ($data['theme'] ?? 'default');
         $data['home_page'] = $form['home_page'] !== '' ? $form['home_page'] : ($data['home_page'] ?? 'index');
         $data['date_format'] = $form['date_format'] !== '' ? $form['date_format'] : ($data['date_format'] ?? 'd/m/Y');

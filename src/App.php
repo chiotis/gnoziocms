@@ -889,14 +889,13 @@ final class App
 
     private function isHttpsRequest(): bool
     {
-        $https = strtolower((string)($_SERVER['HTTPS'] ?? ''));
-        if ($https !== '' && $https !== 'off') {
-            return true;
-        }
-        if ((string)($_SERVER['SERVER_PORT'] ?? '') === '443') {
-            return true;
-        }
-        return strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https';
+        return $this->requestOrigin()->isHttps();
+    }
+
+    /** Where the request came from, believing the forwarded headers only from Settings > Trusted proxies (RequestOrigin). */
+    private function requestOrigin(): RequestOrigin
+    {
+        return new RequestOrigin($_SERVER, RequestOrigin::parseList($this->settings['trusted_proxies'] ?? ''));
     }
 
     private function sendSecurityHeaders(bool $admin): void
@@ -1406,7 +1405,7 @@ final class App
             return;
         }
 
-        if ($this->loginController()->handle($action, (string)($_SERVER['REQUEST_METHOD'] ?? 'GET'), $_POST, $_GET, (string)($_SERVER['REMOTE_ADDR'] ?? ''))) {
+        if ($this->loginController()->handle($action, (string)($_SERVER['REQUEST_METHOD'] ?? 'GET'), $_POST, $_GET, $this->clientIpAddress())) {
             return;
         }
 
@@ -3891,7 +3890,7 @@ final class App
             array_values(array_unique([$this->defaultLanguage(), ...($this->settings['languages']['available'] ?? [])])),
             $this->shopServices()->secrets(),
             $this->shopServices()->viva(),
-            $this->getBaseUrl(),
+            $this->siteAddress(),
             $this->shopServices()->cardlink(),
             $this->shopServices()->mail(),
             fn(string $key, string $lang): string => $this->shopText($key, $lang),
@@ -3932,7 +3931,7 @@ final class App
             $this->defaultLanguage(),
             $this->systemMeta,
             null,
-            $this->getBaseUrl()
+            $this->siteAddress()
         );
     }
 
@@ -3991,7 +3990,7 @@ final class App
                 ]);
             },
             fn(string $key, string $textLang, array $values = []): string => $this->shopText($key, $textLang, $values),
-            fn(string $path): string => $this->buildAbsoluteUrl($path),
+            fn(string $path): string => $this->siteLink($path),
             fn(string $forLang): string => $this->langPrefix($forLang),
             fn(): bool => $this->isValidCsrfRequest(),
             fn() => $this->render404(),
@@ -4038,7 +4037,7 @@ final class App
         return new ShopAdmin(
             $this->shopServices(),
             fn(string $action, string $level, ?string $type, ?string $id, string $message, array $context) => $this->logActivity($action, $level, $type, $id, $message, $context),
-            fn(array $order): string => $this->buildAbsoluteUrl($this->langPrefix((string)$order['lang']) . 'checkout/order/' . rawurlencode((string)$order['number']) . '?key=' . $order['view_key'])
+            fn(array $order): string => $this->siteLink($this->langPrefix((string)$order['lang']) . 'checkout/order/' . rawurlencode((string)$order['number']) . '?key=' . $order['view_key'])
         );
     }
 
@@ -5487,14 +5486,10 @@ final class App
         return $query ? $path . '?' . $query : $path;
     }
 
+    /** The visitor's address, by the one rule of RequestOrigin: MCP's limits, the sign-in throttle and the activity log use it. */
     private function clientIpAddress(): string
     {
-        $forwarded = trim((string)($_SERVER['HTTP_X_FORWARDED_FOR'] ?? ''));
-        if ($forwarded !== '') {
-            $parts = array_map('trim', explode(',', $forwarded));
-            return (string)($parts[0] ?? '');
-        }
-        return (string)($_SERVER['REMOTE_ADDR'] ?? '');
+        return $this->requestOrigin()->clientIp();
     }
 
     /**
@@ -6066,12 +6061,25 @@ final class App
             return $base;
         }
 
-        $scheme = $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '';
-        if ($scheme === '') {
-            $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-        }
-        $host = $_SERVER['HTTP_X_FORWARDED_HOST'] ?? ($_SERVER['HTTP_HOST'] ?? 'localhost');
-        return $scheme . '://' . $host;
+        $origin = $this->requestOrigin();
+        return ($origin->isHttps() ? 'https' : 'http') . '://' . $origin->host();
+    }
+
+    /**
+     * The address of a path for what leaves the request: links in emails, the gateways' return addresses, downloads. Built only
+     * from Settings > Site address, never from the request's Host, which whoever sends it writes. With no address set, the path
+     * alone, so a link in an email can never point to another site.
+     */
+    private function siteLink(string $path): string
+    {
+        $base = rtrim($this->siteAddress(), '/');
+        return ($base !== '' ? $base : '') . '/' . ltrim($path, '/');
+    }
+
+    /** Settings > Site address, or '' when it is not set. */
+    private function siteAddress(): string
+    {
+        return trim((string)($this->settings['base_url'] ?? ''));
     }
 
     private function setLanguage(string $lang): void

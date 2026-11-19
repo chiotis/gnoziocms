@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.308 — 2026-11-19 — What the site trusts from a request
+- **Links in emails come from the site address only** (audit S1): password-reset and verify emails, the order's link, download links and the payment gateways' return and webhook addresses are built from Settings > General > Site address, never from the request's `Host` or `X-Forwarded-Host`. With no address set they are paths without a host, so an email can never point to another site.
+- **The shop needs the site address** for card payments (Viva Wallet, Cardlink) and customer accounts (sign-up, Google sign-in): without it they cannot be switched on, and Shop settings says why. What is on already stays on, with a warning.
+- **Trusted proxies** (audit S6, S12): a new setting in Settings > General. `X-Forwarded-For`, `-Proto` and `-Host` count only from a listed proxy; the visitor is the first address of `X-Forwarded-For` from the right that is not a proxy, so a forged header is never used. It holds this machine (`127.0.0.1`, `::1`) until changed, which suits Varnish and cloudflared on the same server; empty it when nothing stands in front. MCP's limits, the sign-in throttle and the activity log use the same address (`RequestOrigin`). `docs/security.md` says what to list for CloudPanel, Varnish and cloudflared.
+
 ## 0.1.307 — 2026-11-19 — An Edit button on the site
 - **Edit button on public pages:** signed in with the right to edit content, every page that shows an entry (a post, a page, the home page, any type) has a round blue button at the bottom left that opens that entry in the editor; it widens to say *Edit* on hover, and is named with the entry's title for screen readers. It sits above a theme's mobile bar and is left out when printing. Forms need the right to manage forms.
 - Visitors never see it: only pages made for someone signed in carry it, and those are never kept by the page cache or a cache in front of the site. The editor's own preview, search and other pages that are not an entry have none.
