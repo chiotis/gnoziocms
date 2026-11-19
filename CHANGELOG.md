@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.310 — 2026-11-19 — The Pixel sees no keys; templates compiled once
+- **Meta Pixel** (audit S2): it no longer runs on the account's pages (sign in, sign up, forgot and reset password), nor on any address that carries a token. On the order's page the order's key is cut from the address before Meta's script loads, so Meta sees only the path; the Purchase event is still sent once. The key stays in the order's email; a visitor who never agrees to the Pixel keeps it in the address. The account's pages and the checkout tell the next page only the site's origin (`Referrer-Policy: strict-origin` by a meta tag).
+- **Templates compiled once** (audit P1): Twig's compiled templates are kept in `storage/cache/twig`, so pages no longer parse their templates on every request. A compiled copy is used only for the exact file it was made from (time and size), so edits, theme changes and restored files show at once; an update and System > *Empty the page cache* empty it. On a development copy the home page went from 264 to 177 ms and a post list from 161 to 84 ms (`docs/performance.md`).
+
 ## 0.1.309 — 2026-11-19 — Cardlink no longer cancels an order that may be paid
 - **Asking Cardlink about a payment** (audit S3): when an order's time runs out and Cardlink is asked whether it was paid, only the bank's own "no such order" answer lets the order go. Any other answer without a status (an error, maintenance, an empty answer) now counts as "could not ask": the order and its stock are kept, it is asked again every ten minutes, and after six hours it is let go with a note to check the bank's back office. Before, such an answer cancelled the order and put its stock back on sale although the customer may have paid.
 - **Cardlink's XML answers are checked**: a status is believed only when the answer's digest is right for the shared secret, and, when the answer names a Merchant ID, it must be the site's.

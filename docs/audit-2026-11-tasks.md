@@ -12,13 +12,13 @@ group. Size: S (an hour or two), M (half a day to a day), L (more).
 - [x] **S1** (S) Never build an emailed link, a gateway's return address or a download link from the `Host` header. With the shop
       on and the site address blank: refuse to turn on a gateway and customer accounts, and show why. Test: "forgot password"
       with a foreign `Host` mails a link to the site's own address or nothing.
-- [ ] **S2** (S) Keep the Pixel off `/account/*` and off any page whose address carries `key=` or `token=`; for the order's
+- [x] **S2** (S) Keep the Pixel off `/account/*` and off any page whose address carries `key=` or `token=`; for the order's
       page, send the Purchase event with the address cut to its path. Test: the order page with the Pixel on names no key in
       what the script is given.
 - [x] **S3** (M) Cardlink `lookup()`: only the bank's "no such order" answer counts as not paid; any other error means "could
       not ask" (try again, as for a network error). Check the digest of the XML answer and its merchant id. Test with a fake
       bank answering an error for a paid order: the order is not cancelled.
-- [ ] **P1** (S) Turn on Twig's compile cache (`storage/cache/twig`, `auto_reload` on), cleared by an update, a theme change and
+- [x] **P1** (S) Turn on Twig's compile cache (`storage/cache/twig`, `auto_reload` on), cleared by an update, a theme change and
       System › Cache. Measure the checkout and one admin screen before and after.
 
 ## Security

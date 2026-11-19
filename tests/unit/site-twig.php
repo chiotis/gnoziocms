@@ -115,5 +115,27 @@ $twig2 = $make();
 check('the globals of a new environment', $render($twig2, '{{ site.title }}|{{ theme_settings.k }}|{{ is_admin ? "admin" : "visitor" }}|{{ admin_languages|join(",") }}|{{ theme.name }}'), 'Changed|v|admin|el|default');
 check('and those of the old one stay as they were', $render($twig, '{{ site.title }}|{{ is_admin ? "admin" : "visitor" }}|{{ admin_languages|join(",") }}'), 'Site|visitor|en,el');
 
+// ---- the compile cache (storage/cache/twig)
+$files = static fn(): int => count(glob("$root/storage/cache/twig/*/*.php") ?: []);
+file_put_contents("$root/custom/templates/cached.twig", 'one:{{ 1 }}');
+check('a template is compiled into storage/cache/twig', [$render($make(), '{% include "templates/cached.twig" %}'), $files() > 0], ['one:1', true]);
+$before = $files();
+check('the next environment (the next request) compiles nothing again', [$render($make(), '{% include "templates/cached.twig" %}'), $files()], ['one:1', $before]);
+file_put_contents("$root/custom/templates/cached.twig", 'two:{{ 2 }}');
+touch("$root/custom/templates/cached.twig", time() + 5);
+clearstatcache();
+check('an edited template is used at once', $render($make(), '{% include "templates/cached.twig" %}'), 'two:2');
+file_put_contents("$root/custom/templates/cached.twig", 'old:{{ 0 }}!');
+touch("$root/custom/templates/cached.twig", time() - 86400);
+clearstatcache();
+check('so is one put back with an older time (a restore), never the newer copy', $render($make(), '{% include "templates/cached.twig" %}'), 'old:0!');
+check('clearing empties the folder', [SiteTwig::clearCache($root) > 0, $files()], [true, 0]);
+check('and the next page compiles again', $render($make(), '{% include "templates/cached.twig" %}'), 'old:0!');
+$blocked = sys_get_temp_dir() . '/sitetwig-blocked' . getmypid();
+mkdir("$blocked/storage/cache", 0775, true);
+file_put_contents("$blocked/storage/cache/twig", 'not a folder');
+check('without a folder it can write, no cache (and nothing fails)', SiteTwig::cacheDir($blocked), null);
+@exec('rm -rf ' . escapeshellarg($blocked));
+
 echo $fail === 0 ? "\nALL PASSED\n" : "\n$fail FAILED\n";
 exit($fail ? 1 : 0);

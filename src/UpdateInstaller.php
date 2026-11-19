@@ -453,6 +453,8 @@ final class UpdateInstaller
      */
     private function clearCaches(): string
     {
+        // Compiled templates of the old code: the new code's functions and filters may compile differently.
+        SiteTwig::clearCache($this->basePath);
         clearstatcache(true);
         $active = function_exists('ini_get') && filter_var(ini_get('opcache.enable'), FILTER_VALIDATE_BOOLEAN) && extension_loaded('Zend OPcache');
         if (!$active) {

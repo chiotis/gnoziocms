@@ -8,7 +8,6 @@ use GnozioCMS\Shop\Shop;
 use GnozioCMS\Shop\ShopCatalogue;
 
 use Twig\Environment;
-use Twig\Loader\FilesystemLoader;
 use Twig\TwigFilter;
 use Twig\TwigFunction;
 
@@ -74,11 +73,45 @@ final class SiteTwig
     ) {
     }
 
+    public const CACHE = '/storage/cache/twig';
+
+    /** The folder for compiled templates, made if needed, or null when it cannot be written. */
+    public static function cacheDir(string $basePath): ?string
+    {
+        $dir = $basePath . self::CACHE;
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0775, true);
+        }
+        return is_dir($dir) && is_writable($dir) ? $dir : null;
+    }
+
+    /**
+     * Empties the compiled templates: after an update (the code that registers functions and filters may have changed what a
+     * template compiles to) and from System > Cache. Returns how many files went.
+     */
+    public static function clearCache(string $basePath): int
+    {
+        $dir = $basePath . self::CACHE;
+        if (!is_dir($dir)) {
+            return 0;
+        }
+        $count = 0;
+        $items = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS), \RecursiveIteratorIterator::CHILD_FIRST);
+        foreach ($items as $item) {
+            if ($item->isDir() && !$item->isLink()) {
+                @rmdir($item->getPathname());
+            } elseif (@unlink($item->getPathname())) {
+                $count++;
+            }
+        }
+        return $count;
+    }
+
     public function create(): Environment
     {
         $adminDir = $this->basePath . '/admin/templates';
 
-        $loader = new FilesystemLoader();
+        $loader = new SiteTwigLoader();
         foreach ($this->theme->templateRoots() as $root) {
             $loader->addPath($root);
         }
@@ -86,8 +119,12 @@ final class SiteTwig
         $loader->addPath($this->theme->path(), 'theme');
         $loader->addPath($adminDir, 'admin');
 
+        $cache = self::cacheDir($this->basePath);
         $twig = new Environment($loader, [
-            'cache' => false,
+            // Compiled templates are kept in storage/cache/twig; auto_reload compiles a template again when its file is newer, so
+            // an edited template (custom/, a theme change, an import) is used at once. Without a folder it can write, no cache.
+            'cache' => $cache ?? false,
+            'auto_reload' => true,
             'autoescape' => 'html',
         ]);
 

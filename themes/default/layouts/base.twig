@@ -46,6 +46,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  {# The account's pages and the checkout carry tokens and the order's key in their addresses: the next page, and any script on it,
+     is told only the site's origin as where the visitor came from. #}
+  {% if shop_page|default('') in ['account', 'checkout'] %}<meta name="referrer" content="strict-origin">{% endif %}
   <title>{{ page_title }}</title>
   <meta name="description" content="{{ page_description }}">
   {% set robots_content = seo_robots((meta.seo.noindex ?? false) or (noindex_page ?? false), seo_kind|default(item is defined and item ? item.type : (type|default('')))) %}
@@ -167,9 +170,11 @@
   {% block scripts %}
   <script src="{{ theme_asset('js/site.js') }}"></script>
   {% if shop_enabled|default(false) %}<script src="{{ theme_asset('js/shop.js') }}" defer></script>{% endif %}
-  {# The Meta Pixel of Shop settings › Marketing: it runs once the visitor agrees, and sends the events the page gives it. #}
+  {# The Meta Pixel of Shop settings › Marketing: it runs once the visitor agrees, and sends the events the page gives it. Never on
+     the account's pages, where passwords are typed and reset links carry their token (shop-pixel.js also stays off any address with
+     a token, and cuts the order's key from the address before Meta's script reads it). #}
   {% if shop_track|default(null) %}<script type="application/json" data-shop-track>{{ shop_track|json_encode(constant('JSON_HEX_TAG') b-or constant('JSON_HEX_AMP'))|raw }}</script>{% endif %}
-  {% if shop_pixel|default(null) and not is_admin|default(false) %}
+  {% if shop_pixel|default(null) and not is_admin|default(false) and shop_page|default('') != 'account' %}
     <script src="{{ theme_asset('js/shop-pixel.js') }}" defer data-pixel="{{ shop_pixel.id }}" data-consent="{{ shop_pixel.consent }}"
       data-text="{{ t('shop.consent_text', 'We use cookies from Meta to measure our ads and show you our pieces on Facebook and Instagram. Do you agree?') }}"
       data-accept="{{ t('shop.consent_accept', 'I agree') }}" data-decline="{{ t('shop.consent_decline', 'No, thanks') }}"

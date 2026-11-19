@@ -6,6 +6,10 @@
  *
  * The events: PageView on every page, and those the page gives in <script type="application/json" data-shop-track> (ViewContent,
  * InitiateCheckout, Purchase with its event id, sent once per browser), and AddToCart from shop.js (the event gz:shop-track).
+ *
+ * Meta's script reports the page's full address with every event. So it never runs on an address that carries a token, and on the
+ * order's page (?key=…, which opens the order) the key is cut from the address before Meta's script loads: Meta sees the path.
+ * The key stays in the order's email; a visitor who never agrees keeps it in the address.
  */
 (function () {
   'use strict';
@@ -37,8 +41,15 @@
     window.fbq('track', item.event, item.data || {}, item.id ? { eventID: item.id } : undefined);
   }
 
+  function secret(search) { return /[?&](token|key|secret)=/i.test(search || ''); }
+
   function start() {
     if (started || !pixel) return;
+    if (/[?&](token|secret)=/i.test(location.search)) return;
+    if (secret(location.search) && window.history && history.replaceState) {
+      history.replaceState(history.state, '', location.pathname + location.hash);
+    }
+    if (secret(location.search)) return;
     started = true;
     /* Meta's own loader, as Events Manager gives it. */
     !function (f, b, e, v, n, t, s) {

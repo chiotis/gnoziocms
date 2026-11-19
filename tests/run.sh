@@ -171,6 +171,7 @@ run_js() {
   run_check "template-bindings" "$ROOT" node tests/js/template-bindings.test.js
   run_check "list-bindings" "$ROOT" node tests/js/list-bindings.test.js
   run_check "shift-select" "$ROOT" node tests/js/shift-select.test.js
+  run_check "shop-pixel" "$ROOT" node tests/js/shop-pixel.test.js
   run_check "relations-picker" "$ROOT" node tests/js/relations.test.js
   run_check "gallery-field" "$ROOT" node tests/js/gallery-field.test.js
   run_check "route-profile" "$ROOT" node tests/js/route-profile.test.js

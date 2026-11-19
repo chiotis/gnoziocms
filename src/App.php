@@ -3439,6 +3439,8 @@ final class App
             $ok = $mode === 'cloudpanel' ? $cache->cloudPanelTag() !== '' : ($status >= 200 && $status < 300);
             // The site's own copies are dropped by the purge handleAdmin asked for, whatever a cache in front answers.
             $ok = $ok || ($mode === 'none' && $this->pageCache()->isEnabled());
+            // And the compiled templates, made again on the next page (SiteTwig).
+            SiteTwig::clearCache($this->basePath);
             $this->logActivity($ok ? 'system.cache_purge' : 'system.cache_purge_failure', $ok ? 'info' : 'warning', 'system', 'front_cache', $ok ? 'Page cache emptied.' : 'The page cache could not be emptied.', ['mode' => $mode, 'status' => $status]);
             $this->redirect('/admin/system?cache=' . ($ok ? 'purged' : 'purge_failed') . ($mode === 'varnish' ? '&cache_status=' . $status : ''));
             return;

@@ -95,6 +95,13 @@ check('the product page gives ViewContent of the product group', data.get('event
 st, _, answer = pub.request('/_shop/cart', data={'product': 'ring00000000000m', 'variant': 'Gold', 'quantity': '2'}, headers={'Origin': BASE, 'Accept': 'application/json'})
 added = json.loads(answer)
 check('adding to the cart answers with AddToCart', added.get('ok') and added['track']['event'] == 'AddToCart' and added['track']['data']['value'] == 260 and added['track']['data']['content_ids'][0].startswith('ring00000000000m-'), answer[:400])
+st, _, forgot = pub.get('/account/forgot')
+st2, _, account = pub.get('/account')
+check('no Pixel on the account\'s pages, where passwords are typed and reset links carry their token', st == 200 and 'shop-pixel.js' not in forgot and 'shop-pixel.js' not in account, (st, st2))
+check('and they tell the next page only the site\'s origin', '<meta name="referrer" content="strict-origin">' in forgot and '<meta name="referrer" content="strict-origin">' in account)
+st, _, cart_page = pub.get('/checkout')
+check('so does the checkout, which keeps the Pixel', '<meta name="referrer" content="strict-origin">' in cart_page and 'shop-pixel.js' in cart_page, st)
+check('an ordinary page keeps the site\'s referrer policy', 'name="referrer"' not in page)
 st, _, admin_page = root.get('/products/ring')
 check('no Pixel or Cookie settings for someone signed in to the admin', 'shop-pixel.js' not in admin_page and 'data-consent-open' not in admin_page)
 

@@ -14,6 +14,15 @@ things are settings of the site or of its host, listed under [What a site should
   Until it exists the page names it by a `/_image/…` address that PHP answers; the page cache keeps such a page for one minute
   only, so it soon names the file itself, which the web server sends.
 
+**Templates** (`src/SiteTwig.php`, `src/SiteTwigLoader.php`)
+- Twig templates (the theme's, the site's in `custom/`, the admin's) are compiled to PHP once and kept in `storage/cache/twig`, so a
+  page no longer parses its templates on every request. A compiled copy is used only for the very file it was made from (its
+  time and size are part of its name), so an edited template, a theme change or a restored older file is used at once. The
+  folder is emptied by an update and by System > *Empty the page cache*, counts in Settings > Limits like the rest of
+  `storage/`, and is left out of backups (`storage/cache/`). When it cannot be written, pages are made without it.
+- Measured on a development copy (PHP's built-in server, no OPcache, median of 50 requests): the home page 264 → 177 ms, a post
+  list 161 → 84 ms, the admin's sign-in page 46 → 44 ms. With OPcache on, the compiled files are kept in memory too.
+
 **Stylesheets** (`src/ThemeAssets.php`, `src/CssMinify.php`)
 - The theme's and the site's stylesheets are sent minified; the files under `themes/` and `custom/` stay as they are written.
 - The styles of a page's blocks are one stylesheet, and when it is small (up to 32 KB, about 6 KB compressed) it is written into
