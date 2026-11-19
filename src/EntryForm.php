@@ -291,6 +291,10 @@ final class EntryForm
             'front_matter_error' => $frontMatterError,
             'body' => $body,
             'main_image' => $mainImage,
+            // The entry's own gallery (Media tab), for a type with no gallery field of its own; null when the type has one.
+            'entry_gallery' => $type === 'forms' || $this->types->galleryKey($type, 'en', $defaultLang) !== ''
+                ? null
+                : FieldSchema::galleryList(is_array($meta) ? ($meta[ContentTypes::ENTRY_GALLERY] ?? []) : []),
             // What a shared link of the entry falls back to after its own image and text (Admin > SEO, then Theme > Branding).
             'share_defaults' => [
                 'image' => SeoSettings::from($settings)['share_image'] ?: (string)($themeSettings['brand']['share_image'] ?? ''),
@@ -453,7 +457,8 @@ final class EntryForm
 
         foreach ($meta as $key => $value) {
             $key = (string)$key;
-            if ($this->editor->isReservedKey($key) || array_key_exists($key, $custom) || in_array($key, $exclude, true)) {
+            // A gallery at the top of the front matter is the entry's own (Media tab) or read as the type's gallery field.
+            if ($this->editor->isReservedKey($key) || $key === ContentTypes::ENTRY_GALLERY || array_key_exists($key, $custom) || in_array($key, $exclude, true)) {
                 continue;
             }
             $custom[$key] = $this->stringifyCustomValue($value);

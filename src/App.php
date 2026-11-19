@@ -2380,7 +2380,20 @@ final class App
         header('Cache-Control: no-store');
         $this->media->ensureDirectories();
         $this->media->migrateLegacyItems();
-        echo json_encode($this->mediaAdmin()->picker($_GET), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+        $user = $this->auth->user();
+        // Who may choose may upload too, when they may change content or the media library (as the main image's upload button lets them).
+        $mayUpload = $this->permissions->can($user, 'content.manage') || $this->permissions->can($user, 'media.manage');
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
+            if (!$mayUpload) {
+                http_response_code(403);
+                echo json_encode(['ok' => false, 'message' => 'You may not upload to the media library.']);
+                return;
+            }
+            $result = $this->mediaAdmin()->pickerUpload($_FILES['upload_file'] ?? null, (string)($_POST['kind'] ?? 'image'), $this->currentUsername());
+            echo json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+            return;
+        }
+        echo json_encode($this->mediaAdmin()->picker($_GET) + ['can_upload' => $mayUpload, 'max_bytes' => $this->siteLimits()->maxUploadBytes()], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
     }
 
     /** The Markdown of the content editor as the visual editor draws it, block by block (JSON out); nothing is stored. */

@@ -74,6 +74,9 @@ check('custom_fields wins over the top of the front matter', $types->values('rou
 check('a top-level key is read only for a gallery: a text field is not', array_key_exists('area', $types->values('routes', ['area' => 'Crete'])), false);
 check('an empty gallery is no value', array_key_exists('gallery', $types->values('routes', ['custom_fields' => ['gallery' => []]])), false);
 check('the pictures of the entry, by the type\'s gallery or a key named', [$types->gallery('routes', ['custom_fields' => ['gallery' => $pictures]]), $types->gallery('albums', ['custom_fields' => ['photos' => ['/p.jpg'], 'sketches' => ['/s.jpg']]], 'sketches')], [$pictures, ['/s.jpg']]);
+// A type with no gallery field (pages) has the entry's own gallery at the top of its front matter (the editor's Media tab).
+check('a page has its own gallery, read from the top of its front matter', [$types->gallery('pages', ['gallery' => ['/a.jpg', '/a.jpg', 'javascript:x', '/b.jpg']]), $types->gallery('pages', ['gallery' => ['/a.jpg']], 'gallery'), $types->gallery('pages', [])], [['/a.jpg', '/b.jpg'], ['/a.jpg'], []]);
+check('a type with a gallery field does not read the entry\'s own one instead', $types->gallery('albums', ['gallery' => ['/top.jpg']]), []);
 check('a key that is not a gallery, or is retired, gives none', [$types->gallery('albums', ['custom_fields' => ['subtitle' => '/x.jpg']], 'subtitle'), $types->gallery('albums', ['custom_fields' => ['old_pictures' => ['/o.jpg']]], 'old_pictures'), $types->gallery('albums', [], 'nothing')], [[], [], []]);
 $stored = $types->fromInput('routes', ['gallery' => "/uploads/media/two.jpg\n/uploads/media/one.jpg\n/uploads/media/two.jpg"], []);
 check('the form\'s box is stored as a YAML list, in the order given, once each', $stored['gallery'] ?? null, ['/uploads/media/two.jpg', '/uploads/media/one.jpg']);
@@ -182,6 +185,9 @@ check('drawn: the entry\'s pictures', $images($page['html']), $pictures);
 $attack = $route(['custom_fields' => ['gallery' => ['/ok.jpg', 'javascript:alert(1)', '/x.jpg"><script>']]]);
 $page = $renderer->render([['type' => 'gallery', 'source' => 'entry']], $context($attack));
 check('what is not a safe address never reaches the page', [$images($page['html']), str_contains($page['html'], '<script>'), str_contains($page['html'], 'javascript:')], [['/ok.jpg'], false, false]);
+
+$page = $renderer->render([['type' => 'gallery', 'source' => 'entry']], $context(new ContentItem('pages', 'about', 'en', ['title' => 'About', 'gallery' => ['/m1.jpg', '/m2.jpg']], '', '', '', 0)));
+check('the Gallery block on a page shows the page\'s own gallery', $images($page['html']), ['/m1.jpg', '/m2.jpg']);
 
 echo $fail === 0 ? "\nALL PASSED\n" : "\n$fail FAILED\n";
 exit($fail === 0 ? 0 : 1);

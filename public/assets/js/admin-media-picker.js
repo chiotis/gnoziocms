@@ -10,6 +10,9 @@
  *                                                            `chosen` (and those picked since) are marked and not given twice
  *   <input data-image-field>                                 gets a thumbnail and a Library button automatically
  *
+ * The dialog has an Upload button (and takes files dropped on it) for those who may add to the library: the files go to the
+ * library by a POST to the same address, and a new picture is chosen at once (in `multiple`, each one is added).
+ *
  * Without JavaScript the address can still be typed into the field.
  */
 (function () {
@@ -42,7 +45,15 @@
   var dialog = null;
   var state = { q: '', tag: '', page: 1, kind: 'image', multiple: false, chosen: [] };
   var callback = null;
+  var canUpload = false;
   var ui = {};
+
+  function csrf() {
+    var tag = document.querySelector('meta[name="csrf-token"]');
+    return tag ? tag.getAttribute('content') : '';
+  }
+
+  var ACCEPT = { image: 'image/*', video: 'video/*', audio: 'audio/*', track: '.gpx,.kml,.geojson,.json', all: '' };
   var timer = null;
   var request = 0;
 
@@ -54,12 +65,22 @@
     ui.info = el('span', { class: 'text-xs text-slate-500' });
     ui.prev = el('button', { type: 'button', class: CLS.btn, text: 'Previous', onclick: function () { go(state.page - 1); } });
     ui.next = el('button', { type: 'button', class: CLS.btn, text: 'Next', onclick: function () { go(state.page + 1); } });
+    ui.file = el('input', { type: 'file', multiple: true, class: 'hidden', tabindex: '-1', 'aria-hidden': 'true' });
+    ui.upload = el('button', { type: 'button', class: CLS.btn + ' shrink-0', style: 'display:none', onclick: function () { ui.file.click(); } });
+    ui.upload.innerHTML = '<svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16V4m0 0l-4 4m4-4l4 4M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg><span>Upload</span>';
+    ui.file.addEventListener('change', function () {
+      var files = Array.prototype.slice.call(ui.file.files || []);
+      ui.file.value = '';
+      upload(files);
+    });
 
     dialog = el('dialog', { class: 'w-[min(94vw,62rem)] rounded-lg border border-slate-200 p-0 shadow-xl backdrop:bg-slate-900/40', 'aria-label': 'Choose an image' }, [
       el('div', { class: 'flex flex-wrap items-center gap-3 border-b border-slate-200 p-4' }, [
         el('h2', { class: 'shrink-0 text-sm font-semibold text-slate-900', text: 'Choose an image' }),
         ui.search,
         ui.tag,
+        ui.upload,
+        ui.file,
         ui.close = el('button', { type: 'button', class: CLS.btn, text: 'Close', onclick: function () { dialog.close(); } })
       ]),
       el('div', { class: 'max-h-[58vh] overflow-y-auto' }, [ui.grid, ui.status]),
@@ -72,7 +93,71 @@
       timer = setTimeout(function () { state.q = ui.search.value.trim(); state.page = 1; load(); }, 250);
     });
     ui.tag.addEventListener('change', function () { state.tag = ui.tag.value; state.page = 1; load(); });
-    dialog.addEventListener('close', function () { callback = null; });
+    // Files dropped anywhere on the dialog are uploaded as the button's are.
+    dialog.addEventListener('dragover', function (event) {
+      if (!canUpload || !event.dataTransfer || Array.prototype.indexOf.call(event.dataTransfer.types || [], 'Files') === -1) return;
+      event.preventDefault();
+      dialog.style.outline = '2px dashed #3b82f6';
+    });
+    dialog.addEventListener('dragleave', function (event) {
+      if (event.target === dialog || !dialog.contains(event.relatedTarget)) dialog.style.outline = '';
+    });
+    dialog.addEventListener('drop', function (event) {
+      dialog.style.outline = '';
+      if (!canUpload || !event.dataTransfer || !event.dataTransfer.files.length) return;
+      event.preventDefault();
+      upload(Array.prototype.slice.call(event.dataTransfer.files));
+    });
+    // The close event comes a moment later: a dialog opened again by then keeps its new callback.
+    dialog.addEventListener('close', function () { if (!dialog.open) callback = null; });
+  }
+
+  function upload(files) {
+    if (!files.length || !canUpload) return;
+    var body = new FormData();
+    files.forEach(function (file) { body.append('upload_file[]', file, file.name); });
+    body.append('kind', state.kind);
+    body.append('_csrf', csrf());
+    var label = ui.upload.querySelector('span');
+    ui.upload.disabled = true;
+    ui.upload.classList.add('opacity-50');
+    label.textContent = 'Uploading…';
+    ui.status.textContent = files.length === 1 ? 'Uploading ' + files[0].name + '…' : 'Uploading ' + files.length + ' files…';
+    var finish = function () {
+      ui.upload.disabled = false;
+      ui.upload.classList.remove('opacity-50');
+      label.textContent = 'Upload';
+    };
+    fetch(endpoint, { method: 'POST', body: body, credentials: 'same-origin', headers: { 'Accept': 'application/json', 'X-CSRF-Token': csrf() } })
+      .then(function (response) {
+        return response.json().catch(function () { return { ok: false, items: [], message: response.status === 413 || response.status === 419 ? 'The upload was larger than the server allows.' : 'The upload failed.' }; });
+      })
+      .then(function (result) {
+        finish();
+        var items = result.items || [];
+        if (items.length && !state.multiple) {
+          // One picture to choose: the first one uploaded is the choice, as if it had been clicked.
+          var done = callback;
+          dialog.close();
+          if (done) done(items[0].url, items[0]);
+          return;
+        }
+        items.forEach(function (item) {
+          if (state.chosen.indexOf(item.url) !== -1) return;
+          state.chosen.push(item.url);
+          if (callback) callback(item.url, item);
+        });
+        state.q = '';
+        state.tag = '';
+        ui.search.value = '';
+        ui.tag.value = '';
+        state.page = 1;
+        load(result.message || (items.length ? (items.length === 1 ? 'Uploaded and added.' : 'Uploaded and added ' + items.length + ' files.') : ''));
+      })
+      .catch(function () {
+        finish();
+        ui.status.textContent = 'The upload failed. Check the connection and try again.';
+      });
   }
 
   function go(page) {
@@ -87,8 +172,10 @@
     ui.tag.value = state.tag;
   }
 
-  function render(payload) {
+  function render(payload, note) {
     ui.grid.innerHTML = '';
+    canUpload = !!payload.can_upload;
+    ui.upload.style.display = canUpload ? '' : 'none';
     fillTags(payload.tags || []);
     state.page = payload.page;
     (payload.items || []).forEach(function (item) {
@@ -133,12 +220,13 @@
     ui.next.disabled = payload.page >= payload.pages;
     ui.prev.classList.toggle('opacity-50', ui.prev.disabled);
     ui.next.classList.toggle('opacity-50', ui.next.disabled);
-    ui.status.textContent = payload.total === 0
-      ? (state.q || state.tag ? 'Nothing matches.' : (state.kind === 'video' ? 'The media library has no videos yet. Upload them in Media.' : state.kind === 'audio' ? 'The media library has no sound files yet. Upload an MP3, WAV, OGG or M4A file in Media.' : state.kind === 'all' ? 'The media library has no files yet. Upload them in Media.' : state.kind === 'track' ? 'The media library has no route files yet. Upload a GPX, KML or GeoJSON file in Media.' : 'The media library has no images yet. Upload them in Media.'))
+    var where = canUpload ? 'Upload one here, or drop it on this window.' : 'Upload them in Media.';
+    ui.status.textContent = note ? note : payload.total === 0
+      ? (state.q || state.tag ? 'Nothing matches.' : (state.kind === 'video' ? 'The media library has no videos yet. ' + where : state.kind === 'audio' ? 'The media library has no sound files yet (MP3, WAV, OGG or M4A). ' + where : state.kind === 'all' ? 'The media library has no files yet. ' + where : state.kind === 'track' ? 'The media library has no route files yet (GPX, KML or GeoJSON). ' + where : 'The media library has no images yet. ' + where))
       : '';
   }
 
-  function load() {
+  function load(note) {
     var mine = ++request;
     ui.status.textContent = 'Loading…';
     var url = endpoint + (endpoint.indexOf('?') === -1 ? '?' : '&') + 'kind=' + state.kind + '&page=' + state.page + '&q=' + encodeURIComponent(state.q) + '&tag=' + encodeURIComponent(state.tag);
@@ -149,7 +237,7 @@
       })
       .then(function (payload) {
         if (mine !== request) return; // a newer search is on its way
-        render(payload);
+        render(payload, note);
       })
       .catch(function () {
         if (mine !== request) return;
@@ -172,6 +260,8 @@
     ui.search.setAttribute('aria-label', 'Search ' + noun + 's');
     ui.search.value = '';
     ui.tag.value = '';
+    ui.file.setAttribute('accept', ACCEPT[state.kind] || '');
+    ui.file.multiple = state.multiple;
     dialog.showModal();
     ui.search.focus();
     load();

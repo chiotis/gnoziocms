@@ -298,6 +298,17 @@ final class ContentEditor
             }
         }
 
+        // The entry's own gallery (the Media tab, for a type with no gallery field): the box sends one address on each line.
+        $ownGallery = $type !== 'forms' && $this->types->galleryKey($type) === '';
+        if ($ownGallery && array_key_exists('entry_gallery', $post)) {
+            $gallery = FieldSchema::galleryList($post['entry_gallery']);
+            if ($gallery !== []) {
+                $data[ContentTypes::ENTRY_GALLERY] = $gallery;
+            } else {
+                unset($data[ContentTypes::ENTRY_GALLERY]);
+            }
+        }
+
         if (array_key_exists('main_image', $post)) {
             if ($mainImage !== '') {
                 $data['main_image'] = $mainImage;
@@ -351,7 +362,8 @@ final class ContentEditor
         }
 
         foreach (array_keys($data) as $key) {
-            if (!$this->isReservedKey($key)) {
+            // `gallery` is not a reserved key (a type may declare a field of that name), but it is the entry's own gallery when the type has none.
+            if (!$this->isReservedKey($key) && !($ownGallery && $key === ContentTypes::ENTRY_GALLERY)) {
                 unset($data[$key]);
             }
         }

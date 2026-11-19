@@ -249,6 +249,64 @@ final class MediaAdmin
         return ['items' => $items, 'total' => $total, 'page' => $page, 'pages' => $pages, 'per_page' => $perPage, 'tags' => $this->media->availableTags()];
     }
 
+    /**
+     * Files uploaded from the picker's dialog: each is put in the media library, as the Media screen does, and given back in the
+     * picker's own shape so the dialog can choose it at once. A file of another kind than the dialog asks for (a PDF in an image
+     * picker) stays in the library and is named in the message.
+     *
+     * @return array{ok: bool, items: list<array<string, mixed>>, message: string}
+     */
+    public function pickerUpload(mixed $rawUpload, string $kind, string $by): array
+    {
+        $kind = in_array($kind, ['all', 'video', 'track', 'audio'], true) ? $kind : 'image';
+        $items = [];
+        $problems = [];
+        foreach ($this->media->normalizeUploads($rawUpload) as $upload) {
+            $error = (int)($upload['error'] ?? UPLOAD_ERR_NO_FILE);
+            $name = (string)($upload['name'] ?? 'file');
+            if ($error === UPLOAD_ERR_NO_FILE) {
+                continue;
+            }
+            if ($error !== UPLOAD_ERR_OK) {
+                $problems[] = $name . ': ' . ($error === UPLOAD_ERR_INI_SIZE || $error === UPLOAD_ERR_FORM_SIZE ? 'larger than the server allows.' : 'the upload did not finish.');
+                continue;
+            }
+            $size = (int)($upload['size'] ?? 0);
+            if (!($this->storageAllows)($size)) {
+                $problems[] = ($this->storageFullMessage)();
+                break;
+            }
+            try {
+                $this->media->ensureDirectories();
+                $item = $this->media->upload($upload, '', $by, ($this->maxUploadBytes)());
+                ($this->uploadsChanged)($size);
+                $this->log('media.upload', 'info', 'media', (string)($item['id'] ?? ''), 'Media uploaded.', [
+                    'filename' => (string)($item['filename'] ?? ''),
+                    'kind' => (string)($item['kind'] ?? ''),
+                ]);
+                $itemKind = (string)($item['kind'] ?? '');
+                if ($kind !== 'all' && $itemKind !== $kind) {
+                    $problems[] = $name . ' is in the media library, but it is not ' . ($kind === 'image' ? 'an image' : 'a ' . ($kind === 'track' ? 'route file' : ($kind === 'audio' ? 'sound file' : $kind))) . '.';
+                    continue;
+                }
+                $items[] = [
+                    'url' => (string)($item['direct_url'] ?? ''),
+                    'thumb' => (string)(($item['thumbnail_url'] ?? '') ?: ($item['direct_url'] ?? '')),
+                    'name' => (string)($item['original_name'] ?? $name),
+                    'alt' => (string)($item['alt'] ?? ''),
+                    'kind' => $itemKind,
+                    'tags' => [],
+                ];
+            } catch (\Throwable $e) {
+                $problems[] = $name . ': ' . $e->getMessage();
+            }
+        }
+        if ($items === [] && $problems === []) {
+            $problems[] = 'No file was uploaded.';
+        }
+        return ['ok' => $items !== [], 'items' => $items, 'message' => implode(' ', $problems)];
+    }
+
     /** @return array<string, mixed> */
     private function upload(array $post, array $files, string $by): array
     {

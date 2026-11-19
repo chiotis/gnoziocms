@@ -11,7 +11,7 @@ fields:
     label: Pictures
     default: manual
     options: { manual: Chosen below, entry: "The entry's gallery" }
-    help: "The entry's gallery: the pictures of the page or entry the block is on (in a template, the entry it is drawn for). Shows nothing when it has none."
+    help: "The entry's gallery: the pictures of the page or entry the block is on (in a template, the entry it is drawn for): its gallery field, or for posts and pages the Gallery of the editor's Media tab. Shows nothing when it has none."
   field:
     type: text
     label: Gallery field

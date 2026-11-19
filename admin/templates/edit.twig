@@ -348,6 +348,14 @@
           </details>
         {% endif %}
       </section>
+      {% if entry_gallery is not null %}
+        {% import '@admin/partials/fields.twig' as gallery_fields %}
+        <section class="{{ card }} mt-3" aria-labelledby="en-h-gallery">
+          <h2 id="en-h-gallery" class="en-card-title">Gallery</h2>
+          <p class="en-help m-0">Pictures from the media library, in the order they are shown. A Gallery block set to "The entry's gallery" shows them.</p>
+          <div class="mt-2">{{ gallery_fields.gallery({label: 'Gallery', max: 100}, 'entry_gallery', entry_gallery, 'lc-input') }}</div>
+        </section>
+      {% endif %}
     </div>
 
     {% if type_fields is not empty %}

@@ -75,6 +75,9 @@ final class ContentTypes
     /** The kinds of field Admin > Content types can create: a repeater needs fields of its own, so it is written in the type's YAML file. */
     public const FORM_FIELD_TYPES = ['text', 'textarea', 'markdown', 'email', 'url', 'link', 'image', 'gallery', 'file', 'location', 'color', 'number', 'decimal', 'date', 'select', 'toggle'];
 
+    /** The front matter key of an entry's own gallery, for a type with no gallery field (ContentTypes::gallery()). */
+    public const ENTRY_GALLERY = 'gallery';
+
     /** The option of Single Layouts that says where the page of an entry shows the strip of its gallery. */
     public const STRIP_OPTION = 'gallery_strip';
 
@@ -360,14 +363,20 @@ final class ContentTypes
 
     /**
      * The pictures of an entry's gallery, in their order: the field named (it must be of the kind `gallery`), or the type's own
-     * gallery when none is named. An entry without one, or a name that is not a gallery, gives none.
+     * gallery when none is named. A type with no gallery field (posts, pages) has the entry's own gallery instead, kept at the top
+     * of its front matter (`gallery: [...]`, the Media tab of the editor). An entry without one, or a name that is not a gallery,
+     * gives none.
      *
      * @param array<string, mixed> $meta front matter of the entry
      * @return list<string>
      */
     public function gallery(string $type, array $meta, string $key = '', string $lang = 'en', string $defaultLang = 'en'): array
     {
-        $key = $key !== '' ? $key : $this->galleryKey($type, $lang, $defaultLang);
+        $own = $this->galleryKey($type, $lang, $defaultLang);
+        if ($own === '' && ($key === '' || $key === self::ENTRY_GALLERY)) {
+            return FieldSchema::galleryList($meta[self::ENTRY_GALLERY] ?? []);
+        }
+        $key = $key !== '' ? $key : $own;
         $field = $this->editableFields($type, $lang, $defaultLang)[$key] ?? null;
         if ($field === null || $field['type'] !== 'gallery') {
             return [];

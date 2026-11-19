@@ -85,5 +85,43 @@ check('the logo setting gets a Library button', 'name="theme_settings[logo]"' in
 js = urllib.request.urlopen(BASE + '/assets/js/admin-media-picker.js').read().decode()
 check('the script is served', 'FarosMediaPicker' in js and 'media-picker-url' in js)
 
+# ---- uploading from the picker's dialog
+def pick_upload(c, files, kind='image'):
+    b = uuid.uuid4().hex
+    body = b''
+    for k, v in (('_csrf', token(c)), ('kind', kind)):
+        body += f'--{b}\r\nContent-Disposition: form-data; name="{k}"\r\n\r\n{v}\r\n'.encode()
+    for name, data, mime in files:
+        body += f'--{b}\r\nContent-Disposition: form-data; name="upload_file[]"; filename="{name}"\r\nContent-Type: {mime}\r\n\r\n'.encode() + data + b'\r\n'
+    body += f'--{b}--\r\n'.encode()
+    req = urllib.request.Request(BASE + '/admin/media-picker', data=body, headers={'Content-Type': 'multipart/form-data; boundary=' + b})
+    try:
+        r = c.opener.open(req); return r.status, json.loads(r.read().decode())
+    except urllib.error.HTTPError as e:
+        return e.code, None
+check('the picker says who may upload: the administrator and an editor', api(root)[2].get('can_upload') is True and api(ed)[2].get('can_upload') is True)
+st, r = pick_upload(ed, [('fresh-one.png', PNG, 'image/png')])
+check('an editor uploads a picture from the dialog and gets it back to choose', st == 200 and r and r['ok'] and len(r['items']) == 1 and r['items'][0]['url'].startswith('/uploads/') and r['items'][0]['name'] == 'fresh-one.png', r)
+check('and it is in the library', api(root, 'q=fresh-one')[2]['total'] == 1)
+st, r = pick_upload(root, [('readme.txt', b'text', 'text/plain')])
+check('a file of another kind stays in the library and is named, nothing is chosen', st == 200 and r and not r['ok'] and r['items'] == [] and 'readme.txt' in r['message'] and api(root, 'kind=all&q=readme')[2]['total'] == 1, r)
+st, r = pick_upload(root, [])
+check('an upload with no file says so', st == 200 and r and not r['ok'] and r['message'] != '', r)
+st, r = pick_upload(usr, [('nope.png', PNG, 'image/png')])
+check('a person with no rights may not upload', st == 403 and api(root, 'q=nope')[2]['total'] == 0, st)
+
+# ---- the entry's own gallery in the Media tab (a type with no gallery field: pages)
+html = root.get('/admin/edit?type=pages&slug=about&lang=el')[2]
+check('the Media tab of a page has a Gallery', 'name="entry_gallery"' in html and 'data-gallery-field' in html)
+urls = [i['url'] for i in api(root, 'q=pic-0')[2]['items'][:2]]
+root.submit('/admin/edit?type=pages&slug=about&lang=el', has_field('entry_gallery'), {'entry_gallery': '\n'.join(urls)})
+html = root.get('/admin/edit?type=pages&slug=about&lang=el')[2]
+m = re.search(r'<textarea name="entry_gallery"[^>]*>(.*?)</textarea>', html, re.S)
+check('saved: the page keeps its gallery, in order', m is not None and m.group(1).split('\n') == urls, m.group(1) if m else None)
+check('and it is not offered again as a custom field', 'value="gallery"' not in html)
+root.submit('/admin/edit?type=pages&slug=about&lang=el', has_field('entry_gallery'), {'entry_gallery': ''})
+m = re.search(r'<textarea name="entry_gallery"[^>]*>(.*?)</textarea>', root.get('/admin/edit?type=pages&slug=about&lang=el')[2], re.S)
+check('emptied: the gallery is gone', m is not None and m.group(1).strip() == '', m.group(1) if m else None)
+
 print('\nALL PASSED' if not fails else '\n%d FAILED: %s' % (len(fails), fails))
 sys.exit(1 if fails else 0)
