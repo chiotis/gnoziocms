@@ -10,6 +10,12 @@ This page lists the protections built into the admin and what the server operato
 - `session.use_strict_mode` is enabled, so unknown session ids are never adopted.
 - The session id is regenerated on every sign-in and sign-out.
 - Every admin request re-reads the signed-in user from SQLite. Deactivating a user or changing their role takes effect on their next click, not when their session expires.
+- An admin session ends after a time without use (**Settings > General > Sign out after**, 2 hours by default, 10 minutes to a
+  day) and 24 hours after signing in whatever happens (`src/Auth.php`). Any page of the admin or of the site seen while signed
+  in counts as use, a script's polling included. The sign-in page then says why, and signing in again goes back to the admin
+  page the person was on (only an address of this site's admin; `LoginController::adminReturn()`). A form sent after the session
+  ended is refused as expired, so what it held is not saved. PHP's own session clean-up is set to last at least as long.
+  Sessions from before 0.1.312 start counting at their first request after the update.
 
 ### Roles and permissions
 

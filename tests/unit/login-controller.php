@@ -135,5 +135,42 @@ $site2->drawn = [];
 $first->handle('login', 'GET', [], [], '10.0.0.1');
 check('after that the address is the login screen again', $site2->drawn[0][0], '@admin/login.twig');
 
+// ---- admin sessions end (audit S9a): after a time without use, and 24 hours after signing in, with a moved clock
+[$login, $site, $users, $auth] = site(true, $settings, $google);
+$users->importYamlUsersIfEmpty();
+$users->create(['username' => 'ada', 'email' => 'ada@example.org', 'password_hash' => $users->passwordHash('Correct-horse-1'), 'role' => 'admin']);
+$now = 1_800_000_000;
+$auth->setClock(function () use (&$now): int { return $now; });
+$auth->setIdleMinutes(30);
+$login->handle('login', 'POST', ['username' => 'ada', 'password' => 'Correct-horse-1'], [], '10.0.0.7');
+check('signed in, the session knows when', [$auth->check(), $_SESSION['auth_started'], $_SESSION['auth_seen']], [true, $now, $now]);
+$now += 29 * 60;
+check('in use within the time: still signed in, and the time without use starts again', [$auth->refresh(), $_SESSION['auth_seen']], [true, $now]);
+$now += 29 * 60;
+check('another 29 minutes later: still in', $auth->refresh(), true);
+$now += 30 * 60;
+check('30 minutes without use: signed out', [$auth->refresh(), $auth->check(), $_SESSION[Auth::ENDED] ?? ''], [false, false, 'idle']);
+$site->drawn = [];
+$login->handle('login', 'GET', [], [], '10.0.0.7');
+check('the sign-in page says why, once', [str_contains($site->drawn[0][1]['error'], 'time without use'), isset($_SESSION[Auth::ENDED])], [true, false]);
+$_SESSION[LoginController::AFTER_SIGN_IN] = '/admin/edit?type=posts&slug=hello';
+$site->went = [];
+$login->handle('login', 'POST', ['username' => 'ada', 'password' => 'Correct-horse-1'], [], '10.0.0.7');
+check('and signing in again goes back to where the person was', $site->went, ['/admin/edit?type=posts&slug=hello']);
+for ($i = 0; $i < 50; $i++) { $now += 29 * 60; $auth->refresh(); }
+check('kept in use, it still ends 24 hours after signing in', [$auth->check(), $_SESSION[Auth::ENDED] ?? ''], [false, 'absolute']);
+$site->drawn = [];
+$login->handle('login', 'GET', [], [], '10.0.0.7');
+check('and the page says so', str_contains($site->drawn[0][1]['error'], '24 hours'), true);
+$_SESSION['user'] = ['id' => 1, 'username' => 'ada', 'role' => 'admin'];
+unset($_SESSION['auth_started'], $_SESSION['auth_seen']);
+check('a session from before the limits starts counting now (an update signs nobody out)', [$auth->refresh(), $_SESSION['auth_started'], $_SESSION['auth_seen']], [true, $now, $now]);
+check('the time without use is kept between 10 minutes and a day', [Auth::idleMinutes('5'), Auth::idleMinutes('90'), Auth::idleMinutes(99999), Auth::idleMinutes('x')], [10, 90, 1440, 120]);
+check('only an admin address of this site is gone back to', [
+    LoginController::adminReturn('/admin/media?type=image'), LoginController::adminReturn('/admin'), LoginController::adminReturn('//evil.example/admin'),
+    LoginController::adminReturn('https://evil.example/admin'), LoginController::adminReturn('/admin/../x'), LoginController::adminReturn('/admin/login'),
+    LoginController::adminReturn('/admin/logout'), LoginController::adminReturn('/administrator'), LoginController::adminReturn("/admin\\x"),
+], ['/admin/media?type=image', '/admin', '/admin', '/admin', '/admin', '/admin', '/admin', '/admin', '/admin']);
+
 echo $fail === 0 ? "\nALL PASSED\n" : "\n$fail FAILED\n";
 exit($fail ? 1 : 0);

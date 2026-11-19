@@ -39,7 +39,7 @@ group. Size: S (an hour or two), M (half a day to a day), L (more).
       and for the cart, checkout and account pages (report-only first); a Permissions-Policy.
 - [ ] **S8** (M) Encrypt `shop_secrets` (and the SMTP, S3 and Google secrets) with a key kept in a file outside the database
       and outside backups (`storage/key`), so a backup alone opens nothing. A restore on another server asks for the keys again.
-- [ ] **S9a** (S) Admin sessions end after a time without use (a setting, 2 hours by default) and after 24 hours in any case.
+- [x] **S9a** (S) Admin sessions end after a time without use (a setting, 2 hours by default) and after 24 hours in any case.
 - [ ] **S9b** (L) A second factor (TOTP) for password sign-in, required for roles that hold `shop.manage`, settings or users.
 - [ ] **S10a** (M) A check in the shop's tick: `reserved` of each stock row equals what open orders hold; put right and log
       when it does not.

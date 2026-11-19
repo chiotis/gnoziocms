@@ -204,6 +204,7 @@ final class App
         $this->content->storeParsedIn($this->basePath . '/storage/cache/content', trim((string)@file_get_contents($this->basePath . '/VERSION')));
         $this->content->onUnreadable(fn(string $type, string $path, string $message) => $this->reportUnreadableContent($type, $path, $message));
         $this->auth = new Auth($this->contentDir . '/users/users.yaml', $this->users);
+        $this->auth->setIdleMinutes(Auth::idleMinutes($this->settings['admin_idle_minutes'] ?? Auth::IDLE_MINUTES));
 
         $this->twig = $this->initTwig();
         $this->currentLang = $this->settings['languages']['default'] ?? 'en';
@@ -878,6 +879,11 @@ final class App
         }
         ini_set('session.use_strict_mode', '1');
         ini_set('session.use_only_cookies', '1');
+        // PHP's own clean-up must not end a session before the admin's time without use does (Auth): PHP's default is 24 minutes.
+        $idle = Auth::idleMinutes($this->settings['admin_idle_minutes'] ?? Auth::IDLE_MINUTES) * 60 + 300;
+        if ((int)ini_get('session.gc_maxlifetime') < $idle) {
+            ini_set('session.gc_maxlifetime', (string)$idle);
+        }
         session_set_cookie_params([
             'lifetime' => 0,
             'path' => '/',
@@ -1414,8 +1420,10 @@ final class App
         }
 
         if (!$this->auth->check() || !$this->auth->refresh()) {
-            // An AI assistant sent the person here to approve a connection: back to it after signing in.
-            if ($action === 'mcp-authorize' && ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
+            // Back to the page after signing in: the screen a session ended on, or the MCP consent an AI assistant sent the person
+            // to. Only for a page a browser opened (not a script's poll), and LoginController checks it is an admin address.
+            $accept = (string)($_SERVER['HTTP_ACCEPT'] ?? '');
+            if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET' && ($action === 'mcp-authorize' || str_contains($accept, 'text/html'))) {
                 $_SESSION[LoginController::AFTER_SIGN_IN] = (string)($_SERVER['REQUEST_URI'] ?? '');
             }
             $this->redirect('/admin/login');

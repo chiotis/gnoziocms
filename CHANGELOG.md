@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.312 — 2026-11-19 — Admin sessions end
+- **Signed out after a time without use** (audit S9a): an admin session ends after 2 hours without use (Settings > General > *Sign out after*, 10 minutes to a day) and 24 hours after signing in in any case. The sign-in page says why, and signing in again goes back to the page the person was on. Sessions already open start counting at the update, so nobody is signed out by it.
+
 ## 0.1.311 — 2026-11-19 — Security headers
 - **Content-Security-Policy, report-only** (audit S7), on the admin and the shop's pages (cart, checkout, account, payment pages): it lists what those pages use (the site itself, Google sign-in, Viva Wallet and the Cardlink acquirers, the Meta Pixel and the Google tag, the admin's Google font), so a browser reports in its console anything else that tries to load and blocks nothing yet. Checked in a browser on the admin's main screens and the shop's pages with the Pixel running: no report.
 - **Permissions-Policy** on every page: no camera, microphone or USB; payments only from the site.

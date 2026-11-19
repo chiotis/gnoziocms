@@ -95,6 +95,8 @@ final class SiteSettings
             'trusted_proxies' => "127.0.0.1\n::1",
             // Strict-Transport-Security over HTTPS (SecurityHeaders): a promise the site keeps HTTPS, so off until the owner says.
             'hsts' => false,
+            // An admin session ends after this many minutes without use (Auth), and 24 hours after signing in in any case.
+            'admin_idle_minutes' => Auth::IDLE_MINUTES,
             'theme' => 'default',
             'home_page' => 'index',
             'date_format' => 'd/m/Y',
@@ -270,6 +272,7 @@ final class SiteSettings
             'base_url' => (string)($merged['base_url'] ?? ''),
             'trusted_proxies' => implode("\n", RequestOrigin::parseList($merged['trusted_proxies'] ?? [])),
             'hsts' => !empty($merged['hsts']),
+            'admin_idle_minutes' => Auth::idleMinutes($merged['admin_idle_minutes'] ?? Auth::IDLE_MINUTES),
             'theme' => (string)($merged['theme'] ?? ''),
             'home_page' => (string)($merged['home_page'] ?? ''),
             'date_format' => (string)($merged['date_format'] ?? ''),
@@ -339,6 +342,7 @@ final class SiteSettings
             'trusted_proxies' => array_key_exists('trusted_proxies', $post) ? implode("\n", RequestOrigin::parseList($post['trusted_proxies'])) : null,
             // The box is read only when the form had it (a hidden field says so), so another form does not turn it off.
             'hsts' => isset($post['hsts_shown']) ? !empty($post['hsts']) : null,
+            'admin_idle_minutes' => isset($post['admin_idle_minutes']) ? Auth::idleMinutes($post['admin_idle_minutes']) : null,
             'theme' => (string)($post['theme'] ?? ''),
             'home_page' => (string)($post['home_page'] ?? ''),
             'date_format' => (string)($post['date_format'] ?? ''),
@@ -553,6 +557,9 @@ final class SiteSettings
         }
         if (($form['hsts'] ?? null) !== null) {
             $data['hsts'] = $form['hsts'];
+        }
+        if (($form['admin_idle_minutes'] ?? null) !== null) {
+            $data['admin_idle_minutes'] = $form['admin_idle_minutes'];
         }
         $data['theme'] = $form['theme'] !== '' ? $form['theme'] : ($data['theme'] ?? 'default');
         $data['home_page'] = $form['home_page'] !== '' ? $form['home_page'] : ($data['home_page'] ?? 'index');

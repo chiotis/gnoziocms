@@ -8,13 +8,70 @@ use Symfony\Component\Yaml\Yaml;
 
 final class Auth
 {
+    /** An admin session ends after this long without use unless Settings > General says otherwise (Settings: admin_idle_minutes). */
+    public const IDLE_MINUTES = 120;
+    public const IDLE_MIN = 10;
+    public const IDLE_MAX = 1440;
+    /** And this long after signing in, whatever happens. */
+    public const ABSOLUTE_SECONDS = 86400;
+    /** The session key that says why the last session ended ('idle' or 'absolute'), for the sign-in page. */
+    public const ENDED = 'auth_ended';
+
     private string $usersFile;
     private ?UserRepository $users;
+    private int $idleSeconds = self::IDLE_MINUTES * 60;
+    /** @var \Closure(): int */
+    private \Closure $clock;
 
     public function __construct(string $usersFile, ?UserRepository $users = null)
     {
         $this->usersFile = $usersFile;
         $this->users = $users;
+        $this->clock = static fn(): int => time();
+    }
+
+    /** The time without use after which a session ends, in minutes (kept between IDLE_MIN and IDLE_MAX). */
+    public function setIdleMinutes(int $minutes): void
+    {
+        $this->idleSeconds = self::idleMinutes($minutes) * 60;
+    }
+
+    public static function idleMinutes(mixed $value): int
+    {
+        $minutes = is_numeric($value) ? (int)$value : self::IDLE_MINUTES;
+        return max(self::IDLE_MIN, min(self::IDLE_MAX, $minutes));
+    }
+
+    /** For tests: what time it is. @param \Closure(): int $clock */
+    public function setClock(\Closure $clock): void
+    {
+        $this->clock = $clock;
+    }
+
+    /**
+     * Whether the signed-in session has ended: 'idle' after the time without use, 'absolute' 24 hours after signing in, else ''.
+     * A session from before these limits has no times yet: it starts counting now, so an update signs nobody out.
+     */
+    public function ended(): string
+    {
+        if (!isset($_SESSION['user'])) {
+            return '';
+        }
+        $now = ($this->clock)();
+        $started = (int)($_SESSION['auth_started'] ?? 0);
+        $seen = (int)($_SESSION['auth_seen'] ?? 0);
+        if ($started <= 0 || $seen <= 0) {
+            $_SESSION['auth_started'] = $started > 0 ? $started : $now;
+            $_SESSION['auth_seen'] = $now;
+            return '';
+        }
+        if ($now - $started >= self::ABSOLUTE_SECONDS) {
+            return 'absolute';
+        }
+        if ($now - $seen >= $this->idleSeconds) {
+            return 'idle';
+        }
+        return '';
     }
 
     public function check(): bool
@@ -87,7 +144,7 @@ final class Auth
 
     public function logout(): void
     {
-        unset($_SESSION['user'], $_SESSION['security_default_password']);
+        unset($_SESSION['user'], $_SESSION['security_default_password'], $_SESSION['auth_started'], $_SESSION['auth_seen']);
         $this->rotateSession();
     }
 
@@ -101,6 +158,13 @@ final class Auth
         if (!is_array($current)) {
             return false;
         }
+        $ended = $this->ended();
+        if ($ended !== '') {
+            $this->logout();
+            $_SESSION[self::ENDED] = $ended;
+            return false;
+        }
+        $_SESSION['auth_seen'] = ($this->clock)();
         if (!$this->users || !$this->users->isAvailable()) {
             return true;
         }
@@ -139,6 +203,10 @@ final class Auth
         // A fresh session id on privilege change prevents session fixation.
         $this->rotateSession();
         $_SESSION['user'] = $user;
+        $now = ($this->clock)();
+        $_SESSION['auth_started'] = $now;
+        $_SESSION['auth_seen'] = $now;
+        unset($_SESSION[self::ENDED]);
     }
 
     private function rotateSession(): void

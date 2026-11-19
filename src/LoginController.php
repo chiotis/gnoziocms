@@ -12,7 +12,7 @@ namespace GnozioCMS;
  */
 final class LoginController
 {
-    /** The session key of an address to return to after signing in (only the MCP consent, `/admin/mcp-authorize?…`). */
+    /** The session key of an address of the admin to return to after signing in (the page a session ended on, an MCP consent). */
     public const AFTER_SIGN_IN = 'after_sign_in';
 
     private ?SignIn $signIn = null;
@@ -98,6 +98,12 @@ final class LoginController
     /** The login screen, with a message when there is one to give. */
     public function renderLogin(string $error = ''): void
     {
+        // Why the last session ended, said once.
+        $ended = (string)($_SESSION[Auth::ENDED] ?? '');
+        unset($_SESSION[Auth::ENDED]);
+        if ($error === '' && $ended !== '') {
+            $error = $ended === 'idle' ? 'You were signed out after a time without use. Sign in again to go on where you were.' : 'You were signed out: a session lasts 24 hours at most. Sign in again to go on where you were.';
+        }
         ($this->render)('@admin/login.twig', [
             'error' => $error,
             'google_auth' => $this->google()->config(),
@@ -231,12 +237,23 @@ final class LoginController
         ($this->redirect)($this->afterSignIn());
     }
 
-    /** Where to go once signed in: back to an MCP consent that sent the person here, else the dashboard. */
+    /** Where to go once signed in: back to the admin page that sent the person here, else the dashboard. */
     private function afterSignIn(): string
     {
         $back = (string)($_SESSION[self::AFTER_SIGN_IN] ?? '');
         unset($_SESSION[self::AFTER_SIGN_IN]);
-        return str_starts_with($back, '/admin/mcp-authorize?') ? $back : '/admin';
+        return self::adminReturn($back);
+    }
+
+    /** An address of this site's admin to go back to, or /admin: never another site, never sign-in or sign-out themselves. */
+    public static function adminReturn(string $back): string
+    {
+        $path = (string)parse_url($back, PHP_URL_PATH);
+        if (!str_starts_with($back, '/admin') || str_contains($back, '\\') || str_starts_with($back, '//') || preg_match('#[\x00-\x1f]#', $back) === 1
+            || !preg_match('#^/admin(/[A-Za-z0-9._~%-]+)*/?$#', $path) || preg_match('#/\.\.?(/|$)#', $path) === 1 || preg_match('#^/admin/(login|logout|google-login|google-callback)\b#', $path) === 1) {
+            return '/admin';
+        }
+        return $back;
     }
 
     private function signIn(): SignIn

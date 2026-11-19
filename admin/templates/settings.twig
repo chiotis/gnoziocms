@@ -165,6 +165,11 @@
               <textarea name="trusted_proxies" rows="2" placeholder="127.0.0.1" class="{{ input_class }} font-mono text-sm">{{ settings_form.trusted_proxies }}</textarea>
               <span class="mt-1 block text-xs text-slate-500">Addresses or ranges (10.0.0.0/8) of the proxies in front of the site, one per line: Varnish, nginx, cloudflared. Only requests from them may say who the visitor is (X-Forwarded-For) and whether the visit is on HTTPS. 127.0.0.1 and ::1 (this machine) are listed until the list is changed; empty it when nothing stands in front, so no header is believed.</span>
             </label>
+            <label class="block">
+              <span class="mb-1 block text-sm font-medium text-slate-700">Sign out after (minutes without use)</span>
+              <input type="number" name="admin_idle_minutes" value="{{ settings_form.admin_idle_minutes }}" min="10" max="1440" step="1" class="{{ input_class }}">
+              <span class="mt-1 block text-xs text-slate-500">An admin session ends after this long without use (10 to 1440), and 24 hours after signing in in any case.</span>
+            </label>
             <label class="flex items-start gap-2 sm:col-span-2">
               <input type="hidden" name="hsts_shown" value="1">
               <input type="checkbox" name="hsts" value="1" {% if settings_form.hsts %}checked{% endif %} class="mt-0.5">
