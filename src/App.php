@@ -5336,6 +5336,12 @@ final class App
 
         $data = array_merge($defaults, $data);
         $html = $this->twig->render($template, $data);
+        // Someone signed in who may edit the entry shown gets a button to its editor (not in the editor's own preview).
+        $item = $data['item'] ?? null;
+        if (!str_starts_with($template, '@admin/') && !$this->entryPreview && $item instanceof ContentItem && $item->slug !== '' && $this->auth->check()
+            && $this->permissions->can($this->auth->user(), 'content.manage') && $this->canAccessContentType($item->type)) {
+            $html = FrontEditButton::inject($html, FrontEditButton::html(FrontEditButton::url($item->type, $item->slug, $item->lang), (string)($item->meta['title'] ?? $item->slug)));
+        }
         if (!str_starts_with($template, '@admin/') && !headers_sent()) {
             // How long the page took to make (Server-Timing; a copy from the page cache says "hit" instead), and what the browser,
             // or a CDN's 103 Early Hints, can start fetching before the page arrives: its stylesheet and its opening picture.

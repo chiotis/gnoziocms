@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.307 — 2026-11-19 — An Edit button on the site
+- **Edit button on public pages:** signed in with the right to edit content, every page that shows an entry (a post, a page, the home page, any type) has a round blue button at the bottom left that opens that entry in the editor; it widens to say *Edit* on hover, and is named with the entry's title for screen readers. It sits above a theme's mobile bar and is left out when printing. Forms need the right to manage forms.
+- Visitors never see it: only pages made for someone signed in carry it, and those are never kept by the page cache or a cache in front of the site. The editor's own preview, search and other pages that are not an entry have none.
+
 ## 0.1.306 — 2026-11-19 — Publishing calendar in dark mode
 - **Publishing calendar, dark mode:** the AI schedules' planned runs no longer show as pale grey boxes, the cards lose their white outlines (the type's colour stays on the left), scheduled cards keep a soft blue edge, and the AI badges are readable.
 
