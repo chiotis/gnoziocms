@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.298 — 2026-11-19 — Sliding strip, all entries, shorter page links
+- **Latest content:** the *Scrolling strip* is now a **Sliding strip**: no scroll bar, arrows and dots under the cards, and it can **move by itself** every 3, 5, 8 or 12 seconds with a pause button (it stops while a visitor points at it, touches or uses it, while it is off screen, and never for visitors who prefer reduced motion). *Each move goes* one card or a whole view on; *Controls* are arrows and dots, arrows, dots or none. *Columns* set how many cards are in view. Without JavaScript it is a list that scrolls, as before.
+- **No limit on entries:** *Number of items* in Latest content, Cards and Portfolio has no maximum (it was 12, or 24 for Portfolio); **0 shows all of them**. *Entries per page* of archives and content types has no maximum of 60.
+- **Pagination:** with more than eight pages, the page links show the first and the last page and two on each side of the current one, with "…" for the rest (page 8 of 26: 1 … 6 7 8 9 10 … 26). Archives, the Entry list block and search all count the same way.
+
 ## 0.1.297 — 2026-11-19 — Container backgrounds: position, size, opacity, still while scrolling
 - **Containers:** a background picture now has a *position* (a 3 × 3 grid), a *size* (Cover as before, Contain, Natural size, Repeat for patterns), an *opacity* (100 to 10%; the section's colour, muted, contrast or accent, shows through) and *stays still while the page scrolls* (on wide screens; not on phones, tablets or with reduced motion). A block left on the default background inside a container no longer covers the picture. A new **100** layout puts one column at full width: *Wrap in container* on any block, then give the container its background. Existing containers look the same.
 
