@@ -255,6 +255,24 @@ $noMenus = $make([], $profile);
 $noMenus->apply($noMenus->plan());
 check('without the menus option no menu is written', $menusWritten, []);
 
+// WordPress fills a page and then drops the rows a visitor may not see, so a page in the middle can hold 99 of 100.
+// The list goes on until an empty page or the 400 for a page after the last (benos.gr: 99, 100, 98 … 69, then 400).
+$pages = [1 => 99, 2 => 100, 3 => 7];
+$asked = [];
+$paged = new WordPressReader($SITE, function (string $url) use (&$pages, &$asked): ?array {
+    parse_str((string)parse_url($url, PHP_URL_QUERY), $query);
+    $page = (int)($query['page'] ?? 1);
+    $asked[] = $page;
+    if (!isset($pages[$page])) { return ['status' => 400, 'body' => '{"code":"rest_post_invalid_page_number"}']; }
+    $rows = [];
+    for ($i = 0; $i < $pages[$page]; $i++) { $rows[] = ['id' => $page * 1000 + $i, 'source_url' => "https://old.example/wp-content/uploads/$page-$i.jpg"]; }
+    return ['status' => 200, 'body' => json_encode($rows)];
+});
+check('a short page in the middle does not end the media list', [count($paged->media()), $asked], [206, [1, 2, 3, 4]]);
+$asked = [];
+$pages = [1 => 2, 2 => 0];
+check('an empty page ends the list', [count($paged->media()), $asked], [2, [1, 2]]);
+
 foreach (['', '2', '3', '4', '5'] as $suffix) { exec('rm -rf ' . escapeshellarg(sys_get_temp_dir() . '/wpimp' . $suffix . getmypid())); }
 echo $fail === 0 ? "ALL PASSED\n" : "$fail FAILED\n";
 exit($fail === 0 ? 0 : 1);

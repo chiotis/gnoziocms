@@ -243,7 +243,10 @@ final class WordPressReader
                     $rows[] = $row;
                 }
             }
-            if (count($batch) < self::PAGE_SIZE) {
+            // A page shorter than PAGE_SIZE is not the last one: WordPress counts rows before it drops those the
+            // visitor may not see (a file attached to a private post), so a full page can come back with 99. Only an
+            // empty page, or the 400 for a page after the last, ends the list.
+            if ($batch === []) {
                 break;
             }
         }
