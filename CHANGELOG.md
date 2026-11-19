@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.295 — 2026-11-19 — Features items can show a picture
+- **Blocks:** each item of Features can have a picture (a logo, a photo) in place of the icon, with a description. New settings: *Icon or picture position* (above the title as before, or beside the title and text; above on a phone), *Picture size* (48, 80 or 120px; the picture keeps its own shape, so logos are not cropped) and *Titles in the accent colour*. Pages saved before look the same.
+
 ## 0.1.294 — 2026-11-19 — WordPress import reads every page of the media list
 - **WordPress import:** the importer stopped reading the media library after the first page that held fewer than 100 files. WordPress leaves out files a visitor may not see after it has counted them, so that can be the first page: posts whose featured picture was further down came over without a main image. It now reads every page. A site imported before: run the same import again; it fills in the main images and fetches only the missing files.
 - A bold line inside a bold paragraph with a line break is now bold once, not `****Title****`.
