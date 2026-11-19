@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.315 — 2026-11-19 — A kept page without booting the site
+- **Page cache, faster** (audit P2): with System > Page cache on, a kept copy is sent by `public/index.php` before the application boots, for a visitor with no session and an address with no query. On a development copy a copy went from 44 ms to 0.7 ms to the first byte. An admin change still empties every copy at once, and an update makes new ones (the version is in the key).
+- **Nothing asked after every visit** (audit P3): when nothing was due after a response (a backup, scheduled entries, pictures, jobs, Omni), copies are sent for the next minute without asking again; scheduled entries are released at most a minute later on a site without cron. The check that folds old per-language forms runs on admin pages, not on every visit.
+
 ## 0.1.314 — 2026-11-19 — Encrypted backups
 - **Backup passphrase** (audit S19): a new setting in Settings > Backups. With it, every entry of a new backup (files, database, checksum manifest) is encrypted with AES-256, locally and in remote storage; the passphrase itself is kept sealed like the other secrets. The list marks encrypted archives, and verify and restore open them with the passphrase in Settings, or one typed on the restore screen for an archive made with another. Without the right one nothing is read.
 - Without a passphrase the Backups screen says new archives are plain. Earlier archives stay as they were made.

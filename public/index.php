@@ -36,5 +36,10 @@ if (GnozioCMS\Images::handle(__DIR__, (string)($_SERVER['REQUEST_URI'] ?? '/')))
     return;
 }
 
+// A copy the page cache keeps, sent before the application boots: a GET with no query and no session (PageCache::serveEarly).
+if (GnozioCMS\PageCache::serveEarly(dirname(__DIR__), $_SERVER, $_COOKIE)) {
+    return;
+}
+
 $app = new GnozioCMS\App(dirname(__DIR__));
 $app->handle();

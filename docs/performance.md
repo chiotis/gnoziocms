@@ -47,7 +47,13 @@ things are settings of the site or of its host, listed under [What a site should
    ```
    - Varnish in front (CloudPanel, see [varnish.md](varnish.md)): nothing else to do.
    - No cache in front: turn on **System > Page cache > The site's own copy**. The answer then says `X-Page-Cache: hit` from the
-     second visit to an address on.
+     second visit to an address on. A copy is sent by `public/index.php` before the application boots (`PageCache::serveEarly`;
+     `Server-Timing: cache;desc="page cache hit, before the application"`) for a GET with no query and no session cookie, when
+     nothing was due after a response in the last minute (`storage/cache/pages/quiet`) and the site's host and trusted proxies are
+     the ones the copies were made under (`frontdoor.json`, written with the copies). Otherwise the application serves the copy
+     as before and looks at what is due (scheduled entries, a backup, pictures, jobs, Omni). Measured on a development copy (PHP's
+     built-in server, no OPcache, median of 50): a copy went from 44 ms to 0.7 ms to the first byte.
+   - The check that folds forms kept per language (an older format) runs on admin pages, not on every visit.
 2. **The cron job** (`php src/cron-backup.php`, shown under System): besides backups and scheduled entries, it writes the picture
    sizes that are missing. Run it once by hand after an update that changes how pictures are written.
 3. **Analytics:** with a Google tag, set **Load the tag** to **After the page has loaded**.

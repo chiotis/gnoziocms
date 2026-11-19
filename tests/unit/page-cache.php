@@ -127,6 +127,44 @@ $long = $expires('<img srcset="/uploads/_v/media/a.png/960-abc-w72.webp 960w">')
 check('a page with a pending picture is kept about a minute', $short > 0 && $short <= GnozioCMS\Images::PENDING_PAGE_TTL, true);
 check('a page whose pictures are all written keeps the full time', $long > GnozioCMS\Images::PENDING_PAGE_TTL, true);
 
+// ---- served before the application boots (public/index.php, audit P2)
+$site = $root . '/site';
+mkdir($site . '/storage/cache/pages', 0775, true);
+file_put_contents($site . '/VERSION', "0.2.0\n");
+$early = new PageCache($meta, $site . '/storage/cache/pages', '0.2.0');
+$early->setFrontDoor('site.test', ['127.0.0.1']);
+$k = $early->keyFor('GET', 'site.test', false, 'about', '', 'site.test');
+check('a copy kept writes what the front door needs', [$early->keep($k, $early->generation(), '<p>About</p>', 200, $page), json_decode((string)file_get_contents($site . '/storage/cache/pages/frontdoor.json'), true)], [true, ['site_host' => 'site.test', 'trusted' => ['127.0.0.1']]]);
+$server = ['REQUEST_METHOD' => 'GET', 'REQUEST_URI' => '/about', 'HTTP_HOST' => 'site.test', 'REMOTE_ADDR' => '203.0.113.9'];
+$got = null;
+$sendEarly = static function (array $headers, string $body) use (&$got): void { $got = $body; };
+$try = static function (array $over = [], array $cookies = []) use ($site, $server, $sendEarly, &$got): bool { $got = null; return PageCache::serveEarly($site, $over + $server, $cookies, $sendEarly); };
+check('not while nothing has said "quiet" (the work after a response may be due)', $try(), false);
+$early->markQuiet();
+check('then the copy is sent before the application', [$try(), $got], [true, '<p>About</p>']);
+check('the same address with a slash', $try(['REQUEST_URI' => '/about/']), true);
+check('not with a query', $try(['REQUEST_URI' => '/about?x=1']), false);
+check('not for a POST', $try(['REQUEST_METHOD' => 'POST']), false);
+check('not with a session cookie (someone signed in may see drafts)', $try([], [ini_get('session.name') => 'abc']), false);
+check('but a cookie of something else does not matter', $try([], ['gz_consent' => 'granted']), true);
+check('not for the check of an update', $try(['HTTP_X_FAROS_UPDATE' => 'token']), false);
+check('not on another host', $try(['HTTP_HOST' => 'evil.test']), false);
+check('not for an address that has no copy, nor the admin', [$try(['REQUEST_URI' => '/contact']), $try(['REQUEST_URI' => '/admin'])], [false, false]);
+check('HTTPS from a trusted proxy is another copy (the key has the scheme)', $try(['REMOTE_ADDR' => '127.0.0.1', 'HTTP_X_FORWARDED_PROTO' => 'https']), false);
+check('from anyone else the header is not believed', $try(['HTTP_X_FORWARDED_PROTO' => 'https']), true);
+file_put_contents($site . '/storage/maintenance.flag', '{}');
+check('not while an update replaces the code', $try(), false);
+unlink($site . '/storage/maintenance.flag');
+file_put_contents($site . '/VERSION', "0.2.1\n");
+check('not after an update (the version is in the key)', $try(), false);
+file_put_contents($site . '/VERSION', "0.2.0\n");
+file_put_contents($site . '/storage/cache/pages/quiet', (string)(time() - 1));
+check('nor once the quiet time is over: the application answers and asks what is due', $try(), false);
+$early->markQuiet();
+$GLOBALS['database'] = $database;
+(function () { $this->bump(); $this->deleteFiles(); })->call($early);
+check('a purge removes the copies, the front door and the quiet time', [$try(), is_file($site . '/storage/cache/pages/frontdoor.json'), is_file($site . '/storage/cache/pages/quiet')], [false, false, false]);
+
 // ---- a response that something refused
 FrontCache::doNotKeep();
 check('an answer that said it must not be kept is not kept', $cache->keep($key('refused'), $cache->generation(), 'x', 200, $page), false);

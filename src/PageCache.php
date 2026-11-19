@@ -18,6 +18,11 @@ namespace GnozioCMS;
  *   (after Images::PENDING_PAGE_TTL when it names a picture that is not written yet).
  *
  * It is off until System > Page cache turns it on; with a cache in front it is not needed.
+ *
+ * A copy is sent before the application boots (serveEarly(), from public/index.php): for a GET with no query and no session
+ * cookie, it needs only two small files the application writes next to the copies, `frontdoor.json` (the site's host and its
+ * trusted proxies, as when the copies were made) and `quiet` (the time until which nothing is due after a response, P3). Without
+ * them, or when something may be due, the application answers as before and serves the copy itself.
  */
 final class PageCache
 {
@@ -33,8 +38,13 @@ final class PageCache
     /** Headers of the first response that are not kept: the server sets them again for the one it sends. */
     private const SKIPPED_HEADERS = ['set-cookie', 'x-powered-by', 'content-length', 'transfer-encoding', 'connection', 'date', 'keep-alive', 'x-page-cache', 'server-timing'];
 
+    /** How long a visit served from a copy may skip asking whether work is due after the response (backups, scheduled entries). */
+    public const QUIET_SECONDS = 60;
+
     private bool $purgeQueued = false;
     private ?bool $enabled = null;
+    /** @var array{site_host: string, trusted: list<string>}|null what serveEarly() needs, written beside the copies */
+    private ?array $frontDoor = null;
 
     public function __construct(private SystemMetaRepository $meta, private string $directory, private string $version)
     {
@@ -68,7 +78,66 @@ final class PageCache
         if ($method !== 'GET' || $query !== '' || $siteHost === '' || strtolower($host) !== strtolower($siteHost) || !$this->isEnabled()) {
             return null;
         }
-        return sha1($this->version . '|' . ($https ? 'https' : 'http') . '|' . strtolower($host) . '|' . trim($path, '/'));
+        return self::key($this->version, $https, $host, $path);
+    }
+
+    public static function key(string $version, bool $https, string $host, string $path): string
+    {
+        return sha1($version . '|' . ($https ? 'https' : 'http') . '|' . strtolower($host) . '|' . trim($path, '/'));
+    }
+
+    /** What serveEarly() needs to make the same key: the site's host and the trusted proxies of now. Written with the next copy. */
+    public function setFrontDoor(string $siteHost, array $trusted): void
+    {
+        $this->frontDoor = ['site_host' => strtolower($siteHost), 'trusted' => array_values(array_map('strval', $trusted))];
+    }
+
+    /** Nothing is due after a response for QUIET_SECONDS: visits served before the application boots need not ask. */
+    public function markQuiet(): void
+    {
+        if (is_dir($this->directory)) {
+            @file_put_contents($this->directory . '/quiet', (string)(time() + self::QUIET_SECONDS), LOCK_EX);
+        }
+    }
+
+    /** Whether a visit served from a copy may skip the work after the response (nothing was due a moment ago). */
+    public function isQuiet(): bool
+    {
+        return self::quietUntil($this->directory) > time();
+    }
+
+    private static function quietUntil(string $directory): int
+    {
+        return (int)trim((string)@file_get_contents($directory . '/quiet'));
+    }
+
+    /**
+     * public/index.php, before the application: sends the copy of this request when it is one that may be served and it is
+     * current. False sends nothing, and the application answers. Mirrors what App::handle() asks before it serves a copy.
+     *
+     * @param array<string, mixed> $server $_SERVER
+     * @param array<string, mixed> $cookies $_COOKIE
+     */
+    public static function serveEarly(string $basePath, array $server, array $cookies, ?\Closure $send = null): bool
+    {
+        $uri = (string)($server['REQUEST_URI'] ?? '/');
+        if (($server['REQUEST_METHOD'] ?? 'GET') !== 'GET' || str_contains($uri, '?') || isset($server['HTTP_X_FAROS_UPDATE'])
+            || isset($cookies[(string)ini_get('session.name')]) || is_file($basePath . '/storage/maintenance.flag')) {
+            return false;
+        }
+        $directory = $basePath . '/storage/cache/pages';
+        $door = json_decode((string)@file_get_contents($directory . '/frontdoor.json'), true);
+        if (!is_array($door) || !is_string($door['site_host'] ?? null) || $door['site_host'] === '' || self::quietUntil($directory) <= time()) {
+            return false;
+        }
+        $host = strtolower((string)($server['HTTP_HOST'] ?? ''));
+        $path = trim((string)(parse_url($uri, PHP_URL_PATH) ?? '/'), '/');
+        if ($host !== $door['site_host'] || str_starts_with($path, 'admin')) {
+            return false;
+        }
+        $https = (new RequestOrigin($server, RequestOrigin::parseList($door['trusted'] ?? [])))->isHttps();
+        $version = trim((string)@file_get_contents($basePath . '/VERSION'));
+        return self::serveFile($directory, self::key($version, $https, $host, $path), $send, 'page cache hit, before the application');
     }
 
     /**
@@ -77,13 +146,18 @@ final class PageCache
      */
     public function serve(string $key, ?\Closure $send = null): bool
     {
-        $file = $this->file($key);
+        return self::serveFile($this->directory, $key, $send, 'page cache hit');
+    }
+
+    private static function serveFile(string $directory, string $key, ?\Closure $send, string $timing): bool
+    {
+        $file = $directory . '/' . $key . '.page';
         $raw = is_file($file) ? @file_get_contents($file) : false;
         if ($raw === false || ($cut = strpos($raw, "\n")) === false) {
             return false;
         }
         $head = json_decode(substr($raw, 0, $cut), true);
-        if (!is_array($head) || ($head['generation'] ?? null) !== $this->generation() || (int)($head['expires'] ?? 0) < time()) {
+        if (!is_array($head) || ($head['generation'] ?? null) !== self::generationIn($directory) || (int)($head['expires'] ?? 0) < time()) {
             return false;
         }
         $body = substr($raw, $cut + 1);
@@ -100,7 +174,7 @@ final class PageCache
             header($line, false);
         }
         header('X-Page-Cache: hit');
-        header('Server-Timing: cache;desc="page cache hit"');
+        header('Server-Timing: cache;desc="' . $timing . '"');
         echo $body;
         return true;
     }
@@ -173,7 +247,25 @@ final class PageCache
             @unlink($temporary);
             return false;
         }
+        $this->writeFrontDoor();
         return @rename($temporary, $file);
+    }
+
+    /** frontdoor.json beside the copies, when what it says changed (most copies find it as it is). */
+    private function writeFrontDoor(): void
+    {
+        if ($this->frontDoor === null) {
+            return;
+        }
+        $json = (string)json_encode($this->frontDoor, JSON_UNESCAPED_SLASHES);
+        $path = $this->directory . '/frontdoor.json';
+        if (@file_get_contents($path) === $json) {
+            return;
+        }
+        $temporary = $path . '.' . getmypid() . '.tmp';
+        if (@file_put_contents($temporary, $json) !== false) {
+            @rename($temporary, $path);
+        }
     }
 
     /**
@@ -211,7 +303,12 @@ final class PageCache
     /** The number that copies carry: a copy of another number is not used. */
     public function generation(): string
     {
-        $value = is_file($this->directory . '/generation') ? trim((string)@file_get_contents($this->directory . '/generation')) : '';
+        return self::generationIn($this->directory);
+    }
+
+    private static function generationIn(string $directory): string
+    {
+        $value = is_file($directory . '/generation') ? trim((string)@file_get_contents($directory . '/generation')) : '';
         return $value !== '' ? $value : '0';
     }
 
@@ -231,6 +328,9 @@ final class PageCache
         foreach (glob($this->directory . '/*.{page,tmp}', GLOB_BRACE) ?: [] as $file) {
             @unlink($file);
         }
+        // What the copies were made under, and the quiet time: an admin change may have changed either.
+        @unlink($this->directory . '/frontdoor.json');
+        @unlink($this->directory . '/quiet');
     }
 
     private function room(): bool

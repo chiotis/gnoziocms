@@ -259,14 +259,14 @@ final class App
             return;
         }
 
-        // Forms that older versions kept as one copy for each language are folded into one form, once, the first time the site is opened after an update.
-        try {
-            $this->formTranslationMigration()->runOnce();
-        } catch (\Throwable $e) {
-            // The copies stay as they are and the site works as before; the next visit tries again.
-        }
-
         if (str_starts_with($path, 'admin')) {
+            // Forms that older versions kept as one copy for each language are folded into one form, once, the first time the
+            // admin is opened after an update (not on every public visit, P3).
+            try {
+                $this->formTranslationMigration()->runOnce();
+            } catch (\Throwable $e) {
+                // The copies stay as they are and the site works as before; the next admin page tries again.
+            }
             $this->sendSecurityHeaders(true);
             $this->handleAdmin($path);
             return;
@@ -313,7 +313,8 @@ final class App
         }
 
         // A scheduled backup that is due starts after the page has been sent, so it does not depend on someone opening the admin.
-        if (!$this->updateCheck && ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
+        // A copy sent while nothing was due a moment ago asks nothing (PageCache::QUIET_SECONDS).
+        if (!$this->updateCheck && ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET' && !($served && $this->pageCache()->isQuiet())) {
             register_shutdown_function(fn() => $this->runScheduledAfterResponse());
         }
 
@@ -335,6 +336,8 @@ final class App
             $this->aiTick();
             $jobsDue = $this->jobRunner()->pending(null, true) > 0;
             if (!$backupDue && !$releaseDue && !$picturesDue && !$jobsDue && !$this->omniClient()->isDue()) {
+                // Copies of pages may be sent for a while without asking again, before the application boots too.
+                $this->pageCache()->markQuiet();
                 return;
             }
             $finish = CronStatus::finishFunction();
@@ -1399,6 +1402,8 @@ final class App
         if ($siteHost !== '' && $port !== null && $port !== false) {
             $siteHost .= ':' . $port;
         }
+        // What a copy is served by before the application boots (public/index.php): the same host and proxies.
+        $this->pageCache()->setFrontDoor($siteHost, RequestOrigin::parseList($this->settings['trusted_proxies'] ?? ''));
         // The query of the address the visitor asked for (a rewrite may have added parameters of its own).
         $query = (string)(parse_url((string)($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_QUERY) ?? '') . ($_GET === [] ? '' : '&');
         return $this->pageCache()->keyFor((string)($_SERVER['REQUEST_METHOD'] ?? 'GET'), (string)($_SERVER['HTTP_HOST'] ?? ''), $this->isHttpsRequest(), $path, $query, $siteHost);

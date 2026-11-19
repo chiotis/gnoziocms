@@ -38,6 +38,8 @@ check('the same page, with the same headers that matter', second == first and hd
 check('with no cookie', hdr2.get('Set-Cookie') is None)
 check('the made page says how long it took, the copy says it is the copy', (hdr.get('Server-Timing') or '').startswith('app;') and 'dur=' in (hdr.get('Server-Timing') or '') and 'page cache hit' in (hdr2.get('Server-Timing') or ''), (hdr.get('Server-Timing'), hdr2.get('Server-Timing')))
 check('both name the stylesheet to fetch early', 'rel=preload; as=style' in (hdr.get('Link') or '') and hdr2.get('Link') == hdr.get('Link'), (hdr.get('Link'), hdr2.get('Link')))
+st, mark, hdr3, third = status(anon, '/')
+check('once nothing is due, the copy is sent before the application boots (the same page)', mark == 'hit' and 'before the application' in (hdr3.get('Server-Timing') or '') and third == second, hdr3.get('Server-Timing'))
 check('a page of a language and a sitemap are kept too', [status(anon, p)[1] for p in ('/en', '/sitemap.xml')] == ['miss', 'miss'] and [status(anon, p)[1] for p in ('/en', '/sitemap.xml')] == ['hit', 'hit'])
 st, mark, _, _ = status(anon, '/?x=1')
 check('a query is made each time, not kept', st == 200 and mark is None, (st, mark))
@@ -57,6 +59,8 @@ st, mark, _, body2 = status(anon, '/')
 check('and that page is the copy from then on', mark == 'hit' and body2 == body, mark)
 st, mark, _, _ = status(anon, '/en')
 check('every page was emptied, not only the one that was seen', mark == 'miss', mark)
+st, mark, hdr4, body4 = status(anon, '/')
+check('the first page made after the change opens the front door again, with the page as it is now', mark == 'hit' and 'before the application' in (hdr4.get('Server-Timing') or '') and 'A new name for the cache test' in body4, hdr4.get('Server-Timing'))
 
 # ---- the button empties it by hand
 status(anon, '/'); 

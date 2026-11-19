@@ -80,9 +80,9 @@ group. Size: S (an hour or two), M (half a day to a day), L (more).
 
 ## Speed
 
-- [ ] **P2** (M) Serve a page-cache hit from `public/index.php` before the application boots, for requests with no session
+- [x] **P2** (M) Serve a page-cache hit from `public/index.php` before the application boots, for requests with no session
       cookie; the generation and the key need only the settings file. Measure time to first byte before and after.
-- [ ] **P3** (S) One "next due at" timestamp for the work after a response, so a visit with nothing due asks nothing. Run the
+- [x] **P3** (S) One "next due at" timestamp for the work after a response, so a visit with nothing due asks nothing. Run the
       forms migration check from the update, not from every request.
 - [ ] **P4** (M) Look a product up by its id through the content index and parse that one file; keep the whole-catalogue load
       for listings only. Test with 5,000 generated products.
