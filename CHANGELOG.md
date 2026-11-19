@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.301 — 2026-11-19 — Audio block; one picture shape in Columns
+- **New block: Audio.** One sound file or a playlist, for music, talks and podcasts. Each track has a sound file (MP3, M4A, OGG or WAV; the Library offers only sound files), a title, the speaker or artist, a picture (or the block's for all), a length and a description. It plays as one player: the track playing with its picture, play and pause, the position and time, previous and next, and the list below, where a row plays its track. In the Design tab: *Podcast controls* (back 15 s, forward 30 s, speed 1× to 2×), *Play the next track when one ends* and *Offer each file for download*; layouts *Player with the list* and *Compact*. One player on a page plays at a time, and the phone's lock screen and headphones control it. The colours are the theme's. Without JavaScript each track is the browser's own player.
+- **Columns:** a *Picture shape* in the Design tab (Landscape 4:3 by default, Wide 16:9, Portrait 4:5, Square, or As uploaded), so the pictures of the columns line up. Columns blocks with pictures of different shapes now show them at 4:3; choose *As uploaded* for the old look.
+- **Tests:** three checks still expected the old caps on entries (12, 24, 60 per page) and kept the test run red since 0.1.298; they now check that there is no cap.
+
 ## 0.1.300 — 2026-11-19 — The strip's settings in the Design tab
 - **Latest content:** Columns, Card style, Move by itself, Each move goes and Controls are in the **Design** tab beside the layout, each shown only for the layouts it applies to (the strip's settings for the Sliding strip, Columns for cards, image tiles and the strip). Saved blocks keep their values.
 
