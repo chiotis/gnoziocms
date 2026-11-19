@@ -792,12 +792,13 @@ final class BlockRenderer
             return [];
         }
         $skip = ($values['skip_shown'] ?? false) === true;
-        // Enough more to make up for the ones left out: at most as many as are shown.
-        $found = ($this->providers['items'])((string)$values['source'], $lang, $limit + ($skip ? count($this->shown) : 0), $term, (int)($values['offset'] ?? 0), (string)($values['order'] ?? 'date_desc'));
+        // 0 (or less) asks for all of them. Otherwise enough more to make up for the ones left out: at most as many as are shown.
+        $all = $limit <= 0;
+        $found = ($this->providers['items'])((string)$values['source'], $lang, $all ? 0 : $limit + ($skip ? count($this->shown) : 0), $term, (int)($values['offset'] ?? 0), (string)($values['order'] ?? 'date_desc'));
         if ($skip) {
             $found = array_filter($found, fn(ContentItem $entry): bool => !isset($this->shown[self::shownKey($entry)]));
         }
-        $found = array_slice(array_values($found), 0, max(1, $limit));
+        $found = array_slice(array_values($found), 0, $all ? null : $limit);
         $this->markShown($found);
         return $found;
     }

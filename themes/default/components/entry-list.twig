@@ -1,6 +1,7 @@
 {#
   Content entries in one of the latest-content layouts. Used by the "Latest content" block and by archives.
-  Variables: entries, variant, columns, show_image, show_excerpt, show_meta, show_date (default: like show_meta), prefix, lang, heading_tag, label.
+  Variables: entries, variant, columns, show_image, show_excerpt, show_meta, show_date (default: like show_meta), prefix, lang, heading_tag, label,
+  and for the strip: strip (optional: {autoplay: seconds or '', step: one|page, nav: both|arrows|dots|none}; the Latest content block's script reads them).
 #}
 {% set view = {show_image: show_image, show_excerpt: show_excerpt, show_meta: show_meta, show_date: show_date ?? show_meta, prefix: prefix, lang: lang, heading_tag: heading_tag, variant: variant} %}
 {% set tile_sizes = columns == '2' ? '(min-width: 900px) 46vw, 92vw' : (columns == '4' ? '(min-width: 1100px) 23vw, (min-width: 700px) 45vw, 92vw' : '(min-width: 1100px) 30vw, (min-width: 700px) 45vw, 92vw') %}
@@ -21,9 +22,18 @@
   </div>
 {% else %}
   {% set sizes = variant == 'editorial' ? '(min-width: 900px) 50vw, 92vw' : (variant in ['list', 'compact'] ? '160px' : (variant == 'strip' ? '(min-width: 900px) 30vw, 80vw' : tile_sizes)) %}
+  {% if variant == 'strip' %}
+  {% set strip = strip|default({}) %}
+  <div class="latest-strip" data-strip data-step="{{ strip.step|default('one') }}" data-nav="{{ strip.nav|default('both') }}"{% if strip.autoplay|default('') %} data-autoplay="{{ strip.autoplay }}"{% endif %}
+       role="group" aria-roledescription="{{ t('slider.carousel', 'carousel') }}" aria-label="{{ label }}"
+       data-label-prev="{{ t('slider.previous', 'Previous slide') }}" data-label-next="{{ t('slider.next', 'Next slide') }}"
+       data-label-pause="{{ t('slider.pause', 'Pause automatic movement') }}" data-label-play="{{ t('slider.play', 'Start automatic movement') }}"
+       data-label-goto="{{ t('slider.goto', 'Go to slide') }}">
+  {% endif %}
   <ul class="latest-list cols-{{ columns }}" role="list"{% if variant == 'strip' %} tabindex="0" aria-label="{{ label }}"{% endif %}>
     {% for entry in entries %}
       <li>{% include 'blocks/latest/item.twig' with view|merge({item: entry, lead: false, sizes: sizes, index: loop.index}) only %}</li>
     {% endfor %}
   </ul>
+  {% if variant == 'strip' %}</div>{% endif %}
 {% endif %}

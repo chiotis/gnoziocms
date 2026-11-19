@@ -212,7 +212,7 @@ final class ArchiveTemplates
             return $settings;
         }
         if (isset($block['per_page']) && is_numeric($block['per_page'])) {
-            $settings['per_page'] = max(0, min(60, (int)$block['per_page']));
+            $settings['per_page'] = max(0, (int)$block['per_page']);
         }
         $order = (string)($block['order'] ?? '');
         if ($order !== '' && isset($orders[$order])) {
