@@ -134,6 +134,14 @@ html.dark body.bg-slate-100 { background-color: #0b1120; }
 .dark .text-red-800,
 .dark .text-red-600,
 .dark .text-red-500 { color: #f87171; }
+/* Publishing calendar: the cards' side borders (the left one carries the type's colour), AI badges and planned runs. */
+.dark .border-y-slate-200 { border-top-color: #2b3a52; border-bottom-color: #2b3a52; }
+.dark .border-r-slate-200 { border-right-color: #2b3a52; }
+.dark .border-y-blue-200 { border-top-color: rgba(96, 165, 250, .4); border-bottom-color: rgba(96, 165, 250, .4); }
+.dark .border-r-blue-200 { border-right-color: rgba(96, 165, 250, .4); }
+.dark .bg-violet-50\/60 { background-color: rgba(167, 139, 250, .08); }
+.dark .border-violet-300 { border-color: rgba(167, 139, 250, .45); }
+.dark .bg-violet-100 { background-color: rgba(167, 139, 250, .22); }
 /* Rose (delete buttons) and the 900 shades used for messages read on dark panels. */
 .dark .text-rose-500,
 .dark .text-rose-600,

@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.306 — 2026-11-19 — Publishing calendar in dark mode
+- **Publishing calendar, dark mode:** the AI schedules' planned runs no longer show as pale grey boxes, the cards lose their white outlines (the type's colour stays on the left), scheduled cards keep a soft blue edge, and the AI badges are readable.
+
 ## 0.1.305 — 2026-11-19 — Publishing calendar
 - **New page: Overview › Publishing calendar**, below the Dashboard, for those who may edit content. Everything the site has published and will publish, of every active content type: published entries on their date and time, scheduled ones on the time they go live. Each shows who wrote it: a person (with the author), **AI** for AI publishing (with the schedule's name) or **MCP** for a connected assistant. Drafts and entries without a date are not shown.
 - **Month or week**, with arrows and Today; the choice is remembered. Filters for who wrote it (All, People, AI), the content type (each with its colour) and the language. Totals of the period at the top. A day's number opens its week.
