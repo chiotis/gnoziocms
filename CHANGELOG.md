@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.299 — 2026-11-19 — Sliding strip in image tiles; a counter for long strips
+- **Latest content:** the Sliding strip has a **Card style**: Cards (as before) or **Image tiles**, the text on the picture like the archive layout *Image tiles with text on top* (they share their styles).
+- With more than seven positions (a long list, or a phone with one card in view) the dots no longer run off the screen: a counter such as **3 / 18** between the arrows takes their place. Short strips keep their dots.
+
 ## 0.1.298 — 2026-11-19 — Sliding strip, all entries, shorter page links
 - **Latest content:** the *Scrolling strip* is now a **Sliding strip**: no scroll bar, arrows and dots under the cards, and it can **move by itself** every 3, 5, 8 or 12 seconds with a pause button (it stops while a visitor points at it, touches or uses it, while it is off screen, and never for visitors who prefer reduced motion). *Each move goes* one card or a whole view on; *Controls* are arrows and dots, arrows, dots or none. *Columns* set how many cards are in view. Without JavaScript it is a list that scrolls, as before.
 - **No limit on entries:** *Number of items* in Latest content, Cards and Portfolio has no maximum (it was 12, or 24 for Portfolio); **0 shows all of them**. *Entries per page* of archives and content types has no maximum of 60.
