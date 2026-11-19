@@ -621,13 +621,15 @@ final class HtmlToMarkdown
         $trailing = preg_match('/\s+$/', $text, $m) ? $m[0] : '';
         $core = trim($text);
         // Already the same emphasis inside (a bold link in a bold paragraph): once is enough.
-        if (str_starts_with($core, $mark) && str_ends_with($core, $mark) && strlen($core) > 2 * strlen($mark)) {
+        $marked = static fn(string $s): bool => str_starts_with($s, $mark) && str_ends_with($s, $mark) && strlen($s) > 2 * strlen($mark);
+        if ($marked($core)) {
             return $text;
         }
-        // Emphasis cannot span a hard line break; each line gets its own.
+        // Emphasis cannot span a hard line break; each line gets its own, unless an inner tag gave it already
+        // (<strong><strong>Title<br></strong>Date</strong> is one bold line and another, not ****Title****).
         if (str_contains($core, "\n")) {
             $parts = preg_split('/(\s{2}\n)/', $core, -1, PREG_SPLIT_DELIM_CAPTURE) ?: [$core];
-            $core = implode('', array_map(fn(string $part): string => trim($part) === '' ? $part : $mark . trim($part) . $mark, $parts));
+            $core = implode('', array_map(fn(string $part): string => trim($part) === '' || $marked(trim($part)) ? $part : $mark . trim($part) . $mark, $parts));
             return $leading . $core . $trailing;
         }
         return $leading . $mark . $core . $mark . $trailing;

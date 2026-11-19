@@ -26,6 +26,7 @@ check('entities become characters', $md('<p>&ldquo;Quoted&rdquo; &amp; more&hell
 check('spaces stay outside the marks', $md('<p>a<strong> bold </strong>b</p>'), "a **bold** b\n");
 check('empty emphasis disappears', $md('<p>a<strong> </strong>b<em></em>c</p>'), "a bc\n");
 check('the same emphasis twice is once', $md('<p><strong><strong>x</strong></strong></p>'), "**x**\n");
+check('a bold line inside a bold paragraph with a break is bold once', $md('<p><strong><strong>Title<br></strong>10 April 2008</strong></p>'), "**Title**\n**10 April 2008**\n");
 check('a stray <strong> that is closed in the next paragraph still reads', $md('<p><strong></p><p>Alfred Hoos</strong></p>'), "Alfred Hoos\n");
 
 // ---- line breaks
