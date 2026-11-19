@@ -50,6 +50,13 @@
             Dashboard
           </a>
         {% endif %}
+        {% if can('content.manage') %}
+          {% if not can('dashboard.view') %}<p class="px-2 pb-1.5 pt-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">Overview</p>{% endif %}
+          <a href="{{ url('admin/publishing-calendar') }}" class="{{ nav_base }} {{ section == 'publishing-calendar' ? nav_active : nav_idle }}"{% if section == 'publishing-calendar' %} aria-current="page"{% endif %}>
+            <svg class="h-4 w-4 {{ section == 'publishing-calendar' ? 'text-white/80' : 'text-slate-400 group-hover:text-slate-600' }}" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 7a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V7zM4 10h16M9 3v4M15 3v4M8 14h2M12 14h2M8 17h2"/></svg>
+            Publishing calendar
+          </a>
+        {% endif %}
 
         {% if can('content.manage') or can('media.manage') %}
           <p class="px-2 pb-1.5 pt-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400">Content</p>

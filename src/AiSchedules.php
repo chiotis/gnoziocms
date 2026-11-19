@@ -179,8 +179,7 @@ final class AiSchedules
     }
 
     /**
-     * A week of runs for the calendar: Monday to Sunday of the week of `$anyDay`, in the site's zone. Each day lists every schedule's
-     * slot that day (planned, off, due, missed, or how its run went), and the runs made with Run now, sorted by time.
+     * A week of runs: Monday to Sunday of the week of `$anyDay`, in the site's zone (see days()).
      * @param (\Closure(int): (array<string, mixed>|null))|null $job reads a job (its status, error and result)
      * @param (\Closure(string): ?string)|null $entryStatus the status a post has now (type/slug/lang), or null when it is gone
      * @return array{start: string, prev: string, next: string, this_week: bool, hours: array{0: int, 1: int},
@@ -191,6 +190,35 @@ final class AiSchedules
         $day = $anyDay->setTimezone($zone)->setTime(0, 0);
         $monday = $day->modify('-' . ((int)$day->format('N') - 1) . ' day');
         $sunday = $monday->modify('+6 day');
+        $today = (new \DateTimeImmutable('@' . $this->now()))->setTimezone($zone)->format('Y-m-d');
+        $days = $this->days($monday, 7, $zone, $window, $job, $entryStatus);
+        $hours = [];
+        foreach ($days as $d) {
+            foreach ($d['runs'] as $run) {
+                $hours[] = $run['hour'];
+            }
+        }
+        return [
+            'start' => $monday->format('Y-m-d'),
+            'end' => $sunday->format('Y-m-d'),
+            'prev' => $monday->modify('-7 day')->format('Y-m-d'),
+            'next' => $monday->modify('+7 day')->format('Y-m-d'),
+            'this_week' => $today >= $monday->format('Y-m-d') && $today <= $sunday->format('Y-m-d'),
+            'hours' => [min(7, ...($hours ?: [7])), max(20, ...($hours ?: [20]))],
+            'days' => $days,
+        ];
+    }
+
+    /**
+     * The runs of `$count` days from `$from` (the publishing calendar, and the week above), in the site's zone. Each day lists
+     * every schedule's slot that day (planned, off, due, missed, or how its run went), and the runs made with Run now, by time.
+     * @param (\Closure(int): (array<string, mixed>|null))|null $job @param (\Closure(string): ?string)|null $entryStatus
+     * @return array<int, array{date: string, label: string, today: bool, runs: array<int, array<string, mixed>>}>
+     */
+    public function days(\DateTimeImmutable $from, int $count, \DateTimeZone $zone, int $window, ?\Closure $job = null, ?\Closure $entryStatus = null): array
+    {
+        $first = $from->setTimezone($zone)->setTime(0, 0);
+        $last = $first->modify('+' . max(0, $count - 1) . ' day');
         $now = $this->now();
         $today = (new \DateTimeImmutable('@' . $now))->setTimezone($zone)->format('Y-m-d');
         $schedules = $this->all();
@@ -199,7 +227,7 @@ final class AiSchedules
         $pdo = $this->pdo();
         if ($pdo !== null) {
             $stmt = $pdo->prepare("SELECT * FROM ai_schedule_slots WHERE (slot >= ? AND slot <= ?) OR (slot LIKE 'now %' AND created_at >= ? AND created_at < ?)");
-            $stmt->execute([$monday->format('Y-m-d') . ' 00:00', $sunday->format('Y-m-d') . ' 23:59', $monday->getTimestamp(), $sunday->modify('+1 day')->getTimestamp()]);
+            $stmt->execute([$first->format('Y-m-d') . ' 00:00', $last->format('Y-m-d') . ' 23:59', $first->getTimestamp(), $last->modify('+1 day')->getTimestamp()]);
             foreach ($stmt->fetchAll() as $row) {
                 if (str_starts_with((string)$row['slot'], 'now ')) {
                     $manual[] = $row;
@@ -209,11 +237,10 @@ final class AiSchedules
             }
         }
         $names = array_column($schedules, 'name', 'id');
-        $enabled = array_column($schedules, 'enabled', 'id');
+        $settings = array_column($schedules, 'settings', 'id');
         $days = [];
-        $hours = [];
-        for ($i = 0; $i < 7; $i++) {
-            $date = $monday->modify('+' . $i . ' day');
+        for ($i = 0; $i < $count; $i++) {
+            $date = $first->modify('+' . $i . ' day');
             $runs = [];
             foreach ($schedules as $schedule) {
                 $at = self::slotOn($schedule['settings'], $date, $zone);
@@ -235,7 +262,8 @@ final class AiSchedules
                 } else {
                     $state = ['state' => $schedule['enabled'] ? 'planned' : 'off', 'title' => '', 'entry' => '', 'error' => ''];
                 }
-                $runs[] = ['schedule' => $schedule['id'], 'name' => $schedule['name'], 'time' => $at->format('H:i'), 'hour' => (int)$at->format('G'), 'manual' => false] + $state;
+                $runs[] = ['schedule' => $schedule['id'], 'name' => $schedule['name'], 'time' => $at->format('H:i'), 'hour' => (int)$at->format('G'), 'manual' => false,
+                    'type' => (string)$schedule['settings']['type'], 'lang' => (string)$schedule['settings']['lang']] + $state;
             }
             foreach ($manual as $row) {
                 $at = (new \DateTimeImmutable('@' . (int)$row['created_at']))->setTimezone($zone);
@@ -243,23 +271,13 @@ final class AiSchedules
                     continue;
                 }
                 $runs[] = ['schedule' => (int)$row['schedule_id'], 'name' => (string)($names[(int)$row['schedule_id']] ?? 'Deleted schedule'), 'time' => $at->format('H:i'),
-                    'hour' => (int)$at->format('G'), 'manual' => true] + self::runState($row, $job, $entryStatus);
+                    'hour' => (int)$at->format('G'), 'manual' => true, 'type' => (string)($settings[(int)$row['schedule_id']]['type'] ?? ''),
+                    'lang' => (string)($settings[(int)$row['schedule_id']]['lang'] ?? '')] + self::runState($row, $job, $entryStatus);
             }
             usort($runs, static fn(array $a, array $b): int => [$a['time'], $a['name']] <=> [$b['time'], $b['name']]);
-            foreach ($runs as $run) {
-                $hours[] = $run['hour'];
-            }
             $days[] = ['date' => $date->format('Y-m-d'), 'label' => $date->format('D j M'), 'today' => $date->format('Y-m-d') === $today, 'runs' => $runs];
         }
-        return [
-            'start' => $monday->format('Y-m-d'),
-            'end' => $sunday->format('Y-m-d'),
-            'prev' => $monday->modify('-7 day')->format('Y-m-d'),
-            'next' => $monday->modify('+7 day')->format('Y-m-d'),
-            'this_week' => $today >= $monday->format('Y-m-d') && $today <= $sunday->format('Y-m-d'),
-            'hours' => [min(7, ...($hours ?: [7])), max(20, ...($hours ?: [20]))],
-            'days' => $days,
-        ];
+        return $days;
     }
 
     /**

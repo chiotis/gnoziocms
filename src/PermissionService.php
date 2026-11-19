@@ -371,7 +371,7 @@ final class PermissionService
         $capability = match ($action) {
             'settings', 'theme', 'system', 'content-types' => 'settings.manage',
             'dashboard', 'index' => 'dashboard.view',
-            'content' => 'content.manage',
+            'content', 'publishing-calendar' => 'content.manage',
             'menus', 'menus-new', 'menus-edit' => 'menus.manage',
             'media', 'files' => 'media.manage',
             'forms', 'forms-new', 'form-submissions', 'form-file', 'form-files-zip' => 'forms.manage',

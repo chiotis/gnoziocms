@@ -1309,6 +1309,7 @@ final class App
         'omni' => 'handleOmni',
         'mcp' => 'handleMcpAdmin',
         'ai-publishing' => 'handleAiPublishing',
+        'publishing-calendar' => 'handlePublishingCalendar',
         'shop-settings' => 'handleShopSettings',
         'shop-orders' => 'handleShopOrders',
         'shop-customers' => 'handleShopCustomers',
@@ -4348,6 +4349,47 @@ final class App
         ]);
     }
 
+    /**
+     * Overview > Publishing calendar: what every active content type published or will publish, by people, AI publishing and
+     * MCP, with the AI schedules' runs for those who manage AI publishing. Month or week; the view is remembered in a cookie.
+     */
+    private function handlePublishingCalendar(): void
+    {
+        $user = $this->auth->user();
+        $get = $_GET;
+        if (in_array($get['view'] ?? '', PublishingCalendar::VIEWS, true)) {
+            setcookie('gnozio_calendar_view', (string)$get['view'], ['expires' => time() + 365 * 86400, 'path' => '/', 'httponly' => true, 'samesite' => 'Lax', 'secure' => $this->isHttpsRequest()]);
+        } elseif (in_array($_COOKIE['gnozio_calendar_view'] ?? '', PublishingCalendar::VIEWS, true)) {
+            $get['view'] = (string)$_COOKIE['gnozio_calendar_view'];
+        }
+        $types = array_values(array_filter($this->content->getTypes(), fn(string $type): bool => $type !== 'forms' && $this->canAccessContentType($type)));
+        $languages = array_values(array_unique(array_map('strval', [$this->defaultLanguage(), ...(array)($this->settings['languages']['available'] ?? [])])));
+        $canAi = $this->permissions->can($user, 'ai.manage');
+        $names = [];
+        if ($canAi) {
+            foreach ($this->aiSchedules()->all() as $schedule) {
+                $names[(int)$schedule['id']] = (string)$schedule['name'];
+            }
+        }
+        $calendar = new PublishingCalendar(
+            $this->contentIndex->connection(),
+            $this->content->directory(),
+            $types,
+            $languages,
+            SiteSettings::timeZone($this->settings),
+            $canAi ? fn(\DateTimeImmutable $from, int $count): array => $this->aiPublishingAdmin()->calendarDays($from, $count) : null,
+            $names,
+        );
+        $this->render('@admin/publishing-calendar.twig', $calendar->screen($get) + [
+            'title' => 'Publishing calendar',
+            'can_ai' => $canAi,
+            'types' => $this->content->getTypes(),
+            'user' => $user,
+            'admin_section' => 'publishing-calendar',
+            'current_type' => 'pages',
+        ]);
+    }
+
     /** Manage > AI publishing (docs/ai-publishing-plan.md). */
     private function handleAiPublishing(): void
     {
@@ -4359,13 +4401,12 @@ final class App
                 'done' => $result['ok'] ? 'ok' : 'fail', 'msg' => $result['message']], static fn($v): bool => $v !== null)));
             return;
         }
-        // The Schedules tab's view (list or week), remembered for this person in a cookie of the admin.
-        $get = $_GET;
-        if (in_array($get['view'] ?? '', ['list', 'week'], true)) {
-            setcookie('gnozio_ai_view', (string)$get['view'], ['expires' => time() + 365 * 86400, 'path' => '/', 'httponly' => true, 'samesite' => 'Lax', 'secure' => $this->isHttpsRequest()]);
-        } elseif (in_array($_COOKIE['gnozio_ai_view'] ?? '', ['list', 'week'], true)) {
-            $get['view'] = (string)$_COOKIE['gnozio_ai_view'];
+        // The week of the schedules moved to Overview > Publishing calendar.
+        if (($_GET['view'] ?? '') === 'week') {
+            $this->redirect('/admin/publishing-calendar?' . http_build_query(['view' => 'week', 'source' => 'ai', 'date' => (string)($_GET['week'] ?? '')]));
+            return;
         }
+        $get = $_GET;
         if (($_GET['export'] ?? '') === 'csv') {
             $month = preg_match('/^\d{4}-\d{2}$/', (string)($_GET['month'] ?? '')) === 1 ? (string)$_GET['month'] : date('Y-m');
             header('Content-Type: text/csv; charset=utf-8');

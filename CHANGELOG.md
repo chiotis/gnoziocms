@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.305 — 2026-11-19 — Publishing calendar
+- **New page: Overview › Publishing calendar**, below the Dashboard, for those who may edit content. Everything the site has published and will publish, of every active content type: published entries on their date and time, scheduled ones on the time they go live. Each shows who wrote it: a person (with the author), **AI** for AI publishing (with the schedule's name) or **MCP** for a connected assistant. Drafts and entries without a date are not shown.
+- **Month or week**, with arrows and Today; the choice is remembered. Filters for who wrote it (All, People, AI), the content type (each with its colour) and the language. Totals of the period at the top. A day's number opens its week.
+- **AI schedules on the calendar:** for those who manage AI publishing, the schedules' runs that have no post on the calendar show too (planned, writing, kept as a draft, failed, missed); in the week, an empty hour adds a schedule there.
+- **AI publishing:** the Schedules tab's week view moved to the calendar; the tab links to it, and old week addresses lead there.
+
 ## 0.1.304 — 2026-11-19 — New sites in Athens time and Greek; clear the activity log; full-width text
 - **New sites:** a new site starts in the **Europe/Athens** time zone with **Greek** as its only language. Both are written once, when the site first saves its settings; sites that already exist keep what they have, and a site whose stored settings have no time zone still uses the server's. Settings saved with an empty language box now keep Greek only.
 - **Logs > Activity:** a **Clear logs** button, with a confirm, as on the Email tab. The log then starts with one entry saying who cleared it and how many entries went.

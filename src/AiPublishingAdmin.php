@@ -33,6 +33,21 @@ final class AiPublishingAdmin
     }
 
     /**
+     * The schedules' runs of `$count` days from `$from`, for Overview > Publishing calendar: planned, missed, failed, or the post
+     * each one wrote. Empty without schedules.
+     * @return array<int, array{date: string, label: string, today: bool, runs: array<int, array<string, mixed>>}>
+     */
+    public function calendarDays(\DateTimeImmutable $from, int $count): array
+    {
+        if ($this->schedules === null) {
+            return [];
+        }
+        $site = $this->site !== null ? ($this->site)() : [];
+        return $this->schedules->days($from, $count, $this->zone ?? new \DateTimeZone(date_default_timezone_get()), (int)$this->settings->all()['missed_window'],
+            fn(int $id): ?array => $this->runner->get($id), $site['entry_status'] ?? null);
+    }
+
+    /**
      * @param array<string, mixed> $get
      * @return array<string, mixed>
      */
@@ -268,7 +283,7 @@ final class AiPublishingAdmin
         $editId = (string)($get['edit'] ?? '');
         $editing = null;
         if ($editId === 'new') {
-            // From the week view: a day and an hour clicked.
+            // From the publishing calendar's week: a day and an hour clicked.
             $day = (int)($get['day'] ?? 0);
             $time = preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', (string)($get['time'] ?? '')) === 1 ? (string)$get['time'] : '08:00';
             $editing = ['id' => 0, 'name' => '', 'enabled' => true, 'settings' => AiSchedules::normalize([
@@ -285,18 +300,7 @@ final class AiPublishingAdmin
             $editing['name'] = (string)($form['name'] ?? '');
             $editing['settings'] = AiSchedules::normalize($form);
         }
-        $view = ($get['view'] ?? '') === 'week' ? 'week' : 'list';
-        $week = null;
-        if ($view === 'week' && $editing === null && $this->schedules !== null) {
-            $anchor = preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)($get['week'] ?? '')) === 1
-                ? (\DateTimeImmutable::createFromFormat('!Y-m-d', (string)$get['week'], $zone) ?: new \DateTimeImmutable('now', $zone))
-                : new \DateTimeImmutable('now', $zone);
-            $week = $this->schedules->week($anchor, $zone, (int)$this->settings->all()['missed_window'],
-                fn(int $id): ?array => $this->runner->get($id), $site['entry_status'] ?? null);
-        }
         return [
-            'view' => $view,
-            'week' => $week,
             'list' => $list,
             'editing' => $editing,
             'types' => $site['types'],
