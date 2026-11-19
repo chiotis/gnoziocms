@@ -22,6 +22,49 @@
   margin-bottom: var(--space-2xs);
 }
 
+/* A small picture in place of the icon (a logo, a photo): it keeps its own shape and is not cropped. */
+.features-grid { --feature-media: 80px; }
+.features-grid.media-small { --feature-media: 48px; }
+.features-grid.media-large { --feature-media: 120px; }
+
+.feature-media {
+  display: block;
+  flex: none;
+  width: var(--feature-media);
+  margin-bottom: var(--space-2xs);
+}
+
+.feature-image {
+  width: 100%;
+  height: auto;
+  max-height: var(--feature-media);
+  object-fit: contain;
+  object-position: left top;
+}
+
+/* Beside: the icon or picture on the left, the title, text and link on the right. */
+.features-grid.media-side .feature {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: var(--space-s);
+}
+
+.features-grid.media-side :is(.feature-media, .feature-icon) {
+  margin-bottom: 0;
+}
+
+.feature-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.features-grid.accent-titles .feature-title {
+  color: var(--accent);
+}
+
 .feature-title {
   margin: 0;
   font-size: var(--step-1);
@@ -123,6 +166,8 @@
 
 @media (max-width: 600px) {
   .features-grid { --cols: 1 !important; }
+
+  .features-grid.media-side .feature { flex-direction: column; }
 }
 
 /* Strip: short points side by side between two thin lines, a dot before each title (trust points: handmade, shipping, warranty). */

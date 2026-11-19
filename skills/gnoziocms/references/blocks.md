@@ -1,4 +1,4 @@
-# Blocks of this installation (GnozioCMS 0.1.292)
+# Blocks of this installation (GnozioCMS 0.1.294)
 
 ## Fields every block has
 
@@ -360,7 +360,7 @@ Questions and answers that open one at a time. Adds FAQ structured data for sear
 | `schema` | true / false; default `true` |  |
 
 ### `features` — Features
-A grid of features or services, each with an icon, a title, a short text, and an optional link.
+A grid of features or services, each with an icon or a small picture, a title, a short text, and an optional link.
 
 **Layouts** (`variant`): `cards` (Cards), `plain` (Plain, no cards), `numbered` (Numbered steps), `strip` (A strip of short points). First is the default.
 
@@ -371,8 +371,13 @@ A grid of features or services, each with an icon, a title, a short text, and an
 | `intro` | text (several lines) |  |
 | `align` | choice; one of `left`, `center`; default `left` |  |
 | `columns` | choice; one of `2`, `3`, `4`; default `3` |  |
+| `media_position` | choice; one of `top`, `side`; default `top`; only when `variant` is `!` or `n` or `u` or `m` or `b` or `e` or `r` or `e` or `d` | On a phone it goes above. |
+| `media_size` | choice; one of `small`, `medium`, `large`; default `medium`; only when `variant` is `!` or `n` or `u` or `m` or `b` or `e` or `r` or `e` or `d` | The picture keeps its own shape, so logos are not cropped. |
+| `accent_titles` | true / false; default `false` |  |
 | `items` | list of rows; at most 12 rows |  |
 | &nbsp;&nbsp;`items[].icon` | icon name |  |
+| &nbsp;&nbsp;`items[].image` | image | Shown in place of the icon. |
+| &nbsp;&nbsp;`items[].image_alt` | text | Leave empty if the title already says what it shows. |
 | &nbsp;&nbsp;`items[].title` | text |  |
 | &nbsp;&nbsp;`items[].text` | text (several lines) |  |
 | &nbsp;&nbsp;`items[].link` | link |  |
