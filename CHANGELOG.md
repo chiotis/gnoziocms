@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.311 — 2026-11-19 — Security headers
+- **Content-Security-Policy, report-only** (audit S7), on the admin and the shop's pages (cart, checkout, account, payment pages): it lists what those pages use (the site itself, Google sign-in, Viva Wallet and the Cardlink acquirers, the Meta Pixel and the Google tag, the admin's Google font), so a browser reports in its console anything else that tries to load and blocks nothing yet. Checked in a browser on the admin's main screens and the shop's pages with the Pixel running: no report.
+- **Permissions-Policy** on every page: no camera, microphone or USB; payments only from the site.
+- **Always use HTTPS (HSTS)**, a new setting in Settings > General, off by default: sent only over HTTPS, for a year.
+
 ## 0.1.310 — 2026-11-19 — The Pixel sees no keys; templates compiled once
 - **Meta Pixel** (audit S2): it no longer runs on the account's pages (sign in, sign up, forgot and reset password), nor on any address that carries a token. On the order's page the order's key is cut from the address before Meta's script loads, so Meta sees only the path; the Purchase event is still sent once. The key stays in the order's email; a visitor who never agrees to the Pixel keeps it in the address. The account's pages and the checkout tell the next page only the site's origin (`Referrer-Policy: strict-origin` by a meta tag).
 - **Templates compiled once** (audit P1): Twig's compiled templates are kept in `storage/cache/twig`, so pages no longer parse their templates on every request. A compiled copy is used only for the exact file it was made from (time and size), so edits, theme changes and restored files show at once; an update and System > *Empty the page cache* empty it. On a development copy the home page went from 264 to 177 ms and a post list from 161 to 84 ms (`docs/performance.md`).

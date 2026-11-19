@@ -176,6 +176,16 @@ check('the cart in English', st == 200 and '<h1>Cart</h1>' in en and 'Balos ring
 # ---- the checkout
 st, _, html = pub.get('/checkout')
 check('the checkout opens with Greece chosen and its shipping, free over €300', st == 200 and 'name="email"' in html and re.search(r'<option value="GR" selected', html) is not None and 'Courier' in html and 'Δωρεάν' in html, st)
+
+# ---- security headers (SecurityHeaders): a reported policy on the checkout and the admin, none on an ordinary page
+st, ch, _ = pub.get('/checkout')
+csp = ch.get('Content-Security-Policy-Report-Only') or ''
+check('the checkout has a report-only Content-Security-Policy that lets it post to the banks', "form-action 'self'" in csp and 'https://vpos.eurocommerce.gr' in csp and "object-src 'none'" in csp and not ch.get('Content-Security-Policy'), csp[:200])
+check('and a Permissions-Policy; no HSTS over plain HTTP', ch.get('Permissions-Policy') == 'camera=(), microphone=(), usb=(), payment=(self)' and not ch.get('Strict-Transport-Security'), dict(ch))
+st, ah, _ = root.get('/admin')
+check('the admin has its own policy: never framed', "frame-ancestors 'none'" in (ah.get('Content-Security-Policy-Report-Only') or '') and ah.get('Permissions-Policy'), ah.get('Content-Security-Policy-Report-Only'))
+st, ph, _ = pub.get('/about')
+check('an ordinary page: a Permissions-Policy, no Content-Security-Policy', ph.get('Permissions-Policy') and not ph.get('Content-Security-Policy-Report-Only'), dict(ph))
 check('both ways to pay, the fee of cash on delivery', 'Τραπεζική κατάθεση' in html and 'Αντικαταβολή' in html and '+ €2' in html)
 check('the terms, since the shop has them', 'name="terms"' in html and 'href="/about"' in html)
 method = re.search(r'name="method" value="([a-z0-9]+)" checked', html).group(1)

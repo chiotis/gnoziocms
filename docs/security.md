@@ -143,6 +143,20 @@ set, and says why. Pages themselves are still built with the request's host when
 
 - Admin: `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: same-origin`, `Cache-Control: no-store, private`.
 - Frontend: `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`.
+- Everywhere: `Permissions-Policy: camera=(), microphone=(), usb=(), payment=(self)` (`src/SecurityHeaders.php`).
+- **HSTS** (`Strict-Transport-Security: max-age=31536000`) when **Settings > General > Always use HTTPS** is on, and only over
+  HTTPS. Off by default: once a browser has seen it, it refuses plain HTTP for a year, so turn it on only when the site and every
+  address it answers on work over HTTPS. No `includeSubDomains` or `preload`.
+- **Content-Security-Policy, report-only**, on the admin and on the shop's pages (cart, checkout, account, the payment pages):
+  scripts and styles from the site (inline ones too), pictures from anywhere over HTTPS, no plugins (`object-src 'none'`), no
+  other base address; the admin is never framed (`frame-ancestors 'none'`) and posts only to the site and Google sign-in, and
+  takes its font from Google Fonts; the shop's pages may post to Viva Wallet and the Cardlink acquirers (live and test) and run
+  the Meta Pixel and the Google tag. Report-only means a browser writes in its console what the policy would block and blocks
+  nothing; no address collects the reports. Checked in a browser on the dashboard, the editor, the media library, Shop settings,
+  the cart, the checkout with the Pixel running, and the account page: no report. Enforcing it (and dropping `'unsafe-inline'`
+  for scripts, which needs nonces in the templates) is the next step. Ordinary pages get no policy: their blocks embed what the
+  editor chose (videos, maps, forms of other services). The site's own copy of a page (System > Page cache) is sent with the
+  headers it was kept with.
 
 ## Operator Checklist
 

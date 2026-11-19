@@ -898,12 +898,16 @@ final class App
         return new RequestOrigin($_SERVER, RequestOrigin::parseList($this->settings['trusted_proxies'] ?? ''));
     }
 
-    private function sendSecurityHeaders(bool $admin): void
+    /** $shop: the shop's pages, which get the shop's Content-Security-Policy (SecurityHeaders) besides the public headers. */
+    private function sendSecurityHeaders(bool $admin, bool $shop = false): void
     {
         if (headers_sent()) {
             return;
         }
         header('X-Content-Type-Options: nosniff');
+        foreach (SecurityHeaders::for($admin ? 'admin' : ($shop ? 'shop' : 'page'), $this->isHttpsRequest(), !empty($this->settings['hsts'])) as $name => $value) {
+            header($name . ': ' . $value);
+        }
         if ($admin) {
             header('X-Frame-Options: DENY');
             header('Referrer-Policy: same-origin');
@@ -3966,7 +3970,7 @@ final class App
             session_start();
         }
         FrontCache::doNotKeep();
-        $this->sendSecurityHeaders(false);
+        $this->sendSecurityHeaders(false, true);
         $this->setLanguage($lang);
         $prefix = $this->langPrefix($lang);
         $services = $this->shopServices();

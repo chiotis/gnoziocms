@@ -35,7 +35,7 @@ group. Size: S (an hour or two), M (half a day to a day), L (more).
 - [x] **S6 + S12** (M) One "trusted proxies" setting. `X-Forwarded-For`, `-Proto` and `-Host` count only when `REMOTE_ADDR` is
       one of them; `clientIpAddress()` and the sign-in throttle use the same helper. Document it for CloudPanel, Varnish and
       cloudflared.
-- [ ] **S7** (M) Headers: HSTS when the site is on HTTPS (a setting, off by default); a Content-Security-Policy for the admin
+- [x] **S7** (M) Headers: HSTS when the site is on HTTPS (a setting, off by default); a Content-Security-Policy for the admin
       and for the cart, checkout and account pages (report-only first); a Permissions-Policy.
 - [ ] **S8** (M) Encrypt `shop_secrets` (and the SMTP, S3 and Google secrets) with a key kept in a file outside the database
       and outside backups (`storage/key`), so a backup alone opens nothing. A restore on another server asks for the keys again.

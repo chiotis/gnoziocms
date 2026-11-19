@@ -93,6 +93,8 @@ final class SiteSettings
             // A proxy on the same machine (Varnish, cloudflared, nginx in front of Apache) is the only thing that connects from here.
             // Kept as text, so an emptied list stays empty instead of falling back to this default.
             'trusted_proxies' => "127.0.0.1\n::1",
+            // Strict-Transport-Security over HTTPS (SecurityHeaders): a promise the site keeps HTTPS, so off until the owner says.
+            'hsts' => false,
             'theme' => 'default',
             'home_page' => 'index',
             'date_format' => 'd/m/Y',
@@ -267,6 +269,7 @@ final class SiteSettings
             'tagline' => (string)($merged['tagline'] ?? ''),
             'base_url' => (string)($merged['base_url'] ?? ''),
             'trusted_proxies' => implode("\n", RequestOrigin::parseList($merged['trusted_proxies'] ?? [])),
+            'hsts' => !empty($merged['hsts']),
             'theme' => (string)($merged['theme'] ?? ''),
             'home_page' => (string)($merged['home_page'] ?? ''),
             'date_format' => (string)($merged['date_format'] ?? ''),
@@ -334,6 +337,8 @@ final class SiteSettings
             'base_url' => (string)($post['base_url'] ?? ''),
             // Only when the box was on the form that was sent, so another form does not clear the list.
             'trusted_proxies' => array_key_exists('trusted_proxies', $post) ? implode("\n", RequestOrigin::parseList($post['trusted_proxies'])) : null,
+            // The box is read only when the form had it (a hidden field says so), so another form does not turn it off.
+            'hsts' => isset($post['hsts_shown']) ? !empty($post['hsts']) : null,
             'theme' => (string)($post['theme'] ?? ''),
             'home_page' => (string)($post['home_page'] ?? ''),
             'date_format' => (string)($post['date_format'] ?? ''),
@@ -545,6 +550,9 @@ final class SiteSettings
         $data['base_url'] = $form['base_url'];
         if (($form['trusted_proxies'] ?? null) !== null) {
             $data['trusted_proxies'] = $form['trusted_proxies'];
+        }
+        if (($form['hsts'] ?? null) !== null) {
+            $data['hsts'] = $form['hsts'];
         }
         $data['theme'] = $form['theme'] !== '' ? $form['theme'] : ($data['theme'] ?? 'default');
         $data['home_page'] = $form['home_page'] !== '' ? $form['home_page'] : ($data['home_page'] ?? 'index');
