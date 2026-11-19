@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.297 — 2026-11-19 — Container backgrounds: position, size, opacity, still while scrolling
+- **Containers:** a background picture now has a *position* (a 3 × 3 grid), a *size* (Cover as before, Contain, Natural size, Repeat for patterns), an *opacity* (100 to 10%; the section's colour, muted, contrast or accent, shows through) and *stays still while the page scrolls* (on wide screens; not on phones, tablets or with reduced motion). A block left on the default background inside a container no longer covers the picture. A new **100** layout puts one column at full width: *Wrap in container* on any block, then give the container its background. Existing containers look the same.
+
 ## 0.1.296 — 2026-11-19 — Two tests pass again
 - **Tests:** the Updates screen test no longer counts Markdown marks shown on purpose inside code (a note quoting `****Title****`), and the shift-select test ends with the line the runner looks for, so a pass is reported as one.
 
