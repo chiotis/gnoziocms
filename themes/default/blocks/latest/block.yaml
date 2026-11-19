@@ -1,6 +1,8 @@
 label: Latest content
 description: The newest posts, projects, or any content type, shown from a quiet text list to a magazine layout. Updates by itself when you publish.
 category: Showcase
+# Beside the layout in the Design tab, each while it applies to the layout chosen.
+design_fields: [columns, strip_style, autoplay, strip_step, strip_nav]
 variants:
   cards: Cards
   list: Minimal list
@@ -76,8 +78,8 @@ fields:
     type: select
     label: Card style
     default: cards
-    options: { cards: Cards (picture above the text), tiles: Image tiles (text on the picture) }
-    help: Image tiles look like the archive layout of the same name.
+    options: { cards: Cards, tiles: Image tiles }
+    help: Cards have the picture above the text; image tiles put the text on the picture, like the archive layout.
     when: { variant: strip }
   strip_step:
     type: select
@@ -93,9 +95,11 @@ fields:
     when: { variant: strip }
   columns:
     type: select
-    label: Columns (cards and tiles; cards in view for the strip)
+    label: Columns
     default: '3'
     options: { '2': '2', '3': '3', '4': '4' }
+    help: For the strip, the cards in view at once.
+    when: { variant: [cards, overlay, strip] }
   show_image:
     type: toggle
     label: Show images
