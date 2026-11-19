@@ -57,13 +57,17 @@ A tool needs one of its scopes and, on every call, the permission it asks of the
 |---|---|---|
 | `site_info` | any | the site's name, address, languages, time zone and current time, its content types with their fields (for each: its kind, what it takes, whether MCP may write it, whether it is shared by the translations, the types an entry it points at may be, and a repeater's own fields), its taxonomies, and the connection itself (name, account, scopes, paused, its rules and publications left) |
 | `list_entries` | read | entries of a type, newest first, drafts and scheduled included; by language, status, changed since; paged |
-| `get_entry` | read | one entry: text in Markdown, status, dates, terms, fields (an entry pointed at as its address, `type/slug`), translations, `updated_at` |
+| `get_entry` | read | one entry: text in Markdown, status, dates, terms, fields (an entry pointed at as its address, `type/slug`), translations, its `blocks`, `updated_at` |
+| `list_blocks` | read | the theme's blocks (type, name, purpose); with `type`, that block's fields, layouts and the fields every block shares |
 | `search_entries` | read | the words in title, address or text |
 | `list_terms` | read | the terms of a taxonomy, with ids and labels |
 | `find_by_source` | read | the entry made earlier for a `source_key` |
 | `validate_entry` | write | the arguments of `create_entry`, checked, nothing saved |
 | `create_entry` | write | a new entry; `status` (draft, published, scheduled with `publish_at`) is required; `source_key` returns the entry made before for the same source; `translation_of` makes it a translation |
 | `update_entry` | write | changes what is given and keeps the rest; `expected_updated_at` refuses a change made meanwhile |
+
+`create_entry`, `update_entry` and `validate_entry` take `blocks`: the whole list of the entry's blocks, in order, each `{type, ...fields}` as `list_blocks` describes them (a `content` block places the text among them; `[]` removes every block). They are checked as strictly as fields: an unknown block, field or option, or a video link that is not YouTube, Vimeo or a video file, is named and nothing is saved. They are kept as the block editor keeps them, Markdown in them checked as in the text.
+
 | `file_entries` | write | files up to 500 entries of one type and language under a term (their other terms stay) or takes them out of it, in one call; every entry is checked first. Published entries need `content:publish`; `shop:write` alone may file products under collections and product categories |
 | `add_image_from_url` | media | fetches a picture from a public address (`url`) or a file from the chat (`file`) into the media library, with its alt text, and gives its address for `main_image` or the body |
 | `create_term` | terms write, or shop write | adds a term to a taxonomy: names and texts by language, address, parent, picture, texts for search engines; a collection's number, tones (a deep tone hard to read on its background is warned about) and quote. A name the taxonomy already has is refused with the id to use. Gives its id |

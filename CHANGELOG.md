@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.303 — 2026-11-19 — Blocks through MCP
+- **MCP writes blocks:** `create_entry`, `update_entry` and `validate_entry` take `blocks`, the entry's whole list of blocks in order (a Video block with a YouTube link, an Audio block, a Gallery…). A `content` block places the text among them; `[]` removes every block. They are checked as strictly as fields: an unknown block, field or option, or a video link that is not YouTube, Vimeo or a video file, is named and nothing is saved. Markdown in them is checked as the text is.
+- **New tool `list_blocks`:** the theme's blocks, and with a type that block's fields and layouts. `get_entry` now gives an entry's `blocks`.
+
 ## 0.1.302 — 2026-11-19 — A gallery for posts and pages; upload from the image picker
 - **Gallery for posts and pages:** the editor's **Media** tab has a **Gallery** card under the main image for every type with no gallery field of its own (posts, pages and the like): add pictures from the library, drag to reorder, remove. A Gallery block set to *The entry's gallery* shows them, on the entry and in a template. Types with a gallery field (products, places, routes) keep theirs in Details. The pictures are kept as `gallery:` at the top of the entry's file.
 - **Upload in the image picker:** the *Choose an image* window has an **Upload** button and takes files dropped on it, for those who may edit content or the media library. Choosing one picture (main image, a block's image, a theme setting) takes the uploaded one at once; adding several (a gallery) adds each upload and stays open. A file of another kind stays in the library and the window says so.

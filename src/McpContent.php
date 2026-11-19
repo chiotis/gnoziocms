@@ -28,6 +28,8 @@ final class McpContent
         'select' => 'one of the options',
     ];
     private const MAX_BODY = 200000;
+    /** The most blocks an entry takes through MCP. */
+    public const MAX_BLOCKS = 100;
     public const MAX_IMAGE_BYTES = 10 * 1048576;
 
     /**
@@ -59,6 +61,8 @@ final class McpContent
         private ?\Closure $pictureState = null,
         private ?Relations $relations = null,
         private ?ContentAdmin $admin = null,
+        /** @var (\Closure(): BlockRegistry)|null the theme's blocks, for writing an entry's blocks */
+        private ?\Closure $blocks = null,
     ) {
     }
 
@@ -82,6 +86,9 @@ final class McpContent
             'main_image' => $str('A picture already in the media library, as its address (/uploads/...).'),
             'image_brief' => $str('What the main picture should show, in one or two sentences, without style words (the site has its own house style). Used by generate_main_image.', 1000),
             'seo' => ['type' => 'object', 'properties' => ['title' => $str('Title for search engines.', 200), 'description' => $str('Description for search engines.', 400)], 'additionalProperties' => false],
+            'blocks' => ['type' => 'array', 'maxItems' => self::MAX_BLOCKS, 'items' => ['type' => 'object'], 'description' => 'The blocks of the page, in order, each {"type": ..., its fields} as list_blocks describes them '
+                . '(for example {"type": "video", "videos": [{"url": "https://www.youtube.com/watch?v=..."}]}). A block of type "content" places the text (body) among them; '
+                . 'without one the text comes first. It replaces the old list, so send every block you keep, as get_entry gave it; [] removes them all.'],
         ];
         $create = $entry + [
             'type' => $str('The content type (see site_info).'),
@@ -167,6 +174,13 @@ final class McpContent
                     'replace' => ['type' => 'boolean', 'description' => 'Make a new picture even when the entry has one.'],
                 ], ['type', 'slug']),
                 'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'idempotentHint' => false, 'openWorldHint' => true],
+            ],
+            'list_blocks' => [
+                'scopes' => $read, 'permission' => 'content.manage', 'title' => 'List blocks',
+                'description' => 'The blocks an entry can be built from (for the blocks of create_entry and update_entry): without type, each block\'s type, name and purpose; '
+                    . 'with type, its fields, layouts (variant) and the fields every block shares.',
+                'inputSchema' => $schema(['type' => $str('One block type, for its fields.')], []),
+                'annotations' => $ro,
             ],
             'update_entry' => [
                 'scopes' => $write, 'permission' => 'content.manage', 'title' => 'Change an entry',
@@ -287,6 +301,7 @@ final class McpContent
             'add_image_from_url' => $this->addImage($args, $connection),
             'generate_main_image' => $this->generatePicture($args, $connection),
             'file_entries' => $this->fileEntries($args, $connection),
+            'list_blocks' => $this->listBlocks($args),
         };
     }
 
@@ -336,7 +351,118 @@ final class McpContent
             'terms' => $terms,
             'fields' => $this->withAddresses($item->type, $this->types->values($item->type, $item->meta, 'en', $this->defaultLang())),
             'translations' => $siblings,
+            'blocks' => is_array($item->meta['blocks'] ?? null) ? array_values($item->meta['blocks']) : [],
         ];
+    }
+
+    /** list_blocks: the blocks of the theme, or the fields of one. @param array<string, mixed> $args @return array<string, mixed> */
+    private function listBlocks(array $args): array
+    {
+        $registry = $this->registry();
+        if (!isset($args['type']) || trim((string)$args['type']) === '') {
+            $out = [];
+            foreach ($registry->all() as $type => $definition) {
+                $out[] = ['type' => $type, 'label' => (string)$definition['label'], 'description' => (string)($definition['description'] ?? ''), 'category' => (string)($definition['category'] ?? '')];
+            }
+            $out[] = ['type' => BlockContainer::TYPE, 'label' => 'Container', 'description' => 'Columns holding other blocks: {"type": "container", "columns": [{"blocks": [...]}, ...]}; made and arranged best in the admin.', 'category' => 'Layout'];
+            return ['blocks' => $out];
+        }
+        $type = (string)$args['type'];
+        $definition = $registry->get($type);
+        if ($definition === null) {
+            throw new \InvalidArgumentException('There is no block "' . $type . '". list_blocks without type lists them.');
+        }
+        return [
+            'type' => $type,
+            'label' => (string)$definition['label'],
+            'description' => (string)($definition['description'] ?? ''),
+            'fields' => array_map(self::describeField(...), $definition['fields']),
+            'shared_fields' => array_map(self::describeField(...), $definition['common']),
+        ];
+    }
+
+    private function registry(): BlockRegistry
+    {
+        if ($this->blocks === null) {
+            throw new \InvalidArgumentException('Blocks cannot be written through this connection.');
+        }
+        return ($this->blocks)();
+    }
+
+    /**
+     * The blocks given to a write, checked as strictly as the fields: a block type, a field or a layout the theme does not know, or a
+     * value the block would change or drop, is a problem that names it. What is given back is what the editor keeps.
+     *
+     * @param list<string> $problems
+     * @return list<array<string, mixed>>
+     */
+    private function checkBlocks(mixed $given, array &$problems): array
+    {
+        if (!is_array($given) || !array_is_list($given)) {
+            $problems[] = 'blocks must be a list of blocks, each an object with its type.';
+            return [];
+        }
+        if (count($given) > self::MAX_BLOCKS) {
+            $problems[] = 'blocks takes at most ' . self::MAX_BLOCKS . ' blocks.';
+            return [];
+        }
+        $registry = $this->registry();
+        $check = function (array $list, string $where, bool $inContainer) use (&$check, $registry, &$problems): void {
+            foreach ($list as $i => $block) {
+                $at = $where . '[' . $i . ']';
+                if (!is_array($block) || !is_string($block['type'] ?? null)) {
+                    $problems[] = $at . ' must be an object with a type.';
+                    continue;
+                }
+                $type = $block['type'];
+                if ($type === BlockContainer::TYPE) {
+                    if ($inContainer) {
+                        $problems[] = $at . ': a container cannot be inside a container.';
+                        continue;
+                    }
+                    foreach (is_array($block['columns'] ?? null) ? array_values($block['columns']) : [] as $c => $column) {
+                        $check(is_array($column['blocks'] ?? null) ? array_values($column['blocks']) : [], $at . '.columns[' . $c . '].blocks', true);
+                    }
+                    continue;
+                }
+                $definition = $registry->get($type);
+                if ($definition === null) {
+                    $problems[] = $at . ': there is no block "' . $type . '" (list_blocks lists them).';
+                    continue;
+                }
+                $fields = $definition['common'] + $definition['fields'];
+                $unknown = array_diff(array_keys($block), array_merge(['type'], array_keys($fields)));
+                if ($unknown !== []) {
+                    $problems[] = $at . ' (' . $type . ') has no ' . implode(', ', $unknown) . ' (it has: ' . implode(', ', array_keys($fields)) . ').';
+                    continue;
+                }
+                $kept = $registry->sanitizeForStorage([$block])[0] ?? ['type' => $type];
+                foreach ($block as $key => $value) {
+                    if ($key === 'type' || self::blank($value)) {
+                        continue;
+                    }
+                    if (!array_key_exists($key, $kept) && !self::same($fields[$key]['default'] ?? '', $value)) {
+                        $problems[] = $at . '.' . $key . ' (' . $type . '): ' . json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ' is not a value it takes'
+                            . (isset($fields[$key]['options']) ? ' (one of: ' . implode(', ', array_keys($fields[$key]['options'])) . ')' : '') . '.';
+                    }
+                }
+                if ($type === 'video') {
+                    foreach (is_array($kept['videos'] ?? null) ? $kept['videos'] : [] as $v => $row) {
+                        $url = trim((string)($row['url'] ?? ''));
+                        if ($url !== '' && BlockRenderer::videoInfo($url) === null) {
+                            $problems[] = $at . '.videos[' . $v . '].url: ' . $url . ' is not a YouTube or Vimeo link or a video file.';
+                        }
+                    }
+                }
+            }
+        };
+        $check($given, 'blocks', false);
+        return $registry->sanitizeForStorage($given);
+    }
+
+    private static function blank(mixed $value): bool
+    {
+        return $value === null || $value === '' || $value === [] || $value === false;
     }
 
     /**
@@ -605,6 +731,11 @@ final class McpContent
             }
         }
 
+        $blocks = null;
+        if (array_key_exists('blocks', $args)) {
+            $blocks = $this->checkBlocks($args['blocks'], $problems);
+        }
+
         if ($problems !== []) {
             throw new \InvalidArgumentException(implode("\n", $problems));
         }
@@ -648,6 +779,11 @@ final class McpContent
         }
         if ($mainImage !== null) {
             $post['main_image'] = $mainImage;
+        }
+        if ($blocks !== null) {
+            // As the block editor sends them, which also lets [] take every block away.
+            $post['blocks_editor'] = '1';
+            $post['blocks_json'] = json_encode($blocks, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         }
         if (isset($args['seo'])) {
             $seo = (is_array($args['seo']) ? $args['seo'] : []) + (is_array($meta['seo'] ?? null) ? $meta['seo'] : []);

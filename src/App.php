@@ -4509,7 +4509,8 @@ final class App
                 : null,
             pictureState: fn(string $entry): ?array => $this->aiPictures()->entryState($entry),
             relations: $this->relations(),
-            admin: $this->contentAdmin()
+            admin: $this->contentAdmin(),
+            blocks: fn(): BlockRegistry => $this->blockRuntime()->registry()
         );
     }
 
