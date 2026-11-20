@@ -1,0 +1,123 @@
+{% extends '@admin/base.twig' %}
+
+{% block content %}
+  {% set btn_primary = 'inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700' %}
+  {% set btn_secondary = 'inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50' %}
+  {% set code_input = input_class ~ ' max-w-[11rem] font-mono tracking-widest' %}
+
+  {% if turned_on %}<template data-flash data-type="success">Second factor turned on.</template>{% endif %}
+  {% if turned_off %}<template data-flash data-type="success">Second factor turned off.</template>{% endif %}
+  {% if renewed %}<template data-flash data-type="success">New recovery codes made. The old ones no longer work.</template>{% endif %}
+
+  <div class="mb-3 flex items-center gap-2 text-sm text-slate-400">
+    <a href="{{ url('admin/users-edit') }}?id={{ user.id }}" class="hover:text-slate-600">Your profile</a>
+    <span>/</span>
+    <span class="text-slate-600">Second factor</span>
+  </div>
+
+  <div class="max-w-3xl space-y-4">
+    {% if must_set_up %}
+      <div class="rounded-md border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-900">Your role requires a second factor. Set it up here to go on to the rest of the admin.</div>
+    {% endif %}
+    {% if error %}
+      <div class="rounded-md border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-800">{{ error }}</div>
+    {% endif %}
+
+    {% if recovery_codes %}
+      <div class="rounded-lg border border-emerald-200 bg-white p-4" data-recovery-codes>
+        <h2 class="text-sm font-semibold text-slate-900">Your recovery codes</h2>
+        <p class="mt-1 text-sm text-slate-500">Each one signs you in once, in place of a code from the app: for a lost or new phone. Keep them somewhere safe, away from this computer. They are shown only now.</p>
+        <ol class="mt-3 grid grid-cols-2 gap-x-6 gap-y-1 font-mono text-sm text-slate-800 sm:grid-cols-5">
+          {% for code in recovery_codes %}<li>{{ code }}</li>{% endfor %}
+        </ol>
+        <button type="button" class="{{ btn_secondary }} mt-3" data-copy-codes>Copy</button>
+        <script type="application/json" data-codes-text>{{ recovery_codes|join("\n")|json_encode|raw }}</script>
+      </div>
+    {% endif %}
+
+    {% if setup %}
+      <div class="rounded-lg border border-slate-200 bg-white p-4">
+        <div class="flex items-center justify-between gap-3">
+          <h2 class="text-sm font-semibold text-slate-900">Set up a second factor</h2>
+          <span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">Off</span>
+        </div>
+        <p class="mt-1 text-sm text-slate-500">After your password, signing in will ask for a code from an authenticator app on your phone (Google Authenticator, Microsoft Authenticator, 1Password, Authy and the like). Signing in with Google is not asked: Google has its own.</p>
+        <div class="mt-4 flex flex-col gap-5 sm:flex-row">
+          {% if setup.qr %}
+            <div class="shrink-0 self-start rounded-md border border-slate-200 bg-white p-1" data-qr>{{ setup.qr|raw }}</div>
+          {% endif %}
+          <div class="min-w-0 flex-1 space-y-3 text-sm">
+            <p class="text-slate-600"><span class="font-medium text-slate-800">1.</span> In the app, add an account and scan the code.</p>
+            <p class="text-slate-600">Or type this key: <code class="mt-1 block break-all rounded bg-slate-100 px-2 py-1 font-mono text-slate-900" data-setup-key>{{ setup.key }}</code></p>
+            <form method="post" class="space-y-2">
+              {{ csrf_field() }}
+              <input type="hidden" name="action" value="enable">
+              <label class="block">
+                <span class="mb-1 block text-slate-600"><span class="font-medium text-slate-800">2.</span> Enter the 6-digit code the app shows.</span>
+                <input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" required maxlength="8" class="{{ code_input }}">
+              </label>
+              <button type="submit" class="{{ btn_primary }}">Turn on</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    {% else %}
+      <div class="rounded-lg border border-slate-200 bg-white p-4">
+        <div class="flex items-center justify-between gap-3">
+          <h2 class="text-sm font-semibold text-slate-900">Second factor</h2>
+          <span class="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">On</span>
+        </div>
+        <dl class="mt-3 space-y-1.5 text-xs">
+          <div class="flex justify-between gap-3"><dt class="text-slate-400">Since</dt><dd class="text-slate-600">{{ status.enabled_at }}</dd></div>
+          <div class="flex justify-between gap-3"><dt class="text-slate-400">Recovery codes left</dt><dd class="{{ status.recovery_left <= 2 ? 'font-medium text-red-700' : 'text-slate-600' }}">{{ status.recovery_left }} of 10</dd></div>
+          {% if required %}<div class="flex justify-between gap-3"><dt class="text-slate-400">Required</dt><dd class="text-slate-600">by your role</dd></div>{% endif %}
+        </dl>
+        {% if status.lost %}
+          <p class="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">This server cannot read the key your app uses (the site was restored from a backup, or its key file is gone). Only recovery codes work until you set it up again: turn it off with a recovery code, then on.</p>
+        {% endif %}
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-2">
+        <form method="post" class="rounded-lg border border-slate-200 bg-white p-4">
+          {{ csrf_field() }}
+          <input type="hidden" name="action" value="renew">
+          <h2 class="text-sm font-semibold text-slate-900">New recovery codes</h2>
+          <p class="mt-1 text-sm text-slate-500">Ten new codes in place of the ones left.</p>
+          <label class="mt-3 block">
+            <span class="mb-1 block text-xs text-slate-500">A code from your app, or a recovery code</span>
+            <input type="text" name="code" autocomplete="one-time-code" required maxlength="20" class="{{ code_input }}">
+          </label>
+          <button type="submit" class="{{ btn_secondary }} mt-3">Make new codes</button>
+        </form>
+        {% if not required %}
+          <form method="post" class="rounded-lg border border-slate-200 bg-white p-4">
+            {{ csrf_field() }}
+            <input type="hidden" name="action" value="disable">
+            <h2 class="text-sm font-semibold text-slate-900">Turn off</h2>
+            <p class="mt-1 text-sm text-slate-500">Signing in will ask for your password only.</p>
+            <label class="mt-3 block">
+              <span class="mb-1 block text-xs text-slate-500">A code from your app, or a recovery code</span>
+              <input type="text" name="code" autocomplete="one-time-code" required maxlength="20" class="{{ code_input }}">
+            </label>
+            <button type="submit" class="mt-3 inline-flex items-center gap-1.5 rounded-md border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-700 shadow-sm hover:bg-red-50">Turn off</button>
+          </form>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    {% if not must_set_up %}
+      <a href="{{ url('admin/users-edit') }}?id={{ user.id }}" class="{{ btn_secondary }}">Back to your profile</a>
+    {% endif %}
+  </div>
+
+  <script>
+    (() => {
+      const button = document.querySelector('[data-copy-codes]');
+      const source = document.querySelector('[data-codes-text]');
+      if (!button || !source || !navigator.clipboard) return;
+      button.addEventListener('click', () => {
+        navigator.clipboard.writeText(JSON.parse(source.textContent)).then(() => { button.textContent = 'Copied'; });
+      });
+    })();
+  </script>
+{% endblock %}

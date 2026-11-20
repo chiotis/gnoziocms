@@ -159,6 +159,17 @@ final class SystemDatabase
                 created_at INTEGER NOT NULL
             )"
         ));
+        // A person's second factor (SecondFactor): the TOTP secret, sealed by SecretBox; the hashes of the recovery codes left; the
+        // last step a code was taken for, so no code is taken twice.
+        $this->applyMigration($pdo, '202611200001_user_second_factors', fn(PDO $db) => $db->exec(
+            "CREATE TABLE IF NOT EXISTS user_second_factors (
+                user_id INTEGER PRIMARY KEY,
+                secret TEXT NOT NULL,
+                recovery TEXT NOT NULL DEFAULT '[]',
+                last_step INTEGER NOT NULL DEFAULT 0,
+                enabled_at TEXT NOT NULL
+            )"
+        ));
     }
 
     /**

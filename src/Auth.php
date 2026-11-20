@@ -16,6 +16,8 @@ final class Auth
     public const ABSOLUTE_SECONDS = 86400;
     /** The session key that says why the last session ended ('idle' or 'absolute'), for the sign-in page. */
     public const ENDED = 'auth_ended';
+    /** The session key of how the person signed in ('password' or 'google'), for the second factor (SecondFactor::mustSetUp()). */
+    public const METHOD = 'auth_method';
 
     private string $usersFile;
     private ?UserRepository $users;
@@ -86,65 +88,79 @@ final class Auth
 
     public function attempt(string $username, string $password): bool
     {
+        $user = $this->checkPassword($username, $password);
+        if ($user === null) {
+            return false;
+        }
+        $this->complete($user, 'password');
+        return true;
+    }
+
+    /**
+     * The account a username (or email) and password belong to, as the session keeps it (without the hash), or null. Nothing
+     * else happens: a second factor may still be asked before complete() signs the person in.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function checkPassword(string $username, string $password): ?array
+    {
         if ($this->users && $this->users->isAvailable()) {
             $user = $this->users->findForLogin($username);
             if ($user) {
                 $hash = (string)($user['password_hash'] ?? '');
                 if ($this->users->isActive($user) && !UserRepository::isAutomation($user) && $hash !== '' && password_verify($password, $hash)) {
-                    $this->users->markLastLogin((int)$user['id']);
-                    $sessionUser = $this->users->publicUser($user);
-                    $sessionUser['last_login_at'] = gmdate('c');
-                    $this->establishSession($sessionUser);
-                    return true;
+                    return $this->users->publicUser($user);
                 }
-                return false;
+                return null;
             }
             // The database knows every account once it is there (users.yaml is imported into it): a name it does not have is not
             // one that signs in, whatever an old users.yaml still says about a renamed, demoted or deleted account.
-            return false;
+            return null;
         }
 
-        $users = $this->loadUsers();
-        foreach ($users as $user) {
+        foreach ($this->loadUsers() as $user) {
             if (($user['username'] ?? '') !== $username) {
                 continue;
             }
-
             $hash = (string)($user['password'] ?? '');
             if (str_starts_with($hash, 'plain:')) {
-                if (hash_equals(substr($hash, 6), $password)) {
-                    $this->establishSession($this->withoutPassword($user));
-                    return true;
-                }
-                return false;
+                return hash_equals(substr($hash, 6), $password) ? $this->withoutPassword($user) : null;
             }
-
-            if ($hash !== '' && password_verify($password, $hash)) {
-                $this->establishSession($this->withoutPassword($user));
-                return true;
-            }
-            return false;
+            return $hash !== '' && password_verify($password, $hash) ? $this->withoutPassword($user) : null;
         }
-        return false;
+        return null;
     }
 
-    public function loginUser(array $user): void
+    /** Signs in an account checkPassword() gave (after its second factor, when it has one). $method: 'password' or 'google'. */
+    public function complete(array $user, string $method): void
+    {
+        if ($this->users && (int)($user['id'] ?? 0) > 0) {
+            $this->users->markLastLogin((int)$user['id']);
+            $user = $this->users->publicUser($user);
+            $user['last_login_at'] = gmdate('c');
+        }
+        $this->establishSession($user, $method);
+    }
+
+    /** Signs in an account found another way: Google sign-in ($method 'google'), the first administrator. */
+    public function loginUser(array $user, string $method = 'password'): void
     {
         // An automation account is never a signed-in person, whatever leads here.
         if (UserRepository::isAutomation($user)) {
             return;
         }
-        if ($this->users && isset($user['id'])) {
-            $this->users->markLastLogin((int)$user['id']);
-            $user = $this->users->publicUser($user);
-            $user['last_login_at'] = gmdate('c');
-        }
-        $this->establishSession($user);
+        $this->complete($user, $method);
+    }
+
+    /** How this session signed in: 'password', 'google', or '' for a session from before this was kept. */
+    public function method(): string
+    {
+        return (string)($_SESSION[self::METHOD] ?? '');
     }
 
     public function logout(): void
     {
-        unset($_SESSION['user'], $_SESSION['security_default_password'], $_SESSION['auth_started'], $_SESSION['auth_seen']);
+        unset($_SESSION['user'], $_SESSION['security_default_password'], $_SESSION['auth_started'], $_SESSION['auth_seen'], $_SESSION[self::METHOD]);
         $this->rotateSession();
     }
 
@@ -198,11 +214,12 @@ final class Auth
         return false;
     }
 
-    private function establishSession(array $user): void
+    private function establishSession(array $user, string $method): void
     {
         // A fresh session id on privilege change prevents session fixation.
         $this->rotateSession();
         $_SESSION['user'] = $user;
+        $_SESSION[self::METHOD] = $method;
         $now = ($this->clock)();
         $_SESSION['auth_started'] = $now;
         $_SESSION['auth_seen'] = $now;

@@ -27,6 +27,7 @@ final class LoginController
      * @param \Closure(string): void $redirect sends the visitor to a path (and ends the request)
      * @param \Closure(int, array<int, string>): void $respond sets the status of the answer and the header lines to send with it
      * @param (callable(string, array<int, mixed>, string): array{body: mixed, status: int, error: string})|null $googleHttp replaces the calls to Google (for tests)
+     * @param SecondFactor|null $secondFactor asks for a code after the password of a person who has set one up
      */
     public function __construct(
         private Auth $auth,
@@ -39,7 +40,8 @@ final class LoginController
         private \Closure $render,
         private \Closure $redirect,
         private \Closure $respond,
-        private $googleHttp = null
+        private $googleHttp = null,
+        private ?SecondFactor $secondFactor = null
     ) {
     }
 
@@ -61,8 +63,19 @@ final class LoginController
                 ($this->redirect)('/admin');
                 return true;
             }
+            if ($method === 'POST' && (string)($post['step'] ?? '') === 'code') {
+                $this->codeLogin($post, $address);
+                return true;
+            }
             if ($method === 'POST') {
                 $this->passwordLogin($post, $address);
+                return true;
+            }
+            if (isset($get['restart'])) {
+                $this->signIn()->forget();
+            }
+            if ($this->signIn()->pending() !== null) {
+                $this->renderCode();
                 return true;
             }
 
@@ -110,6 +123,16 @@ final class LoginController
         ]);
     }
 
+    /** The second step: the code from the app or a recovery code, for the person who just gave a right password. */
+    public function renderCode(string $error = ''): void
+    {
+        ($this->render)('@admin/login.twig', [
+            'step' => 'code',
+            'error' => $error,
+            'google_auth' => ['ready' => false],
+        ]);
+    }
+
     /** @param array<string, mixed> $post */
     private function passwordLogin(array $post, string $address): void
     {
@@ -119,15 +142,64 @@ final class LoginController
             $this->renderLogin($outcome['message']);
             return;
         }
+        if ($outcome['status'] === 'code') {
+            $this->renderCode();
+            return;
+        }
         if ($outcome['status'] === 'ok') {
-            if ($outcome['default_password']) {
-                $_SESSION['security_default_password'] = true;
-                $this->notifyDefaultPassword($outcome['username']);
-            }
-            ($this->redirect)($this->afterSignIn());
+            $this->signedIn($outcome['default_password'], $outcome['username']);
             return;
         }
         $this->renderLogin($outcome['message']);
+    }
+
+    /** @param array<string, mixed> $post */
+    private function codeLogin(array $post, string $address): void
+    {
+        $outcome = $this->signIn()->code((string)($post['code'] ?? ''), $address);
+        if ($outcome['status'] === 'blocked') {
+            ($this->respond)(429, ['Retry-After: ' . $outcome['retry_after']]);
+            $this->renderCode($outcome['message']);
+            return;
+        }
+        if ($outcome['status'] === 'expired') {
+            $this->renderLogin($outcome['message']);
+            return;
+        }
+        if ($outcome['status'] === 'ok') {
+            if ($outcome['recovery_left'] >= 0) {
+                $this->notifyRecoveryUsed($outcome['username'], $outcome['recovery_left']);
+            }
+            $this->signedIn($outcome['default_password'], $outcome['username']);
+            return;
+        }
+        $this->renderCode($outcome['message']);
+    }
+
+    private function signedIn(bool $defaultPassword, string $username): void
+    {
+        if ($defaultPassword) {
+            $_SESSION['security_default_password'] = true;
+            $this->notifyDefaultPassword($username);
+        }
+        ($this->redirect)($this->afterSignIn());
+    }
+
+    /** A recovery code was used: the person is told how many are left, so they make new ones before they run out. */
+    private function notifyRecoveryUsed(string $username, int $left): void
+    {
+        try {
+            $this->notifications->create([
+                'type' => 'security.recovery_code_used',
+                'title' => 'A recovery code was used',
+                'body' => $username . ' signed in with a recovery code. ' . $left . ' left. If that was not you, change the password and make new codes.',
+                'severity' => $left <= 2 ? 'error' : 'warning',
+                'target_url' => '/admin/second-factor',
+                'context' => ['username' => $username, 'left' => $left],
+            ]);
+        } catch (\Throwable) {
+            // Notifications must never block sign-in.
+        }
     }
 
     private function notifyDefaultPassword(string $username): void
@@ -229,7 +301,7 @@ final class LoginController
 
         $this->users->linkGoogle((int)$user['id'], $accepted['sub'], $email);
         $user = $this->users->find((int)$user['id']) ?: $user;
-        $this->auth->loginUser($user);
+        $this->auth->loginUser($user, 'google');
         ($this->log)('auth.login_success', 'info', 'user', (string)($user['username'] ?? $email), 'User logged in.', [
             'method' => 'google',
             'email' => $email,
@@ -258,7 +330,7 @@ final class LoginController
 
     private function signIn(): SignIn
     {
-        return $this->signIn ??= new SignIn($this->auth, $this->throttle, $this->log);
+        return $this->signIn ??= new SignIn($this->auth, $this->throttle, $this->log, $this->secondFactor, $this->users);
     }
 
     private function google(): GoogleSignIn

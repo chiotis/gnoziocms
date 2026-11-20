@@ -94,6 +94,24 @@
     </div>
   </section>
 
+  {% if can_require_second_factor|default(false) %}
+  <section class="mt-4 rounded-lg border border-slate-200 bg-white p-4" data-second-factor-roles>
+    <h2 class="text-sm font-semibold text-slate-900">Second factor</h2>
+    <p class="mb-3 mt-0.5 text-xs text-slate-500">People of a ticked role who sign in with a password are asked for a code from an authenticator app, and are taken to set one up first if they have none. Signing in with Google is not asked. Suggested: the roles that can change the shop, the settings or the users.</p>
+    <form method="post" action="{{ url('admin/roles') }}" class="flex flex-wrap items-center gap-2">
+      {{ csrf_field() }}
+      <input type="hidden" name="action" value="second_factor_roles">
+      {% for key, role in all_roles %}
+        <label class="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700 has-[:checked]:border-blue-300 has-[:checked]:bg-blue-50 has-[:checked]:text-blue-800">
+          <input type="checkbox" name="second_factor_roles[]" value="{{ key }}" class="h-3.5 w-3.5 rounded border-slate-300" {% if key in second_factor_roles %}checked{% endif %}>
+          {{ role.label }}{% if second_factor_suggested[key]|default(false) %}<span class="text-[10px] font-normal text-slate-400">suggested</span>{% endif %}
+        </label>
+      {% endfor %}
+      <button type="submit" class="{{ btn_secondary }}">Save</button>
+    </form>
+  </section>
+  {% endif %}
+
   <section class="mt-4 rounded-lg border border-slate-200 bg-white p-4">
     <h2 class="text-sm font-semibold text-slate-900">Your own roles</h2>
     <p class="mb-3 mt-0.5 text-xs text-slate-500">A role for a job that is not Admin, Editor, or Basic user. It appears as a column above, where you choose exactly what it may do, and in Users, where you give it to people. A role can only be deleted once nobody has it.</p>

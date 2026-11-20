@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.316 — 2026-11-20 — A second factor for the admin
+- **Second factor** (audit S9b): from their profile, anyone in the admin can add a code from an authenticator app (Google Authenticator, Microsoft Authenticator, 1Password and the like) to their password sign-in. The QR code is drawn by the site itself; turning it on gives ten recovery codes, shown once. After the password, the sign-in page asks for the code; wrong codes count against the same limits as wrong passwords. The secret is kept encrypted like the other secrets.
+- **Required by role**: Users > Roles > *Second factor* lets the super admin require it for roles (none by default; the roles that can change the shop, the settings or the users are suggested). A person of such a role is taken to set it up after signing in with a password. Signing in with Google is not asked.
+- The super admin can clear someone's second factor from their profile (a lost phone), and anyone with access to the server can with `php scripts/clear-second-factor.php <username>`; both are logged.
+
 ## 0.1.315 — 2026-11-19 — A kept page without booting the site
 - **Page cache, faster** (audit P2): with System > Page cache on, a kept copy is sent by `public/index.php` before the application boots, for a visitor with no session and an address with no query. On a development copy a copy went from 44 ms to 0.7 ms to the first byte. An admin change still empties every copy at once, and an update makes new ones (the version is in the key).
 - **Nothing asked after every visit** (audit P3): when nothing was due after a response (a backup, scheduled entries, pictures, jobs, Omni), copies are sent for the next minute without asking again; scheduled entries are released at most a minute later on a site without cron. The check that folds old per-language forms runs on admin pages, not on every visit.

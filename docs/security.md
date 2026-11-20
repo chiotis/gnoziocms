@@ -81,9 +81,30 @@ Admin > History and the editor's History tab need `content.manage`. Restoring or
 - A rejected submission returns HTTP 419 with a "form expired" message and is written to the activity log as `security.csrf_rejected`. Uploads larger than PHP's `post_max_size` arrive without any fields and are rejected the same way.
 - Sign-out is `POST` only. `GET /admin/logout` just redirects.
 
+### Second factor
+
+- A person can add a second factor from their profile (**Second factor**, `/admin/second-factor`): a code from an
+  authenticator app (TOTP, RFC 6238: 6 digits, 30 seconds; `src/Totp.php`). The screen shows a QR code, drawn on the server
+  (`src/QrCode.php`) so the secret never goes to a service that draws codes, and the key to type. It is turned on with a code from
+  the app, and then shows ten recovery codes once; each signs in once in place of a code from the app.
+- After a right password, the session holds who gave it for five minutes and the sign-in page asks for the code; nobody is signed
+  in until it is given. A code is taken from the step before and after too (a phone clock a little off), and never twice. A wrong
+  code counts against the limits of *Sign-in Throttling* below like a wrong password, and a right password does not clear them:
+  only a right code does. Signing in with a recovery code leaves a notification saying how many are left.
+- The secret is kept sealed by the site key (*Settings Secrets*), the recovery codes only as SHA-256 hashes, in
+  `user_second_factors` (`src/SecondFactor.php`). On a server without the key (a backup restored elsewhere) the codes from the
+  app cannot be checked; recovery codes still work, and the screen says to set it up again.
+- **Users > Roles > Second factor**: the super admin chooses the roles that must have one (none by default; the roles that can
+  change the shop, the settings or the users are marked as suggested). A person of such a role who signs in with a password and has
+  none is taken to set it up before any other admin page, and cannot turn it off. Signing in with Google is not asked for a code
+  (Google has its own) and is not sent to set one up.
+- New recovery codes and turning it off each need a code. The super admin can clear another person's (a lost phone), from that
+  person's profile; it is logged. Someone with access to the server can clear anyone's, the super admin's included:
+  `php scripts/clear-second-factor.php <username>` (also logged).
+
 ### Sign-in Throttling
 
-- Failed password sign-ins are stored in the `login_attempts` SQLite table.
+- Failed password sign-ins, and wrong codes of the second factor, are stored in the `login_attempts` SQLite table.
 - 8 failures from one address, or 12 failures for one username, within 15 minutes block further attempts (HTTP 429 with `Retry-After`) until the oldest counted failure ages out.
 - The address is the visitor's address as *Trusted proxies* (below) defines it: `REMOTE_ADDR`, unless the request comes from a listed proxy. MCP's limits and the activity log use the same address.
 
@@ -176,7 +197,7 @@ set, and says why. Pages themselves are still built with the request's host when
 
 1. Point the web root at `public/` only. `content/`, `storage/`, `src/`, and `vendor/` must never be reachable over HTTP.
 2. Serve the site over HTTPS.
-3. Change the shipped admin password immediately (the admin banner reminds you).
+3. Change the shipped admin password immediately (the admin banner reminds you). Consider requiring a second factor for the roles that can change the shop, the settings or the users (*Second factor* above).
 4. Keep `storage/` shut off, and with it the files visitors attach to forms (`storage/form-uploads/`): they are private and only the admin gives them out. With the web root on `public/` (point 1) nothing else is needed; as defence in depth Apache gets `storage/form-uploads/.htaccess` (`Require all denied`, written by the CMS) and nginx should have:
 
    ```nginx

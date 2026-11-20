@@ -56,6 +56,7 @@ final class App
     private BackupRunRepository $backupRuns;
     private LoginThrottle $loginThrottle;
     private ?SecretBox $secretBoxService = null;
+    private ?SecondFactor $secondFactorService = null;
     private ?LoginController $loginControllerService = null;
     private BackupService $backups;
     private FormSubmissionRepository $formSubmissions;
@@ -1359,6 +1360,7 @@ final class App
         'users' => 'handleUsersList',
         'users-edit' => 'handleUserEdit',
         'users-delete' => 'handleUserDelete',
+        'second-factor' => 'handleSecondFactor',
         'edit' => 'handleEdit',
         'save' => 'handleSave',
         'block-presets' => 'handleBlockPresets',
@@ -1369,7 +1371,7 @@ final class App
     ];
 
     /** Admin addresses whose POST only reads, previews or exports, so the cache in front of the site stays as it is. */
-    private const ADMIN_POSTS_THAT_CHANGE_NOTHING = ['search', 'markdown-visual', 'media-picker', 'block-presets', 'notification-read', 'notifications-read-all', 'forms-export', 'form-file', 'form-files-zip', 'export', 'omni', 'mcp', 'mcp-authorize', 'activity-logs', 'email-logs', 'ai-publishing', 'ai-picture'];
+    private const ADMIN_POSTS_THAT_CHANGE_NOTHING = ['search', 'markdown-visual', 'media-picker', 'block-presets', 'notification-read', 'notifications-read-all', 'forms-export', 'form-file', 'form-files-zip', 'export', 'omni', 'mcp', 'mcp-authorize', 'activity-logs', 'email-logs', 'ai-publishing', 'ai-picture', 'second-factor'];
 
     private function frontCache(): FrontCache
     {
@@ -1434,6 +1436,12 @@ final class App
                 $_SESSION[LoginController::AFTER_SIGN_IN] = (string)($_SERVER['REQUEST_URI'] ?? '');
             }
             $this->redirect('/admin/login');
+            return;
+        }
+
+        // A role that requires a second factor, signed in with a password and without one: set it up before anything else.
+        if ($action !== 'second-factor' && $this->secondFactor()->mustSetUp($this->auth->user(), $this->auth->method())) {
+            $this->redirect('/admin/second-factor');
             return;
         }
 
@@ -1503,8 +1511,38 @@ final class App
                 foreach ($headers as $header) {
                     header($header);
                 }
-            }
+            },
+            null,
+            $this->secondFactor()
         );
+    }
+
+    private function secondFactor(): SecondFactor
+    {
+        return $this->secondFactorService ??= new SecondFactor($this->systemDatabase, $this->secretBox(), $this->systemMeta);
+    }
+
+    /** /admin/second-factor: a person's own second factor, and the super admin clearing someone else's. */
+    private function handleSecondFactor(): void
+    {
+        $user = $this->auth->user() ?? [];
+        $admin = new SecondFactorAdmin(
+            $this->secondFactor(),
+            $this->users,
+            fn(string $action, string $level, ?string $type, ?string $id, string $message, array $context) => $this->logActivity($action, $level, $type, $id, $message, $context),
+            (string)($this->settings['title'] ?? '') ?: 'GnozioCMS'
+        );
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
+            $this->redirect($admin->apply($user, $_POST));
+            return;
+        }
+        $this->render('@admin/second-factor.twig', $admin->screen($user, $_GET, $this->secondFactor()->mustSetUp($user, $this->auth->method())) + [
+            'title' => 'Second factor',
+            'types' => $this->content->getTypes(),
+            'user' => $this->auth->user(),
+            'admin_section' => 'users',
+            'current_type' => 'pages',
+        ]);
     }
 
     private function handleDashboard(): void
@@ -1545,12 +1583,37 @@ final class App
         }
 
         $roles = $this->roleAdmin();
+        $superadmin = ($this->auth->user()['role'] ?? '') === 'superadmin';
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && (string)($_POST['action'] ?? '') === 'second_factor_roles') {
+            if (!$superadmin) {
+                $this->renderForbidden();
+                return;
+            }
+            $known = array_keys($this->permissions->allRoles());
+            $chosen = array_values(array_intersect($known, array_map('strval', (array)($_POST['second_factor_roles'] ?? []))));
+            $this->secondFactor()->setRequiredRoles($chosen);
+            $this->logActivity('roles.second_factor', 'warning', 'role', implode(',', $chosen), 'Roles that require a second factor changed.', ['roles' => $chosen]);
+            $this->redirect('/admin/roles?saved=1');
+            return;
+        }
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $this->redirect($roles->apply($this->permissions, $_POST));
             return;
         }
 
         $screen = $roles->screen($this->permissions);
+        // The roles that may require a second factor, and the ones that hold the most (shop, settings, users), suggested.
+        $suggested = [];
+        foreach ($this->permissions->allRoles() as $key => $role) {
+            $caps = $this->permissions->capabilitiesForRole((string)$key);
+            $suggested[$key] = $key === 'superadmin' || array_intersect(['shop.manage', 'settings.manage', 'users.manage'], $caps) !== [];
+        }
+        $screen += [
+            'second_factor_roles' => $this->secondFactor()->requiredRoles(),
+            'second_factor_suggested' => $suggested,
+            'all_roles' => $this->permissions->allRoles(),
+            'can_require_second_factor' => $superadmin,
+        ];
 
         $this->render('@admin/roles.twig', $screen + [
             'locked' => ['admin.access', 'users.self'],
@@ -2158,6 +2221,10 @@ final class App
             'can_manage_users' => $canManageUsers,
             'can_change_access' => $this->permissions->canChangeAccessForUser($currentUser, $id),
             'is_self' => $id > 0 && $id === $currentId,
+            'second_factor' => $id > 0 && !$automation ? $this->secondFactor()->status($id) : null,
+            'second_factor_required' => $this->secondFactor()->requiredFor($edited),
+            'can_clear_second_factor' => ($currentUser['role'] ?? '') === 'superadmin' && $id !== $currentId,
+            'second_factor_cleared' => isset($_GET['second_factor_cleared']),
             'types' => $this->content->getTypes(),
             'user' => $this->auth->user(),
             'admin_section' => 'users',
