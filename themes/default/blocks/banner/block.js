@@ -3,15 +3,23 @@
 (function () {
   var DAY = 24 * 60 * 60 * 1000;
 
+  /* A dismissal kept under the old name (0.1.316 and older: faros-banner-…) is read once and moved. */
   function read(key) {
-    try { return parseInt(window.localStorage.getItem(key) || '0', 10); } catch (e) { return 0; }
+    try {
+      var old = 'faros-' + key.slice('gnozio-'.length);
+      if (window.localStorage.getItem(key) === null && window.localStorage.getItem(old) !== null) {
+        window.localStorage.setItem(key, window.localStorage.getItem(old));
+        window.localStorage.removeItem(old);
+      }
+      return parseInt(window.localStorage.getItem(key) || '0', 10);
+    } catch (e) { return 0; }
   }
   function write(key) {
     try { window.localStorage.setItem(key, String(Date.now() + 30 * DAY)); } catch (e) { /* private mode */ }
   }
 
   document.querySelectorAll('[data-banner]').forEach(function (box) {
-    var key = 'faros-banner-' + box.getAttribute('data-banner');
+    var key = 'gnozio-banner-' + box.getAttribute('data-banner');
     var section = box.closest('.block') || box;
     if (read(key) > Date.now()) {
       section.hidden = true;

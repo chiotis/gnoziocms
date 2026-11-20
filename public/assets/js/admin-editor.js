@@ -1132,7 +1132,7 @@
     count();
   }
 
-  function remember(mode) { try { localStorage.setItem('faros-editor-mode', mode); } catch (e) { /* not kept, nothing lost */ } }
+  function remember(mode) { try { localStorage.setItem('gnozio-editor-mode', mode); } catch (e) { /* not kept, nothing lost */ } }
 
   function toVisual(first) {
     say('');
@@ -1174,11 +1174,19 @@
     buildTools();
     Array.prototype.forEach.call(modeButtons, function (b) { b.hidden = false; });
     var preferred = 'visual';
-    try { preferred = localStorage.getItem('faros-editor-mode') === 'markdown' ? 'markdown' : 'visual'; } catch (e) { /* the default */ }
+    try {
+      // A choice kept under the old name (0.1.316 and older) is read once and moved.
+      if (localStorage.getItem('gnozio-editor-mode') === null && localStorage.getItem('faros-editor-mode') !== null) {
+        localStorage.setItem('gnozio-editor-mode', localStorage.getItem('faros-editor-mode'));
+        localStorage.removeItem('faros-editor-mode');
+      }
+      preferred = localStorage.getItem('gnozio-editor-mode') === 'markdown' ? 'markdown' : 'visual';
+    } catch (e) { /* the default */ }
     if (preferred === 'visual') { toVisual(true); } else { show('markdown'); }
   }
 
   // Keep the old global available to existing integrations.
+  // The old name stays for custom code (docs/rebranding.md).
   window.GnozioEditor = window.FarosEditor = {
     /** For tests: the Markdown the visual side writes (every block written again, unless full is false). */
     markdownOf: function (full) { return serialize(full !== false); },

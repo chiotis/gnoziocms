@@ -72,7 +72,7 @@ def post_theme(overrides):
             fields.append((k, item))
     return root.request('/admin/theme', data=fields)
 def style(html):
-    m = re.search(r'<style id="faros-branding">(.*?)</style>', html, re.S)
+    m = re.search(r'<style id="gnozio-branding">(.*?)</style>', html, re.S)
     return m.group(1) if m else ''
 
 # ---- the screen
@@ -83,7 +83,7 @@ check('the single font file field of earlier versions is still posted, and shown
 check('Your own font is the name of the choice', 'Your own font</option>' in html or 'Your own font<' in html)
 js = root.get('/assets/js/admin-branding-fonts.js')
 check('the script is served', js[0] == 200 and 'data-bf' in js[2], js[0])
-check('the page is unchanged for visitors', 'faros-branding' not in pub.get('/about')[2])
+check('the page is unchanged for visitors', 'gnozio-branding' not in pub.get('/about')[2])
 
 # ---- uploading: who may, and what is accepted
 token = csrf()

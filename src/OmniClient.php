@@ -12,6 +12,7 @@ namespace GnozioCMS;
 final class OmniClient
 {
     public const META_KEY = 'omni';
+    /** The public Omni's address; the domain is the one it runs on (docs/rebranding.md). */
     public const DEFAULT_URL = 'https://omni.faroscms.com';
     public const PROTOCOL = 1;
     /** The interval Omni asks for is kept between these, in seconds; 6 hours until it says. */

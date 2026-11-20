@@ -39,7 +39,7 @@ def post_theme(overrides, tab='branding'):
     return root.request('/admin/theme', data=fields)
 def d(**v): return {'theme_settings[design][%s]' % k: val for k, val in v.items()}
 def style():
-    m = re.search(r'<style id="faros-branding">(.*?)</style>', pub.get('/about')[2], re.S)
+    m = re.search(r'<style id="gnozio-branding">(.*?)</style>', pub.get('/about')[2], re.S)
     return m.group(1) if m else ''
 def stored():
     c = sqlite3.connect('app/storage/db/app.sqlite'); v = c.execute("select value from system_meta where key='theme_settings'").fetchone(); c.close()

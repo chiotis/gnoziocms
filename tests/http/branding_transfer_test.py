@@ -44,7 +44,7 @@ def get_raw(client, path):
     except urllib.error.HTTPError as e:
         return e.code, e.headers, e.read()
 def style(html):
-    m = re.search(r'<style id="faros-branding">(.*?)</style>', html, re.S)
+    m = re.search(r'<style id="gnozio-branding">(.*?)</style>', html, re.S)
     return m.group(1) if m else ''
 def post_theme(overrides):
     form = next(f for f in root.forms('/admin/theme?tab=branding') if any(x[0] == 'active_tab' for x in f['fields']))

@@ -3,6 +3,7 @@
  * phone links. No cookie is set and nothing is kept in the browser. What is sent is the page, where the visitor came from, the width of
  * the window and the kind of click; the server keeps no address. Visitors who ask not to be tracked (Do Not Track, Global Privacy Control)
  * are not counted, and neither are robots that say what they are. `gnozio.event("name")` counts an event of the page's own.
+ * The file keeps its name from before the rename: custom templates and kept pages load it at this address (docs/rebranding.md).
  */
 (function () {
   'use strict';

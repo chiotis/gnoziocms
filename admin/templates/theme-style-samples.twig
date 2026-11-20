@@ -30,7 +30,7 @@
     .sample-swatch:nth-child(3) { background: var(--accent); }
     @media (min-width: 900px) { .sample-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   </style>
-  <style id="faros-branding">{{ branding_css()|raw }}</style>
+  <style id="gnozio-branding">{{ branding_css()|raw }}</style>
   {% set custom_css = custom_asset('css/custom.css') %}
   {% if custom_css %}<link rel="stylesheet" href="{{ custom_css }}">{% endif %}
 </head>

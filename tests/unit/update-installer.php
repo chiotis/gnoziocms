@@ -284,11 +284,11 @@ file_put_contents($server . '/state', 'ok');
 file_put_contents($server . '/router.php', '<?php
 $path = parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH);
 $state = trim((string)file_get_contents(__DIR__ . "/state"));
-$seen = $_SERVER["HTTP_X_FAROS_UPDATE"] ?? "";
+$seen = $_SERVER["HTTP_X_GNOZIO_UPDATE"] ?? "";
 file_put_contents(__DIR__ . "/seen", $path . " " . $seen . "\n", FILE_APPEND);
-$nonce = $_GET["_faros_check"] ?? "";
+$nonce = $_GET["_gnozio_check"] ?? "";
 if ($state !== "cached" && $seen === "tok123" && preg_match("/^[a-f0-9]{32}$/", $nonce)) {
-    header("X-Faros-Update-Check: " . hash_hmac("sha256", "0.2.0|" . $nonce, $seen));
+    header("X-Gnozio-Update-Check: " . hash_hmac("sha256", "0.2.0|" . $nonce, $seen));
 }
 if ($state === "truncated") { header("Content-Length: 100000"); echo "<urlset"; return; }
 if ($state === "redirect" && $path === "/") { header("Location: /about", true, 302); return; }

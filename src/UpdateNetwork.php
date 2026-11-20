@@ -10,7 +10,7 @@ namespace GnozioCMS;
  */
 final class UpdateNetwork
 {
-    public const CHECK_HEADER = 'X-Faros-Update-Check';
+    public const CHECK_HEADER = MaintenanceMode::CHECK_HEADER;
     private const CHECK_SECONDS = 20;
     private const REQUEST_SECONDS = 5;
     private const MAX_CHECK_BYTES = 2097152;
@@ -121,7 +121,7 @@ final class UpdateNetwork
                 continue;
             }
             $nonce = bin2hex(random_bytes(16));
-            [$status, $body, $proof] = self::get(rtrim($baseUrl, '/') . $path . '?_faros_check=' . $nonce, $token, min(self::REQUEST_SECONDS, $remaining));
+            [$status, $body, $proof] = self::get(rtrim($baseUrl, '/') . $path . '?' . MaintenanceMode::CHECK_PARAMETER . '=' . $nonce, $token, min(self::REQUEST_SECONDS, $remaining));
             if ($status === 0) {
                 $unknown[] = $path . ' could not be checked (no complete response)';
                 continue;

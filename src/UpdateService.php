@@ -11,6 +11,7 @@ namespace GnozioCMS;
 final class UpdateService
 {
     public const DEFAULT_REPOSITORY = 'chiotis/gnoziocms';
+    /** The repository's name before the rename: older settings name it, and GitHub redirects it (docs/rebranding.md). */
     private const LEGACY_REPOSITORY = 'chiotis/faroscms';
     public const STATUS_META_KEY = 'update_status';
     public const RELEASE_META_KEY = 'update_release';

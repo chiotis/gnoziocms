@@ -1,13 +1,21 @@
 /* GnozioCMS default theme: colour mode, navigation, accessible mobile drawer, sticky header. */
 (function () {
   const root = document.documentElement;
-  const modeKey = 'faroscms-mode';
-  const paletteKey = 'faroscms-palette';
+  const modeKey = 'gnozio-mode';
+  const paletteKey = 'gnozio-palette';
   const media = window.matchMedia('(prefers-color-scheme: dark)');
 
   const storage = {
+    /* A choice kept under the old name (0.1.316 and older: faroscms-mode, faroscms-palette) is read once and moved. */
     get(key) {
-      try { return localStorage.getItem(key); } catch (e) { return null; }
+      try {
+        const old = 'faroscms-' + key.slice('gnozio-'.length);
+        if (localStorage.getItem(key) === null && localStorage.getItem(old) !== null) {
+          localStorage.setItem(key, localStorage.getItem(old));
+          localStorage.removeItem(old);
+        }
+        return localStorage.getItem(key);
+      } catch (e) { return null; }
     },
     set(key, value) {
       try { localStorage.setItem(key, value); } catch (e) { /* private mode */ }

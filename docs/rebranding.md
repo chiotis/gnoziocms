@@ -28,13 +28,15 @@ Some old names deliberately remain because they identify a stored format, a depl
 | --- | --- |
 | `faroscms-backup.json` | Existing and new backups stay readable by the same backup/restore tooling. |
 | `faroscms-branding` and the `faroscms` export metadata field | Existing branding exports and imports continue to work. |
-| `X-Faros-Update`, `X-Faros-Update-Check`, `_faros_check` | An updater already running the old code can verify the newly installed code. |
 | Omni's `faros` report field and `https://omni.faroscms.com` | The existing Omni service and protocol remain usable. |
 | Legacy `chiotis/faroscms` source values and GitHub links | Recognised official source settings resolve to the new repository; GitHub redirects must remain available for older installations and existing links after the rename. |
 | `/assets/js/faros-analytics.js` | Existing custom templates and cached pages can still load the analytics script. Both analytics API names work. |
-| Browser storage keys, preview element IDs and demo image filenames | Saved preferences, custom integrations and existing media URLs retain their meaning. |
+| `faros-branding` as a theme's branding style ID | The default theme now prints `gnozio-branding`; the Branding preview fills either, so a theme copied from an older default keeps working. |
+| Demo image filenames | Existing media URLs keep their meaning. |
 | `FAROS_TEST_*` environment variables | Existing CI and local test commands continue to work. |
 
 No automatic migration rewrites a site's saved title, stored settings, content, custom code or uploaded files. Update source values are saved only through the explicit Settings save described above. New installations default to GnozioCMS, and the distributed starter content uses the new name. Historical changelog entries and old-content test fixtures retain their original names.
 
-The legacy aliases, backup formats, updater headers and Omni protocol remain unchanged. Domain changes, removal of legacy aliases and new export protocols would be separate migrations.
+Since 0.1.317 the update check uses `X-Gnozio-Update`, `_gnozio_check` and `X-Gnozio-Update-Check`. An update is checked by the code of the version it starts from, so the site still answers the old `X-Faros-Update` and `_faros_check`, with its proof under `X-Faros-Update-Check` (`MaintenanceMode::presented()`). Those can go once no site is left on 0.1.316 or older. The browser keeps preferences under `gnozio-mode`, `gnozio-palette`, `gnozio-banner-…`, `gnozio-editor-mode` and `gnozio.entryPreview.…`. A value saved under the old name is read once and moved.
+
+The legacy aliases, backup formats and Omni protocol remain unchanged. Domain changes, removal of legacy aliases and new export protocols would be separate migrations.

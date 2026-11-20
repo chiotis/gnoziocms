@@ -35,7 +35,7 @@ def a(**v): return {'theme_settings[appearance][%s]' % k: val for k, val in v.it
 def page(path='/about'):
     return pub.get(path)[2]
 def style(html):
-    m = re.search(r'<style id="faros-branding">(.*?)</style>', html, re.S)
+    m = re.search(r'<style id="gnozio-branding">(.*?)</style>', html, re.S)
     return m.group(1) if m else ''
 def header(html):
     m = re.search(r'<header class="site-header[^"]*"[^>]*>.*?</header>', html, re.S)
@@ -50,7 +50,7 @@ def asset(kind):
 
 # ---- a site that sets nothing is styled by the theme alone
 html = page()
-check('without any choice the page has no branding style and no icons', 'faros-branding' not in html and 'rel="icon"' not in html and 'theme-color' not in html and 'apple-touch-icon' not in html)
+check('without any choice the page has no branding style and no icons', 'gnozio-branding' not in html and 'rel="icon"' not in html and 'theme-color' not in html and 'apple-touch-icon' not in html)
 
 # ---- the tab
 st, _, html = root.get('/admin/theme')
@@ -92,7 +92,7 @@ check('the Colour card has no colour fields of its own besides the palette and t
 check('the real site is shown in a frame beside it, with a size and a mode to choose', 'data-bp-frame' in html and 'title="Preview of the site"' in html and html.count('data-bp-size') >= 3 and html.count('data-bp-mode') >= 3)
 check('it asks for the preview at the address of the screen, and loads its script', 'data-endpoint="' in html and 'theme?preview=branding' in html and 'admin-branding.js' in html and html.count('js/admin-preview.js') == 1)
 js = root.get('/assets/js/admin-preview.js')
-check('the script of the preview is served', js[0] == 200 and 'faros-branding' in js[2] and 'preview_path' in js[2], js[0])
+check('the script of the preview is served', js[0] == 200 and 'gnozio-branding' in js[2] and 'preview_path' in js[2], js[0])
 check('and the one of the colours and the resets', root.get('/assets/js/admin-branding.js')[0] == 200)
 check('the old tabs are gone, an old link opens the first', root.get('/admin/theme?tab=brand')[2].count('name="active_tab" value="branding"') == 1)
 defaults_match = re.search(r'data-bp-defaults="([^"]+)"', html)
@@ -125,7 +125,7 @@ check('colours sent the old way become a site palette on top of the ready-made o
 css = style(page())
 check('the page has them in a style of its own, with the shades worked out', '--accent-l:#c026d3;' in css and '--accent-l-hover:' in css and '--accent-l-soft:' in css and '--accent-d:#93c5fd;' in css and '--n-bg:#fffdf8;' in css and '--ink:#323130;' in css and '--ink-rgb:50 49 48;' in css, css[:300])
 html = page()
-check('after the theme\'s style sheet and before the site\'s own', html.index('site.css') < html.index('id="faros-branding"'), None)
+check('after the theme\'s style sheet and before the site\'s own', html.index('site.css') < html.index('id="gnozio-branding"'), None)
 check('and the browser colour is in the head', '<meta name="theme-color" content="#1e293b">' in html)
 (res, hdr, _), _ = post_theme(d(light_accent='not a colour', light_text='red', light_surface='#12'))
 check('a colour that is not hex changes nothing', '"accent":"#c026d3"' in stored() and 'not a colour' not in stored() and '"text"' not in stored().split('site_palettes')[1].split('site_palette:')[0], stored()[:900])
@@ -273,7 +273,7 @@ check('a custom pair that does not read is not used', '#ffff00' not in css)
 html = root.get('/admin/theme?tab=branding')[2]
 check('and the screen shows them chosen', re.search(r'name="theme_settings\[design\]\[btn_primary_bg\]" value="ink"', html) is not None and re.search(r'name="theme_settings\[design\]\[link_underline\]" value="hover" checked', html) is not None)
 st, hdr, body = root.get('/admin/theme?preview=specimen')
-check('the specimen draws the three styles in light and dark with their states, using the unsaved-free current CSS', st == 200 and body.count('btn-primary') >= 8 and 'btn-text' in body and 'data-state="focus"' in body and ' disabled>' in body and 'mode-dark' in body and 'id="faros-branding"' in body and '--btn-bg:var(--ink)' in body)
+check('the specimen draws the three styles in light and dark with their states, using the unsaved-free current CSS', st == 200 and body.count('btn-primary') >= 8 and 'btn-text' in body and 'data-state="focus"' in body and ' disabled>' in body and 'mode-dark' in body and 'id="gnozio-branding"' in body and '--btn-bg:var(--ink)' in body)
 check('it needs theme access', ed.get('/admin/theme?preview=specimen')[0] in (302, 403) and pub.get('/admin/theme?preview=specimen')[0] in (302, 403))
 st, _, body = preview(root, **{'theme_settings[design][btn_secondary_text]': 'accent', 'theme_settings[design][link_color]': 'javascript:x'})
 check('the live preview follows an unsaved button choice and refuses a bad one', st == 200 and '.btn:not(.btn-primary):not(.btn-text){--btn-text:var(--accent)' in json.loads(body)['css'] and 'javascript' not in body)

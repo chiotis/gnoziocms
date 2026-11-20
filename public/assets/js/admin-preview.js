@@ -116,10 +116,11 @@
       var doc = frameDocument();
       if (!doc || !doc.documentElement || !doc.head) { return; }
       if (mode === 'css' && latest) {
-        var style = doc.getElementById('faros-branding');
+        // A theme copied before the rename (0.1.316 and older) still names its branding style faros-branding.
+        var style = doc.getElementById('gnozio-branding') || doc.getElementById('faros-branding');
         if (!style) {
           style = doc.createElement('style');
-          style.id = 'faros-branding';
+          style.id = 'gnozio-branding';
           // Keep the same cascade as a saved page: the site's custom CSS still comes last.
           var custom = doc.querySelector('link[rel="stylesheet"][href*="/_custom/css/custom.css"]');
           doc.head.insertBefore(style, custom);

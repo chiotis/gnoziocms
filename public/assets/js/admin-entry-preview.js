@@ -20,13 +20,20 @@
   var close = panel.querySelector('[data-entry-preview-close]');
   var frame = panel.querySelector('[data-bp-frame]');
 
-  var KEY_OPEN = 'faros.entryPreview.open';
-  var KEY_WIDTH = 'faros.entryPreview.width';
+  var KEY_OPEN = 'gnozio.entryPreview.open';
+  var KEY_WIDTH = 'gnozio.entryPreview.width';
   var MIN = 320;
   var MAX = 900;
   var narrow = window.matchMedia('(max-width: 1199.98px)');
 
-  function read(key) { try { return window.localStorage.getItem(key); } catch (e) { return null; } }
+  // A choice kept under the old name (0.1.316 and older: faros.entryPreview.…) is read once and moved.
+  function read(key) {
+    try {
+      var store = window.localStorage, old = 'faros.' + key.slice('gnozio.'.length);
+      if (store.getItem(key) === null && store.getItem(old) !== null) { store.setItem(key, store.getItem(old)); store.removeItem(old); }
+      return store.getItem(key);
+    } catch (e) { return null; }
+  }
   function write(key, value) { try { window.localStorage.setItem(key, value); } catch (e) { /* private window: the choice is not kept */ } }
 
   var width = parseInt(read(KEY_WIDTH), 10) || 560;
@@ -103,21 +110,21 @@
     var doc = frameDocument();
     var el = blockInFrame(index);
     if (!doc || !el) { return; }
-    if (!doc.getElementById('faros-entry-preview')) {
+    if (!doc.getElementById('gnozio-entry-preview')) {
       var style = doc.createElement('style');
-      style.id = 'faros-entry-preview';
-      style.textContent = '.faros-bk-hit{outline:3px solid #2563eb !important;outline-offset:-3px;transition:outline-color .4s}';
+      style.id = 'gnozio-entry-preview';
+      style.textContent = '.gnozio-bk-hit{outline:3px solid #2563eb !important;outline-offset:-3px;transition:outline-color .4s}';
       doc.head.appendChild(style);
     }
-    Array.prototype.forEach.call(doc.querySelectorAll('.faros-bk-hit'), function (other) { other.classList.remove('faros-bk-hit'); });
-    el.classList.add('faros-bk-hit');
+    Array.prototype.forEach.call(doc.querySelectorAll('.gnozio-bk-hit'), function (other) { other.classList.remove('gnozio-bk-hit'); });
+    el.classList.add('gnozio-bk-hit');
     if (scroll) {
       try { frame.contentWindow.scrollTo({ top: Math.max(0, el.getBoundingClientRect().top + frame.contentWindow.scrollY - 72), behavior: 'smooth' }); } catch (e) { /* no scrolling */ }
     }
     outlined = { index: index, until: Date.now() + 1600 };
     setTimeout(function () {
       var again = blockInFrame(index);
-      if (again && Date.now() >= outlined.until - 50) { again.classList.remove('faros-bk-hit'); }
+      if (again && Date.now() >= outlined.until - 50) { again.classList.remove('gnozio-bk-hit'); }
     }, 1650);
   }
 

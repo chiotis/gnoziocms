@@ -17,6 +17,7 @@ use ZipArchive;
  */
 final class BackupService
 {
+    /** The name from before the rename, kept: older releases restore the backups this one makes (docs/rebranding.md). */
     public const MANIFEST_NAME = 'faroscms-backup.json';
     public const MANIFEST_FORMAT = 1;
     /**

@@ -102,7 +102,8 @@
   <script data-cfasync="false">
     (function () {
       try {
-        var mode = localStorage.getItem('faroscms-mode');
+        {# site.js moves a choice kept under the old name (0.1.316 and older); until it has, this reads that one. #}
+        var mode = localStorage.getItem('gnozio-mode') || localStorage.getItem('faroscms-mode');
         if (mode === 'light' || mode === 'dark') {
           document.documentElement.dataset.mode = mode;
           document.documentElement.classList.toggle('dark', mode === 'dark');
@@ -133,7 +134,7 @@
   {# The choices of Theme > Branding (colours, type, spacing, buttons, logo sizes) come after the theme's styles and before the site's own. #}
   {% set branding_style = branding_css() %}
   {% if branding_style %}
-  <style id="faros-branding">{{ branding_style|raw }}</style>
+  <style id="gnozio-branding">{{ branding_style|raw }}</style>
   {% endif %}
   {{ branding_head(current_language|default('')) }}
   {% set custom_css = custom_asset('css/custom.css') %}

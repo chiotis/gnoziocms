@@ -232,5 +232,6 @@
     records.forEach(function (record) { record.addedNodes.forEach(scan); });
   }).observe(document.body, { childList: true, subtree: true });
 
+  // The old name stays for custom code (docs/rebranding.md).
   window.GnozioIconPicker = window.FarosIconPicker = { enhance: enhance };
 })();

@@ -121,7 +121,8 @@ final class PageCache
     public static function serveEarly(string $basePath, array $server, array $cookies, ?\Closure $send = null): bool
     {
         $uri = (string)($server['REQUEST_URI'] ?? '/');
-        if (($server['REQUEST_METHOD'] ?? 'GET') !== 'GET' || str_contains($uri, '?') || isset($server['HTTP_X_FAROS_UPDATE'])
+        if (($server['REQUEST_METHOD'] ?? 'GET') !== 'GET' || str_contains($uri, '?') || isset($server['HTTP_X_GNOZIO_UPDATE'])
+            || isset($server['HTTP_X_FAROS_UPDATE']) /* the old name, MaintenanceMode::OLD */
             || isset($cookies[(string)ini_get('session.name')]) || is_file($basePath . '/storage/maintenance.flag')) {
             return false;
         }

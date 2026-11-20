@@ -81,7 +81,7 @@ function boot(storage) {
   await wait(50);
   check('the toggle shows the panel and says so (aria-expanded)', !panel.hidden && toggle.getAttribute('aria-expanded') === 'true');
   check('showing it asks for a picture at once', t.calls.length === 1 && t.calls[0].url === '/admin/edit?preview=entry', t.calls.length);
-  check('the choice is remembered', t.w.localStorage.getItem('faros.entryPreview.open') === '1');
+  check('the choice is remembered', t.w.localStorage.getItem('gnozio.entryPreview.open') === '1');
   const sent = Array.from(t.calls[0].body.keys());
   check('the form is sent whole, but not the file field', sent.includes('title') && sent.includes('_csrf') && !sent.includes('main_image_upload'), sent);
   check('the frame shows the answer', t.d.querySelector('[data-bp-frame]').srcdoc === '<p>drawn</p>');
@@ -110,15 +110,22 @@ function boot(storage) {
 
   // ---- hiding is remembered; a remembered choice opens it next time
   toggle.click();
-  check('the toggle hides it again and remembers', panel.hidden && toggle.getAttribute('aria-expanded') === 'false' && t.w.localStorage.getItem('faros.entryPreview.open') === '0');
-  t = boot({ 'faros.entryPreview.open': '1', 'faros.entryPreview.width': '640' });
+  check('the toggle hides it again and remembers', panel.hidden && toggle.getAttribute('aria-expanded') === 'false' && t.w.localStorage.getItem('gnozio.entryPreview.open') === '0');
+  t = boot({ 'gnozio.entryPreview.open': '1', 'gnozio.entryPreview.width': '640' });
   await wait(50);
   check('a remembered "open" shows the panel when the page loads, at the remembered width', !t.d.querySelector('[data-entry-preview]').hidden && t.d.querySelector('[data-entry-split]').style.getPropertyValue('--ep-width') === '640px');
+
+  t = boot({ 'faros.entryPreview.open': '1', 'faros.entryPreview.width': '600' });
+  await wait(50);
+  check('a choice kept under the old name (0.1.316 and older) is used, and moved to the new one', !t.d.querySelector('[data-entry-preview]').hidden && t.d.querySelector('[data-entry-split]').style.getPropertyValue('--ep-width') === '600px'
+    && t.w.localStorage.getItem('gnozio.entryPreview.width') === '600' && t.w.localStorage.getItem('faros.entryPreview.width') === null);
+  t = boot({ 'gnozio.entryPreview.open': '1', 'gnozio.entryPreview.width': '640' });
+  await wait(50);
 
   // ---- width with the keyboard
   const grip = t.d.querySelector('[data-entry-preview-grip]');
   grip.dispatchEvent(new t.w.KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
-  check('the grip widens the panel with the left arrow and remembers it', t.d.querySelector('[data-entry-split]').style.getPropertyValue('--ep-width') === '664px' && t.w.localStorage.getItem('faros.entryPreview.width') === '664');
+  check('the grip widens the panel with the left arrow and remembers it', t.d.querySelector('[data-entry-split]').style.getPropertyValue('--ep-width') === '664px' && t.w.localStorage.getItem('gnozio.entryPreview.width') === '664');
   for (let i = 0; i < 30; i++) { grip.dispatchEvent(new t.w.KeyboardEvent('keydown', { key: 'ArrowLeft', shiftKey: true, bubbles: true })); }
   check('the width stops at its limit', t.d.querySelector('[data-entry-split]').style.getPropertyValue('--ep-width') === '900px');
 
@@ -141,7 +148,7 @@ function boot(storage) {
   delete t.w.GnozioBlocks;
   // ---- and the other way: a block opened in the builder is outlined in the picture
   t.d.querySelectorAll('.bk-toggle')[0].click();
-  check('a block header clicked in the builder outlines the block in the picture', doc.querySelector('[data-bk-block="0"]').classList.contains('faros-bk-hit'));
+  check('a block header clicked in the builder outlines the block in the picture', doc.querySelector('[data-bk-block="0"]').classList.contains('gnozio-bk-hit'));
 
   console.log(failed ? 'FAILED: ' + failed : 'ALL PASSED');
   process.exit(failed ? 1 : 0);

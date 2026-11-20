@@ -19,7 +19,7 @@ final class OmniReport
     /**
      * @param callable(): array<string, mixed> $settings the site settings
      * @param callable(): array{name: string, url: string, admin_url: string} $site
-     * @param callable(): array{version: string, commit: string} $faros
+     * @param callable(): array{version: string, commit: string} $code this install's version and commit
      * @param callable(): array{summary: array<string, mixed>, measurement: array{parts: array<string, int>, measured_at: int}} $storage SiteLimits::summary() and measurement()
      * @param callable(int): array<int, array<string, mixed>> $backupRuns BackupRunRepository::recent(), newest first
      * @param callable(): array<string, mixed> $cron CronStatus::info()
@@ -30,7 +30,7 @@ final class OmniReport
     public function __construct(
         private $settings,
         private $site,
-        private $faros,
+        private $code,
         private $storage,
         private $backupRuns,
         private $cron,
@@ -46,7 +46,7 @@ final class OmniReport
         $now = $this->clock !== null ? ($this->clock)() : time();
         $settings = ($this->settings)();
         $site = ($this->site)();
-        $faros = ($this->faros)();
+        $code = ($this->code)();
         return [
             'protocol' => self::PROTOCOL,
             'sent_at' => self::utc($now),
@@ -55,11 +55,12 @@ final class OmniReport
                 'url' => (string)($site['url'] ?? ''),
                 'admin_url' => (string)($site['admin_url'] ?? ''),
             ],
-            'faros' => ['version' => (string)($faros['version'] ?? ''), 'commit' => (string)($faros['commit'] ?? '')],
+            // The field keeps its name from before the rename: Omni's protocol v1 reads it (docs/rebranding.md).
+            'faros' => ['version' => (string)($code['version'] ?? ''), 'commit' => (string)($code['commit'] ?? '')],
             'storage' => $this->storage(),
             'backups' => $this->backups($settings, $now),
             'analytics' => self::analytics($settings),
-            'updates' => $this->updates((string)($faros['version'] ?? '')),
+            'updates' => $this->updates((string)($code['version'] ?? '')),
             'system' => $this->system(),
         ];
     }

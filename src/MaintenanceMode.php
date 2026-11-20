@@ -13,7 +13,15 @@ namespace GnozioCMS;
 final class MaintenanceMode
 {
     public const MAX_AGE = 900;
-    public const HEADER = 'X-Faros-Update';
+    public const HEADER = 'X-Gnozio-Update';
+    public const CHECK_PARAMETER = '_gnozio_check';
+    public const CHECK_HEADER = 'X-Gnozio-Update-Check';
+    /**
+     * The names before the rename (0.1.316 and older). An update is checked by the code of the version it starts from, so a
+     * site updating from one of those asks with these and reads its proof under the old header. They can go once no site
+     * is left on 0.1.316 or older (Omni shows the versions).
+     */
+    private const OLD = ['header' => 'HTTP_X_FAROS_UPDATE', 'parameter' => '_faros_check', 'proof' => 'X-Faros-Update-Check'];
 
     public function __construct(private string $basePath)
     {
@@ -59,6 +67,23 @@ final class MaintenanceMode
     {
         $state = $this->state();
         return $state !== null && !($presentedToken !== '' && hash_equals($state['token'], $presentedToken));
+    }
+
+    /**
+     * What a request holds for the check of an update: the token, the challenge and the header the proof goes back in, under
+     * the names it was asked with.
+     *
+     * @param array<string, mixed> $server $_SERVER
+     * @param array<string, mixed> $query $_GET
+     * @return array{token: string, nonce: string, proof: string}
+     */
+    public static function presented(array $server, array $query): array
+    {
+        $new = (string)($server['HTTP_X_GNOZIO_UPDATE'] ?? '');
+        $old = $new === '' ? (string)($server[self::OLD['header']] ?? '') : '';
+        $parameter = $old !== '' ? self::OLD['parameter'] : self::CHECK_PARAMETER;
+        return ['token' => $new !== '' ? $new : $old, 'nonce' => is_string($query[$parameter] ?? null) ? $query[$parameter] : '',
+            'proof' => $old !== '' ? self::OLD['proof'] : self::CHECK_HEADER];
     }
 
     public static function page(): string

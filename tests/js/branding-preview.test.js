@@ -55,19 +55,19 @@ function boot(mode = 'css') {
   field.dispatchEvent(new t.w.Event('input', { bubbles: true }));
   await wait(300);
   check('a normal field change requests the CSS preview', t.calls.length === 1 && t.calls[0].options.body.get(field.name) === 'rose');
-  check('Branding JSON without html applies the CSS and attributes', t.doc().getElementById('faros-branding')?.textContent === ':root{--accent-l:#ff0000}' && t.doc().documentElement.getAttribute('data-theme') === 'rose');
-  check('the preview preserves the custom stylesheet priority', t.doc().getElementById('faros-branding').nextElementSibling?.getAttribute('href') === '/_custom/css/custom.css?v=1');
+  check('Branding JSON without html applies the CSS and attributes', t.doc().getElementById('gnozio-branding')?.textContent === ':root{--accent-l:#ff0000}' && t.doc().documentElement.getAttribute('data-theme') === 'rose');
+  check('the preview preserves the custom stylesheet priority', t.doc().getElementById('gnozio-branding').nextElementSibling?.getAttribute('href') === '/_custom/css/custom.css?v=1');
   check('each CSS draw is announced for inherited-value indicators', drawn === 1);
   check('removing an existing logo previews the name, with no stale image or label', !t.doc().querySelector('.site-brand img') && t.doc().querySelector('.site-brand-title').textContent === 'Sample site' && !t.doc().querySelector('.site-brand').hasAttribute('aria-label'));
   t.answer({ error: 'Invalid', css: '', attributes: {} });
   await t.refresh();
-  check('an invalid response keeps the previous preview', t.doc().getElementById('faros-branding').textContent.includes('#ff0000'));
+  check('an invalid response keeps the previous preview', t.doc().getElementById('gnozio-branding').textContent.includes('#ff0000'));
   t.answer({ html: '<p>Wrong response</p>' });
   await t.refresh();
-  check('an HTML response cannot replace a CSS preview', t.doc().getElementById('faros-branding').textContent.includes('#ff0000'));
+  check('an HTML response cannot replace a CSS preview', t.doc().getElementById('gnozio-branding').textContent.includes('#ff0000'));
   t.answer({ css: '', attributes: { 'data-theme': 'slate', 'data-mode': 'light' }, name: 'Sample site', logo: '' });
   await t.refresh();
-  check('a reset refresh clears old CSS and restores the palette', t.doc().getElementById('faros-branding').textContent === '' && t.doc().documentElement.getAttribute('data-theme') === 'slate');
+  check('a reset refresh clears old CSS and restores the palette', t.doc().getElementById('gnozio-branding').textContent === '' && t.doc().documentElement.getAttribute('data-theme') === 'slate');
   t.w.close();
 
   t = boot();
@@ -83,10 +83,16 @@ function boot(mode = 'css') {
   await wait(20);
   check('Style samples draws fetched HTML without framing an admin page', t.frame.srcdoc.includes('<h1>Heading one</h1>') && t.frame.title === 'Style samples');
   t.fresh(); t.frame.dispatchEvent(new t.w.Event('load'));
-  check('a newly loaded specimen receives the unsaved palette and CSS', t.doc().documentElement.getAttribute('data-theme') === 'rose' && t.doc().getElementById('faros-branding').textContent.includes('#ff0000'));
+  check('a newly loaded specimen receives the unsaved palette and CSS', t.doc().documentElement.getAttribute('data-theme') === 'rose' && t.doc().getElementById('gnozio-branding').textContent.includes('#ff0000'));
   const site = t.d.querySelector('[data-bp-view][value="site"]');
   site.checked = true; site.dispatchEvent(new t.w.Event('change'));
   check('returning to Site clears the sample document', !t.frame.hasAttribute('srcdoc') && t.frame.title === 'Preview of the site');
+  t.w.close();
+
+  t = boot();
+  t.doc().head.insertAdjacentHTML('afterbegin', '<style id="faros-branding">old</style>');
+  await t.refresh();
+  check('a theme copied before the rename keeps its old style element, which the preview fills', t.doc().getElementById('faros-branding')?.textContent.includes('#ff0000') && !t.doc().getElementById('gnozio-branding'));
   t.w.close();
 
   t = boot('page');

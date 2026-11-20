@@ -236,16 +236,17 @@ final class App
 
         // Only the current install's token can ask for an uncached proof of the version that actually booted.
         $maintenance = new MaintenanceMode($this->basePath);
-        $updateToken = (string)($_SERVER['HTTP_X_FAROS_UPDATE'] ?? '');
+        $presented = MaintenanceMode::presented($_SERVER, $_GET);
+        $updateToken = $presented['token'];
         $state = $updateToken !== '' ? $maintenance->state() : null;
         $this->updateCheck = $state !== null && hash_equals($state['token'], $updateToken);
         if ($this->updateCheck) {
             FrontCache::doNotKeep();
             header('Cache-Control: private, no-store');
-            $nonce = is_string($_GET['_faros_check'] ?? null) ? $_GET['_faros_check'] : '';
+            $nonce = $presented['nonce'];
             if (preg_match('/^[a-f0-9]{32}$/', $nonce)) {
                 $version = trim((string)file_get_contents($this->basePath . '/VERSION'));
-                header(UpdateNetwork::CHECK_HEADER . ': ' . hash_hmac('sha256', $version . '|' . $nonce, $updateToken));
+                header($presented['proof'] . ': ' . hash_hmac('sha256', $version . '|' . $nonce, $updateToken));
             }
         }
 

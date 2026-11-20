@@ -20,6 +20,7 @@ namespace GnozioCMS;
  */
 final class BrandingTransfer
 {
+    /** The format and the `faroscms` field keep their names from before the rename, so exports move between releases (docs/rebranding.md). */
     public const FORMAT = 'faroscms-branding';
     public const BACKUP_KEY = 'branding_backup';
     /** The settings trees that make the look of a site. */
