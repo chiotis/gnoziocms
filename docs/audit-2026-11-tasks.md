@@ -137,6 +137,8 @@ group. Size: S (an hour or two), M (half a day to a day), L (more).
       among the required extensions and Twig, Yaml and Nette call it; it is one small file.
 - [ ] **B3** (M) Build the skill's snapshot in `scripts/build-release.php` and stop tracking it; the test then checks that the
       build makes it.
+      Left for the owner (2026-11-23): the skill is installed from the repository today; untracking the snapshot means it must
+      ship with each release instead, which changes how it is installed.
 - [x] **B1** (L) Move the shop's wiring and its seven admin handlers out of `App.php` into a `ShopController`, as the first
       step of the App split on the roadmap.
 - [x] **B4** (M) Rename what is left of the old name. The update header and `_faros_check` accept both names for one release.
@@ -150,3 +152,4 @@ group. Size: S (an hour or two), M (half a day to a day), L (more).
       the transport alone cannot replace it; the audit found it safe (local hosts only). Worth it only with those tests reworked.
 - [ ] **B8** (S) On this machine: remove the three old worktrees (`git worktree remove`), move `storage/alaleon/` out of the
       checkout.
+      Left: this is on the owner's machine, not in the repository.
