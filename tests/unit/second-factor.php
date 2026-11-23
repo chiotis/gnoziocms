@@ -29,6 +29,8 @@ check('Reed-Solomon of the textbook example (HELLO WORLD, 1-M)', QrCode::reedSol
 $qr = QrCode::encode(Totp::uri(Totp::newSecret(), 'someone.with.a.long.name', 'A site with a long title'));
 $finder = static fn(QrCode $q, int $x0, int $y0): bool => $q->dark($x0, $y0) && $q->dark($x0 + 6, $y0 + 6) && !$q->dark($x0 + 1, $y0 + 1) && $q->dark($x0 + 3, $y0 + 3);
 check('an otpauth address fits, with its three finder patterns and the dark module', [$qr->version() <= 10, $qr->size() === $qr->version() * 4 + 17, $finder($qr, 0, 0), $finder($qr, $qr->size() - 7, 0), $finder($qr, 0, $qr->size() - 7), $qr->dark(8, $qr->size() - 8)], [true, true, true, true, true, true]);
+check('the app shows the domain, not the title', [SecondFactorAdmin::issuerFor('https://www.Example.gr/site', 'other.test'), SecondFactorAdmin::issuerFor('', 'ελληνικά.test:8080'), SecondFactorAdmin::issuerFor('', 'shop.test:8080'), SecondFactorAdmin::issuerFor('', '')], ['example.gr', 'ελληνικά.test', 'shop.test', 'GnozioCMS']);
+check('a long Greek title no longer matters, a domain always fits', QrCode::encode(Totp::uri(Totp::newSecret(), 'someone.with.a.long.name', SecondFactorAdmin::issuerFor('https://www.a-rather-long-domain-name.gr', '')))->version() <= 10, true);
 check('as one SVG with a white ground', [str_starts_with($qr->svg(), '<svg'), substr_count($qr->svg(), '<path'), str_contains($qr->svg(), 'fill="#fff"')], [true, 1, true]);
 $threw = false;
 try { QrCode::encode(str_repeat('x', 300)); } catch (\LengthException) { $threw = true; }

@@ -21,6 +21,18 @@ final class SecondFactorAdmin
     }
 
     /**
+     * The name the authenticator app shows for this site: its domain (from the site address, else the request), without `www.`.
+     * Not the title: a title in Greek or another non-Latin script grows six-fold in the `otpauth://` address and no longer fits
+     * in the QR code.
+     */
+    public static function issuerFor(string $baseUrl, string $httpHost): string
+    {
+        $host = (string)(parse_url($baseUrl, PHP_URL_HOST) ?: explode(':', $httpHost)[0]);
+        $host = preg_replace('/^www\./', '', strtolower(trim($host, " \t.[]")));
+        return $host !== '' ? $host : 'GnozioCMS';
+    }
+
+    /**
      * Carries out a submitted action for the signed-in person.
      *
      * @param array<string, mixed> $actor

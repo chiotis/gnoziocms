@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.319 — 2026-11-23 — The QR code with a Greek title
+- **Second factor**: the authenticator app names the site by its domain (from the site address, else the request; without `www.`), not its title. A title in Greek grew six-fold in the `otpauth://` address, so the QR code no longer fitted and was left out without a word. Accounts already set up keep the old name and keep working.
+- When the QR code still cannot be drawn (a very long username), the setup screen says so and asks for the key to be typed.
+- Completes 0.1.318, which already called the new name: its second factor screen needs this release.
+
 ## 0.1.318 — 2026-11-23 — The shop out of App.php
 - **ShopController** (audit B1): the shop's wiring (its services, the cart, checkout and account pages, the product feed, the scheduled work) and the seven Shop screens of the admin moved from `src/App.php` to `src/Shop/ShopController.php`. App routes to it and gives it what it needs as functions. Nothing changes in what the shop does, its addresses or who may open what (`scripts/check-permissions.php` prints the same as before). `App.php` is 450 lines shorter.
 - `shop_test` also opens Shop settings > Import & export and the import's status, which no test reached before.

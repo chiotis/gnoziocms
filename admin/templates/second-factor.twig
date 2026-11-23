@@ -47,8 +47,13 @@
             <div class="shrink-0 self-start rounded-md border border-slate-200 bg-white p-1" data-qr>{{ setup.qr|raw }}</div>
           {% endif %}
           <div class="min-w-0 flex-1 space-y-3 text-sm">
-            <p class="text-slate-600"><span class="font-medium text-slate-800">1.</span> In the app, add an account and scan the code.</p>
-            <p class="text-slate-600">Or type this key: <code class="mt-1 block break-all rounded bg-slate-100 px-2 py-1 font-mono text-slate-900" data-setup-key>{{ setup.key }}</code></p>
+            {% if setup.qr %}
+              <p class="text-slate-600"><span class="font-medium text-slate-800">1.</span> In the app, add an account and scan the code.</p>
+            {% else %}
+              <p class="text-slate-600"><span class="font-medium text-slate-800">1.</span> In the app, add an account.</p>
+              <p class="rounded-md bg-amber-50 px-2 py-1.5 text-amber-800" data-no-qr>The QR code could not be drawn: your username is too long for it. Type the key below instead (in the app: <em>Enter a setup key</em>, time based).</p>
+            {% endif %}
+            <p class="text-slate-600">{% if setup.qr %}Or type this key:{% else %}The key:{% endif %} <code class="mt-1 block break-all rounded bg-slate-100 px-2 py-1 font-mono text-slate-900" data-setup-key>{{ setup.key }}</code></p>
             <form method="post" class="space-y-2">
               {{ csrf_field() }}
               <input type="hidden" name="action" value="enable">
