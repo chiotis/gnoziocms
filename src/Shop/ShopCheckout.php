@@ -305,33 +305,40 @@ final class ShopCheckout
         if (!in_array($to, ShopOrders::NEXT[$from] ?? [], true)) {
             return ['ok' => false, 'message' => 'An order that is ' . strtolower(ShopOrders::STATUSES[$from] ?? $from) . ' cannot become ' . strtolower(ShopOrders::STATUSES[$to] ?? $to) . '.', 'order' => $order];
         }
-        if (!$this->orders->setStatus($id, $from, $to)) {
+        // The status, the stock and the coupon change together: a failure half way leaves the order as it was.
+        $lines = $this->orders->atomically(function () use ($id, $from, $to, $order, $note, $actor): ?array {
+            if (!$this->orders->setStatus($id, $from, $to)) {
+                return null;
+            }
+            $lines = $this->orders->lines($id);
+            $stock = (int)$order['stock_held'];
+            if ($to === 'cancelled') {
+                foreach ($lines as $line) {
+                    if (!$line['tracked']) {
+                        continue;
+                    }
+                    if ($stock === self::HELD) {
+                        $this->stock->release($line['product_id'], $this->stock->keyHeld($line['product_id'], $line['variant_key']), $line['quantity']);
+                    } elseif ($stock === self::TAKEN) {
+                        $this->stock->restock($line['product_id'], $this->stock->keyHeld($line['product_id'], $line['variant_key']), $line['quantity']);
+                    }
+                }
+                $this->orders->update($id, ['stock_held' => 0]);
+                $this->coupons->giveBack((string)$order['coupon']);
+            } elseif ($stock === self::HELD && $to !== 'refunded') {
+                foreach ($lines as $line) {
+                    if ($line['tracked']) {
+                        $this->stock->commit($line['product_id'], $this->stock->keyHeld($line['product_id'], $line['variant_key']), $line['quantity']);
+                    }
+                }
+                $this->orders->update($id, ['stock_held' => self::TAKEN]);
+            }
+            $this->orders->addEvent($id, 'status', (ShopOrders::STATUSES[$from] ?? $from) . ' → ' . (ShopOrders::STATUSES[$to] ?? $to) . ($note !== '' ? '. ' . $note : '.'), $actor);
+            return $lines;
+        });
+        if ($lines === null) {
             return ['ok' => false, 'message' => 'The order was changed a moment ago; look at it again.', 'order' => $this->orders->get($id)];
         }
-        $lines = $this->orders->lines($id);
-        $stock = (int)$order['stock_held'];
-        if ($to === 'cancelled') {
-            foreach ($lines as $line) {
-                if (!$line['tracked']) {
-                    continue;
-                }
-                if ($stock === self::HELD) {
-                    $this->stock->release($line['product_id'], $this->stock->keyHeld($line['product_id'], $line['variant_key']), $line['quantity']);
-                } elseif ($stock === self::TAKEN) {
-                    $this->stock->restock($line['product_id'], $this->stock->keyHeld($line['product_id'], $line['variant_key']), $line['quantity']);
-                }
-            }
-            $this->orders->update($id, ['stock_held' => 0]);
-            $this->coupons->giveBack((string)$order['coupon']);
-        } elseif ($stock === self::HELD && $to !== 'refunded') {
-            foreach ($lines as $line) {
-                if ($line['tracked']) {
-                    $this->stock->commit($line['product_id'], $this->stock->keyHeld($line['product_id'], $line['variant_key']), $line['quantity']);
-                }
-            }
-            $this->orders->update($id, ['stock_held' => self::TAKEN]);
-        }
-        $this->orders->addEvent($id, 'status', (ShopOrders::STATUSES[$from] ?? $from) . ' → ' . (ShopOrders::STATUSES[$to] ?? $to) . ($note !== '' ? '. ' . $note : '.'), $actor);
         if ($this->downloads !== null) {
             // Downloads come with the payment (or, for an order paid on delivery, when it is completed) and go with a cancel or refund.
             if (in_array($to, ['paid', 'completed'], true)) {

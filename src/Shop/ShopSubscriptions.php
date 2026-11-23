@@ -165,8 +165,8 @@ final class ShopSubscriptions
         $count = 0;
         foreach (array_map(self::row(...), $stmt->fetchAll(PDO::FETCH_ASSOC)) as $sub) {
             // Claimed first, so two runs at once never charge the same period twice.
-            $claim = $this->pdo()->prepare('UPDATE shop_subscriptions SET next_at = -next_at WHERE id = :id AND next_at = :at');
-            $claim->execute(['id' => $sub['id'], 'at' => $sub['next_at']]);
+            $claim = $this->pdo()->prepare('UPDATE shop_subscriptions SET next_at = -next_at, updated_at = :now WHERE id = :id AND next_at = :at');
+            $claim->execute(['id' => $sub['id'], 'at' => $sub['next_at'], 'now' => time()]);
             if ($claim->rowCount() !== 1) {
                 continue;
             }
@@ -174,6 +174,37 @@ final class ShopSubscriptions
             $count++;
         }
         return $count;
+    }
+
+    /**
+     * Subscriptions claimed for a renewal more than an hour ago and never put back (the run stopped half way, so the card may or
+     * may not have been charged): the period is put back and the subscription paused, for the shop to look before it resumes,
+     * so it is never charged twice on its own. Their renewal order still waiting, if any, is noted.
+     *
+     * @return list<array{id: int, order: string}> the subscriptions put back, with the number of their renewal order waiting
+     */
+    public function recoverStuck(int $after = 3600): array
+    {
+        $stmt = $this->pdo()->prepare('SELECT * FROM shop_subscriptions WHERE next_at < 0 AND updated_at < :cutoff');
+        $stmt->execute(['cutoff' => time() - $after]);
+        $recovered = [];
+        foreach (array_map(self::row(...), $stmt->fetchAll(PDO::FETCH_ASSOC)) as $sub) {
+            $put = $this->pdo()->prepare("UPDATE shop_subscriptions SET next_at = :next, status = 'paused', updated_at = :now WHERE id = :id AND next_at = :at");
+            $put->execute(['next' => abs($sub['next_at']), 'now' => time(), 'id' => $sub['id'], 'at' => $sub['next_at']]);
+            if ($put->rowCount() !== 1) {
+                continue;
+            }
+            $waiting = '';
+            foreach ($this->orders($sub['id']) as $order) {
+                if ($order['link_kind'] === 'renewal' && $order['status'] === 'pending_payment') {
+                    $waiting = (string)$order['number'];
+                    $this->orders->addEvent((int)$order['id'], 'payment', 'The renewal stopped half way: check in the provider\'s back office whether the card was charged, then mark this order paid or cancel it.', 'system');
+                    break;
+                }
+            }
+            $recovered[] = ['id' => $sub['id'], 'order' => $waiting];
+        }
+        return $recovered;
     }
 
     /**

@@ -119,7 +119,7 @@ final class ShopController
 
     /**
      * The shop's work that does not wait for a shopper: orders whose time to be paid ran out, passwords brought from WordPress
-     * and never used here in six months, cleared, and subscriptions whose period has come, charged again (docs/shop-plan.md, section 7). From cron, and, at most once an hour, from the shop's admin screens.
+     * and never used here in six months, cleared, the held stock checked against the open orders, renewals stuck half way put back, and subscriptions whose period has come, charged again (docs/shop-plan.md, section 7). From cron, and, at most once an hour, from the shop's admin screens.
      */
     public function tick(bool $throttle = true): int
     {
@@ -136,6 +136,13 @@ final class ShopController
             $cleared = $services->customers()->clearStaleImportedHashes();
             if ($cleared > 0) {
                 $this->logActivity('shop.imported_passwords_cleared', 'info', 'shop', null, $cleared . ' password(s) brought from WordPress and unused for six months were cleared; those customers set a new one by email.', ['count' => $cleared]);
+            }
+            $orders = $services->orders();
+            foreach ($this->shopStock()->reconcile($orders->heldLines()) as $fix) {
+                $this->logActivity('shop.stock_reconciled', 'warning', 'shop', $fix['product_id'], 'The stock held for product ' . $fix['product_id'] . ($fix['variant_key'] !== '' ? ' (' . $fix['variant_key'] . ')' : '') . ' was ' . $fix['was'] . ' but the open orders hold ' . $fix['now'] . '; it was put right.', $fix);
+            }
+            foreach ($services->subscriptions()->recoverStuck() as $stuck) {
+                $this->logActivity('shop.subscription_stuck', 'warning', 'shop', (string)$stuck['id'], 'Subscription #' . $stuck['id'] . '\'s renewal stopped half way and it was paused. Check whether the card was charged' . ($stuck['order'] !== '' ? ' for order ' . $stuck['order'] : '') . ', then resume it.', $stuck);
             }
             return $services->subscriptions()->renewDue();
         } catch (\Throwable $e) {
