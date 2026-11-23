@@ -117,13 +117,17 @@ group. Size: S (an hour or two), M (half a day to a day), L (more).
       Done: the key is kept for the request; `expire()` runs on the checkout, and on other shop pages only when cron
       has not been seen for 15 minutes.
 
-- [ ] **P9** (S) Admin pages: the due backup, scheduled entries and the AI tick run after the response is sent (as on the
+- [x] **P9** (S) Admin pages: the due backup, scheduled entries and the AI tick run after the response is sent (as on the
       public site), never before the screen.
-- [ ] **P10** (M) Empty the page cache only when what visitors see changed: add the shop's order, customer, coupon and
+      Done: `App::runAdminDueAfterResponse()` where PHP-FPM or LiteSpeed can finish the response; before the screen elsewhere.
+- [x] **P10** (M) Empty the page cache only when what visitors see changed: add the shop's order, customer, coupon and
       subscription screens to the posts that change nothing; saving a draft that stays a draft purges nothing. Test: a cached
       page survives an order's status change and a draft's save, and does not survive a publish.
-- [ ] **P11** (S) Form submissions listed from an index (newest N), not by reading every file; MCP's `last_used_at` written at
+      Done: the shop's order, customer, coupon and subscription screens; `App::savesAHiddenEntry()`; `page_cache_test.py`.
+- [x] **P11** (S) Form submissions listed from an index (newest N), not by reading every file; MCP's `last_used_at` written at
       most once a minute.
+      Done: `FormSubmissionRepository::newest()` opens only the page's files (the ids begin with their time), `stats()` opens
+      only the newest, `find()` opens one; MCP part with S21.
 
 ## Bloat
 

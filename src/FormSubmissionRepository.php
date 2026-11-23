@@ -37,30 +37,80 @@ final class FormSubmissionRepository
     /** @return array<int, array<string, mixed>> newest first */
     public function all(string $slug): array
     {
+        $entries = [];
+        foreach ($this->paths($slug) as $path) {
+            $entry = $this->read($path, $slug);
+            if ($entry !== null) {
+                $entries[] = $entry;
+            }
+        }
+        usort($entries, static fn(array $a, array $b): int => strcmp((string)$b['submitted_at'], (string)$a['submitted_at']));
+        return $entries;
+    }
+
+    /**
+     * One page of a form's submissions, newest first, opening only the files of that page: the ids begin with the time they
+     * were made (newId()), so the names alone give the order. Null when some name does not (then use all()).
+     *
+     * @return array{entries: array<int, array<string, mixed>>, total: int}|null
+     */
+    public function newest(string $slug, int $offset, int $limit): ?array
+    {
+        $paths = $this->datedPaths($slug);
+        if ($paths === null) {
+            return null;
+        }
+        $entries = [];
+        foreach (array_slice($paths, max(0, $offset), max(0, $limit)) as $path) {
+            $entry = $this->read($path, $slug);
+            if ($entry !== null) {
+                $entries[] = $entry;
+            }
+        }
+        return ['entries' => $entries, 'total' => count($paths)];
+    }
+
+    /** @return array<int, string> */
+    private function paths(string $slug): array
+    {
         $dir = $this->directory($slug);
         if ($slug === '' || !is_dir($dir)) {
             return [];
         }
-        $entries = [];
-        foreach (glob($dir . '/*.json') ?: [] as $path) {
-            $data = json_decode((string)file_get_contents($path), true);
-            if (!is_array($data)) {
-                continue;
+        return glob($dir . '/*.json') ?: [];
+    }
+
+    /** The files of a form's submissions, newest name first; null when a name does not begin with its time. @return array<int, string>|null */
+    private function datedPaths(string $slug): ?array
+    {
+        $paths = $this->paths($slug);
+        foreach ($paths as $path) {
+            if (preg_match('/^\d{8}-\d{6}-/', basename($path)) !== 1) {
+                return null;
             }
-            $entries[] = [
-                'id' => (string)($data['id'] ?? basename($path, '.json')),
-                'submitted_at' => (string)($data['submitted_at'] ?? ''),
-                'form' => (string)($data['form'] ?? $slug),
-                'lang' => (string)($data['lang'] ?? ''),
-                'translation_id' => (string)($data['translation_id'] ?? ''),
-                'ip' => (string)($data['ip'] ?? ''),
-                'user_agent' => (string)($data['user_agent'] ?? ''),
-                'fields' => is_array($data['fields'] ?? null) ? $data['fields'] : [],
-                'files' => is_array($data['files'] ?? null) ? $data['files'] : [],
-            ];
         }
-        usort($entries, static fn(array $a, array $b): int => strcmp((string)$b['submitted_at'], (string)$a['submitted_at']));
-        return $entries;
+        rsort($paths, SORT_STRING);
+        return $paths;
+    }
+
+    /** @return array<string, mixed>|null */
+    private function read(string $path, string $slug): ?array
+    {
+        $data = json_decode((string)@file_get_contents($path), true);
+        if (!is_array($data)) {
+            return null;
+        }
+        return [
+            'id' => (string)($data['id'] ?? basename($path, '.json')),
+            'submitted_at' => (string)($data['submitted_at'] ?? ''),
+            'form' => (string)($data['form'] ?? $slug),
+            'lang' => (string)($data['lang'] ?? ''),
+            'translation_id' => (string)($data['translation_id'] ?? ''),
+            'ip' => (string)($data['ip'] ?? ''),
+            'user_agent' => (string)($data['user_agent'] ?? ''),
+            'fields' => is_array($data['fields'] ?? null) ? $data['fields'] : [],
+            'files' => is_array($data['files'] ?? null) ? $data['files'] : [],
+        ];
     }
 
     /** How many submissions of every form arrived in the last days, counted by the time of their files (nothing is opened). */
@@ -79,13 +129,30 @@ final class FormSubmissionRepository
     /** @return array{total: int, last_7_days: int, latest: string} */
     public function stats(string $slug): array
     {
-        $entries = $this->all($slug);
-        $since = time() - 7 * 86400;
-        $recent = array_filter($entries, static fn(array $entry): bool => (int)strtotime((string)$entry['submitted_at']) >= $since);
+        $paths = $this->datedPaths($slug);
+        if ($paths === null) {
+            $entries = $this->all($slug);
+            $since = time() - 7 * 86400;
+            $recent = array_filter($entries, static fn(array $entry): bool => (int)strtotime((string)$entry['submitted_at']) >= $since);
+            return [
+                'total' => count($entries),
+                'last_7_days' => count($recent),
+                'latest' => (string)($entries[0]['submitted_at'] ?? ''),
+            ];
+        }
+        // Counted from the names, which begin with the time of the submission; only the newest one is opened.
+        $since = date('Ymd-His', time() - 7 * 86400);
+        $recent = 0;
+        foreach ($paths as $path) {
+            if (strcmp(substr(basename($path), 0, 15), $since) >= 0) {
+                $recent++;
+            }
+        }
+        $latest = $paths === [] ? null : $this->read($paths[0], $slug);
         return [
-            'total' => count($entries),
-            'last_7_days' => count($recent),
-            'latest' => (string)($entries[0]['submitted_at'] ?? ''),
+            'total' => count($paths),
+            'last_7_days' => $recent,
+            'latest' => (string)($latest['submitted_at'] ?? ''),
         ];
     }
 
@@ -144,12 +211,12 @@ final class FormSubmissionRepository
         if (!self::isValidId($id)) {
             return null;
         }
-        foreach ($this->all($slug) as $entry) {
-            if ($entry['id'] === $id) {
-                return $entry;
-            }
+        $path = $this->directory($slug) . '/' . $id . '.json';
+        if ($slug === '' || !is_file($path)) {
+            return null;
         }
-        return null;
+        $entry = $this->read($path, $slug);
+        return $entry !== null && $entry['id'] === $id ? $entry : null;
     }
 
     /** A new submission's id (the files of a submission are kept under it, so it is decided before they are). */

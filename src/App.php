@@ -378,6 +378,44 @@ final class App
     }
 
     /**
+     * After an admin page, once the response is finished: the scheduled entries, the AI schedules, the backup and the
+     * report to Omni, whichever is due. Nothing is finished early when nothing is due.
+     */
+    private function runAdminDueAfterResponse(): void
+    {
+        try {
+            $releaseDue = $this->scheduleCheckIsDue();
+            $aiDue = (int)$this->systemMeta->get(self::AI_TICK_KEY) < time() - 60;
+            $backupDue = $this->backupManager()->isRunDue();
+            $omniDue = $this->omniClient()->isDue();
+            $finish = CronStatus::finishFunction();
+            if ((!$releaseDue && !$aiDue && !$backupDue && !$omniDue) || $finish === null) {
+                return;
+            }
+            @session_write_close();
+            $finish();
+            if (function_exists('ignore_user_abort')) {
+                @ignore_user_abort(true);
+            }
+            if (function_exists('set_time_limit')) {
+                @set_time_limit(0);
+            }
+            if ($releaseDue) {
+                $this->releaseScheduled(false);
+            }
+            if ($aiDue) {
+                $this->aiTick();
+            }
+            if ($backupDue) {
+                $this->backupManager()->runIfDue();
+            }
+            $this->omniClient()->sendIfDue();
+        } catch (\Throwable) {
+            // Each piece of work tells its own failures (Backups, Activity, Admin > Omni); a screen is never broken by it.
+        }
+    }
+
+    /**
      * After an admin page: the report to Omni, when it is due. Where the response can be finished first nobody waits for it;
      * elsewhere it is sent before the page ends (at most once in RETRY_AFTER_FAILURE when Omni does not answer).
      */
@@ -1345,7 +1383,34 @@ final class App
     ];
 
     /** Admin addresses whose POST only reads, previews or exports, so the cache in front of the site stays as it is. */
-    private const ADMIN_POSTS_THAT_CHANGE_NOTHING = ['search', 'markdown-visual', 'media-picker', 'block-presets', 'notification-read', 'notifications-read-all', 'forms-export', 'form-file', 'form-files-zip', 'export', 'omni', 'mcp', 'mcp-authorize', 'activity-logs', 'email-logs', 'ai-publishing', 'ai-picture', 'second-factor'];
+    private const ADMIN_POSTS_THAT_CHANGE_NOTHING = ['search', 'markdown-visual', 'media-picker', 'block-presets', 'notification-read', 'notifications-read-all', 'forms-export', 'form-file', 'form-files-zip', 'export', 'omni', 'mcp', 'mcp-authorize', 'activity-logs', 'email-logs', 'ai-publishing', 'ai-picture', 'second-factor', 'shop-orders', 'shop-customers', 'shop-coupons', 'shop-subscriptions'];
+
+    /**
+     * Whether this POST saves an entry that visitors cannot see before or after it: a draft or a scheduled entry that stays
+     * one, at the same address (a new one too). Its save leaves the kept pages alone. Anything else, or anything unsure,
+     * empties them.
+     */
+    private function savesAHiddenEntry(string $action): bool
+    {
+        if ($action !== 'save' || !in_array((string)($_POST['status'] ?? ''), ['draft', ScheduledPublishing::STATUS], true)) {
+            return false;
+        }
+        $type = $this->sanitizeType((string)($_POST['type'] ?? 'pages'));
+        $original = (string)($_POST['original_slug'] ?? '');
+        $originalLang = (string)($_POST['original_lang'] ?? '');
+        if ($original === '') {
+            return true; // a new entry, saved hidden
+        }
+        if ($original !== (string)($_POST['slug'] ?? $original) || ($originalLang !== '' && $originalLang !== (string)($_POST['lang'] ?? $originalLang))) {
+            return false; // a move can carry its translations and menu links with it
+        }
+        try {
+            $item = $this->content->find($type, $original, $originalLang !== '' ? $originalLang : null, true, false);
+        } catch (\Throwable) {
+            return false;
+        }
+        return $item !== null && in_array((string)$item->get('status', 'published'), ['draft', ScheduledPublishing::STATUS], true);
+    }
 
     private function frontCache(): FrontCache
     {
@@ -1427,17 +1492,25 @@ final class App
             return;
         }
 
+        // The work that falls due runs after the screen is sent, where the response can be finished first (PHP-FPM,
+        // LiteSpeed); elsewhere before it, as the only place it would run without the cron job.
         if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
-            $this->releaseScheduled();
-            $this->aiTick();
-            $this->backupManager()->runIfDue();
-            register_shutdown_function(fn() => $this->sendOmniReportAfterResponse());
+            if (CronStatus::finishFunction() !== null) {
+                register_shutdown_function(fn() => $this->runAdminDueAfterResponse());
+            } else {
+                $this->releaseScheduled();
+                $this->aiTick();
+                $this->backupManager()->runIfDue();
+                register_shutdown_function(fn() => $this->sendOmniReportAfterResponse());
+            }
         }
 
         // Whatever is sent from the admin may change what visitors see: the cache in front of the site is emptied (once, before
         // the handler, which may end the request with a redirect). Screens that only read, preview or export do not count.
         if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && !in_array($action, self::ADMIN_POSTS_THAT_CHANGE_NOTHING, true) && !isset($_GET['preview'])) {
-            $this->frontCache()->purgeAll();
+            if (!$this->savesAHiddenEntry($action)) {
+                $this->frontCache()->purgeAll();
+            }
             $this->contentIndex->bump(); // what is derived from the whole site (the maps' data) is made again
         }
 

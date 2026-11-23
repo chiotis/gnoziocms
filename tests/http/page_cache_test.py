@@ -62,6 +62,22 @@ check('every page was emptied, not only the one that was seen', mark == 'miss', 
 st, mark, hdr4, body4 = status(anon, '/')
 check('the first page made after the change opens the front door again, with the page as it is now', mark == 'hit' and 'before the application' in (hdr4.get('Server-Timing') or '') and 'A new name for the cache test' in body4, hdr4.get('Server-Timing'))
 
+# ---- a draft that stays a draft changes nothing a visitor sees; publishing it does
+def save_page(slug, fields):
+    st, hdr, _ = root.submit('/admin/edit?type=pages&slug=%s&lang=el' % slug, has_field('body'), fields, drop=['visible'])
+    return st, hdr.get('Location') or ''
+status(anon, '/'); status(anon, '/')
+st, loc = save_page('', {'title': 'Cache test draft', 'status': 'draft', 'body': 'Hidden for now'})
+m = re.search(r'slug=([^&]+)', loc); draft = m.group(1) if m else ''
+st, mark, _, _ = status(anon, '/')
+check('a new draft leaves the kept pages alone', draft != '' and mark == 'hit', (st, loc, mark))
+save_page(draft, {'title': 'Cache test draft', 'status': 'draft', 'body': 'Still hidden'})
+check('and so does saving it again as a draft', status(anon, '/')[1] == 'hit')
+save_page(draft, {'title': 'Cache test draft', 'status': 'published', 'body': 'Out now'})
+check('publishing it empties them', status(anon, '/')[1] == 'miss')
+save_page(draft, {'title': 'Cache test draft', 'status': 'draft', 'body': 'Back to hidden'})
+check('and so does taking it back to a draft', status(anon, '/')[1] == 'miss')
+
 # ---- the button empties it by hand
 status(anon, '/'); 
 root.submit('/admin/system', lambda f: any(x[0] == 'system_action' and x[1] == 'purge_cache' for x in f['fields']))
