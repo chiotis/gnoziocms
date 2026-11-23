@@ -69,6 +69,9 @@ group. Size: S (an hour or two), M (half a day to a day), L (more).
 - [ ] **S20** (M) Signed releases: the build signs `release.json` (Ed25519, libsodium) with a key kept off GitHub; the
       installer and the update check verify it against a public key in the code and refuse an unsigned one. One release
       accepts both, so sites can move over.
+      *Code done (W25): `ReleaseSignature`, the update check, the installer and `scripts/sign-release.php` (the key stays
+      on the maintainer's computer, docs/signed-releases.md). Enforcement starts when the owner makes the key and lists
+      the public key in the code; until then unsigned releases install as before.*
 - [ ] **S21** (M) Retention: activity log 180 days, email log 90, gateway events 180 (settings), cleared by the daily tick.
       MCP: one activity row per failed token per address per minute, not per request. Unused MCP clients removed after 7 days
       (S23).

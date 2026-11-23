@@ -21,10 +21,16 @@ final class UpdateService
     public const MAX_PACKAGE_BYTES = 104857600;
 
     /** @param array<string, mixed> $settings the `updates` settings block */
+    /**
+     * @param array<string, mixed> $settings the `updates` settings block
+     * @param list<string>|null $releaseKeys the public keys a release must be signed with; null for ReleaseSignature::PUBLIC_KEYS,
+     *        which bind the official repository only (a fork signs with its own keys or not at all). Keys handed in bind any source.
+     */
     public function __construct(
         private string $basePath,
         private array $settings,
-        private SystemMetaRepository $meta
+        private SystemMetaRepository $meta,
+        private ?array $releaseKeys = null
     ) {
         $this->settings = self::normalizeSettings($settings, true);
     }
@@ -171,7 +177,8 @@ final class UpdateService
 
     /**
      * The package of the latest release: its version, lowest PHP, address, SHA-256 and size. Read from the release,
-     * kept for as long as the update status is, and null when the release has none or it is not valid.
+     * kept for as long as the update status is, and null when the release has none, it is not valid, or it is not signed
+     * when it must be (releaseRefusal() then says why).
      *
      * @return array{version: string, min_php: string, package_url: string, sha256: string, size: int, requires_backup: bool}|null
      */
@@ -187,9 +194,60 @@ final class UpdateService
             }
         }
         $body = $this->readRemoteText($url);
-        $manifest = $body !== '' ? self::validateManifest(json_decode($body, true)) : null;
-        $this->meta->setJson(self::RELEASE_META_KEY, ['checked_at' => gmdate('c'), 'source' => $url, 'manifest' => $manifest]);
+        $data = $body !== '' ? json_decode($body, true) : null;
+        $manifest = self::validateManifest($data);
+        $signature = '';
+        $refused = null;
+        if ($manifest !== null) {
+            $keys = $this->signingKeys();
+            $signature = $keys !== [] ? ReleaseSignature::check($data, $keys) : ReleaseSignature::UNSIGNED;
+            if ($keys !== [] && $signature !== ReleaseSignature::VERIFIED) {
+                $refused = ['version' => $manifest['version'], 'reason' => $signature];
+                $manifest = null;
+            }
+        }
+        $this->meta->setJson(self::RELEASE_META_KEY, ['checked_at' => gmdate('c'), 'source' => $url, 'manifest' => $manifest, 'signature' => $signature, 'refused' => $refused]);
         return $manifest;
+    }
+
+    /** The public keys the release at the configured source must be signed with; none means signatures are not required. */
+    public function signingKeys(): array
+    {
+        if ($this->releaseKeys !== null) {
+            return $this->releaseKeys;
+        }
+        $official = 'https://github.com/' . self::DEFAULT_REPOSITORY . '/releases/';
+        return str_starts_with($this->releaseManifestUrl(), $official) ? ReleaseSignature::PUBLIC_KEYS : [];
+    }
+
+    /** Whether the latest release that was read was signed: verified, unsigned, invalid, unavailable, or '' when none was read. */
+    public function releaseSignature(): string
+    {
+        $cached = $this->meta->getJson(self::RELEASE_META_KEY);
+        return is_array($cached) && (string)($cached['source'] ?? '') === $this->releaseManifestUrl() ? (string)($cached['signature'] ?? '') : '';
+    }
+
+    /**
+     * Why the latest release that was read is not offered, when it was valid but not signed as it must be: its version
+     * and verified/unsigned/invalid/unavailable (ReleaseSignature). Null when nothing was refused.
+     *
+     * @return array{version: string, reason: string, message: string}|null
+     */
+    public function releaseRefusal(): ?array
+    {
+        $cached = $this->meta->getJson(self::RELEASE_META_KEY);
+        $refused = is_array($cached) && (string)($cached['source'] ?? '') === $this->releaseManifestUrl() && is_array($cached['refused'] ?? null) ? $cached['refused'] : null;
+        if ($refused === null) {
+            return null;
+        }
+        $version = (string)($refused['version'] ?? '');
+        $reason = (string)($refused['reason'] ?? '');
+        $message = match ($reason) {
+            ReleaseSignature::UNSIGNED => 'Version ' . $version . ' is published but not signed yet, so it is not installed. Check again later.',
+            ReleaseSignature::UNAVAILABLE => 'Version ' . $version . ' cannot be checked: this server\'s PHP has no sodium extension, which verifies the signature of a release.',
+            default => 'Version ' . $version . ' is refused: its signature does not match what was published. Do not install it by hand; tell the developer.',
+        };
+        return ['version' => $version, 'reason' => $reason, 'message' => $message];
     }
 
     /**

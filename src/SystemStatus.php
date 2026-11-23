@@ -20,6 +20,7 @@ final class SystemStatus
         'fileinfo' => 'Upload type detection',
         'openssl' => 'SMTP TLS, HTTPS',
         'simplexml' => 'S3 listings',
+        'sodium' => 'Signed updates',
         'intl' => 'Optional',
     ];
 

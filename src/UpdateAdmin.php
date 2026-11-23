@@ -58,7 +58,7 @@ final class UpdateAdmin
         $manifest = $updates->releaseManifest(true);
         $current = $updates->currentVersion();
         if ($manifest === null) {
-            return $this->installLocation('fail', 'The package of the latest release could not be found. Check again in a few minutes.');
+            return $this->installLocation('fail', $updates->releaseRefusal()['message'] ?? 'The package of the latest release could not be found. Check again in a few minutes.');
         }
         // What is needed after the code has been replaced is loaded now, from the code that is running, so that nothing is read half from the old version and half from the new.
         foreach ([AdminNotices::class, NotificationRepository::class, SystemMetaRepository::class, ActivityLogRepository::class, MaintenanceMode::class, UpdateNetwork::class] as $class) {
@@ -157,6 +157,8 @@ final class UpdateAdmin
             'pre_backup_status' => (string)($get['pre_backup'] ?? ''),
             'pre_backup_message' => trim((string)($get['pre_backup_msg'] ?? '')),
             'release' => $manifest,
+            'release_refusal' => $manifest === null ? $updates->releaseRefusal() : null,
+            'release_signed' => $manifest !== null && $updates->releaseSignature() === ReleaseSignature::VERIFIED,
             'install_available' => $available,
             'install_checks' => $checks,
             'install_blockers' => $blockers,
