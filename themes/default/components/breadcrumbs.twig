@@ -1,11 +1,16 @@
 {#
   The trail above a title: where the page sits in the site. crumbs is a list of {label, url}; the last one is the page itself
-  (no link, aria-current). The title area draws it when a single layout or an archive layout asks for breadcrumbs.
+  (no link, aria-current) unless current is false (a trail that ends above the page, as Collections / Balos / Earrings). separator
+  is what stands between the crumbs: auto (the theme's ›), slash, double, dot, dash or bar, drawn by the style sheet. The title
+  area draws it when a single layout, an archive layout or a title block asks for breadcrumbs.
 #}
-<nav class="crumbs" aria-label="{{ t('breadcrumb.label', 'Breadcrumb') }}">
+{% set current = current ?? true %}
+{% set separator = separator|default('auto') in ['slash', 'double', 'dot', 'dash', 'bar'] ? separator : '' %}
+<nav class="crumbs{% if separator %} crumbs-sep-{{ separator }}{% endif %}" aria-label="{{ t('breadcrumb.label', 'Breadcrumb') }}">
   <ol>
     {% for crumb in crumbs %}
-      <li>{% if crumb.url|default('') and not loop.last %}<a href="{{ crumb.url }}">{{ crumb.label }}</a>{% else %}<span{% if loop.last %} aria-current="page"{% endif %}>{{ crumb.label }}</span>{% endif %}</li>
+      {% set here = loop.last and current %}
+      <li>{% if crumb.url|default('') and not here %}<a href="{{ crumb.url }}">{{ crumb.label }}</a>{% else %}<span{% if here %} aria-current="page"{% endif %}>{{ crumb.label }}</span>{% endif %}</li>
     {% endfor %}
   </ol>
 </nav>

@@ -362,6 +362,26 @@ final class SiteTwig
             return $groups;
         }));
 
+        // The trail above an entry's title from a pattern ("Collections|/shop > {term:collections} > {title}", see EntryTrail):
+        // {crumbs: [{label, url}], current} where current says the last crumb is the page itself.
+        $twig->addFunction(new TwigFunction('entry_trail', function (mixed $item, string $pattern = '', string $prefix = '') use ($termLabel, $termPath, $absoluteUrl): array {
+            $meta = is_object($item) && isset($item->meta) && is_array($item->meta) ? $item->meta : [];
+            $type = is_object($item) && isset($item->type) ? (string)$item->type : '';
+            return EntryTrail::build(
+                $pattern,
+                $type,
+                $meta,
+                $prefix,
+                ($this->taxonomies)(),
+                fn(string $key, ?string $fallback): string => ($this->translate)($key, $fallback),
+                fn(string $name, string $termId): string => $termLabel($name, $termId, null),
+                function (string $name, string $termId) use ($termPath, $absoluteUrl, $prefix): string {
+                    $path = $termPath($name, $termId, $prefix);
+                    return $path === '' ? '' : $absoluteUrl($path);
+                }
+            );
+        }));
+
         // The entries near one (geo_nearby, one type) under headings by the top term of the taxonomy with a tree they are filed in:
         // [{id, taxonomy, title, url, entries}], none when they are filed in no such taxonomy (see NearbyGroups).
         $twig->addFunction(new TwigFunction('nearby_groups', function (mixed $entries, string $prefix = '') use ($termLabel, $termPath, $absoluteUrl): array {

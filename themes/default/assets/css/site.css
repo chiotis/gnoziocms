@@ -2272,6 +2272,13 @@ body.has-transparent-header:not(.header-solid) .site-header.is-on-dark[data-stic
   opacity: 0.6;
 }
 
+/* The title blocks' "Between the parts" choice (components/breadcrumbs.twig). The second content (with the text after the slash, what a screen reader says: nothing) wins where it is understood. */
+.crumbs-sep-slash li + li::before { content: "/"; content: "/" / ""; }
+.crumbs-sep-double li + li::before { content: "//"; content: "//" / ""; }
+.crumbs-sep-dot li + li::before { content: "·"; content: "·" / ""; }
+.crumbs-sep-dash li + li::before { content: "—"; content: "—" / ""; }
+.crumbs-sep-bar li + li::before { content: "|"; content: "|" / ""; }
+
 .crumbs a {
   color: inherit;
   text-decoration: none;

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.321 — 2026-11-23 — A trail of your own above the title
+- **Entry title block > Trail**: the trail above an entry's title is written as a pattern, its parts separated by `>`: `{home}`, `{type}`, `{title}`, `{term:NAME}` (the entry's term in that taxonomy, with the terms above it; `{term:NAME:alone}` without them), `{taxonomy:NAME}` (the taxonomy's name), or text, with a link as `Text|/address`. A product page can show `Collections|/shop > {term:collections} > {term:product-categories:alone}` as "Collections // Balos // Earrings". A part with nothing to show is left out; an empty field keeps Home › type › title. When the trail does not end with `{title}`, its last part keeps its link and none is marked as the page.
+- **Between the parts**: the Entry title and Archive title blocks choose what stands between the parts of the trail: the theme's ›, /, //, ·, — or |. Screen readers do not read it.
+- `src/EntryTrail.php` and `entry_trail()` in templates; tests `entry-trail` (unit) and `entry_trail` (HTTP).
+
 ## 0.1.320 — 2026-11-23 — Limits for anonymous visitors in the shop
 - **Account emails** (audit S4a): sign-up, forgot password and "send the confirmation again" send at most 6 emails an hour from one address and 3 an hour to one email. Past that the visitor gets the same answer and nothing is sent.
 - **Sign-up with an address that has an account** (S11) answers like a new sign-up ("we sent a link to …") and mails the owner a link to set a new password instead, so the form no longer tells who has an account. The email is in Shop settings > Emails as "Already has an account".

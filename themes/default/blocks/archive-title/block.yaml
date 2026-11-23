@@ -20,3 +20,15 @@ fields:
     type: toggle
     label: Show the trail above the title
     default: false
+  separator:
+    when: { breadcrumbs: ['1', 'true'] }
+    type: select
+    label: Between the parts of the trail
+    default: auto
+    options:
+      auto: Theme (›)
+      slash: /
+      double: //
+      dot: ·
+      dash: —
+      bar: '|'

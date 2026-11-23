@@ -10,12 +10,14 @@
     hero_bg         a colour behind the area, or nothing
     hero_parallax   true when the picture moves slower than the page (default and cover; see site.js)
     crumbs          the trail above the title, [{label, url}] (the last one is the page itself, without a link), or nothing
+    crumbs_current  false when the last crumb is not the page itself (a trail that ends with a term): it keeps its link
+    crumbs_separator what stands between the crumbs: auto (the theme's ›), slash, double, dot, dash or bar
 #}
 {% set bg_style = hero_bg ? ' style="--hero-bg:' ~ hero_bg|e('html_attr') ~ ';"' : '' %}
 {% if layout == 'centered' %}
   <section class="single-hero single-hero-centered"{{ bg_style|raw }}>
     <div class="site-wrap single-hero-inner">
-      {% if crumbs|default([]) %}{% include 'components/breadcrumbs.twig' with {crumbs: crumbs} only %}{% endif %}
+      {% if crumbs|default([]) %}{% include 'components/breadcrumbs.twig' with {crumbs: crumbs, current: crumbs_current ?? true, separator: crumbs_separator|default('auto')} only %}{% endif %}
       {% if meta_inline|trim %}<p class="single-hero-meta single-hero-meta-inline">{{ meta_inline }}</p>{% endif %}
       <h1>{{ title }}</h1>
       {% if hero_text %}<p class="single-hero-subtitle">{{ hero_text }}</p>{% endif %}
@@ -31,7 +33,7 @@
   <section class="single-hero single-hero-split{% if not hero_image %} no-media{% endif %}"{{ bg_style|raw }}>
     <div class="site-wrap single-hero-inner">
       <div class="single-hero-content">
-        {% if crumbs|default([]) %}{% include 'components/breadcrumbs.twig' with {crumbs: crumbs} only %}{% endif %}
+        {% if crumbs|default([]) %}{% include 'components/breadcrumbs.twig' with {crumbs: crumbs, current: crumbs_current ?? true, separator: crumbs_separator|default('auto')} only %}{% endif %}
         {% if meta_inline|trim %}<p class="single-hero-meta single-hero-meta-inline">{{ meta_inline }}</p>{% endif %}
         <h1>{{ title }}</h1>
         {% if hero_text %}<p class="single-hero-subtitle">{{ hero_text }}</p>{% endif %}
@@ -50,7 +52,7 @@
       {{ image(hero_image, {priority: true, sizes: '100vw'}) }}
     </div>
     <div class="site-wrap single-hero-inner">
-      {% if crumbs|default([]) %}{% include 'components/breadcrumbs.twig' with {crumbs: crumbs} only %}{% endif %}
+      {% if crumbs|default([]) %}{% include 'components/breadcrumbs.twig' with {crumbs: crumbs, current: crumbs_current ?? true, separator: crumbs_separator|default('auto')} only %}{% endif %}
       {% if meta_inline|trim %}<p class="single-hero-meta single-hero-meta-inline">{{ meta_inline }}</p>{% endif %}
       <h1>{{ title }}</h1>
       {% if hero_text %}<p class="single-hero-subtitle">{{ hero_text }}</p>{% endif %}
@@ -60,7 +62,7 @@
 {% elseif layout == 'minimal' %}
   <section class="single-hero single-hero-minimal"{{ bg_style|raw }}>
     <div class="site-wrap single-hero-inner">
-      {% if crumbs|default([]) %}{% include 'components/breadcrumbs.twig' with {crumbs: crumbs} only %}{% endif %}
+      {% if crumbs|default([]) %}{% include 'components/breadcrumbs.twig' with {crumbs: crumbs, current: crumbs_current ?? true, separator: crumbs_separator|default('auto')} only %}{% endif %}
       {% if meta_inline|trim %}<p class="single-hero-meta single-hero-meta-inline">{{ meta_inline }}</p>{% endif %}
       <h1>{{ title }}</h1>
       {% if hero_text %}<p class="single-hero-subtitle">{{ hero_text }}</p>{% endif %}
@@ -70,7 +72,7 @@
 {% else %}
   <section class="single-hero{% if hero_image %} has-image{% endif %}"{% if hero_parallax %} data-parallax{% endif %}{% if hero_image or hero_bg %} style="{% if hero_image %}--hero-image:url('{{ hero_image|e('html_attr') }}');{% endif %}{% if hero_bg %}--hero-bg:{{ hero_bg|e('html_attr') }};{% endif %}"{% endif %}>
     <div class="site-wrap single-hero-inner">
-      {% if crumbs|default([]) %}{% include 'components/breadcrumbs.twig' with {crumbs: crumbs} only %}{% endif %}
+      {% if crumbs|default([]) %}{% include 'components/breadcrumbs.twig' with {crumbs: crumbs, current: crumbs_current ?? true, separator: crumbs_separator|default('auto')} only %}{% endif %}
       {% if meta_html|trim %}<p class="single-hero-meta">{{ meta_html }}</p>{% endif %}
       <h1>{{ title }}</h1>
       {% if hero_text %}<p class="single-hero-subtitle">{{ hero_text }}</p>{% endif %}

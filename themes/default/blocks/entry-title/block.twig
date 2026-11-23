@@ -1,7 +1,7 @@
 {#
   Entry title: the title area of the entry a template built with blocks is drawn for (components/title-area.twig). The layout is the
   block's own choice or, as "As set for the content type", the entry's, its terms' and its content type's (hero-layout.twig).
-  Context: item (the entry), lang_prefix.
+  The trail is the block's pattern (src/EntryTrail.php). Context: item (the entry), lang_prefix.
 #}
 {% import 'components/hero-layout.twig' as opening %}
 {% set prefix = lang_prefix|default('') %}
@@ -9,12 +9,9 @@
 {% set picture = block.image ? item.meta.hero_image|default(item.meta.main_image|default('')) : '' %}
 {% if layout == 'cover' and not picture %}{% set layout = 'default' %}{% endif %}
 {% set parallax = picture and layout in ['default', 'cover'] and opening.parallax(item, theme_settings)|trim != '' %}
-{% set crumbs = [] %}
-{% if block.breadcrumbs %}
-  {% set crumbs = [{label: t('nav.main.home', 'Home'), url: '/' ~ prefix}] %}
-  {% if item.type != 'pages' %}{% set crumbs = crumbs|merge([{label: t('type.' ~ item.type, item.type|title), url: '/' ~ prefix ~ item.type}]) %}{% endif %}
-  {% set crumbs = crumbs|merge([{label: item.meta.title, url: ''}]) %}
-{% endif %}
+{# The trail: the block's pattern (EntryTrail), or Home > type > title when it has none. #}
+{% set trail = block.breadcrumbs ? entry_trail(item, block.trail|default(''), prefix) : {crumbs: [], current: true} %}
+{% set crumbs = trail.crumbs %}
 {% set meta_html %}{% if block.byline %}{% include 'components/entry-byline.twig' with {item: item, prefix: prefix, full: true} only %}{% endif %}{% endset %}
 {% set meta_inline %}{% if block.byline %}{% include 'components/entry-byline.twig' with {item: item, prefix: prefix} only %}{% endif %}{% endset %}
-{% include 'components/title-area.twig' with {layout: layout, title: item.meta.title, hero_text: block.excerpt ? item.meta.excerpt|default('') : '', meta_html: meta_html, meta_inline: meta_inline, hero_image: picture, hero_bg: item.meta.hero_background ?? item.meta.hero_color ?? '', hero_parallax: parallax, crumbs: crumbs} only %}
+{% include 'components/title-area.twig' with {layout: layout, title: item.meta.title, hero_text: block.excerpt ? item.meta.excerpt|default('') : '', meta_html: meta_html, meta_inline: meta_inline, hero_image: picture, hero_bg: item.meta.hero_background ?? item.meta.hero_color ?? '', hero_parallax: parallax, crumbs: crumbs, crumbs_current: trail.current, crumbs_separator: block.separator|default('auto')} only %}

@@ -1,4 +1,4 @@
-# Blocks of this installation (GnozioCMS 0.1.300)
+# Blocks of this installation (GnozioCMS 0.1.320)
 
 ## Fields every block has
 
@@ -65,6 +65,7 @@ The title area of a list of entries: its title and subtitle (for a category or t
 |---|---|---|
 | `image` | image | Optional. Leave empty to use the picture chosen for the list in Archive Layouts (in the Chapter layout, the term's own picture first). |
 | `breadcrumbs` | true / false; default `false` |  |
+| `separator` | choice; one of `auto`, `slash`, `double`, `dot`, `dash`, `bar`; default `auto`; only when `breadcrumbs` is `1` or `true` |  |
 
 ### `audio` — Audio
 One sound file or a playlist (music, a talk, a podcast), each with a picture, a title and who speaks or plays. Plays one after another.
@@ -354,6 +355,8 @@ The title area of the entry, as its page draws it today: the title, the excerpt,
 | `excerpt` | true / false; default `true` |  |
 | `byline` | true / false; default `true` |  |
 | `breadcrumbs` | true / false; default `false` |  |
+| `trail` | text; only when `breadcrumbs` is `1` or `true` | The parts in order, separated by >. {home}, {type} (the content type), {title}, {term:collections} (the entry's term in that taxonomy, with the terms above it; {term:collections:alone} without them), {taxonomy:collections} (the taxonomy's name), or text as written; Text//address gives it a link. Empty: Home > type > title. |
+| `separator` | choice; one of `auto`, `slash`, `double`, `dot`, `dash`, `bar`; default `auto`; only when `breadcrumbs` is `1` or `true` |  |
 
 ### `fact-sheet` — Fact sheet
 The fields of the entry as a list of labels and values (for a book: author, publisher, year). Choose which fields and in what order; with none chosen it shows the fields the page of the type shows. Only in a template built with blocks.
@@ -434,7 +437,7 @@ A set of images in a grid, a masonry layout, or a scrolling strip. Images open l
 
 | field | kind and choices | notes |
 |---|---|---|
-| `source` | choice; one of `manual`, `entry`; default `manual` | The entry's gallery: the pictures of the page or entry the block is on (in a template, the entry it is drawn for). Shows nothing when it has none. |
+| `source` | choice; one of `manual`, `entry`; default `manual` | The entry's gallery: the pictures of the page or entry the block is on (in a template, the entry it is drawn for): its gallery field, or for posts and pages the Gallery of the editor's Media tab. Shows nothing when it has none. |
 | `field` | text; only when `source` is `entry` | The key of the field, for a type with more than one gallery. Empty means its gallery. |
 | `eyebrow` | text |  |
 | `heading` | text |  |

@@ -27,3 +27,21 @@ fields:
     type: toggle
     label: Show the trail above the title
     default: false
+  trail:
+    when: { breadcrumbs: ['1', 'true'] }
+    type: text
+    label: Trail
+    placeholder: '{home} > {type} > {title}'
+    help: 'The parts in order, separated by >. {home}, {type} (the content type), {title}, {term:collections} (the entry''s term in that taxonomy, with the terms above it; {term:collections:alone} without them), {taxonomy:collections} (the taxonomy''s name), or text as written; Text|/address gives it a link. Empty: Home > type > title.'
+  separator:
+    when: { breadcrumbs: ['1', 'true'] }
+    type: select
+    label: Between the parts
+    default: auto
+    options:
+      auto: Theme (›)
+      slash: /
+      double: //
+      dot: ·
+      dash: —
+      bar: '|'
