@@ -1,6 +1,7 @@
 /*
- * Theme > Export and import: the whole theme, with a preview of each part, the parts chosen, and undo.
- * The server does the work (POST /admin/theme?transfer=preview|import|undo); this script only asks, shows the answer and reloads.
+ * Theme > Export, import and reset: the theme or the parts ticked, a preview of each part on import, reset of a section, and undo.
+ * The server does the work (GET ?transfer=export&parts[]=…, POST /admin/theme?transfer=preview|import|reset|undo); this script only
+ * builds the export address, asks, shows the answer and reloads.
  * Nothing here touches the unsaved choices of the screen, and the page is reloaded after a change, so it asks first when the form was edited.
  */
 (function () {
@@ -116,6 +117,46 @@
     }).catch(function () { say('The file could not be sent.', true); });
   });
 
+  // Export: the address carries the parts ticked (all of them: the plain address, which exports everything).
+  var exportLink = root.querySelector('[data-tt-export]');
+  var exportBoxes = Array.prototype.slice.call(root.querySelectorAll('[data-tt-export-part]'));
+  var exportBase = exportLink ? exportLink.getAttribute('href') : '';
+  function exportHref() {
+    var chosen = exportBoxes.filter(function (box) { return box.checked; });
+    if (!exportLink) { return; }
+    if (chosen.length === 0 || chosen.length === exportBoxes.length) {
+      exportLink.setAttribute('href', exportBase);
+    } else {
+      exportLink.setAttribute('href', exportBase + chosen.map(function (box) { return '&parts[]=' + encodeURIComponent(box.value); }).join(''));
+    }
+    exportLink.setAttribute('aria-disabled', chosen.length === 0 ? 'true' : 'false');
+    exportLink.classList.toggle('opacity-50', chosen.length === 0);
+    exportLink.classList.toggle('pointer-events-none', chosen.length === 0);
+  }
+  exportBoxes.forEach(function (box) { box.addEventListener('change', exportHref); });
+  Array.prototype.forEach.call(root.querySelectorAll('[data-tt-only]'), function (button) {
+    button.addEventListener('click', function () {
+      var only = button.getAttribute('data-tt-only');
+      exportBoxes.forEach(function (box) { box.checked = only === '' || box.value === only; });
+      exportHref();
+    });
+  });
+  exportHref();
+
+  // Reset: one section to the theme's defaults, saved at once.
+  Array.prototype.forEach.call(root.querySelectorAll('[data-tt-reset]'), function (button) {
+    button.addEventListener('click', function () {
+      if (!window.confirm('Put ' + button.textContent.trim() + ' back to the theme\'s defaults? It is saved at once; Undo puts it back.') || !proceed()) { return; }
+      var body = new FormData();
+      body.append('section', button.getAttribute('data-tt-reset'));
+      say('Resetting…');
+      post('reset', body).then(function (answer) {
+        if (!answer.ok) { say(answer.error || 'The reset failed.', true); return; }
+        reload(answer.changed ? 'reset' : 'unchanged');
+      }).catch(function () { say('The request could not be sent.', true); });
+    });
+  });
+
   root.querySelector('[data-tt-cancel]').addEventListener('click', function () {
     preview.hidden = true;
     file.value = '';
@@ -134,7 +175,7 @@
     }).catch(function () { refresh(); say('The file could not be sent.', true); });
   });
   root.querySelector('[data-tt-undo]').addEventListener('click', function () {
-    if (!window.confirm('Put the theme back as it was before the last import?') || !proceed()) { return; }
+    if (!window.confirm('Put the theme back as it was before the last import or reset?') || !proceed()) { return; }
     post('undo', new FormData()).then(function (answer) {
       if (!answer.ok) { say('There is nothing to undo.', true); return; }
       reload('undone');
@@ -142,6 +183,6 @@
   });
 
   var done = new URL(window.location.href).searchParams.get('transfer_done');
-  var notes = { imported: 'Imported. The theme from before is kept: use Undo to put it back.', unchanged: 'Nothing changed: this site already had those parts.', undone: 'Put back as before the import.' };
+  var notes = { imported: 'Imported. The theme from before is kept: use Undo to put it back.', reset: 'Reset to the theme\'s defaults. Use Undo to put it back.', unchanged: 'Nothing changed.', undone: 'Put back as before.' };
   if (done && notes[done]) { say(notes[done]); }
 })();

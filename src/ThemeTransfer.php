@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace GnozioCMS;
 
 /**
- * Carries the whole theme of a site to another (Theme > Export and import), and puts it back. Branding alone has its own export
- * (BrandingTransfer); this one takes everything the Theme screen sets:
+ * Carries the theme of a site to another (Theme > Export, import and reset), puts it back, and resets sections to their defaults.
+ * It is the one place for this: it takes everything the Theme screen sets, or the parts chosen:
  *
  *  - every section of the theme's settings (Branding, Header, Footer, Sidebar card, Brand, Social profiles, …), with the font files
  *    Branding uses;
@@ -15,12 +15,14 @@ namespace GnozioCMS;
  *    archive templates built with blocks;
  *  - Footer Blocks, and the site's Custom CSS.
  *
- * Export writes a zip with `theme.json` and the font files under `assets/`. Import reads it, shows what each part would change, and
- * applies only the parts ticked. A section of settings, Footer Blocks, the search page and Custom CSS are replaced by the file's; the
+ * Export writes a zip with `theme.json` (with the list of the parts it holds) and the font files under `assets/`; all parts, or only
+ * the ones ticked. Import reads it, or a Branding zip from before the two were one (BrandingTransfer::FORMAT, read as the Branding
+ * part), shows what each part would change, and applies only the parts ticked that the file holds. A section of settings, Footer Blocks, the search page and Custom CSS are replaced by the file's; the
  * layouts and templates are replaced for each content type or taxonomy the file has and this site has too, and left alone for the
  * others. Every value goes through the same checks as the Theme screen (the settings schema, the archive schema, the block registry
  * and the HTML guard), so a file can hold nothing the screen could not have saved. Template files, blocks and other code in custom/
- * never travel: they are code and are copied by hand. What was there before is kept as one backup, and undo puts it back.
+ * never travel: they are code and are copied by hand. Reset puts one section (a part of Branding, or a section of the settings)
+ * back to the theme's defaults. What was there before an import or a reset is kept as one backup, and undo puts it back.
  *
  * It holds no session; the settings are read and written through the callables it is given.
  */
@@ -90,36 +92,62 @@ final class ThemeTransfer
     // ---- export ---------------------------------------------------------------------------------------------------
 
     /**
-     * Writes the zip of the whole theme to $destination.
+     * Writes the zip of the theme to $destination: every part, or only $parts (keys of parts()).
      *
+     * @param string[]|null $parts
      * @return string[] the files that went into it besides theme.json
      */
-    public function export(string $destination): array
+    public function export(string $destination, ?array $parts = null): array
     {
+        $all = array_keys($this->parts());
+        $parts = $parts === null ? $all : array_values(array_intersect($all, $parts));
+        if ($parts === []) {
+            $parts = $all;
+        }
+        $take = static fn(string $part): bool => in_array($part, $parts, true);
         $settings = ($this->load)();
-        $branding = $this->branding();
         $files = [];
-        foreach ($branding->fontFiles(array_intersect_key($settings, array_flip(self::BRANDING))) as $relative => $path) {
-            $files['assets/' . $relative] = $path;
+        if ($take('branding')) {
+            foreach ($this->branding()->fontFiles(array_intersect_key($settings, array_flip(self::BRANDING))) as $relative => $path) {
+                $files['assets/' . $relative] = $path;
+            }
         }
-        $archives = ['types' => [], 'taxonomies' => []];
-        foreach ($this->listTypes() as $type) {
-            $raw = $this->types->customRaw($type);
-            $archives['types'][$type] = is_array($raw['archive'] ?? null) ? $raw['archive'] : [];
-        }
-        foreach ($this->taxonomies->names() as $name) {
-            $archives['taxonomies'][$name] = $this->taxonomies->load($name)['archive'];
+        // The settings of the parts left out stay out of the file.
+        foreach (array_keys($settings) as $key) {
+            $part = match (true) {
+                in_array($key, self::BRANDING, true) => 'branding',
+                isset($this->theme->settingsSchema()[$key]) => 'section:' . $key,
+                $key === 'search_page' => 'archive_layouts',
+                $key === ArchiveTemplates::KEY => 'archive_templates',
+                default => (string)$key,
+            };
+            if (in_array($part, $all, true) && !$take($part)) {
+                unset($settings[$key]);
+            }
         }
         $document = [
             'format' => self::FORMAT,
             'gnoziocms' => $this->version,
             'theme' => $this->theme->name(),
             'exported' => gmdate('c'),
+            'parts' => $parts,
             'settings' => $settings,
-            'archives' => $archives,
-            'custom_css' => $this->css->read(),
-            'files' => array_keys($files),
         ];
+        if ($take('archive_layouts')) {
+            $archives = ['types' => [], 'taxonomies' => []];
+            foreach ($this->listTypes() as $type) {
+                $raw = $this->types->customRaw($type);
+                $archives['types'][$type] = is_array($raw['archive'] ?? null) ? $raw['archive'] : [];
+            }
+            foreach ($this->taxonomies->names() as $name) {
+                $archives['taxonomies'][$name] = $this->taxonomies->load($name)['archive'];
+            }
+            $document['archives'] = $archives;
+        }
+        if ($take('custom_css')) {
+            $document['custom_css'] = $this->css->read();
+        }
+        $document['files'] = array_keys($files);
         $zip = new \ZipArchive();
         if ($zip->open($destination, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
             throw new \RuntimeException('The export file could not be written.');
@@ -155,9 +183,10 @@ final class ThemeTransfer
             try {
                 $json = $zip->getFromName('theme.json');
                 if (!is_string($json)) {
-                    return ['ok' => false, 'error' => is_string($zip->getFromName('branding.json'))
-                        ? 'This is a Branding export: import it in Theme > Branding > Export, import and reset.'
-                        : 'This zip has no theme.json.'];
+                    if (is_string($zip->getFromName('branding.json'))) {
+                        return $this->fromBranding($bytes);
+                    }
+                    return ['ok' => false, 'error' => 'This zip has no theme.json.'];
                 }
                 $branding = $this->branding();
                 for ($i = 0; $i < $zip->numFiles; $i++) {
@@ -187,12 +216,32 @@ final class ThemeTransfer
         }
         $document = json_decode($json, true);
         if (is_array($document) && ($document['format'] ?? '') === BrandingTransfer::FORMAT) {
-            return ['ok' => false, 'error' => 'This is a Branding export: import it in Theme > Branding > Export, import and reset.'];
+            return $this->fromBranding($bytes);
         }
         if (!is_array($document) || ($document['format'] ?? '') !== self::FORMAT || !is_array($document['settings'] ?? null)) {
             return ['ok' => false, 'error' => 'This is not a GnozioCMS theme export.'];
         }
         return ['ok' => true, 'document' => $document, 'files' => $files];
+    }
+
+    /**
+     * A Branding export (the zip of Branding alone, from before it was a part of this one), read as a theme file that holds only the
+     * Branding part.
+     *
+     * @return array{ok: bool, error?: string, document?: array<string, mixed>, files?: array<string, string>}
+     */
+    private function fromBranding(string $bytes): array
+    {
+        $read = $this->branding()->read($bytes);
+        if (($read['ok'] ?? false) !== true) {
+            return ['ok' => false, 'error' => (string)($read['error'] ?? 'The file could not be read.')];
+        }
+        return ['ok' => true, 'files' => $read['files'], 'document' => [
+            'format' => self::FORMAT,
+            'theme' => $read['theme'],
+            'parts' => ['branding'],
+            'settings' => $read['settings'],
+        ]];
     }
 
     /**
@@ -270,14 +319,69 @@ final class ThemeTransfer
 
     // ---- backup and undo ------------------------------------------------------------------------------------------
 
-    /** @return array{at: string}|null when the theme from before the last import was kept */
+    /** @return array{at: string, reason: string}|null when the theme from before the last import or reset was kept, and why */
     public function backup(): ?array
     {
         $backup = $this->meta?->getJson(self::BACKUP_KEY);
-        return is_array($backup) && is_array($backup['state'] ?? null) ? ['at' => (string)($backup['at'] ?? '')] : null;
+        return is_array($backup) && is_array($backup['state'] ?? null) ? ['at' => (string)($backup['at'] ?? ''), 'reason' => (string)($backup['reason'] ?? 'import')] : null;
     }
 
-    /** Puts the theme back as it was before the last import (imported font files stay). */
+    /**
+     * The sections that can be reset to their defaults: the parts of Branding (`branding:colour`, …), then the other sections of the
+     * settings (`section:header`, …).
+     *
+     * @return array<string, string> key => label
+     */
+    public function resets(): array
+    {
+        $schema = $this->theme->settingsSchema();
+        $out = [];
+        if (isset($schema['design'])) {
+            foreach (BrandingTransfer::SECTIONS as $key => $section) {
+                $out['branding:' . $key] = $section['label'];
+            }
+        }
+        foreach ($schema as $key => $section) {
+            if (!in_array($key, self::BRANDING, true)) {
+                $out['section:' . $key] = (string)($section['label'] ?? $key);
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * Puts one section back to the theme's defaults and saves. What was there before is kept as the backup.
+     *
+     * @return int how many settings changed (-1 when $key is not one of resets())
+     */
+    public function reset(string $key): int
+    {
+        if (!isset($this->resets()[$key])) {
+            return -1;
+        }
+        $current = $this->now();
+        $defaults = $this->theme->defaultSettings();
+        $settings = $current['settings'];
+        if (str_starts_with($key, 'branding:')) {
+            foreach ($this->branding()->sectionKeys(substr($key, 9)) as $field) {
+                $settings['design'][$field] = $defaults['design'][$field] ?? '';
+            }
+        } else {
+            $section = substr($key, 8);
+            $settings[$section] = $defaults[$section] ?? [];
+        }
+        $next = ['settings' => $this->theme->resolveSettings($settings)] + $current;
+        $part = str_starts_with($key, 'branding:') ? 'branding' : $key;
+        $changed = count($this->changes($part, $current, $next));
+        if ($changed === 0) {
+            return 0;
+        }
+        $this->meta?->setJson(self::BACKUP_KEY, ['at' => gmdate('c'), 'reason' => 'reset', 'state' => $current]);
+        $error = $this->write($current, $next);
+        return $error === null ? $changed : -1;
+    }
+
+    /** Puts the theme back as it was before the last import or reset (imported font files stay). */
     public function undo(): bool
     {
         $backup = $this->meta?->getJson(self::BACKUP_KEY);
@@ -332,6 +436,10 @@ final class ThemeTransfer
         $knownTypes = $this->listTypes(true);
         $warnings = [];
         $skipped = [];
+        // A file that lists its parts (every export since 0.1.331) gives nothing for the others, not even empty values.
+        if (is_array($document['parts'] ?? null)) {
+            $parts = array_values(array_intersect($parts, array_map('strval', $document['parts'])));
+        }
         $take = static fn(string $part): bool => in_array($part, $parts, true);
 
         // The sections of the settings: the file's values over the defaults, only the fields this theme declares.
@@ -683,6 +791,9 @@ final class ThemeTransfer
     private function inFile(string $part, array $document): bool
     {
         $settings = is_array($document['settings'] ?? null) ? $document['settings'] : [];
+        if (is_array($document['parts'] ?? null)) {
+            return in_array($part, $document['parts'], true);
+        }
         return match (true) {
             $part === 'branding' => array_intersect_key($settings, array_flip(self::BRANDING)) !== [],
             str_starts_with($part, 'section:') => is_array($settings[substr($part, 8)] ?? null),

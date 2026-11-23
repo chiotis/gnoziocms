@@ -1,7 +1,7 @@
 {#
-  Theme > Branding: the Forms and Phones cards and the Transfer card (export, import, undo). Included by theme-branding.twig, which
-  has d (the schema of design), vd (its values), pd (the field name prefix), c (the layout controls) and info (the screen's own data).
-  The buttons are wired by admin-branding-transfer.js; they work on saved settings, not on the unsaved choices of the form.
+  Theme > Branding: the Forms and Phones cards, and a pointer to Export, import and reset (Advanced), where Branding is exported,
+  imported and reset with the rest of the theme. Included by theme-branding.twig, which has d (the schema of design), vd (its values)
+  and pd (the field name prefix).
 #}
 {% import '@admin/partials/layout-controls.twig' as c %}
 <details class="bp-card">
@@ -30,31 +30,4 @@
   </div>
 </details>
 
-<details class="bp-card" data-bp-transfer data-endpoint="{{ url('admin/theme') }}">
-  <summary><span>Export, import and reset</span><small>Carry a look to another site</small></summary>
-  <div class="bp-body">
-    <div class="bt-row">
-      <a class="bt-btn" href="{{ url('admin/theme?branding=export') }}" download>Export Branding</a>
-      <span class="bt-hint">A zip with all colour, type, shape and form choices, and the font files they use.</span>
-    </div>
-    <div class="bt-row">
-      <label class="bt-btn bt-file">Import…<input type="file" accept=".zip,.json,application/zip,application/json" data-bt-file></label>
-      <span class="bt-hint">Shows what would change before anything does. The previous settings are kept so you can undo.</span>
-    </div>
-    <div class="bt-preview" data-bt-preview hidden aria-live="polite">
-      <p class="bt-title" data-bt-summary></p>
-      <table class="bp-colours bt-diff"><caption class="sr-only">What the import would change</caption><thead><tr><th scope="col">Setting</th><th scope="col">Now</th><th scope="col">Import</th></tr></thead><tbody data-bt-changes></tbody></table>
-      <p class="bt-hint" data-bt-extra></p>
-      <div class="bt-row"><button type="button" class="bt-btn bt-primary" data-bt-apply>Apply import</button><button type="button" class="bt-btn" data-bt-cancel>Cancel</button></div>
-    </div>
-    <div class="bt-row" data-bt-undo-row{% if not info.backup %} hidden{% endif %}>
-      <button type="button" class="bt-btn" data-bt-undo>Undo the last {{ info.backup.reason|default('') starts with 'import' ? 'import' : 'reset' }}</button>
-      <span class="bt-hint">The settings from before it{% if info.backup.at|default('') %} ({{ info.backup.at|date('j M Y, H:i') }}){% endif %} are restored. Imported font files stay.</span>
-    </div>
-    <div class="bt-row">
-      <span class="bt-hint">Reset one section to its defaults and save at once (undoable):</span>
-      {% for key, label in info.sections %}<button type="button" class="bt-chip" data-bt-reset="{{ key }}">{{ label }}</button>{% endfor %}
-    </div>
-    <p class="bt-status" data-bt-status role="status"></p>
-  </div>
-</details>
+<p class="bp-moved">To carry this look to another site, or put a section back to its defaults, use <button type="button" class="bp-goto" data-goto-tab="transfer">Export, import and reset</button>.</p>
