@@ -7,11 +7,12 @@ namespace GnozioCMS\Shop;
 /**
  * System > Shop settings (docs/shop-plan.md, section 8): the screen and its forms. General (the store, VAT, orders), Shipping
  * (zones and their methods), Payments (Viva Wallet, Cardlink, bank transfer, cash on delivery), Accounts and Marketing (the product
- * feed and the Meta Pixel). Accounts holds signing in with Google too.
+ * feed and the Meta Pixel). Accounts holds signing in with Google too; Product details the sections every product page shows after the
+ * product's own Details.
  */
 final class ShopSettingsAdmin
 {
-    public const TABS = ['general' => 'General', 'shipping' => 'Shipping', 'payments' => 'Payments', 'emails' => 'Emails', 'accounts' => 'Accounts', 'marketing' => 'Marketing', 'import' => 'Import & export'];
+    public const TABS = ['general' => 'General', 'shipping' => 'Shipping', 'payments' => 'Payments', 'details' => 'Product details', 'emails' => 'Emails', 'accounts' => 'Accounts', 'marketing' => 'Marketing', 'import' => 'Import & export'];
     public const EMAIL_LABELS = [
         'received' => 'Order received', 'paid' => 'Order paid', 'shipped' => 'Order shipped', 'cancelled' => 'Order cancelled', 'refunded' => 'Order refunded',
         'verify' => 'Confirm the email address', 'reset' => 'A new password', 'exists' => 'Already has an account', 'sub_failed' => 'Subscription not renewed', 'sub_cancelled' => 'Subscription cancelled',
@@ -95,6 +96,7 @@ final class ShopSettingsAdmin
         match ($tab) {
             'shipping' => $this->settings->saveShipping($post, $this->languages),
             'payments' => $this->settings->savePayments($post),
+            'details' => $this->settings->saveDetails($post, $this->languages),
             'emails' => $this->settings->saveEmails($post),
             'accounts' => $this->settings->saveAccounts($post),
             default => $this->settings->saveGeneral($post),
@@ -197,6 +199,7 @@ final class ShopSettingsAdmin
             'google_redirect' => rtrim($this->siteUrl, '/') . '/account/google/callback',
             'consent_modes' => ShopMarketing::CONSENT,
             'feed_urls' => array_map(fn(string $lang): array => ['lang' => $lang, 'url' => rtrim($this->siteUrl, '/') . '/feeds/products.xml' . ($lang === $this->languages[0] ? '' : '?lang=' . $lang)], $this->languages),
+            'max_details' => ShopSettings::MAX_DETAILS,
             'email_kinds' => self::EMAIL_LABELS,
             'email_placeholders' => ShopMail::PLACEHOLDERS,
             'email_defaults' => $this->emailDefaults(),

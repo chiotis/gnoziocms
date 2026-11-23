@@ -573,6 +573,10 @@ final class ShopController
         }
         if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             $result = $this->settingsAdmin()->act($_POST);
+            if ($result['tab'] === 'details' && $result['ok']) {
+                // Every product page shows them: the kept pages are drawn again.
+                ($this->contentChanged)();
+            }
             $this->redirect('/admin/shop-settings?' . http_build_query(['tab' => $result['tab'], 'done' => $result['ok'] ? 'ok' : 'fail', 'msg' => $result['message']]));
             return;
         }

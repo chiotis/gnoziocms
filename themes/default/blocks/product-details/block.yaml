@@ -1,5 +1,5 @@
 label: Product details
-description: 'The product''s Details sections (Details, Care, Shipping & returns, Warranty) as sections that open one at a time. Only in a template built with blocks for products.'
+description: 'The product''s Details sections (Details, Care, Shipping & returns, Warranty) as sections that open one at a time, then the ones every product shows (Shop settings > Product details). Only in a template built with blocks for products.'
 category: Shop
 scope: template
 requires: shop
@@ -16,3 +16,8 @@ fields:
     options:
       none: All closed
       first: The first one open
+  shop_details:
+    type: toggle
+    label: Add the shop's Details
+    default: true
+    help: 'After the product''s own sections, the ones written in Shop settings > Product details for every product. A product''s own section with the same title takes the place of the shop''s.'

@@ -1,0 +1,24 @@
+{# One section on Shop settings > Product details: its title and text (Markdown) in each language. d is its index (or __D__ in the template). #}
+{% set input = 'block w-full rounded-md border border-slate-300 px-2.5 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500' %}
+{% set label = 'block text-xs font-medium text-slate-600 mb-1' %}
+<section class="rounded-lg border border-slate-200 bg-white" data-detail>
+  <div class="grid gap-4 px-4 py-3{% if languages|length > 1 %} lg:grid-cols-2{% endif %}">
+    {% for lang in languages %}
+      <div class="grid gap-2">
+        <div>
+          <label class="{{ label }}" for="detail-{{ d }}-{{ lang }}-title">Title{% if languages|length > 1 %} <span class="font-semibold uppercase text-slate-400">{{ lang }}</span>{% endif %}</label>
+          <input id="detail-{{ d }}-{{ lang }}-title" name="details[{{ d }}][title][{{ lang }}]" value="{{ detail.title[lang]|default('') }}" class="{{ input }}" maxlength="120" placeholder="{{ loop.first ? 'Shipping & returns' : '' }}">
+        </div>
+        <div>
+          <label class="{{ label }}" for="detail-{{ d }}-{{ lang }}-text">Text{% if languages|length > 1 %} <span class="font-semibold uppercase text-slate-400">{{ lang }}</span>{% endif %} <span class="font-normal text-slate-400">· Markdown</span></label>
+          <textarea id="detail-{{ d }}-{{ lang }}-text" name="details[{{ d }}][text][{{ lang }}]" rows="4" class="{{ input }}" maxlength="5000">{{ detail.text[lang]|default('') }}</textarea>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+  <div class="flex items-center gap-1 border-t border-slate-100 px-4 py-2">
+    <button type="button" class="rounded-md px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100" data-move-detail="up" aria-label="Move up">↑ Up</button>
+    <button type="button" class="rounded-md px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100" data-move-detail="down" aria-label="Move down">↓ Down</button>
+    <button type="button" class="ml-auto rounded-md px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50" data-remove-detail>Remove</button>
+  </div>
+</section>

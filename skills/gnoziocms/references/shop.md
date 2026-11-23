@@ -41,7 +41,7 @@ Terms of the taxonomies `collections` and `product-categories` (`content/taxonom
 | Content › Products, Looks | products and Looks, with a filter bar (status, every taxonomy, stock, main image, dates) and bulk actions |
 | Shop › Orders | orders, their timeline, shipping, refunds, packing slip |
 | Shop › Customers, Subscriptions, Files, Coupons | as named; coupons can be limited to chosen products or collections |
-| System › Shop settings | tabs **General** (store, currency, order prefix, guest checkout, terms pages), **Shipping** (zones, methods, pickup), **Payments** (Viva Wallet, Cardlink, bank transfer, cash on delivery: on/off, test mode, keys, *Check connection*), **Emails**, **Accounts** (sign-up, email confirmation, **Sign in with Google**), **Marketing** (product feed for Google and Meta, Pixel), **Import & export** (WooCommerce import, products CSV) |
+| System › Shop settings | tabs **General** (store, currency, order prefix, guest checkout, terms pages), **Shipping** (zones, methods, pickup), **Payments** (Viva Wallet, Cardlink, bank transfer, cash on delivery: on/off, test mode, keys, *Check connection*), **Product details** (up to 8 sections every product page shows after the product's own Details, a title and Markdown text per language; a product's own section with the same title replaces the shop's), **Emails**, **Accounts** (sign-up, email confirmation, **Sign in with Google**), **Marketing** (product feed for Google and Meta, Pixel), **Import & export** (WooCommerce import, products CSV) |
 
 Permissions: `shop.orders` (orders, customers, subscriptions) and `shop.manage` (settings and keys, admins only).
 

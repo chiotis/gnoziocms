@@ -19,6 +19,8 @@ final class ShopSettings
     /** The tax classes a product can have, with the Greek rates as their defaults (percent). */
     public const TAX_CLASSES = ['standard' => 24.0, 'reduced' => 13.0, 'super_reduced' => 6.0, 'zero' => 0.0];
     public const TAX_LABELS = ['standard' => 'Standard', 'reduced' => 'Reduced', 'super_reduced' => 'Super-reduced', 'zero' => 'Zero'];
+    /** The most sections the Product details tab holds, as many as a product's own Details repeater. */
+    public const MAX_DETAILS = 8;
 
     public function __construct(private SystemMetaRepository $meta)
     {
@@ -147,6 +149,53 @@ final class ShopSettings
         $this->meta->setJson(self::META, self::normalize($stored));
     }
 
+    /**
+     * The Product details tab's form: sections every product page shows after the product's own Details, each with a title and
+     * a text (Markdown) in each language.
+     *
+     * @param array<string, mixed> $post
+     * @param string[] $languages
+     */
+    public function saveDetails(array $post, array $languages): void
+    {
+        if (!$this->meta->isAvailable()) {
+            return;
+        }
+        $stored = $this->meta->getJson(self::META) ?? [];
+        $stored['details'] = self::details(is_array($post['details'] ?? null) ? $post['details'] : [], $languages);
+        $this->meta->setJson(self::META, self::normalize($stored));
+    }
+
+    /**
+     * The shop's sections of Details in one language, as a product's own (title, text). A section not written in that language
+     * is shown in the default language's words; one with neither a title nor a text there is left out.
+     *
+     * @return list<array{title: string, text: string}>
+     */
+    public function detailsFor(string $lang, string $defaultLang): array
+    {
+        return self::detailsIn($this->all()['details'], $lang, $defaultLang);
+    }
+
+    /**
+     * @param list<array{title: array<string, string>, text: array<string, string>}> $details
+     * @return list<array{title: string, text: string}>
+     */
+    public static function detailsIn(array $details, string $lang, string $defaultLang): array
+    {
+        $out = [];
+        foreach ($details as $row) {
+            $own = ($row['title'][$lang] ?? '') !== '' && ($row['text'][$lang] ?? '') !== '';
+            $from = $own ? $lang : $defaultLang;
+            $title = (string)($row['title'][$from] ?? '');
+            $text = (string)($row['text'][$from] ?? '');
+            if ($title !== '' && $text !== '') {
+                $out[] = ['title' => $title, 'text' => $text];
+            }
+        }
+        return $out;
+    }
+
     /** The rate of a tax class, in percent; an unknown class is the standard one. */
     public function taxRate(string $class): float
     {
@@ -270,8 +319,49 @@ final class ShopSettings
                 'google_client_id' => $code($accounts['google_client_id'] ?? '', '/^[A-Za-z0-9._-]{8,200}$/'),
             ],
             'emails' => self::emails(is_array($stored['emails'] ?? null) ? $stored['emails'] : []),
+            'details' => self::details(is_array($stored['details'] ?? null) ? $stored['details'] : []),
             'marketing' => ShopMarketing::normalize(is_array($stored['marketing'] ?? null) ? $stored['marketing'] : []),
         ];
+    }
+
+    /**
+     * The Product details sections, in order: a title of one line and a text in each language. A language's pair counts only when
+     * both are written; a section with no language left is dropped, and at most MAX_DETAILS are kept.
+     *
+     * @param array<mixed> $rows
+     * @param string[] $languages the site's languages; none: every language a section is written in is kept
+     * @return list<array{title: array<string, string>, text: array<string, string>}>
+     */
+    private static function details(array $rows, array $languages = []): array
+    {
+        $out = [];
+        foreach ($rows as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $titles = is_array($row['title'] ?? null) ? $row['title'] : [];
+            $texts = is_array($row['text'] ?? null) ? $row['text'] : [];
+            $section = ['title' => [], 'text' => []];
+            foreach ($titles as $lang => $title) {
+                $lang = (string)$lang;
+                if (preg_match('/^[a-z]{2}$/', $lang) !== 1 || ($languages !== [] && !in_array($lang, $languages, true))) {
+                    continue;
+                }
+                $title = mb_substr(trim(preg_replace('/\s+/u', ' ', is_scalar($title) ? (string)$title : '') ?? ''), 0, 120);
+                $text = mb_substr(trim(str_replace("\r\n", "\n", is_scalar($texts[$lang] ?? null) ? (string)$texts[$lang] : '')), 0, 5000);
+                if ($title !== '' && $text !== '') {
+                    $section['title'][$lang] = $title;
+                    $section['text'][$lang] = $text;
+                }
+            }
+            if ($section['title'] !== []) {
+                $out[] = $section;
+            }
+            if (count($out) === self::MAX_DETAILS) {
+                break;
+            }
+        }
+        return $out;
     }
 
     /**

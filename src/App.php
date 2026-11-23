@@ -1274,7 +1274,8 @@ final class App
             fn(): ContentTypes => $this->contentTypes(),
             $this->shopStock(),
             fn(): string => $this->defaultLanguage(),
-            $includeHidden
+            $includeHidden,
+            fn(string $lang): array => $this->shopSettings()->detailsFor($lang, $this->defaultLanguage())
         );
     }
 

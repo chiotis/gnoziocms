@@ -228,7 +228,7 @@ check(): string                            // "Check connection" in settings
 | **Looks** | home | a grid of looks with "3 pieces · €460" (3b "Wear It Together") |
 | **Product gallery** (template scope) | product | the 4-picture stack or a thumbnail strip, with zoom |
 | **Product summary** (template scope) | product | collection eyebrow, title, price, variant chips, quantity, add to cart, notes line ("Handmade in Greece · Gift wrapping"), shipping estimate |
-| **Product details** (template scope) | product | the `details` repeater as an accordion (it reuses the `accordion` styles) |
+| **Product details** (template scope) | product | the `details` repeater as an accordion (it reuses the `accordion` styles), then the sections of Shop settings > Product details that every product shows (a product's own section with the same title replaces the shop's) |
 | **Mini cart** | header, footer | the cart count and link; usually automatic in the header |
 
 All blocks use the theme tokens. Collection tones only change the CSS variables. The design's fonts (Noto Serif Display, Commissioner, IBM Plex Mono) are a site's Branding choice, not hard-coded.

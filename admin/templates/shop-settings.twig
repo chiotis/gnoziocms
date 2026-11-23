@@ -3,7 +3,8 @@
 {% import '@admin/partials/ui.twig' as ui %}
 {#
   System > Shop settings (docs/shop-plan.md, section 8). Only while the shop is on (the Products content type): General, Shipping
-  (zones with their methods; admin-shop.js adds zones and methods), Payments, Emails, Accounts, Marketing (the product feed
+  (zones with their methods; admin-shop.js adds zones and methods), Payments, Product details (sections on every product page;
+  admin-shop.js adds, moves and removes them, partials/shop-detail.twig), Emails, Accounts, Marketing (the product feed
   for Meta and Google, the Meta Pixel) and Import & export (partials/shop-import.twig).
 #}
 
@@ -195,6 +196,24 @@
       <p class="max-w-3xl text-xs text-slate-500">The keys are kept apart from these settings, never shown again and never exported.</p>
       <div><button type="submit" class="{{ primary }}">Save</button></div>
     </form>
+  {% endif %}
+
+  {% if tab == 'details' %}
+    <form method="post" action="{{ url('admin/shop-settings?tab=details') }}" class="grid gap-4" data-shop-details data-max="{{ max_details }}">
+      {{ csrf_field() }}<input type="hidden" name="tab" value="details">
+      <p class="max-w-3xl text-xs text-slate-500">Sections every product page shows in its <strong>Product details</strong> block, after the product's own Details: Shipping &amp; returns, Warranty, Payment. A product's own section with the same title takes the place of the shop's{% if languages|length > 1 %}. A language left empty shows the {{ languages|first|upper }} words{% endif %}. Up to {{ max_details }}.</p>
+      <div class="grid gap-4" data-details>
+        {% for detail in shop.details %}
+          {% include '@admin/partials/shop-detail.twig' with {d: loop.index0, detail: detail} %}
+        {% endfor %}
+      </div>
+      <template data-detail-template>{% include '@admin/partials/shop-detail.twig' with {d: '__D__', detail: {title: {}, text: {}}} %}</template>
+      <div class="flex flex-wrap items-center gap-2">
+        <button type="button" class="{{ btn }} border border-slate-300 bg-white text-slate-700 hover:bg-slate-50" data-add-detail{% if shop.details|length >= max_details %} disabled{% endif %}>Add a section</button>
+        <button type="submit" class="{{ primary }}">Save</button>
+      </div>
+    </form>
+    <script src="{{ asset('js/admin-shop.js') }}" defer></script>
   {% endif %}
 
   {% if tab == 'emails' %}

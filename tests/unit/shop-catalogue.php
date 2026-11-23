@@ -2,7 +2,8 @@
 /*
  * The shop's catalogue (docs/shop-plan.md, phase 1): the shop is on with the Products type, blocks that ask for it (`requires: shop`)
  * exist only then, fields every translation shares (`shared: true`), the stock and its holds, a collection's number, tones and quote,
- * the products a Product grid lists with their prices, options and variants, the Shop settings, and the Product in structured data.
+ * the products a Product grid lists with their prices, options and variants, the Shop settings (with the Details every product shows),
+ * and the Product in structured data.
  *   php tests/unit/shop-catalogue.php
  */
 $repo = dirname(__DIR__, 2);
@@ -164,6 +165,36 @@ $shop->saveGeneral(['store_name' => '  ALALEON  ', 'store_email' => 'not an emai
 $saved = $shop->all();
 check('the General tab is checked: name, email, prefix, minutes, rates, pages', [$saved['store_name'], $saved['store_email'], $saved['order_prefix'], $saved['reserve_minutes'], $saved['tax_rates']['standard'], $saved['tax_rates']['reduced'], $saved['guest_checkout'], $saved['terms_page']], ['ALALEON', '', 'AL-2B', 30, 24.5, 13.0, false, '']);
 check('a tax class\'s rate; an unknown class is the standard one', [$shop->taxRate('reduced'), $shop->taxRate('luxury')], [13.0, 24.5]);
+
+// ---- Shop settings > Product details: sections every product shows after its own Details, in each language
+$shop->saveDetails(['details' => [
+    ['title' => ['el' => ' Αποστολή  &  επιστροφές ', 'en' => 'Shipping & returns'], 'text' => ['el' => "Δωρεάν **αποστολή**.\r\nΕπιστροφές σε 14 ημέρες.", 'en' => 'Free **shipping**.']],
+    ['title' => ['el' => 'Φροντίδα', 'en' => ''], 'text' => ['el' => 'Μακριά από νερό.', 'en' => 'Half written']],
+    ['title' => ['el' => '', 'en' => ''], 'text' => ['el' => '', 'en' => '']],
+    ['title' => ['el' => 'Only a title'], 'text' => ['el' => '']],
+    ['title' => ['fr' => 'Livraison', 'el' => 'Εγγύηση'], 'text' => ['fr' => 'Gratuite', 'el' => 'Δύο χρόνια.']],
+    'not a section',
+]], ['el', 'en']);
+check('the Product details tab keeps the sections in order: a title of one line and the text in each language; empty ones and other languages dropped', $shop->all()['details'], [
+    ['title' => ['el' => 'Αποστολή & επιστροφές', 'en' => 'Shipping & returns'], 'text' => ['el' => "Δωρεάν **αποστολή**.\nΕπιστροφές σε 14 ημέρες.", 'en' => 'Free **shipping**.']],
+    ['title' => ['el' => 'Φροντίδα'], 'text' => ['el' => 'Μακριά από νερό.']],
+    ['title' => ['el' => 'Εγγύηση'], 'text' => ['el' => 'Δύο χρόνια.']],
+]);
+check('the other settings are kept when the tab is saved', [$shop->all()['store_name'], $shop->all()['order_prefix']], ['ALALEON', 'AL-2B']);
+check('in a language: its own words, else the default language\'s', [array_column($shop->detailsFor('el', 'el'), 'title'), array_column($shop->detailsFor('en', 'el'), 'title'), $shop->detailsFor('en', 'el')[0]['text']], [['Αποστολή & επιστροφές', 'Φροντίδα', 'Εγγύηση'], ['Shipping & returns', 'Φροντίδα', 'Εγγύηση'], 'Free **shipping**.']);
+$many = array_fill(0, 12, ['title' => ['el' => 'Τίτλος'], 'text' => ['el' => 'Κείμενο']]);
+check('at most eight sections', count(ShopSettings::normalize(['details' => $many])['details']), ShopSettings::MAX_DETAILS);
+check('none by default', ShopSettings::normalize([])['details'], []);
+check('the product\'s own sections first, then the shop\'s; a shop section with the title of the product\'s own is left out',
+    ShopCatalogue::withShopDetails([['title' => 'Care', 'text' => 'Own']], [['title' => 'Shipping', 'text' => 'Shop'], ['title' => 'CARE', 'text' => 'Shop care'], ['title' => 'shipping', 'text' => 'Twice']]),
+    [['title' => 'Care', 'text' => 'Own'], ['title' => 'Shipping', 'text' => 'Shop']]);
+$withShop = new ShopCatalogue($content(), fn(): Taxonomies => $taxonomies, fn(): ContentTypes => $types, $stock, fn(): string => 'el', false, fn(string $lang): array => $shop->detailsFor($lang, 'el'));
+$detailsBlock = static fn(ShopCatalogue $c, array $values, string $slug): array => $c->blockData('product-details', $values, ['lang' => 'el', 'item' => $content()->find('products', $slug, 'el')]);
+check('the Product details block: the product\'s own, then the shop\'s', array_column($detailsBlock($withShop, [], 'earrings')['product']['details'], 'title'), ['Care', 'Αποστολή & επιστροφές', 'Φροντίδα', 'Εγγύηση']);
+check('a product with no Details of its own shows the shop\'s, so the block is drawn', [$detailsBlock($withShop, [], 'cuff')['_empty'], count($detailsBlock($withShop, [], 'cuff')['product']['details'])], [false, 3]);
+check('with "Add the shop\'s Details" off, only the product\'s own', [array_column($detailsBlock($withShop, ['shop_details' => false], 'earrings')['product']['details'], 'title'), $detailsBlock($withShop, ['shop_details' => false], 'cuff')['_empty']], [['Care'], true]);
+check('the block offers the switch, on by default', [$on->get('product-details')['fields']['shop_details']['type'] ?? null, $on->get('product-details')['fields']['shop_details']['default'] ?? null], ['toggle', true]);
+check('the product itself keeps only its own (the feed and MCP read it)', array_column($withShop->details($content()->find('products', 'earrings', 'el'), 'el')['details'], 'title'), ['Care']);
 
 // ---- the Product in structured data
 $structured = new StructuredData(fn(): array => ['title' => 'ALALEON', 'base_url' => 'https://shop.test'], fn(): array => [], fn(string $k, ?string $f = null): string => (string)$f, fn(string $p): string => 'https://shop.test/' . ltrim($p, '/'), fn(string $l): string => '', fn(ContentItem $p): bool => $catalogue->available($p));

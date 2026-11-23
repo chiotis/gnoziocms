@@ -27,6 +27,8 @@ final class ShopCatalogue
      * @param \Closure(): Taxonomies $taxonomies
      * @param \Closure(): ContentTypes $types
      * @param \Closure(): string $defaultLanguage
+     * @param ?\Closure(string): list<array{title: string, text: string}> $shopDetails the Details every product shows (Shop settings
+     *        > Product details), in a language
      */
     public function __construct(
         private ContentRepository $content,
@@ -34,7 +36,8 @@ final class ShopCatalogue
         private \Closure $types,
         private ShopStock $stock,
         private \Closure $defaultLanguage,
-        private bool $includeHidden = false
+        private bool $includeHidden = false,
+        private ?\Closure $shopDetails = null
     ) {
     }
 
@@ -104,6 +107,9 @@ final class ShopCatalogue
         } elseif ($type === 'product-gallery') {
             $values['_empty'] = $values['product']['images'] === [];
         } elseif ($type === 'product-details') {
+            if (($values['shop_details'] ?? true) !== false) {
+                $values['product']['details'] = self::withShopDetails($values['product']['details'], $this->shopDetails !== null ? ($this->shopDetails)($lang) : []);
+            }
             $values['_empty'] = $values['product']['details'] === [];
             // Drawn with the Accordion block's styles and script.
             $values['_types'] = ['accordion'];
@@ -208,6 +214,26 @@ final class ShopCatalogue
             'collection' => $this->collection($product, $lang),
             'available' => $this->available($product),
         ];
+    }
+
+    /**
+     * A product's own Details, then the shop's (Shop settings > Product details). A shop section with the title of one of the
+     * product's own is left out, so a product can write its own version of it.
+     *
+     * @param list<array{title: string, text: string}> $own
+     * @param list<array{title: string, text: string}> $shop
+     * @return list<array{title: string, text: string}>
+     */
+    public static function withShopDetails(array $own, array $shop): array
+    {
+        $titles = array_map(static fn(array $row): string => mb_strtolower($row['title']), $own);
+        foreach ($shop as $row) {
+            if (!in_array(mb_strtolower($row['title']), $titles, true)) {
+                $own[] = $row;
+                $titles[] = mb_strtolower($row['title']);
+            }
+        }
+        return $own;
     }
 
     /**
