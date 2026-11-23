@@ -139,6 +139,24 @@ check('the grid block lists products; the page blocks need a product', [count($c
 check('the details block loads the Accordion\'s styles', $catalogue->blockData('product-details', [], ['lang' => 'el', 'item' => $content()->find('products', 'earrings', 'el')])['_types'], ['accordion']);
 check('a gallery without pictures is not drawn', $catalogue->blockData('product-gallery', [], ['lang' => 'el', 'item' => $cuff])['_empty'], true);
 
+// ---- the Add to cart button of the Product summary: the block's own label, else the theme's words in the page's language
+$summaryTwig = new Twig\Environment(new Twig\Loader\FilesystemLoader($repo . '/themes/default/blocks/product-summary'), ['strict_variables' => false, 'autoescape' => 'html']);
+$themeWords = ['el' => require $repo . '/themes/default/lang/el.php', 'en' => require $repo . '/themes/default/lang/en.php'];
+$summaryLang = 'el';
+$summaryTwig->addFunction(new Twig\TwigFunction('t', function (string $k, ?string $f = null) use (&$summaryLang, $themeWords): string { return (string)($themeWords[$summaryLang][$k] ?? $f ?? $k); }));
+$summaryTwig->addFunction(new Twig\TwigFunction('url', fn(string $p): string => '/' . ltrim($p, '/')));
+$summaryTwig->addFunction(new Twig\TwigFunction('taxonomy_url', fn(string $tax, string $id, string $prefix = ''): string => "/$prefix$tax/$id"));
+$addButton = function (array $values, string $lang) use ($summaryTwig, $catalogue, $content, &$summaryLang): string {
+    $summaryLang = $lang;
+    $item = $content()->find('products', 'cuff', $lang) ?? $content()->find('products', 'cuff', 'el');
+    $html = $summaryTwig->render('block.twig', ['block' => $catalogue->blockData('product-summary', $values, ['lang' => $lang, 'item' => $item]), 'lang' => $lang, 'lang_prefix' => $lang === 'el' ? '' : "$lang/"]);
+    return preg_match('/<button class="btn btn-primary product-add"[^>]*data-add-label="([^"]*)"[^>]*>([^<]*)<\/button>/', $html, $m) === 1 ? $m[1] . '|' . $m[2] : 'no button';
+};
+check('without a label of its own, the button says Add to cart in the page\'s language', [$addButton([], 'el'), $addButton([], 'en'), $addButton(['button_label' => '   '], 'en')], ['Στο καλάθι|Στο καλάθι', 'Add to cart|Add to cart', 'Add to cart|Add to cart']);
+check('the block\'s own label is on the button and is what the script puts back after adding', [$addButton(['button_label' => ' Buy now '], 'en'), $addButton(['button_label' => 'Αγορά'], 'el')], ['Buy now|Buy now', 'Αγορά|Αγορά']);
+check('the label is escaped', $addButton(['button_label' => '<b>"Buy"</b>'], 'en'), '&lt;b&gt;&quot;Buy&quot;&lt;/b&gt;|&lt;b&gt;&quot;Buy&quot;&lt;/b&gt;');
+check('the Product summary offers the label as a field', $on->get('product-summary')['fields']['button_label']['type'] ?? null, 'text');
+
 // ---- Shop settings
 $shop = new ShopSettings(new SystemMetaRepository($db));
 check('defaults: euro, VAT in the price, Greek rates, guest checkout, a hold of 30 minutes', [$shop->all()['currency'], $shop->all()['prices_include_vat'], $shop->all()['tax_rates'], $shop->all()['guest_checkout'], $shop->all()['reserve_minutes']], ['EUR', true, ['standard' => 24.0, 'reduced' => 13.0, 'super_reduced' => 6.0, 'zero' => 0.0], true, 30]);
