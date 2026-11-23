@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.335 — 2026-11-23 — Signed releases, ready to switch on
+- **Signed releases** (audit S20): a release's `release.json` can carry an Ed25519 signature made with a key that stays on the maintainer's computer, never on GitHub. Sites check it against the public key in the code before they install, so someone who gets into the GitHub account or the release workflow cannot make sites install a package.
+- Nothing changes yet: the code lists no key, so releases install as before. Once a key is listed, a release that is unsigned, changed after signing or signed by another key is not offered; the Updates screen says it is waiting for its signature (or refused), and Omni's remote install follows the same rule. The install panel shows whether the package's signature was verified.
+- The one-file installer checks the same signature with the same keys.
+- `scripts/sign-release.php`: `keygen` makes the key, `release` signs the latest release after building it again from its tag and checking the package on GitHub is byte for byte the same, `sign` and `verify` work on a file. How to switch it on: `docs/signed-releases.md`.
+- The release workflow keeps a signed `release.json` when it runs again for the same package. System status lists PHP's sodium extension (it checks the signatures).
+- Tests: `release-signature` (unit), `system-status`.
+
 ## 0.1.334 — 2026-11-23 — Shop: order changes in one transaction, held stock checked, stuck renewals recovered
 - **Order status changes are all or nothing**: an order's new status, the stock it holds or gives back and its coupon's use are now written in one transaction, so a failure half way can no longer leave a cancelled order still holding stock, or a coupon counted twice.
 - **Held stock checked every hour**: the shop's scheduled work compares each product's held stock with what the orders waiting for payment really hold, puts it right when it differs, and writes a warning in Activity. A product changed in the last five minutes is left for the next run, so an order being placed is never disturbed.

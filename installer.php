@@ -28,6 +28,8 @@ final class GnozioInstaller
     const MIN_PHP_FALLBACK = '8.5';
     const MAX_PACKAGE_BYTES = 104857600;
     const MAX_MANIFEST_BYTES = 65536;
+    /** The same keys as GnozioCMS\ReleaseSignature::PUBLIC_KEYS: once there are any, an unsigned release is not installed. */
+    const RELEASE_KEYS = [];
     const MAX_ENTRIES = 20000;
     const MAX_UNPACKED_BYTES = 314572800;
     const CHUNK_BYTES = 4194304;
@@ -380,11 +382,52 @@ final class GnozioInstaller
             $error = $failure;
             return null;
         }
-        $manifest = self::validateManifest(json_decode($body, true));
+        $data = json_decode($body, true);
+        $manifest = self::validateManifest($data);
         if ($manifest === null) {
             $error = 'the release manifest is not valid';
+        } elseif (self::RELEASE_KEYS !== [] && self::overrideUrl() === '' && !self::signatureValid($data, self::RELEASE_KEYS, $error)) {
+            $manifest = null;
         }
         return $manifest;
+    }
+
+    /** The same text as GnozioCMS\ReleaseSignature::message. */
+    public static function signedMessage(array $data)
+    {
+        $field = function ($key) use ($data) { return isset($data[$key]) ? (string)$data[$key] : ''; };
+        $backup = !(isset($data['requires_backup']) && $data['requires_backup'] === false);
+        return implode("\n", ['gnoziocms-release-v1', $field('version'), $field('min_php'), $field('package_url'), strtolower($field('sha256')), (string)(int)$field('size'), $backup ? 'backup' : 'no-backup']) . "\n";
+    }
+
+    /** Whether the manifest is signed by one of the keys, as GnozioCMS\ReleaseSignature::check; $error says why not. */
+    public static function signatureValid(array $data, array $keys, &$error)
+    {
+        $known = [];
+        foreach ($keys as $key) {
+            $raw = base64_decode((string)$key, true);
+            if ($raw !== false && strlen($raw) === 32) {
+                $known[substr(hash('sha256', $raw), 0, 16)] = $raw;
+            }
+        }
+        $found = false;
+        foreach ((isset($data['signatures']) && is_array($data['signatures']) ? $data['signatures'] : []) as $signature) {
+            $id = is_array($signature) && isset($signature['key']) ? (string)$signature['key'] : '';
+            if ($id === '' || !isset($known[$id])) {
+                continue;
+            }
+            $found = true;
+            if (!function_exists('sodium_crypto_sign_verify_detached')) {
+                $error = 'this server\'s PHP has no sodium extension, which checks the signature of a release';
+                return false;
+            }
+            $raw = base64_decode(isset($signature['sig']) ? (string)$signature['sig'] : '', true);
+            if ($raw !== false && strlen($raw) === 64 && sodium_crypto_sign_verify_detached($raw, self::signedMessage($data), $known[$id])) {
+                return true;
+            }
+        }
+        $error = $found ? 'the signature of the release does not match it' : 'the release is not signed yet; try again later';
+        return false;
     }
 
     // ---------------------------------------------------------------- network

@@ -3556,7 +3556,7 @@ final class App
         // What decides is the package that would be installed, as on the Updates screen.
         $manifest = $updates->releaseManifest(true);
         if ($manifest === null) {
-            return ['status' => 'failed', 'message' => 'The package of the latest release could not be found.', 'from' => $current, 'to' => ''];
+            return ['status' => 'failed', 'message' => $updates->releaseRefusal()['message'] ?? 'The package of the latest release could not be found.', 'from' => $current, 'to' => ''];
         }
         if (!version_compare($manifest['version'], $current, '>')) {
             return ['status' => 'up_to_date', 'message' => 'GnozioCMS ' . $current . ' is already the latest version.', 'from' => $current, 'to' => $current];
