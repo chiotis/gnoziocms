@@ -4,7 +4,8 @@ name: Release
 # package a site installs from its Updates screen: gnoziocms-<version>.zip (the code only) and release.json (its version,
 # lowest PHP, SHA-256 and size), plus installer.php, the one-file installer for a new server (not part of the package).
 # The site's update check reads the VERSION file for "there is a new version" and release.json
-# for what to install.
+# for what to install. Once the code lists a release key (src/ReleaseSignature.php), sites install a release only after
+# its release.json has been signed with that key, which happens off GitHub: php scripts/sign-release.php release.
 on:
   push:
     branches: [main]
@@ -41,4 +42,11 @@ jobs:
           fi
           # The package and its manifest; run again to replace them.
           php scripts/build-release.php build --repo="$GITHUB_REPOSITORY"
+          # release.json is signed afterwards, on the maintainer's computer (scripts/sign-release.php, docs/signed-releases.md):
+          # the signing key is never on GitHub. A run again keeps a signed release.json when the package is the same.
+          if gh release download "$tag" -p release.json -O published.json 2>/dev/null \
+            && jq -e '(.signatures | length > 0)' published.json >/dev/null 2>&1 \
+            && [ "$(jq -r .sha256 published.json)" = "$(jq -r .sha256 build/release.json)" ]; then
+            cp published.json build/release.json
+          fi
           gh release upload "$tag" "build/gnoziocms-${version}.zip" build/release.json build/installer.php --clobber

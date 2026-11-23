@@ -73,7 +73,7 @@ check('nothing checked is healthy', SystemStatus::summarize([])['status'], 'ok')
 
 // ---- the System screen
 $extensions = SystemStatus::extensions();
-check('every extension has a purpose and a verdict', [count($extensions), array_keys($extensions[0])], [8, ['name', 'purpose', 'loaded', 'status']]);
+check('every extension has a purpose and a verdict', [count($extensions), array_keys($extensions[0])], [9, ['name', 'purpose', 'loaded', 'status']]);
 $sqlite = array_values(array_filter($extensions, fn($e) => $e['name'] === 'pdo_sqlite'))[0];
 check('a loaded one is ok', [$sqlite['loaded'], $sqlite['status']], [true, 'ok']);
 $env = $status->environment('1.2.3', 'abc123', true);
