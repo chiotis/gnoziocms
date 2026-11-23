@@ -334,7 +334,11 @@ final class App
             $this->aiTick();
             $jobsDue = $this->jobRunner()->pending(null, true) > 0;
             $retentionDue = $this->logRetention()->isDue();
-            if (!$backupDue && !$releaseDue && !$picturesDue && !$jobsDue && !$retentionDue && !$this->omniClient()->isDue()) {
+            if (!$backupDue && !$releaseDue && !$picturesDue && !$jobsDue && !$this->omniClient()->isDue()) {
+                // The logs' clean-up, once a day, is a few deletes: done here when nothing else is due, on every server.
+                if ($retentionDue) {
+                    $this->pruneLogs();
+                }
                 // Copies of pages may be sent for a while without asking again, before the application boots too.
                 $this->pageCache()->markQuiet();
                 return;
