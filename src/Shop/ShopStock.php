@@ -242,6 +242,7 @@ final class ShopStock
      */
     public function reconcile(array $heldLines, int $settleSeconds = 300): array
     {
+        $this->rows = [];
         if (!$this->database->isAvailable()) {
             return [];
         }
