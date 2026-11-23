@@ -255,6 +255,9 @@ final class McpOAuth
         }
         if ($grant === 'refresh_token') {
             $refreshed = $this->store->refresh(trim((string)($post['refresh_token'] ?? '')), $clientId, $resource);
+            if ($this->store->reused !== null) {
+                ($this->log)('mcp.refresh_reused', 'warning', 'mcp_connection', (string)$this->store->reused, 'A refresh token that was already replaced came back after its grace, the sign of a stolen one: the MCP connection was ended.', ['client_id' => $clientId]);
+            }
             if ($refreshed === null || !$accountActive((int)$refreshed['connection']['user_id'])) {
                 return $this->refused($clientId, $grant, 'The refresh token is not valid or has expired.');
             }

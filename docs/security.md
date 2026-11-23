@@ -258,3 +258,20 @@ set, and says why. Pages themselves are still built with the request's host when
 
      The installer checks this before it finishes: when `/_themes/default/css/site.css` does not answer with the stylesheet, it shows the line to add.
 5. If a credential was ever committed to git (for example SMTP credentials in the old `content/settings/site.yaml`), rotate it with the provider. Deleting the file does not remove it from history.
+
+## What the logs keep
+
+The activity log (with each row's address and browser), the email log and the payment providers' events hold personal data, so
+they are cleared once a day (`LogRetention`, from the cron job's work or after a visit): activity after **180 days**, emails
+after **90**, provider events after **180**. Other periods (7 to 3650 days) go in `settings.yaml`:
+
+```yaml
+retention:
+  activity_days: 365
+  email_days: 30
+  gateway_days: 180
+```
+
+MCP clients that registered and never made a connection are removed after a week, a bad MCP token writes one warning per
+address a minute rather than one per request, and a replaced refresh token used again after its minute of grace ends its
+connection (the sign of a stolen token) with a warning in Activity.

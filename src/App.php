@@ -110,6 +110,7 @@ final class App
     private ?OmniClient $omniClientService = null;
     private ?ScheduledPublishing $scheduledPublishingService = null;
     private ?McpStore $mcpStoreService = null;
+    private ?LogRetention $logRetentionService = null;
     private ?McpOAuth $mcpOAuthService = null;
     private ?McpAdmin $mcpAdminService = null;
     private ?JobRunner $jobRunnerService = null;
@@ -332,7 +333,8 @@ final class App
             $picturesDue = $this->images->pendingCount() > 0;
             $this->aiTick();
             $jobsDue = $this->jobRunner()->pending(null, true) > 0;
-            if (!$backupDue && !$releaseDue && !$picturesDue && !$jobsDue && !$this->omniClient()->isDue()) {
+            $retentionDue = $this->logRetention()->isDue();
+            if (!$backupDue && !$releaseDue && !$picturesDue && !$jobsDue && !$retentionDue && !$this->omniClient()->isDue()) {
                 // Copies of pages may be sent for a while without asking again, before the application boots too.
                 $this->pageCache()->markQuiet();
                 return;
@@ -367,6 +369,9 @@ final class App
             }
             // After the backup, so a report that is due tells Omni how it went.
             $this->omniClient()->sendIfDue();
+            if ($retentionDue) {
+                $this->pruneLogs();
+            }
         } catch (\Throwable) {
             // A backup that could not run is told by its own run (Backups, notifications); a visit is never broken by it.
         }
@@ -416,6 +421,7 @@ final class App
             @set_time_limit($seconds + 300);
         }
         $this->aiTick(false);
+        $this->pruneLogs();
         $renewed = $this->shop()->tick(false);
         return $renewed + $this->jobRunner()->work(microtime(true) + $seconds);
     }
@@ -3631,6 +3637,24 @@ final class App
     }
 
     // ---- MCP (docs/mcp.md)
+
+    private function logRetention(): LogRetention
+    {
+        return $this->logRetentionService ??= new LogRetention($this->systemDatabase, $this->systemMeta, $this->mcpStore());
+    }
+
+    /** Once a day: what the logs may no longer keep is cleared (LogRetention), and Activity says how much. */
+    private function pruneLogs(): void
+    {
+        try {
+            $removed = $this->logRetention()->run($this->settings);
+        } catch (\Throwable) {
+            return;
+        }
+        if ($removed !== null && array_sum($removed) > 0) {
+            $this->logActivity('logs.retention', 'info', 'system', null, 'Old log rows cleared: ' . $removed['activity'] . ' activity, ' . $removed['email'] . ' email, ' . $removed['gateway'] . ' payment provider events, ' . $removed['mcp_clients'] . ' unused MCP clients.', $removed);
+        }
+    }
 
     private function mcpStore(): McpStore
     {

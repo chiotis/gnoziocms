@@ -60,7 +60,10 @@ final class McpServer
         }
         $connection = $this->store->connectionForAccess($m[1], $this->oauth->resourceUrl());
         if ($connection === null || (string)$connection['user_status'] !== 'active') {
-            ($this->log)('mcp.auth_failed', 'warning', 'mcp', null, 'An MCP request with a token that is not valid was refused.', ['ip' => $ip]);
+            // One row per address and token a minute, not one per request (audit S21).
+            if ($this->store->hit('mcp-auth-log', $ip . '|' . McpStore::hash($m[1]), 1, 60)['allowed']) {
+                ($this->log)('mcp.auth_failed', 'warning', 'mcp', null, 'An MCP request with a token that is not valid was refused.', ['ip' => $ip]);
+            }
             return $this->unauthorized('The token is not valid, has expired, or its connection was removed.');
         }
         $type = strtolower(trim(explode(';', $headers['content-type'] ?? '')[0]));

@@ -80,10 +80,12 @@ group. Size: S (an hour or two), M (half a day to a day), L (more).
       *Code done (W25): `ReleaseSignature`, the update check, the installer and `scripts/sign-release.php` (the key stays
       on the maintainer's computer, docs/signed-releases.md). Enforcement starts when the owner makes the key and lists
       the public key in the code; until then unsigned releases install as before.*
-- [ ] **S21** (M) Retention: activity log 180 days, email log 90, gateway events 180 (settings), cleared by the daily tick.
+- [x] **S21** (M) Retention: activity log 180 days, email log 90, gateway events 180 (settings), cleared by the daily tick.
       MCP: one activity row per failed token per address per minute, not per request. Unused MCP clients removed after 7 days
       (S23).
-- [ ] **S22** (S) MCP: a replaced refresh token used after its grace ends the connection and writes a warning.
+      Done: `LogRetention` (settings `retention:`), `McpStore::removeUnusedClients()`, one auth warning per token and address a minute.
+- [x] **S22** (S) MCP: a replaced refresh token used after its grace ends the connection and writes a warning.
+      Done: `McpStore::refresh()` revokes the connection; `mcp.refresh_reused` in Activity.
 - [ ] **S24** (S) Analytics: a daily limit of rows per address, whatever the browser says it is.
 - [ ] **S25** (S) Admin Google sign-in: recognise a linked user by `sub` first; an email that matches a user linked to another
       `sub` is refused. `hash_equals` for the state.

@@ -81,7 +81,14 @@ check('the refresh token gives a new pair', [$next['status'], $next['json']['ref
 $now += 30;
 check('within a minute the old refresh token still works', $token(['grant_type' => 'refresh_token', 'refresh_token' => $pair['json']['refresh_token']])['status'], 200);
 $now += 31;
+$beforeReuse = $token(['grant_type' => 'refresh_token', 'refresh_token' => $next['json']['refresh_token']]);
+$next = $beforeReuse;
+$log = [];
 check('after a minute it does not', $token(['grant_type' => 'refresh_token', 'refresh_token' => $pair['json']['refresh_token']])['status'], 400);
+check('and its coming back, the sign of a stolen token, ends the connection with a warning (S22)', [in_array('mcp.refresh_reused', $log, true), $store->connectionForAccess($beforeReuse['json']['access_token'], $resource), $token(['grant_type' => 'refresh_token', 'refresh_token' => $beforeReuse['json']['refresh_token']])['status']], [true, null, 400]);
+$back = $oauth->decide($checked['request'], true, $botId, 1, ['content:read']);
+parse_str((string)parse_url($back, PHP_URL_QUERY), $q);
+$next = $token(['grant_type' => 'authorization_code', 'code' => $q['code'], 'code_verifier' => $verifier]);
 $bot = $users->find($botId);
 $users->update($botId, ['status' => 'inactive'] + $bot);
 check('an inactive account gets no new tokens', $token(['grant_type' => 'refresh_token', 'refresh_token' => $next['json']['refresh_token']])['status'], 400);
@@ -126,6 +133,11 @@ $store->setPaused($live, false);
 $users->update($botId, ['status' => 'inactive'] + $bot);
 check('an inactive account is refused at the door', $call(['jsonrpc' => '2.0', 'id' => 5, 'method' => 'ping'])['status'], 401);
 $users->update($botId, $bot);
+$failedBefore = count(array_keys($log, 'mcp.auth_failed', true));
+for ($i = 0; $i < 5; $i++) {
+    $server->handle('POST', ['authorization' => 'Bearer ' . str_repeat('x', 30), 'content-type' => 'application/json'], '{}', '10.0.0.9');
+}
+check('a bad token sent again and again writes one warning a minute, not one per request (S21)', count(array_keys($log, 'mcp.auth_failed', true)) - $failedBefore, 1);
 $noRights = new McpServer($store, $oauth, '9.9.9', fn(array $account, string $permission): bool => false, fn(array $connection): array => ['site' => 'y'], $logger);
 $answer = json_decode((string)$noRights->handle('POST', ['authorization' => 'Bearer ' . $bearer, 'content-type' => 'application/json'], json_encode(['jsonrpc' => '2.0', 'id' => 6, 'method' => 'tools/list']), '10.0.0.1')['body'], true);
 check('site_info asks for a scope only, so any account sees it', array_column($answer['result']['tools'], 'name'), ['site_info']);
