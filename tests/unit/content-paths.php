@@ -1,7 +1,8 @@
 <?php
 /*
  * Where an entry is on the site: pages and posts at the root (/about, /my-post), every other type under its name
- * (/projects/mine), the home page at the root of its language, and how an address is read back into a kind of page.
+ * (/projects/mine), the home page at the root of its language, how an address is read back into a kind of page, and an address
+ * with "//" in its path made one with single slashes.
  *   php tests/unit/content-paths.php
  */
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
@@ -28,6 +29,13 @@ check('one word is a page or a post (which of the two is for the site to find ou
 check('the old address of a post is an entry of the type, and the list is the list', [$kind('posts/hello'), $kind('en/posts/hello'), $kind('posts')], [['entry', 'posts', 'hello', 'el'], ['entry', 'posts', 'hello', 'en'], ['archive', 'posts', '', 'el']]);
 check('another type is an entry under its name', $kind('projects/mine'), ['entry', 'projects', 'mine', 'el']);
 check('nothing is after an address', [$kind('hello/more')[0], $kind('projects/mine/more')[0]], ['not_found', 'not_found']);
+
+// ---- an address with "//" in its path (a site address that ends with "/" joined to "/"): sent to the one with single slashes
+$collapse = fn(string $uri) => FrontRoute::collapsedSlashes($uri);
+check('an address with single slashes stays', [$collapse('/'), $collapse('/products/ring'), $collapse('/search?q=a//b'), $collapse('/x#a//b')], [null, null, null, null]);
+check('"//" is the home page', $collapse('//'), '/');
+check('"//products" is /products, not a host', $collapse('//products'), '/products');
+check('slashes inside and at the end, the query kept', [$collapse('/en//products///ring?x=1//2'), $collapse('/products//')], ['/en/products/ring?x=1//2', '/products/']);
 
 echo $fail === 0 ? "\nALL PASSED\n" : "\n$fail FAILED\n";
 exit($fail ? 1 : 0);

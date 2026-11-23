@@ -27,6 +27,18 @@ if (!trait_exists('Nette\\SmartObject') && file_exists($smartObject)) {
     require_once $smartObject;
 }
 
+// An address with "//" in its path (https://site//products, as an address joined to a site address that ends with "/"): a page
+// that is read goes to the same address with one slash (PHP would read "//products" as a host); anything else is answered as if
+// it had one.
+$collapsed = GnozioCMS\FrontRoute::collapsedSlashes((string)($_SERVER['REQUEST_URI'] ?? '/'));
+if ($collapsed !== null) {
+    if (in_array($_SERVER['REQUEST_METHOD'] ?? 'GET', ['GET', 'HEAD'], true)) {
+        header('Location: ' . $collapsed, true, 301);
+        return;
+    }
+    $_SERVER['REQUEST_URI'] = $collapsed;
+}
+
 // Theme and custom/ assets live outside public/; serve them before the application boots.
 if (GnozioCMS\ThemeAssets::handle(dirname(__DIR__), (string)($_SERVER['REQUEST_URI'] ?? '/'))) {
     return;

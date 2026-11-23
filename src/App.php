@@ -2835,7 +2835,7 @@ final class App
             'footer_blocks_json' => $this->footerBlocksEditorJson($default),
             'branding' => $branding ? $this->brandingScreen() : null,
             'transfer' => ['parts' => $this->themeTransfer()->parts(), 'backup' => $this->themeTransfer()->backup()],
-            'preview_url' => (string)($this->settings['base_url'] ?? '') . '/',
+            'preview_url' => rtrim((string)($this->settings['base_url'] ?? ''), '/') . '/',
             'theme_values' => $this->themeSettings,
             'theme_info' => [
                 'name' => $this->theme->name(),
@@ -3043,7 +3043,7 @@ final class App
         $greek = in_array('el', $languages, true) || $this->defaultLanguage() === 'el';
         return [
             'stacks' => Branding::FONT_STACKS,
-            'preview_url' => (string)($this->settings['base_url'] ?? '') . '/',
+            'preview_url' => rtrim((string)($this->settings['base_url'] ?? ''), '/') . '/',
             'palettes' => BuiltinPalettes::all(),
             'font_found' => $found,
             'backup' => $this->brandingTransfer()->backup(),

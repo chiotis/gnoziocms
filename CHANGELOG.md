@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.322 — 2026-11-23 — The preview with a site address that ends with /
+- **Theme preview**: with a site address saved with a slash at the end (`https://example.com/`), the preview of Branding, Typography, Header and Footer loaded `https://example.com//` and stayed blank. The address is now joined with one slash.
+- **Addresses with `//`**: PHP reads an address that starts with `//` as a host, so `//` was a server error (500) and `//products` drew the home page, from the page cache too. A page read at an address with `//` in its path now goes (301) to the same address with single slashes, before the page cache and the router; a form sent to one is answered as if it had them (`FrontRoute::collapsedSlashes()`, in `public/index.php`).
+
 ## 0.1.321 — 2026-11-23 — A trail of your own above the title
 - **Entry title block > Trail**: the trail above an entry's title is written as a pattern, its parts separated by `>`: `{home}`, `{type}`, `{title}`, `{term:NAME}` (the entry's term in that taxonomy, with the terms above it; `{term:NAME:alone}` without them), `{taxonomy:NAME}` (the taxonomy's name), or text, with a link as `Text|/address`. A product page can show `Collections|/shop > {term:collections} > {term:product-categories:alone}` as "Collections // Balos // Earrings". A part with nothing to show is left out; an empty field keeps Home › type › title. When the trail does not end with `{title}`, its last part keeps its link and none is marked as the page.
 - **Between the parts**: the Entry title and Archive title blocks choose what stands between the parts of the trail: the theme's ›, /, //, ·, — or |. Screen readers do not read it.

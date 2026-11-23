@@ -21,6 +21,21 @@ final class FrontRoute
     }
 
     /**
+     * The request address with each run of slashes in its path made one ("//products?x=1" is "/products?x=1"), or null when it has
+     * none. PHP reads an address that starts with "//" as a host ("//products" has no path, "//" cannot be read at all), so such
+     * an address drew the home page or failed; public/index.php sends it to this one instead.
+     */
+    public static function collapsedSlashes(string $uri): ?string
+    {
+        $cut = strcspn($uri, '?#');
+        $path = substr($uri, 0, $cut);
+        if (!str_contains($path, '//')) {
+            return null;
+        }
+        return '/' . ltrim((string)preg_replace('#/{2,}#', '/', $path), '/') . substr($uri, $cut);
+    }
+
+    /**
      * @param array<string, mixed> $settings
      * @param string[] $types the content types of the site
      * @param string[] $taxonomies the taxonomies a site added: each has pages of its own at /<name>/<term>
