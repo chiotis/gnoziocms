@@ -86,9 +86,11 @@ group. Size: S (an hour or two), M (half a day to a day), L (more).
       Done: `LogRetention` (settings `retention:`), `McpStore::removeUnusedClients()`, one auth warning per token and address a minute.
 - [x] **S22** (S) MCP: a replaced refresh token used after its grace ends the connection and writes a warning.
       Done: `McpStore::refresh()` revokes the connection; `mcp.refresh_reused` in Activity.
-- [ ] **S24** (S) Analytics: a daily limit of rows per address, whatever the browser says it is.
-- [ ] **S25** (S) Admin Google sign-in: recognise a linked user by `sub` first; an email that matches a user linked to another
+- [x] **S24** (S) Analytics: a daily limit of rows per address, whatever the browser says it is.
+      Done: `AnalyticsCollector::ADDRESS_LIMIT` (1,200 a day per salted address) through `ActionLimit`.
+- [x] **S25** (S) Admin Google sign-in: recognise a linked user by `sub` first; an email that matches a user linked to another
       `sub` is refused. `hash_equals` for the state.
+      Done: `UserRepository::findByGoogleSub()`; `auth.google_mismatch` in Activity.
 - [ ] **S26** (S) The installer gives a one-time code; the first-administrator form asks for it.
 
 ## Speed

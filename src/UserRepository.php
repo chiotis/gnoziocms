@@ -184,6 +184,18 @@ final class UserRepository
         return is_array($row) ? $row : null;
     }
 
+    /** The user linked to a Google account by its own id (`sub`), which stays when the account's address changes. */
+    public function findByGoogleSub(string $sub): ?array
+    {
+        if ($sub === '') {
+            return null;
+        }
+        $stmt = $this->pdo()->prepare('SELECT * FROM users WHERE google_sub = :sub LIMIT 1');
+        $stmt->execute(['sub' => $sub]);
+        $row = $stmt->fetch();
+        return is_array($row) ? $row : null;
+    }
+
     public function findForLogin(string $identifier): ?array
     {
         $stmt = $this->pdo()->prepare('SELECT * FROM users WHERE username = :identifier OR lower(email) = lower(:identifier) LIMIT 1');

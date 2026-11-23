@@ -263,7 +263,7 @@ final class LoginController
         }
 
         $state = (string)($get['state'] ?? '');
-        if ($state === '' || $state !== (string)($_SESSION['google_oauth_state'] ?? '')) {
+        if ($state === '' || !hash_equals((string)($_SESSION['google_oauth_state'] ?? ''), $state)) {
             unset($_SESSION['google_oauth_state']);
             $this->renderLogin('Google Sign-In state could not be verified.');
             return;
@@ -293,7 +293,18 @@ final class LoginController
         }
 
         $email = $accepted['email'];
-        $user = $this->users->findByEmail($email);
+        // The Google account's own id first, then its address (audit S25): an address that matches a user linked to another
+        // Google account is someone else's now (an address given to a new person in a Workspace) and is refused.
+        $user = $this->users->findByGoogleSub($accepted['sub']);
+        if ($user === null) {
+            $user = $this->users->findByEmail($email);
+            $linked = trim((string)($user['google_sub'] ?? ''));
+            if ($user !== null && $linked !== '' && !hash_equals($linked, $accepted['sub'])) {
+                ($this->log)('auth.google_mismatch', 'warning', 'user', (string)($user['username'] ?? ''), 'A Google account with the address of a user linked to another Google account was refused.', ['email' => $email], null);
+                $this->renderLogin('This Google account is not the one linked to that user. Sign in with a password and link it again from your profile.');
+                return;
+            }
+        }
         if (!$user || !$this->users->isActive($user) || UserRepository::isAutomation($user)) {
             $this->renderLogin('No active GnozioCMS user matches this Google account.');
             return;

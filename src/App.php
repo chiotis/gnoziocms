@@ -1657,7 +1657,7 @@ final class App
 
     private function analyticsCollector(): AnalyticsCollector
     {
-        return $this->analyticsCollectorService ??= new AnalyticsCollector(fn(): AnalyticsStore => $this->analyticsStore(), fn(): array => $this->settings);
+        return $this->analyticsCollectorService ??= new AnalyticsCollector(fn(): AnalyticsStore => $this->analyticsStore(), fn(): array => $this->settings, new ActionLimit($this->systemDatabase));
     }
 
     private function analyticsAdmin(): AnalyticsAdmin
