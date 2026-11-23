@@ -54,11 +54,11 @@ adm, ed = Client(), Client(); adm.login('adm1', 'Sturdy-pass-99'); ed.login('ed1
 
 # ---- the setting
 st, _, html = root.get('/admin/settings?tab=limits')
-check('the super admin has a Limits tab', 'data-tab="limits"' in html and 'data-panel="limits"' in html)
+check('the super admin has a Limits tab', 'data-section="limits"' in html and 'data-panel="limits"' in html)
 check('the default is 1 GB', 'name="storage_limit_value" value="1"' in html and re.search(r'<option value="gb" selected', html) is not None, re.findall(r'name="storage_limit_value"[^>]*', html))
 check('it shows what is used now', 'Used now' in html and 'uploads' in html and 'system database and backups' in html)
 st, _, html = adm.get('/admin/settings')
-check('an admin does not see it', 'data-tab="limits"' not in html and 'storage_limit_value' not in html)
+check('an admin does not see it', 'data-section="limits"' not in html and 'storage_limit_value' not in html)
 before = db().execute("select value from system_meta where key='site_settings'").fetchone()
 adm.submit('/admin/settings', is_settings, {'storage_limit_value': '1', 'storage_limit_unit': 'mb'})
 after = db().execute("select value from system_meta where key='site_settings'").fetchone()
