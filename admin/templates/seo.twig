@@ -21,14 +21,24 @@
   {% set card_note = 'm-0 px-3 pt-0.5 text-[11px] leading-4 text-slate-500' %}
   {% set link = 'font-medium text-blue-700 hover:underline' %}
 
-  <header class="mb-3 flex flex-col gap-2">
+  <header class="mb-4 border-b border-slate-200 pb-4">
     <p class="text-xs text-slate-500">How the site appears in search results and when its links are shared, what search engines may read, and whether pages are healthy. Each page and post also has its own SEO tab; what you set here is the starting point for all of them.</p>
-    <nav class="flex gap-1 overflow-x-auto border-b border-slate-200" aria-label="SEO sections">
-      {% for t in tabs %}
-        <a href="{{ url('admin/seo' ~ (t[0] == 'overview' ? '' : '?tab=' ~ t[0])) }}" class="shrink-0 border-b-2 px-3 py-2 text-sm font-medium {{ tab == t[0] ? 'border-blue-600 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-800' }}"{% if tab == t[0] %} aria-current="page"{% endif %}>{{ t[1] }}</a>
-      {% endfor %}
-    </nav>
   </header>
+
+  {% import '@admin/partials/section-nav.twig' as section_nav %}
+  {% set seo_icons = {overview: 'pulse', search: 'search', social: 'share', crawling: 'robot', identity: 'id', verification: 'badge'} %}
+  {% set seo_nav = [] %}
+  {% for g in [['Health', ['overview']], ['Appearance', ['search', 'social']], ['Search engines', ['crawling', 'identity', 'verification']]] %}
+    {% set items = [] %}
+    {% for t in tabs|filter(t => t[0] in g[1]) %}
+      {% set items = items|merge([{key: t[0], label: t[1], href: url('admin/seo' ~ (t[0] == 'overview' ? '' : '?tab=' ~ t[0])), icon: section_nav.icon(seo_icons[t[0]])}]) %}
+    {% endfor %}
+    {% set seo_nav = seo_nav|merge([{label: g[0], items: items}]) %}
+  {% endfor %}
+
+  <div class="section-layout">
+  {{ section_nav.nav(seo_nav, tab, 'SEO') }}
+  <div class="section-body">
 
   {{ ui.flash(saved ? 'Saved.' : '', 'success') }}
   {% if error == 'store' %}{{ ui.flash('The system database is not available, so nothing was saved.', 'error') }}{% endif %}
@@ -359,4 +369,6 @@
     </form>
     <script src="{{ asset('js/admin-seo.js') }}" defer></script>
   {% endif %}
+  </div>
+  </div>
 {% endblock %}

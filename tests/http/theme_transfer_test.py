@@ -50,7 +50,7 @@ def save(overrides):
 
 # ---- the tab
 st, _, html = root.get('/admin/theme?tab=transfer')
-check('the Theme screen has the Export and import tab', st == 200 and 'data-tab="transfer"' in html and 'data-theme-transfer' in html and 'transfer=export' in html and 'admin-theme-transfer.js' in html, st)
+check('the Theme screen has the Export and import tab', st == 200 and 'data-section="transfer"' in html and 'data-theme-transfer' in html and 'transfer=export' in html and 'admin-theme-transfer.js' in html, st)
 check('the script is served', get_raw(root, '/assets/js/admin-theme-transfer.js')[0] == 200)
 check('nothing to undo yet', 'data-tt-undo-row hidden' in html)
 

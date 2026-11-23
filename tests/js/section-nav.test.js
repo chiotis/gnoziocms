@@ -9,6 +9,7 @@
  *   5. #key opens it        /admin/settings#backup opens Backups
  *   6. unknown keys         an unknown #key changes nothing
  *   7. links mode           in Shop settings a click is a plain link (not stopped)
+ *   9. other panels         a [data-panel] box that is not a section (the block editor's settings panel) is left alone
  *   8. pages of their own   in Settings, MCP (no panel in the page) stays a plain link and switches nothing
  *
  *   node tests/js/section-nav.test.js        (after: npm ci --prefix tests/js)
@@ -48,7 +49,7 @@ function page(mode, url, current) {
         <label class="section-nav-select"><select data-section-select><optgroup label="Site">${sections.concat(pages).map(option).join('')}</optgroup></select></label>
         <nav class="section-nav-list" aria-label="Settings"><ul>${sections.concat(pages).map(link).join('')}</ul></nav>
       </div>
-      <div class="section-body">${mode === 'switch' ? sections.map(panel).join('') : ''}</div>
+      <div class="section-body">${mode === 'switch' ? sections.map(panel).join('') : ''}<div class="sp-panel" data-panel="" id="foreign"></div></div>
     </div>
     <a href="${base}?tab=${current}" data-section-discard>Discard</a>
   </form></body>`;
@@ -63,7 +64,7 @@ const state = (w) => {
   const d = w.document;
   return {
     current: Array.from(d.querySelectorAll('[data-section][aria-current="page"]')).map((a) => a.getAttribute('data-section')).join(','),
-    shown: Array.from(d.querySelectorAll('[data-panel]')).filter((p) => !p.classList.contains('hidden')).map((p) => p.getAttribute('data-panel')).join(','),
+    shown: Array.from(d.querySelectorAll('[data-panel]:not([data-panel=""])')).filter((p) => !p.classList.contains('hidden')).map((p) => p.getAttribute('data-panel')).join(','),
     active: Array.from(d.querySelectorAll('[data-panel].active')).map((p) => p.getAttribute('data-panel')).join(','),
     select: d.querySelector('[data-section-select]').value,
     input: d.querySelector('[data-active-tab-input]').value,
@@ -94,6 +95,7 @@ const click = (w, el, opts) => {
   sel.value = 'backup';
   sel.dispatchEvent(new w.Event('change', { bubbles: true }));
   const s3 = state(w);
+  check('9. a [data-panel] box that is not a section is left alone', !w.document.getElementById('foreign').classList.contains('hidden'));
   check('3. the select switches', s3.shown === 'backup' && s3.current === 'backup' && s3.input === 'backup' && s3.url === '/admin/settings?tab=backup', JSON.stringify(s3));
 
   const left = click(w, w.document.querySelector('[data-section="basics"]'), { ctrlKey: true });

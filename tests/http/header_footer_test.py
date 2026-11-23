@@ -68,7 +68,7 @@ check('the Footer tab has its preview and every layout', 'data-preview data-mode
 check('and a field for every choice', all(('name="theme_settings[footer][%s]"' % k) in html or ('name="theme_settings[footer][%s][default]"' % k) in html for k in (
     'tone', 'brand', 'show_social', 'show_language', 'back_to_top', 'copyright', 'credits', 'summary', 'email', 'phone', 'address', 'hours', 'background', 'background_image')) and 'name="theme_settings[footer][cta_heading]"' not in html)
 check('the media picker can fill the footer image', re.search(r'name="theme_settings\[footer\]\[background_image\]"[^>]*data-image-field|data-image-field[^>]*name="theme_settings\[footer\]\[background_image\]"', html) is not None)
-check('the Sidebar and Hero tabs stay where they were put', 'data-tab="single_layouts"' in html and 'data-tab="header"' in html)
+check('the Sidebar and Hero tabs stay where they were put', 'data-section="single_layouts"' in html and 'data-section="header"' in html)
 
 # ---- what a site had before still draws the same
 run("insert or replace into system_meta (key, value, updated_at) values ('theme_settings', ?, datetime('now'))", ("header:\n  layout: stacked\n  row_tone: soft\n  sticky: always\nfooter:\n  layout: bar\n",))
