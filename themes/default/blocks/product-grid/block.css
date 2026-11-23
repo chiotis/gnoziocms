@@ -72,8 +72,12 @@
   transition: opacity 0.45s var(--ease, ease);
 }
 
+/* In a list built with blocks the card sits under its entry's link (.entry-card-link covers the whole card), so the
+   pointer is on that link, not on the card: the list's item shows the second picture too. */
 .product-card:hover .product-card-hover,
-.product-card:focus-within .product-card-hover {
+.product-card:focus-within .product-card-hover,
+.entry-card:hover .product-card-hover,
+.entry-card:focus-within .product-card-hover {
   opacity: 1;
 }
 

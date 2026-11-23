@@ -123,6 +123,7 @@ main_image: /uploads/cuff.jpg
 collections: [balos]
 custom_fields:
   price: 210
+  hover_image: /uploads/cuff-worn.jpg
 ---
 
 A cuff.
@@ -152,6 +153,14 @@ m = re.search(r'<script type="application/ld\+json">(.*?)</script>', page, re.S)
 graph = json.loads(m.group(1)).get('@graph', []) if m else []
 products = [n for n in graph if n.get('@type') == 'Product']
 check('its structured data has a Product with prices in euro', products and products[0]['offers']['@type'] == 'AggregateOffer' and products[0]['offers']['priceCurrency'] == 'EUR' and products[0]['offers']['availability'] == 'https://schema.org/InStock', products)
+
+# ---- the shop built with blocks: each product is a Product card under its entry's link
+form = next(f for f in root.forms('/admin/theme?tab=archive_layouts') if any(x[0] == 'active_tab' for x in f['fields']))
+root.request('/admin/theme', data=[tuple(x) for x in form['fields'] if x[0] not in ('archive_template[products]', 'active_tab')] + [('archive_template[products]', 'built'), ('active_tab', 'archive_layouts')])
+st, _, page = pub.get('/products')
+check('the shop opens with its cards', st == 200 and 'class="entry-card-link"' in page and 'block-product-card' in page, str(st) + page[:200])
+check('a product with a picture on hover has it in its card', re.search(r'product-card-media has-hover">.*?cuff-worn\.jpg', page, re.S) is not None and 'class="product-card-hover"' in page)
+check('hovering the card (its link covers it) shows that picture', re.search(r'\.entry-card:hover \.product-card-hover', page) is not None, re.findall(r'[^{}]*product-card-hover[^{}]*\{', page))
 
 # ---- off again
 toggle(root, 'products', False)
