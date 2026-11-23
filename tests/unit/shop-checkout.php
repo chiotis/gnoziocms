@@ -113,6 +113,8 @@ check('the weight table back as text', ShopShipping::tableText($zones[2]['method
 
 // ---- settings
 $shop->saveGeneral(['store_name' => 'Aleon', 'store_email' => 'shop@example.com', 'order_prefix' => 'al', 'terms_page' => 'terms', 'guest_checkout' => '1']);
+check('files are sent by PHP unless the setting names the web server (audit P7)', [$shop->all()['download_server'], $shop->all()['download_location'], ShopSettings::normalize(['download_server' => 'accel', 'download_location' => '/private-files/'])['download_location']], ['php', '/_shop-files/', '/private-files/']);
+check('an unknown server or a location that leaves its folder is not taken', [ShopSettings::normalize(['download_server' => 'evil'])['download_server'], ShopSettings::normalize(['download_location' => '/a/../b/'])['download_location'], ShopSettings::normalize(['download_location' => 'no-slash'])['download_location']], ['php', '/_shop-files/', '/_shop-files/']);
 $shop->saveShipping(['zones' => [
     ['name' => 'Greece', 'countries' => 'GR', 'methods' => [['kind' => 'flat', 'label' => ['el' => 'Courier'], 'cost' => '5', 'free_over' => '200'], ['kind' => 'pickup', 'label' => ['el' => 'Παραλαβή'], 'stores' => "Athens\nGlyfada"]]],
 ]], ['el', 'en']);

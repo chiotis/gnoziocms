@@ -474,6 +474,33 @@ final class ContentIndex
     }
 
     /**
+     * Where the entry of a type with a translation_id is kept, in the first of `$langs` it exists in: the row ContentRepository::itemsAt()
+     * reads (type, slug, lang, path, mtime). Null when the index has none.
+     *
+     * @param string[] $langs
+     * @return array{type: string, slug: string, lang: string, path: string, mtime: int}|null
+     */
+    public function entryByTranslation(string $type, string $translationId, array $langs): ?array
+    {
+        $langs = array_values(array_unique(array_filter($langs, static fn(string $l): bool => $l !== '')));
+        if ($translationId === '' || $langs === [] || !$this->isAvailable()) {
+            return null;
+        }
+        $stmt = $this->pdo()->prepare('SELECT type, slug, lang, path, mtime FROM content_index WHERE type = ? AND translation_id = ? AND lang IN (' . implode(',', array_fill(0, count($langs), '?')) . ')');
+        $stmt->execute(array_merge([$type, $translationId], $langs));
+        $rows = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $rows[(string)$row['lang']] ??= ['type' => (string)$row['type'], 'slug' => (string)$row['slug'], 'lang' => (string)$row['lang'], 'path' => (string)$row['path'], 'mtime' => (int)$row['mtime']];
+        }
+        foreach ($langs as $lang) {
+            if (isset($rows[$lang])) {
+                return $rows[$lang];
+            }
+        }
+        return null;
+    }
+
+    /**
      * Other published entries of a type in a language, as index rows with their small card: the ones filed under one of `$terms` in
      * `$taxonomy` (those sharing more of them first), or, with no terms, simply the newest. The entry at `$slug` is left out.
      *

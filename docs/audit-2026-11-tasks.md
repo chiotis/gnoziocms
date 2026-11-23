@@ -54,7 +54,8 @@ group. Size: S (an hour or two), M (half a day to a day), L (more).
       a sign-in link instead.
 - [x] **S13** (S) Separate columns (or a small table) for the verify and the reset token.
 - [x] **S14** (S) Clear imported WordPress hashes not used after 6 months; those customers set a password by email.
-- [ ] **S15** (S) Downloads: answer `Range`, and count a download when it finishes, or only once within ten minutes per link.
+- [x] **S15** (S) Downloads: answer `Range`, and count a download when it finishes, or only once within ten minutes per link.
+      Done: one `Range` answered with 206 (and by the web server with P7); a link used again within 10 minutes counts once.
 - [x] **S16** (S) Coupons: an option "signed-in customers only", which makes the per-customer limit firm.
 - [x] **S-next** (L) Review what this audit did not read: the admin screens, MCP, the importers, backups, updates, AI
       publishing, the admin's JavaScript. Done: [audit-2026-11-part-2.md](audit-2026-11-part-2.md); its tasks follow.
@@ -93,15 +94,22 @@ group. Size: S (an hour or two), M (half a day to a day), L (more).
       cookie; the generation and the key need only the settings file. Measure time to first byte before and after.
 - [x] **P3** (S) One "next due at" timestamp for the work after a response, so a visit with nothing due asks nothing. Run the
       forms migration check from the update, not from every request.
-- [ ] **P4** (M) Look a product up by its id through the content index and parse that one file; keep the whole-catalogue load
+- [x] **P4** (M) Look a product up by its id through the content index and parse that one file; keep the whole-catalogue load
       for listings only. Test with 5,000 generated products.
-- [ ] **P5** (S) `ShopFront::add()`: price once and reuse the result for the answer and the Pixel's event; keep a product's
+      Done: `ShopCatalogue::product()` asks `ContentIndex::entryByTranslation()` and reads one file; 5,000 products in
+      `shop-catalogue` (about 1 ms against 400 ms).
+- [x] **P5** (S) `ShopFront::add()`: price once and reuse the result for the answer and the Pixel's event; keep a product's
       stock rows for the length of the request; read the customer's orders once on the account page.
-- [ ] **P6** (M) At most N picture encodes at once (a lock file per slot); a request over the limit gets the next smaller size
+      Done.
+- [x] **P6** (M) At most N picture encodes at once (a lock file per slot); a request over the limit gets the next smaller size
       that exists, or 503 with `Retry-After`.
-- [ ] **P7** (S) Downloads through `X-Accel-Redirect` or `X-Sendfile` where a setting says the server has it.
-- [ ] **P8** (S) Read the download key once per request; drop `expire()` from every shop request where cron runs (keep it on
+      Done: `Images::$encodes` (2) lock files under `uploads/_v/`.
+- [x] **P7** (S) Downloads through `X-Accel-Redirect` or `X-Sendfile` where a setting says the server has it.
+      Done: Shop settings › *Files bought are sent by* (PHP, X-Sendfile, X-Accel-Redirect); docs/shop-plan.md, section 6.
+- [x] **P8** (S) Read the download key once per request; drop `expire()` from every shop request where cron runs (keep it on
       the checkout only).
+      Done: the key is kept for the request; `expire()` runs on the checkout, and on other shop pages only when cron
+      has not been seen for 15 minutes.
 
 - [ ] **P9** (S) Admin pages: the due backup, scheduled entries and the AI tick run after the response is sent (as on the
       public site), never before the screen.

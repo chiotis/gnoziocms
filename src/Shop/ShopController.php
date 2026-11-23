@@ -9,6 +9,7 @@ use GnozioCMS\Auth;
 use GnozioCMS\ContentItem;
 use GnozioCMS\ContentPaths;
 use GnozioCMS\ContentRepository;
+use GnozioCMS\CronStatus;
 use GnozioCMS\FieldSchema;
 use GnozioCMS\FrontCache;
 use GnozioCMS\FrontRoute;
@@ -284,8 +285,13 @@ final class ShopController
             new ActionLimit($this->systemDatabase),
             ($this->visitorAddress)()
         );
-        // Orders whose time to be paid ran out give their stock back before a shopper sees it (Shop › Orders does too).
-        $services->checkout()->expire();
+        // Orders whose time to be paid ran out give their stock back before a shopper sees it (Shop › Orders does too). Where
+        // the cron job runs (seen in the last quarter of an hour) it does that every five minutes, so only the checkout, which
+        // must not miss a piece just let go, asks here (audit P8).
+        $lastCron = strtotime((string)($this->systemMeta->get(CronStatus::META_KEY) ?? '')) ?: 0;
+        if ($lastCron < time() - 900 || str_starts_with($rest, 'checkout')) {
+            $services->checkout()->expire();
+        }
         $front->handle($rest, $lang);
     }
 

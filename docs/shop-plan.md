@@ -152,6 +152,11 @@ check(): string                            // "Check connection" in settings
 - Files are stored outside `public/`, in `storage/shop-files/`.
 - After payment the customer gets links to `/account/downloads/{token}`. Each token is signed, tied to the order line, and has a download limit and an expiry date.
 - Links appear in the email and under Account › Downloads.
+- **Sent by the web server** (Shop settings › General › *Files bought are sent by*): PHP by default. With **Apache X-Sendfile** (mod_xsendfile, `XSendFile On` and `XSendFilePath <site>/storage/shop-files`) or **nginx X-Accel-Redirect** PHP only checks and counts the link and the web server sends the file, with `Range` for resumed downloads. For nginx, add an internal location named as in the setting (default `/_shop-files/`):
+
+  ```nginx
+  location ^~ /_shop-files/ { internal; alias /home/site/htdocs/storage/shop-files/; }
+  ```
 - Files are streamed by PHP with `X-Content-Type-Options` set, and served with `X-Accel-Redirect` where nginx is set up for it.
 
 ## 7. Subscriptions

@@ -110,5 +110,27 @@ foreach (['w72', 'w85', 'w92'] as $tag) {
 check('a higher quality keeps more: larger files', $sizes['w72'] < $sizes['w85'] && $sizes['w85'] < $sizes['w92'], true);
 check('a quality no site can choose is not answered', $handle('/_image/media/photo.jpg/720-' . $pv . '-w80'), [true, 404]);
 
+// ---- at most Images::$encodes pictures made at once (audit P6)
+$held = [];
+foreach ([1, 2] as $i) {
+    $h = fopen($public . '/uploads/_v/.encode-' . $i . '.lock', 'c');
+    flock($h, LOCK_EX | LOCK_NB);
+    $held[] = $h;
+}
+$busy = static function (string $uri) use ($public): string {
+    $_SERVER['REQUEST_METHOD'] = 'GET';
+    ob_start();
+    @Images::handle($public, $uri);
+    $out = (string)ob_get_clean();
+    return $out === 'Busy' ? 'busy' : ($out === 'Not found' ? '404' : (str_starts_with($out, 'RIFF') ? 'webp' : 'other'));
+};
+$wideDir = $public . '/uploads/_v/media/wide.png';
+$gone = @unlink($wideDir . "/720-" . $version . "-w72.webp");
+check('every slot taken: a size not made yet sends the next smaller one made, and writes nothing', [$busy('/uploads/_v/media/wide.png/720-' . $version . '-w72.webp'), is_file($wideDir . '/720-' . $version . '-w72.webp')], ['webp', false]);
+check('with no smaller one made: 503, try again', $busy('/uploads/_v/media/wide.png/360-' . $version . '-w85.webp'), 'busy');
+check('a size already made is sent as usual', $busy('/uploads/_v/media/wide.png/360-' . $version . '-w72.webp'), 'webp');
+foreach ($held as $h) { flock($h, LOCK_UN); fclose($h); }
+check('a slot free again: the size is made', [$busy('/uploads/_v/media/wide.png/720-' . $version . '-w72.webp'), is_file($wideDir . '/720-' . $version . '-w72.webp')], ['webp', true]);
+
 echo $fail === 0 ? "ALL PASSED\n" : "$fail FAILED\n";
 exit($fail === 0 ? 0 : 1);

@@ -400,7 +400,32 @@ final class Images
         // A name without a tag is the WebP of an older release, still asked for by pages kept from before.
         $name = $width . '-' . $version . ($tag !== '' ? '-' . $tag : '');
         $target = $uploads . '/' . self::VARIANT_DIR . '/' . $relative . '/' . $name . '.' . $format;
-        if (!is_file($target) && !self::generate($file, (int)$size[2], $width, $target, $format, $quality)) {
+        $slot = null;
+        if (!is_file($target)) {
+            // At most ENCODES pictures are made at once (audit P6): over that, the next smaller size already made is sent for
+            // now (not kept by the browser), or 503 with Retry-After, so a page full of new pictures cannot fill every PHP worker.
+            $slot = self::encodeSlot($uploads);
+            if ($slot === null) {
+                $smaller = self::smallerMade($uploads . '/' . self::VARIANT_DIR . '/' . $relative, $width, $version, $tag, $format, self::widthsFor($sourceWidth));
+                if ($smaller !== null) {
+                    self::send($smaller, $format, 'no-store');
+                    return true;
+                }
+                http_response_code(503);
+                header('Retry-After: 2');
+                header('Cache-Control: no-store');
+                header('Content-Type: text/plain; charset=utf-8');
+                FrontCache::doNotKeep();
+                echo 'Busy';
+                return true;
+            }
+        }
+        $made = is_file($target) || self::generate($file, (int)$size[2], $width, $target, $format, $quality);
+        if ($slot !== null) {
+            flock($slot, LOCK_UN);
+            fclose($slot);
+        }
+        if (!$made) {
             // Never break the page: fall back to the original file.
             header('Location: /uploads/' . implode('/', array_map('rawurlencode', explode('/', $relative))), true, 302);
             header('Cache-Control: no-store');
@@ -408,14 +433,58 @@ final class Images
             return true;
         }
 
+        self::send($target, $format, 'public, max-age=31536000, immutable');
+        return true;
+    }
+
+    /** How many pictures may be encoded at once; the slots are lock files beside the variants. */
+    public static int $encodes = 2;
+
+    /** @return resource|null a slot held until it is closed, or null when every one is taken */
+    private static function encodeSlot(string $uploads)
+    {
+        $dir = $uploads . '/' . self::VARIANT_DIR;
+        if (!is_dir($dir) && !@mkdir($dir, 0775, true) && !is_dir($dir)) {
+            return null;
+        }
+        for ($i = 1; $i <= max(1, self::$encodes); $i++) {
+            $handle = @fopen($dir . '/.encode-' . $i . '.lock', 'c');
+            if ($handle === false) {
+                continue;
+            }
+            if (flock($handle, LOCK_EX | LOCK_NB)) {
+                return $handle;
+            }
+            fclose($handle);
+        }
+        return null;
+    }
+
+    /** The largest size under `$width` of the same picture, version and encoding that is already made. */
+    private static function smallerMade(string $dir, int $width, string $version, string $tag, string $format, array $widths): ?string
+    {
+        rsort($widths);
+        foreach ($widths as $w) {
+            if ($w >= $width) {
+                continue;
+            }
+            $candidate = $dir . '/' . $w . '-' . $version . ($tag !== '' ? '-' . $tag : '') . '.' . $format;
+            if (is_file($candidate)) {
+                return $candidate;
+            }
+        }
+        return null;
+    }
+
+    private static function send(string $path, string $format, string $cache): void
+    {
         header('Content-Type: image/' . $format);
-        header('Content-Length: ' . (int)filesize($target));
-        header('Cache-Control: public, max-age=31536000, immutable');
+        header('Content-Length: ' . (int)filesize($path));
+        header('Cache-Control: ' . $cache);
         header('X-Content-Type-Options: nosniff');
         if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'HEAD') {
-            readfile($target);
+            readfile($path);
         }
-        return true;
     }
 
     private function libraryAlt(string $src): string

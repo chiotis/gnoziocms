@@ -148,7 +148,9 @@ final class ShopFront
         $lines = $cart['lines'];
         $added = [];
         $refused = '';
+        $bought = [];
         foreach ($wanted as [$productId, $variant, $quantity]) {
+            // Priced once: the same lines answer the shopper and make the Pixel's event (audit P5).
             $check = $this->pricing->lines([['product_id' => $productId, 'variant_key' => $variant, 'quantity' => $quantity]], $lang);
             if ($check['lines'] === []) {
                 $refused = $refused !== '' ? $refused : ($check['changes'][0]['reason'] ?? 'gone');
@@ -156,7 +158,9 @@ final class ShopFront
             }
             $lines = ShopCart::add($lines, $productId, $variant, $quantity);
             $added[] = $check['lines'][0]['title'];
+            $bought = array_merge($bought, $check['lines']);
         }
+        $priced = null;
         $ok = $added !== [];
         $message = ($this->t)('shop.err_add_' . ($refused !== '' ? $refused : 'gone'), $lang);
         if ($ok) {
@@ -168,24 +172,25 @@ final class ShopFront
         if ($wantsJson) {
             $track = [];
             if ($ok && $this->marketing !== null && $this->marketing->config()['pixel_id'] !== '') {
-                $bought = [];
-                foreach ($wanted as [$productId, $variant, $quantity]) {
-                    $bought = array_merge($bought, $this->pricing->lines([['product_id' => $productId, 'variant_key' => $variant, 'quantity' => $quantity]], $lang)['lines']);
-                }
                 $track = ShopMarketing::event('AddToCart', $bought, array_sum(array_column($bought, 'total_cents')), (string)$this->settings->all()['currency']);
             }
-            $this->json(['ok' => $ok, 'message' => $message, 'track' => $track] + $this->cartSummary($lang), $ok ? 200 : 422);
+            $this->json(['ok' => $ok, 'message' => $message, 'track' => $track] + $this->cartSummary($lang, $priced), $ok ? 200 : 422);
             return;
         }
         $this->flash($ok ? 'success' : 'error', $message);
         $this->go('/' . ($this->prefixFor)($lang) . 'cart');
     }
 
-    /** @return array{count: int, lines: list<array<string, mixed>>, subtotal: string, cart_url: string, checkout_url: string} */
-    private function cartSummary(string $lang): array
+    /**
+     * @param array<string, mixed>|null $priced the cart as just priced (Add to cart), so it is not priced again
+     * @return array{count: int, lines: list<array<string, mixed>>, subtotal: string, cart_url: string, checkout_url: string}
+     */
+    private function cartSummary(string $lang, ?array $priced = null): array
     {
-        $token = $this->token(false);
-        $priced = $this->pricing->lines($token === '' ? [] : $this->carts->load($token)['lines'], $lang);
+        if ($priced === null) {
+            $token = $this->token(false);
+            $priced = $this->pricing->lines($token === '' ? [] : $this->carts->load($token)['lines'], $lang);
+        }
         $this->countCookie($priced['count']);
         $prefix = '/' . ($this->prefixFor)($lang);
         return [
@@ -605,11 +610,55 @@ final class ShopFront
         }
         header('Content-Type: application/octet-stream');
         header('Content-Disposition: attachment; filename="' . $ascii . '"; filename*=UTF-8\'\'' . rawurlencode((string)$file['name']));
-        header('Content-Length: ' . (string)filesize($path));
         header('X-Content-Type-Options: nosniff');
         header('Content-Security-Policy: default-src \'none\'; sandbox');
-        if (!$head) {
-            readfile($path);
+        // The web server sends the file when Shop settings say it can (audit P7): PHP is let go at once.
+        $shop = $this->settings->all();
+        if ($shop['download_server'] === 'accel') {
+            header('X-Accel-Redirect: ' . $shop['download_location'] . rawurlencode(basename($path)));
+            return;
+        }
+        if ($shop['download_server'] === 'sendfile') {
+            header('X-Sendfile: ' . $path);
+            return;
+        }
+        // A resumed download asks for the rest (audit S15): one range, answered with 206.
+        $size = (int)filesize($path);
+        $from = 0;
+        $to = $size - 1;
+        header('Accept-Ranges: bytes');
+        if (preg_match('/^bytes=(\d*)-(\d*)$/', (string)($_SERVER['HTTP_RANGE'] ?? ''), $range) === 1 && ($range[1] !== '' || $range[2] !== '')) {
+            if ($range[1] === '') {
+                $from = max(0, $size - (int)$range[2]);
+            } else {
+                $from = (int)$range[1];
+                $to = $range[2] !== '' ? min($to, (int)$range[2]) : $to;
+            }
+            if ($from > $to || $from >= $size) {
+                http_response_code(416);
+                header('Content-Range: bytes */' . $size);
+                return;
+            }
+            http_response_code(206);
+            header('Content-Range: bytes ' . $from . '-' . $to . '/' . $size);
+        }
+        header('Content-Length: ' . (string)($to - $from + 1));
+        if (!$head && $size > 0) {
+            $handle = fopen($path, 'rb');
+            if ($handle !== false) {
+                fseek($handle, $from);
+                $left = $to - $from + 1;
+                while ($left > 0 && !feof($handle)) {
+                    $chunk = fread($handle, min(1 << 20, $left));
+                    if ($chunk === false || $chunk === '') {
+                        break;
+                    }
+                    echo $chunk;
+                    $left -= strlen($chunk);
+                    flush();
+                }
+                fclose($handle);
+            }
         }
     }
 
@@ -852,9 +901,11 @@ final class ShopFront
             ($this->notFound)();
             return;
         }
+        // The customer's orders are read once, for the list and for their downloads (audit P5).
+        $theirOrders = $this->orders->forCustomer($customer['id']);
         $this->accountPage($lang, 'home', [
-            'orders' => array_map(fn(array $o): array => $this->orderView($o, $lang, false), $this->orders->forCustomer($customer['id'])),
-            'downloads' => $this->downloads?->forOrders(array_column($this->orders->forCustomer($customer['id']), 'id')) ?? [],
+            'orders' => array_map(fn(array $o): array => $this->orderView($o, $lang, false), $theirOrders),
+            'downloads' => $this->downloads?->forOrders(array_column($theirOrders, 'id')) ?? [],
             'subscriptions' => array_map(fn(array $s): array => $s + [
                 'price' => ShopMoney::format($s['price_cents'] * $s['quantity'], $lang),
                 'every' => ($this->t)('shop.every_' . $s['interval'] . ($s['interval_count'] > 1 ? 's' : ''), $lang, ['n' => (string)$s['interval_count']]),

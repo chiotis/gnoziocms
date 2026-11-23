@@ -167,7 +167,7 @@ final class ShopDownloads
         }
         $file = $this->file($row['file_id']);
         $days = $file !== null ? ($this->rules)((string)$file['product_id'])['days'] : 0;
-        $this->pdo()->prepare('UPDATE shop_downloads SET downloads = 0, expires_at = :until, active = 1 WHERE id = :id')
+        $this->pdo()->prepare('UPDATE shop_downloads SET downloads = 0, last_at = 0, expires_at = :until, active = 1 WHERE id = :id')
             ->execute(['until' => $days > 0 ? time() + 86400 * $days : 0, 'id' => $downloadId]);
         return true;
     }
@@ -234,12 +234,24 @@ final class ShopDownloads
         return ['ok' => $reason === '', 'reason' => $reason, 'download' => $download, 'file' => $file];
     }
 
-    /** One more download counted, only while it is still allowed (two at once cannot pass the limit). */
+    /** Downloads of one link within this many seconds count once: a resumed or restarted download is not a new one (audit S15). */
+    public const COUNT_WINDOW = 600;
+
+    /**
+     * One more download counted, only while it is still allowed (two at once cannot pass the limit). A link used again within
+     * COUNT_WINDOW of the last counted download is let through without counting.
+     */
     public function count(int $id): bool
     {
-        $stmt = $this->pdo()->prepare('UPDATE shop_downloads SET downloads = downloads + 1, last_at = :now WHERE id = :id AND active = 1 AND (max_downloads = 0 OR downloads < max_downloads)');
-        $stmt->execute(['now' => time(), 'id' => $id]);
-        return $stmt->rowCount() === 1;
+        $now = time();
+        $stmt = $this->pdo()->prepare('UPDATE shop_downloads SET downloads = downloads + 1, last_at = :now WHERE id = :id AND active = 1 AND (max_downloads = 0 OR downloads < max_downloads) AND last_at < :window');
+        $stmt->execute(['now' => $now, 'id' => $id, 'window' => $now - self::COUNT_WINDOW]);
+        if ($stmt->rowCount() === 1) {
+            return true;
+        }
+        $again = $this->pdo()->prepare('SELECT 1 FROM shop_downloads WHERE id = :id AND active = 1 AND downloads > 0 AND last_at >= :window');
+        $again->execute(['id' => $id, 'window' => $now - self::COUNT_WINDOW]);
+        return $again->fetchColumn() !== false;
     }
 
     public function url(int $id): string
@@ -265,13 +277,19 @@ final class ShopDownloads
 
     private function sign(int $id): string
     {
-        $key = $this->meta->getJson(self::KEY_META)['key'] ?? '';
-        if (!is_string($key) || strlen($key) < 32) {
-            $key = bin2hex(random_bytes(32));
-            $this->meta->setJson(self::KEY_META, ['key' => $key]);
+        // Read once per request, however many links a page shows (audit P8).
+        if ($this->key === null) {
+            $key = $this->meta->getJson(self::KEY_META)['key'] ?? '';
+            if (!is_string($key) || strlen($key) < 32) {
+                $key = bin2hex(random_bytes(32));
+                $this->meta->setJson(self::KEY_META, ['key' => $key]);
+            }
+            $this->key = $key;
         }
-        return substr(hash_hmac('sha256', 'download:' . $id, $key), 0, 32);
+        return substr(hash_hmac('sha256', 'download:' . $id, $this->key), 0, 32);
     }
+
+    private ?string $key = null;
 
     /** No web server lists or serves the folder, should it ever be under the site's root. */
     private function protect(): void
