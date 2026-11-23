@@ -121,6 +121,14 @@ $back(['state' => 'STATE', 'code' => 'c']);
 $ada = $users->findByUsername('ada');
 check('a user the Google account matches is signed in, linked to it, logged, and sent to the admin', [$auth->user()['username'], $ada['google_sub'], $ada['google_email'], end($site->log), $site->went, isset($_SESSION['google_oauth_state'])], ['ada', 'g1', 'ada@example.org', ['auth.login_success', 'ada'], ['/admin'], false]);
 
+$auth->logout();
+$google['profile'] = ['body' => '{"email":"ada.new@example.org","sub":"g1","email_verified":true}', 'status' => 200, 'error' => ''];
+$back(['state' => 'STATE', 'code' => 'c']);
+check('a linked user is found by the Google account\'s own id, even with a new address (S25)', $auth->user()['username'] ?? null, 'ada');
+$auth->logout();
+$google['profile'] = ['body' => '{"email":"ada@example.org","sub":"g-other","email_verified":true}', 'status' => 200, 'error' => ''];
+check('the address of a user linked to another Google account is refused', [str_contains($back(['state' => 'STATE', 'code' => 'c']), 'not the one linked'), $auth->check()], [true, false]);
+
 // ---- the first visit
 $settings2 = [];
 [$first, $site2, $users2, $auth2] = site(false, $settings2, $google);

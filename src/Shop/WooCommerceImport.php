@@ -122,6 +122,7 @@ final class WooCommerceImport
             'site' => $site,
             'lang' => in_array($lang, $languages, true) ? $lang : ($languages[0] ?? 'el'),
             'with_keys' => $withKeys,
+            'allow_local' => !empty($post['allow_local']),
             'customers' => is_file($csv),
             'options' => [],
             'summary' => [],
@@ -334,7 +335,7 @@ final class WooCommerceImport
     private function importer(array $state): WooCommerceImporter
     {
         $keys = $this->secrets->of(self::SECRETS);
-        return ($this->makeImporter)((string)$state['site'], (string)($keys['consumer_key'] ?? ''), (string)($keys['consumer_secret'] ?? ''), ['lang' => (string)$state['lang'], 'overwrite' => !empty($state['options']['overwrite'])]);
+        return ($this->makeImporter)((string)$state['site'], (string)($keys['consumer_key'] ?? ''), (string)($keys['consumer_secret'] ?? ''), ['lang' => (string)$state['lang'], 'overwrite' => !empty($state['options']['overwrite']), 'allow_local' => !empty($state['allow_local'])]);
     }
 
     /** @return array<string, mixed>|null */

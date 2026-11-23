@@ -28,6 +28,7 @@ final class LoginController
      * @param \Closure(int, array<int, string>): void $respond sets the status of the answer and the header lines to send with it
      * @param (callable(string, array<int, mixed>, string): array{body: mixed, status: int, error: string})|null $googleHttp replaces the calls to Google (for tests)
      * @param SecondFactor|null $secondFactor asks for a code after the password of a person who has set one up
+     * @param string $setupCodeFile where installer.php keeps the hash of the first administrator's one-time code
      */
     public function __construct(
         private Auth $auth,
@@ -41,7 +42,8 @@ final class LoginController
         private \Closure $redirect,
         private \Closure $respond,
         private $googleHttp = null,
-        private ?SecondFactor $secondFactor = null
+        private ?SecondFactor $secondFactor = null,
+        private string $setupCodeFile = ''
     ) {
     }
 
@@ -236,7 +238,7 @@ final class LoginController
             $payload = $result['payload'];
             $error = $result['error'];
         }
-        ($this->render)('@admin/setup.twig', ['error' => $error, 'payload' => $payload]);
+        ($this->render)('@admin/setup.twig', ['error' => $error, 'payload' => $payload, 'needs_code' => $this->firstAdmin()->needsCode()]);
     }
 
     private function googleLogin(): void
@@ -263,7 +265,7 @@ final class LoginController
         }
 
         $state = (string)($get['state'] ?? '');
-        if ($state === '' || $state !== (string)($_SESSION['google_oauth_state'] ?? '')) {
+        if ($state === '' || !hash_equals((string)($_SESSION['google_oauth_state'] ?? ''), $state)) {
             unset($_SESSION['google_oauth_state']);
             $this->renderLogin('Google Sign-In state could not be verified.');
             return;
@@ -293,7 +295,18 @@ final class LoginController
         }
 
         $email = $accepted['email'];
-        $user = $this->users->findByEmail($email);
+        // The Google account's own id first, then its address (audit S25): an address that matches a user linked to another
+        // Google account is someone else's now (an address given to a new person in a Workspace) and is refused.
+        $user = $this->users->findByGoogleSub($accepted['sub']);
+        if ($user === null) {
+            $user = $this->users->findByEmail($email);
+            $linked = trim((string)($user['google_sub'] ?? ''));
+            if ($user !== null && $linked !== '' && !hash_equals($linked, $accepted['sub'])) {
+                ($this->log)('auth.google_mismatch', 'warning', 'user', (string)($user['username'] ?? ''), 'A Google account with the address of a user linked to another Google account was refused.', ['email' => $email], null);
+                $this->renderLogin('This Google account is not the one linked to that user. Sign in with a password and link it again from your profile.');
+                return;
+            }
+        }
         if (!$user || !$this->users->isActive($user) || UserRepository::isAutomation($user)) {
             $this->renderLogin('No active GnozioCMS user matches this Google account.');
             return;
@@ -343,7 +356,8 @@ final class LoginController
         return $this->firstAdmin ??= new FirstAdmin(
             $this->users,
             $this->auth,
-            fn(string $action, string $level, ?string $type, ?string $id, string $message, array $context) => ($this->log)($action, $level, $type, $id, $message, $context, null)
+            fn(string $action, string $level, ?string $type, ?string $id, string $message, array $context) => ($this->log)($action, $level, $type, $id, $message, $context, null),
+            $this->setupCodeFile
         );
     }
 }

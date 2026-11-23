@@ -121,6 +121,12 @@ $store->record(['ts' => time(), 'day' => date('Y-m-d'), 'visitor' => 'aaaa', 'ki
 check('who is on the site now', $store->now(5), ['visitors' => 1, 'pages' => ['/now' => 1]]);
 for ($i = 0; $i < 420; $i++) { $store->record(['ts' => time(), 'day' => date('Y-m-d'), 'visitor' => 'spam', 'kind' => 'view', 'path' => '/s', 'name' => '', 'source' => '', 'channel' => 'direct', 'campaign' => '', 'device' => '', 'browser' => '', 'os' => '', 'country' => '', 'lang' => '']); }
 check('a visitor cannot leave more than a few hundred rows a day', (int)$db->connection()->query("SELECT COUNT(*) FROM analytics_hits WHERE visitor = 'spam'")->fetchColumn(), 400);
+$limited = new C(fn() => $store, fn() => $settings, new \GnozioCMS\ActionLimit($db));
+$answers = [];
+for ($i = 0; $i < C::ADDRESS_LIMIT + 5; $i++) {
+    $answers[] = $limited->collect(['p' => '/x'], ['HTTP_USER_AGENT' => 'Mozilla/5.0 (X11; Linux x86_64) Firefox/' . $i] + $srv('198.51.100.7'), false);
+}
+check('one address cannot write without end by naming another browser each time (S24)', [count(array_keys($answers, 'ok', true)), end($answers), $limited->collect(['p' => '/x'], $srv('198.51.100.8'), false)], [C::ADDRESS_LIMIT, 'limit', 'ok']);
 $store->rollup($day); $store->rollup($day);
 check('summing a day twice gives the same', (int)$db->connection()->query("SELECT COUNT(*) FROM analytics_daily WHERE day = '$day' AND kind = 'total'")->fetchColumn(), 1);
 check('the stats', [$store->stats()['days'] >= 1, $store->stats()['first']], [true, $day]);

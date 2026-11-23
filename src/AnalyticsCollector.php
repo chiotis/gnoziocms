@@ -29,7 +29,10 @@ final class AnalyticsCollector
      * @param \Closure(): AnalyticsStore $store
      * @param \Closure(): array<string, mixed> $settings the site settings
      */
-    public function __construct(private \Closure $store, private \Closure $settings)
+    /** Rows one address may leave in a day, whatever browser it says it is (a script changing its name each time): audit S24. */
+    public const ADDRESS_LIMIT = 1200;
+
+    public function __construct(private \Closure $store, private \Closure $settings, private ?ActionLimit $limits = null)
     {
     }
 
@@ -82,6 +85,11 @@ final class AnalyticsCollector
         $store = ($this->store)();
         if (!$store->isAvailable()) {
             return 'store';
+        }
+        // Counted by the day's salt and the address, so the table that counts holds nothing that names the address.
+        $ip = (string)($server['REMOTE_ADDR'] ?? '');
+        if ($this->limits !== null && $ip !== '' && !$this->limits->take('analytics', [$store->salt($day) . '|' . $ip => self::ADDRESS_LIMIT], 86400)) {
+            return 'limit';
         }
         [$source, $channel, $campaign] = self::origin((string)($payload['r'] ?? ''), (string)($payload['q'] ?? ''), $host);
         $stored = $store->record([

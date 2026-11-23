@@ -157,7 +157,7 @@ set, and says why. Pages themselves are still built with the request's host when
 
 ### First administrator and default credentials
 
-- A new site ships no account. While the users table is empty, the sign-in page asks for the first administrator (username, email, a password of at least 8 characters that is not the shipped one) and makes a super admin. The page is gone as soon as one account exists, and a second account cannot be made through it. **Open `/admin` right after putting a site on a server**: until the first account exists, whoever visits first can make it.
+- A new site ships no account. While the users table is empty, the sign-in page asks for the first administrator (username, email, a password of at least 8 characters that is not the shipped one) and makes a super admin. The page is gone as soon as one account exists, and a second account cannot be made through it. A site set up by `installer.php` is closed to strangers: the installer's last screen shows a one-time setup code, keeps only its hash in `storage/setup-code.json`, and the form asks for it; the file is deleted when the account is made (delete it by hand if the code is lost). A site unpacked by hand has no code: **open `/admin` right after putting it on a server**, because until the first account exists, whoever visits first can make it.
 - Older sites may still have `content/users/users.yaml` with a plain-text development account. It is imported into SQLite only when the users table is empty. Signing in with that shipped password shows a red banner on every admin page and creates a `security.default_password` notification until the password is changed.
 - New passwords must be at least 8 characters and cannot equal the shipped password.
 
@@ -258,3 +258,20 @@ set, and says why. Pages themselves are still built with the request's host when
 
      The installer checks this before it finishes: when `/_themes/default/css/site.css` does not answer with the stylesheet, it shows the line to add.
 5. If a credential was ever committed to git (for example SMTP credentials in the old `content/settings/site.yaml`), rotate it with the provider. Deleting the file does not remove it from history.
+
+## What the logs keep
+
+The activity log (with each row's address and browser), the email log and the payment providers' events hold personal data, so
+they are cleared once a day (`LogRetention`, from the cron job's work or after a visit): activity after **180 days**, emails
+after **90**, provider events after **180**. Other periods (7 to 3650 days) go in `settings.yaml`:
+
+```yaml
+retention:
+  activity_days: 365
+  email_days: 30
+  gateway_days: 180
+```
+
+MCP clients that registered and never made a connection are removed after a week, a bad MCP token writes one warning per
+address a minute rather than one per request, and a replaced refresh token used again after its minute of grace ends its
+connection (the sign of a stolen token) with a warning in Activity.

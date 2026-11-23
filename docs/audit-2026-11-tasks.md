@@ -66,11 +66,12 @@ group. Size: S (an hour or two), M (half a day to a day), L (more).
       SMIL that sets them, no `style` that imports, links only to `#…`); refuse what does not parse. Send the SVG
       Content-Security-Policy from PHP too where PHP serves the file, and make the nginx line a System status check. Tests
       with the entity-encoded, `<set>` and `@import` cases.
-      Done in 0.1.335: `SvgSanitizer` on upload; PHP serves no uploaded SVG (theme SVGs already get the policy from `ThemeAssets`);
+      Done in 0.1.336: `SvgSanitizer` on upload; PHP serves no uploaded SVG (theme SVGs already get the policy from `ThemeAssets`);
       System > Status › SVG uploads header asks the site for a probe drawing once a day.
-- [ ] **S18** (M) The WordPress and WooCommerce imports fetch through `SafeHttp` (public addresses only, redirects checked).
+- [x] **S18** (M) The WordPress and WooCommerce imports fetch through `SafeHttp` (public addresses only, redirects checked).
       A setting or a command-line flag allows a local address for a site being moved on the same server. Test: an address that
       redirects to `127.0.0.1` is refused.
+      Done: `WordPressHttp` fetches through `SafeHttp::fetch()`; `--allow-local` on both CLIs and a box on the import screen.
 - [x] **S19** (M) Backups encrypted with a passphrase (a setting; kept out of the backup). Restore asks for it. Without one,
       the Backups screen says the archives are plain. Goes with S8.
 - [ ] **S20** (M) Signed releases: the build signs `release.json` (Ed25519, libsodium) with a key kept off GitHub; the
@@ -79,14 +80,19 @@ group. Size: S (an hour or two), M (half a day to a day), L (more).
       *Code done (W25): `ReleaseSignature`, the update check, the installer and `scripts/sign-release.php` (the key stays
       on the maintainer's computer, docs/signed-releases.md). Enforcement starts when the owner makes the key and lists
       the public key in the code; until then unsigned releases install as before.*
-- [ ] **S21** (M) Retention: activity log 180 days, email log 90, gateway events 180 (settings), cleared by the daily tick.
+- [x] **S21** (M) Retention: activity log 180 days, email log 90, gateway events 180 (settings), cleared by the daily tick.
       MCP: one activity row per failed token per address per minute, not per request. Unused MCP clients removed after 7 days
       (S23).
-- [ ] **S22** (S) MCP: a replaced refresh token used after its grace ends the connection and writes a warning.
-- [ ] **S24** (S) Analytics: a daily limit of rows per address, whatever the browser says it is.
-- [ ] **S25** (S) Admin Google sign-in: recognise a linked user by `sub` first; an email that matches a user linked to another
+      Done: `LogRetention` (settings `retention:`), `McpStore::removeUnusedClients()`, one auth warning per token and address a minute.
+- [x] **S22** (S) MCP: a replaced refresh token used after its grace ends the connection and writes a warning.
+      Done: `McpStore::refresh()` revokes the connection; `mcp.refresh_reused` in Activity.
+- [x] **S24** (S) Analytics: a daily limit of rows per address, whatever the browser says it is.
+      Done: `AnalyticsCollector::ADDRESS_LIMIT` (1,200 a day per salted address) through `ActionLimit`.
+- [x] **S25** (S) Admin Google sign-in: recognise a linked user by `sub` first; an email that matches a user linked to another
       `sub` is refused. `hash_equals` for the state.
-- [ ] **S26** (S) The installer gives a one-time code; the first-administrator form asks for it.
+      Done: `UserRepository::findByGoogleSub()`; `auth.google_mismatch` in Activity.
+- [x] **S26** (S) The installer gives a one-time code; the first-administrator form asks for it.
+      Done: `Installer::setupCode()` and `storage/setup-code.json`; `FirstAdmin::needsCode()`. A site unpacked by hand has no code.
 
 ## Speed
 
@@ -111,13 +117,17 @@ group. Size: S (an hour or two), M (half a day to a day), L (more).
       Done: the key is kept for the request; `expire()` runs on the checkout, and on other shop pages only when cron
       has not been seen for 15 minutes.
 
-- [ ] **P9** (S) Admin pages: the due backup, scheduled entries and the AI tick run after the response is sent (as on the
+- [x] **P9** (S) Admin pages: the due backup, scheduled entries and the AI tick run after the response is sent (as on the
       public site), never before the screen.
-- [ ] **P10** (M) Empty the page cache only when what visitors see changed: add the shop's order, customer, coupon and
+      Done: `App::runAdminDueAfterResponse()` where PHP-FPM or LiteSpeed can finish the response; before the screen elsewhere.
+- [x] **P10** (M) Empty the page cache only when what visitors see changed: add the shop's order, customer, coupon and
       subscription screens to the posts that change nothing; saving a draft that stays a draft purges nothing. Test: a cached
       page survives an order's status change and a draft's save, and does not survive a publish.
-- [ ] **P11** (S) Form submissions listed from an index (newest N), not by reading every file; MCP's `last_used_at` written at
+      Done: the shop's order, customer, coupon and subscription screens; `App::savesAHiddenEntry()`; `page_cache_test.py`.
+- [x] **P11** (S) Form submissions listed from an index (newest N), not by reading every file; MCP's `last_used_at` written at
       most once a minute.
+      Done: `FormSubmissionRepository::newest()` opens only the page's files (the ids begin with their time), `stats()` opens
+      only the newest, `find()` opens one; MCP part with S21.
 
 ## Bloat
 

@@ -139,9 +139,17 @@ st, _, body = refresh(tokens['refresh_token'])
 check('the old one still works for a minute (two refreshes at once)', st == 200, body[:200])
 c = sqlite3.connect('app/storage/db/app.sqlite')
 c.execute("UPDATE mcp_tokens SET replaced_at = datetime('now', '-5 minutes') WHERE replaced_at IS NOT NULL"); c.commit(); c.close()
+check('the new access token works', rpc(second['access_token'], 'ping')[0] == 200)
 st, _, body = refresh(tokens['refresh_token'])
 check('after that it is refused', st == 400 and 'invalid_grant' in body, body)
-check('the new access token works', rpc(second['access_token'], 'ping')[0] == 200)
+check('and the connection is ended, since a replaced token that comes back is the sign of a stolen one', rpc(second['access_token'], 'ping')[0] == 401 and refresh(second['refresh_token'])[0] == 400)
+
+# a new connection for the rest
+st, h, _ = root.submit('/admin/mcp-authorize?' + query, has_field('decision'), {'scopes[]': ['content:read']}, button=('decision', 'approve'))
+code = urllib.parse.parse_qs(urllib.parse.urlparse(location(h)).query).get('code', [''])[0]
+st, _, body = post_form('/_mcp/token', {'grant_type': 'authorization_code', 'client_id': cid, 'code': code, 'redirect_uri': 'https://assistant.example/callback', 'code_verifier': verifier, 'resource': resource})
+second = json.loads(body) if st == 200 else {}
+check('a new approval makes a new connection', st == 200 and rpc(second.get('access_token', ''), 'ping')[0] == 200, body[:200])
 
 # ---- the admin screen
 st, _, html = root.get('/admin/mcp')

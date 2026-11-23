@@ -35,6 +35,7 @@
  *   --default-lang=el    this site's default language (default: the same as --lang)
  *   --customers=FILE     the users' CSV (above)
  *   --overwrite          also replace a product file of the site that the import did not bring
+ *   --allow-local        also read a shop at a local or private address (one being moved on this same server)
  *   --content=PATH       the content folder (default ./content)
  *   --uploads=PATH       the uploads folder (default ./public/uploads)
  *   --storage=PATH       the site's storage folder, for the stock, the customers and the redirects (default: beside --content)
@@ -52,7 +53,7 @@ use GnozioCMS\Shop\{ShopCustomers, ShopStock};
 
 $root = dirname(__DIR__, 2);
 $site = '';
-$opt = ['apply' => false, 'lang' => 'el', 'default-lang' => '', 'customers' => '', 'overwrite' => false, 'content' => $root . '/content', 'uploads' => $root . '/public/uploads', 'storage' => '', 'out' => $root . '/storage/import', 'redirects' => ''];
+$opt = ['apply' => false, 'lang' => 'el', 'default-lang' => '', 'customers' => '', 'overwrite' => false, 'content' => $root . '/content', 'uploads' => $root . '/public/uploads', 'storage' => '', 'out' => $root . '/storage/import', 'redirects' => '', 'allow-local' => false];
 foreach (array_slice($argv, 1) as $arg) {
     if (str_starts_with($arg, '--')) {
         [$key, $value] = array_pad(explode('=', substr($arg, 2), 2), 2, null);
@@ -70,6 +71,8 @@ if ($site === '') {
     exit(2);
 }
 $site = preg_match('#^https?://#i', $site) ? $site : 'https://' . $site;
+// Public addresses only, each redirect checked, unless the site being moved is on this server (audit S18).
+WordPressHttp::$allowLocal = (bool)$opt['allow-local'];
 $lang = (string)$opt['lang'];
 $defaultLang = $opt['default-lang'] !== '' ? (string)$opt['default-lang'] : $lang;
 $key = (string)(getenv('WC_KEY') ?: '');

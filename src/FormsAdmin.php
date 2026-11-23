@@ -170,11 +170,24 @@ final class FormsAdmin
         ];
         $perPage = (int)($get['per_page'] ?? 25);
         $perPage = in_array($perPage, self::PER_PAGE_OPTIONS, true) ? $perPage : 25;
-        $all = $this->submissions->all($form->slug);
-        $filtered = $this->submissions->filter($all, $filters);
-        $total = count($filtered);
-        $totalPages = max(1, (int)ceil($total / $perPage));
-        $page = min(max(1, (int)($get['page'] ?? 1)), $totalPages);
+        // With no filter only the files of the page asked for are opened (FormSubmissionRepository::newest()).
+        $wanted = max(1, (int)($get['page'] ?? 1));
+        $quick = implode('', $filters) === '' ? $this->submissions->newest($form->slug, 0, 0) : null;
+        if ($quick !== null) {
+            $total = $quick['total'];
+            $totalAll = $total;
+            $totalPages = max(1, (int)ceil($total / $perPage));
+            $page = min($wanted, $totalPages);
+            $pageEntries = $this->submissions->newest($form->slug, ($page - 1) * $perPage, $perPage)['entries'] ?? [];
+        } else {
+            $all = $this->submissions->all($form->slug);
+            $totalAll = count($all);
+            $filtered = $this->submissions->filter($all, $filters);
+            $total = count($filtered);
+            $totalPages = max(1, (int)ceil($total / $perPage));
+            $page = min($wanted, $totalPages);
+            $pageEntries = array_slice($filtered, ($page - 1) * $perPage, $perPage);
+        }
 
         $labels = [];
         $formFields = FormFields::normalize($form->meta['fields'] ?? []);
@@ -185,7 +198,7 @@ final class FormsAdmin
             }
         }
         $rows = [];
-        foreach (array_slice($filtered, ($page - 1) * $perPage, $perPage) as $entry) {
+        foreach ($pageEntries as $entry) {
             $fields = [];
             foreach ($entry['fields'] as $key => $value) {
                 $fields[] = ['key' => (string)$key, 'label' => $labels[(string)$key] ?? Slug::title((string)$key), 'value' => FormProcessor::text($value)];
@@ -234,7 +247,7 @@ final class FormsAdmin
         return [
             'rows' => $rows,
             'filters' => $filters,
-            'total_all' => count($all),
+            'total_all' => $totalAll,
             'total' => $total,
             'recent' => $this->submissions->stats($form->slug)['last_7_days'],
             'page' => $page,

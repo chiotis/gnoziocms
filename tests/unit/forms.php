@@ -118,7 +118,8 @@ $write('apply.md', "title: Apply\nstatus: published\n");
 touch("$dir/content/forms/survey.md", time() - 5000);
 touch("$dir/content/forms/apply.md", time() - 9000);
 $subs = new FormSubmissionRepository("$dir/content");
-$store = function (string $slug, array $fields, string $lang, string $when) use ($subs) { $id = $subs->store($slug, ['form' => $slug, 'lang' => $lang, 'submitted_at' => $when, 'ip' => '1.2.3.4', 'user_agent' => 'UA', 'fields' => $fields]); return $id; };
+// A submission's id begins with the time it arrived (FormSubmissionRepository::newId()), as here.
+$store = function (string $slug, array $fields, string $lang, string $when) use ($subs) { $id = $subs->store($slug, ['form' => $slug, 'lang' => $lang, 'submitted_at' => $when, 'ip' => '1.2.3.4', 'user_agent' => 'UA', 'fields' => $fields], date('Ymd-His', strtotime($when)) . '-' . bin2hex(random_bytes(4))); return $id; };
 $now = date('c');
 $old = date('c', time() - 30 * 86400);
 $a = $store('contact', ['name' => 'Ada', 'email' => 'ada@x.test', 'msg' => 'Hi there'], 'el', $now);
@@ -161,6 +162,19 @@ check('a page past the end is the last', [$paged['page'], $paged['total_pages']]
 check('the tab in the editor lists them the same way, newest first', array_column($admin->recent('contact'), 'title'), ['Ada', 'Bob', 'only@x.test']);
 check('with labels made from the names', array_column($admin->recent('contact')[0]['fields'], 'label'), ['Name', 'Email', 'Msg']);
 check('a form nobody wrote to has none', $admin->recent('apply'), []);
+
+// ---- many submissions: a page with no filter opens only its own files
+$many = new FormSubmissionRepository("$dir/many");
+for ($i = 0; $i < 60; $i++) {
+    $many->store('big', ['submitted_at' => date('c', 1700000000 + $i * 60), 'fields' => ['n' => (string)$i]], date('Ymd-His', 1700000000 + $i * 60) . '-' . sprintf('%08x', $i));
+}
+$slice = $many->newest('big', 25, 25);
+check('a page of the newest, by their names', [$slice['total'], count($slice['entries']), $slice['entries'][0]['fields']['n'], $slice['entries'][24]['fields']['n']], [60, 25, '34', '10']);
+check('the same as reading them all', array_column(array_slice($many->all('big'), 25, 25), 'id'), array_column($slice['entries'], 'id'));
+check('the counts open only the newest', [$many->stats('big')['total'], $many->stats('big')['latest']], [60, date('c', 1700000000 + 59 * 60)]);
+check('one is found by its id alone', [$many->find('big', $slice['entries'][0]['id'])['fields']['n'] ?? null, $many->find('big', 'nope'), $many->find('big', '../x')], ['34', null, null]);
+$many->store('odd', ['submitted_at' => date('c'), 'fields' => []], 'custom-id');
+check('a name that does not begin with its time: every file is read instead', [$many->newest('odd', 0, 25), $many->stats('odd')['total']], [null, 1]);
 
 // ---- the export
 $x = $admin->export($form, 'My Site');

@@ -110,6 +110,7 @@ final class App
     private ?OmniClient $omniClientService = null;
     private ?ScheduledPublishing $scheduledPublishingService = null;
     private ?McpStore $mcpStoreService = null;
+    private ?LogRetention $logRetentionService = null;
     private ?McpOAuth $mcpOAuthService = null;
     private ?McpAdmin $mcpAdminService = null;
     private ?JobRunner $jobRunnerService = null;
@@ -332,7 +333,12 @@ final class App
             $picturesDue = $this->images->pendingCount() > 0;
             $this->aiTick();
             $jobsDue = $this->jobRunner()->pending(null, true) > 0;
+            $retentionDue = $this->logRetention()->isDue();
             if (!$backupDue && !$releaseDue && !$picturesDue && !$jobsDue && !$this->omniClient()->isDue()) {
+                // The logs' clean-up, once a day, is a few deletes: done here when nothing else is due, on every server.
+                if ($retentionDue) {
+                    $this->pruneLogs();
+                }
                 // Copies of pages may be sent for a while without asking again, before the application boots too.
                 $this->pageCache()->markQuiet();
                 return;
@@ -367,8 +373,49 @@ final class App
             }
             // After the backup, so a report that is due tells Omni how it went.
             $this->omniClient()->sendIfDue();
+            if ($retentionDue) {
+                $this->pruneLogs();
+            }
         } catch (\Throwable) {
             // A backup that could not run is told by its own run (Backups, notifications); a visit is never broken by it.
+        }
+    }
+
+    /**
+     * After an admin page, once the response is finished: the scheduled entries, the AI schedules, the backup and the
+     * report to Omni, whichever is due. Nothing is finished early when nothing is due.
+     */
+    private function runAdminDueAfterResponse(): void
+    {
+        try {
+            $releaseDue = $this->scheduleCheckIsDue();
+            $aiDue = (int)$this->systemMeta->get(self::AI_TICK_KEY) < time() - 60;
+            $backupDue = $this->backupManager()->isRunDue();
+            $omniDue = $this->omniClient()->isDue();
+            $finish = CronStatus::finishFunction();
+            if ((!$releaseDue && !$aiDue && !$backupDue && !$omniDue) || $finish === null) {
+                return;
+            }
+            @session_write_close();
+            $finish();
+            if (function_exists('ignore_user_abort')) {
+                @ignore_user_abort(true);
+            }
+            if (function_exists('set_time_limit')) {
+                @set_time_limit(0);
+            }
+            if ($releaseDue) {
+                $this->releaseScheduled(false);
+            }
+            if ($aiDue) {
+                $this->aiTick();
+            }
+            if ($backupDue) {
+                $this->backupManager()->runIfDue();
+            }
+            $this->omniClient()->sendIfDue();
+        } catch (\Throwable) {
+            // Each piece of work tells its own failures (Backups, Activity, Admin > Omni); a screen is never broken by it.
         }
     }
 
@@ -416,6 +463,7 @@ final class App
             @set_time_limit($seconds + 300);
         }
         $this->aiTick(false);
+        $this->pruneLogs();
         $renewed = $this->shop()->tick(false);
         return $renewed + $this->jobRunner()->work(microtime(true) + $seconds);
     }
@@ -1339,7 +1387,34 @@ final class App
     ];
 
     /** Admin addresses whose POST only reads, previews or exports, so the cache in front of the site stays as it is. */
-    private const ADMIN_POSTS_THAT_CHANGE_NOTHING = ['search', 'markdown-visual', 'media-picker', 'block-presets', 'notification-read', 'notifications-read-all', 'forms-export', 'form-file', 'form-files-zip', 'export', 'omni', 'mcp', 'mcp-authorize', 'activity-logs', 'email-logs', 'ai-publishing', 'ai-picture', 'second-factor'];
+    private const ADMIN_POSTS_THAT_CHANGE_NOTHING = ['search', 'markdown-visual', 'media-picker', 'block-presets', 'notification-read', 'notifications-read-all', 'forms-export', 'form-file', 'form-files-zip', 'export', 'omni', 'mcp', 'mcp-authorize', 'activity-logs', 'email-logs', 'ai-publishing', 'ai-picture', 'second-factor', 'shop-orders', 'shop-customers', 'shop-coupons', 'shop-subscriptions'];
+
+    /**
+     * Whether this POST saves an entry that visitors cannot see before or after it: a draft or a scheduled entry that stays
+     * one, at the same address (a new one too). Its save leaves the kept pages alone. Anything else, or anything unsure,
+     * empties them.
+     */
+    private function savesAHiddenEntry(string $action): bool
+    {
+        if ($action !== 'save' || !in_array((string)($_POST['status'] ?? ''), ['draft', ScheduledPublishing::STATUS], true)) {
+            return false;
+        }
+        $type = $this->sanitizeType((string)($_POST['type'] ?? 'pages'));
+        $original = (string)($_POST['original_slug'] ?? '');
+        $originalLang = (string)($_POST['original_lang'] ?? '');
+        if ($original === '') {
+            return true; // a new entry, saved hidden
+        }
+        if ($original !== (string)($_POST['slug'] ?? $original) || ($originalLang !== '' && $originalLang !== (string)($_POST['lang'] ?? $originalLang))) {
+            return false; // a move can carry its translations and menu links with it
+        }
+        try {
+            $item = $this->content->find($type, $original, $originalLang !== '' ? $originalLang : null, true, false);
+        } catch (\Throwable) {
+            return false;
+        }
+        return $item !== null && in_array((string)$item->get('status', 'published'), ['draft', ScheduledPublishing::STATUS], true);
+    }
 
     private function frontCache(): FrontCache
     {
@@ -1421,17 +1496,25 @@ final class App
             return;
         }
 
+        // The work that falls due runs after the screen is sent, where the response can be finished first (PHP-FPM,
+        // LiteSpeed); elsewhere before it, as the only place it would run without the cron job.
         if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
-            $this->releaseScheduled();
-            $this->aiTick();
-            $this->backupManager()->runIfDue();
-            register_shutdown_function(fn() => $this->sendOmniReportAfterResponse());
+            if (CronStatus::finishFunction() !== null) {
+                register_shutdown_function(fn() => $this->runAdminDueAfterResponse());
+            } else {
+                $this->releaseScheduled();
+                $this->aiTick();
+                $this->backupManager()->runIfDue();
+                register_shutdown_function(fn() => $this->sendOmniReportAfterResponse());
+            }
         }
 
         // Whatever is sent from the admin may change what visitors see: the cache in front of the site is emptied (once, before
         // the handler, which may end the request with a redirect). Screens that only read, preview or export do not count.
         if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && !in_array($action, self::ADMIN_POSTS_THAT_CHANGE_NOTHING, true) && !isset($_GET['preview'])) {
-            $this->frontCache()->purgeAll();
+            if (!$this->savesAHiddenEntry($action)) {
+                $this->frontCache()->purgeAll();
+            }
             $this->contentIndex->bump(); // what is derived from the whole site (the maps' data) is made again
         }
 
@@ -1485,7 +1568,8 @@ final class App
                 }
             },
             null,
-            $this->secondFactor()
+            $this->secondFactor(),
+            $this->basePath . '/storage/setup-code.json'
         );
     }
 
@@ -1651,7 +1735,7 @@ final class App
 
     private function analyticsCollector(): AnalyticsCollector
     {
-        return $this->analyticsCollectorService ??= new AnalyticsCollector(fn(): AnalyticsStore => $this->analyticsStore(), fn(): array => $this->settings);
+        return $this->analyticsCollectorService ??= new AnalyticsCollector(fn(): AnalyticsStore => $this->analyticsStore(), fn(): array => $this->settings, new ActionLimit($this->systemDatabase));
     }
 
     private function analyticsAdmin(): AnalyticsAdmin
@@ -3631,6 +3715,24 @@ final class App
     }
 
     // ---- MCP (docs/mcp.md)
+
+    private function logRetention(): LogRetention
+    {
+        return $this->logRetentionService ??= new LogRetention($this->systemDatabase, $this->systemMeta, $this->mcpStore());
+    }
+
+    /** Once a day: what the logs may no longer keep is cleared (LogRetention), and Activity says how much. */
+    private function pruneLogs(): void
+    {
+        try {
+            $removed = $this->logRetention()->run($this->settings);
+        } catch (\Throwable) {
+            return;
+        }
+        if ($removed !== null && array_sum($removed) > 0) {
+            $this->logActivity('logs.retention', 'info', 'system', null, 'Old log rows cleared: ' . $removed['activity'] . ' activity, ' . $removed['email'] . ' email, ' . $removed['gateway'] . ' payment provider events, ' . $removed['mcp_clients'] . ' unused MCP clients.', $removed);
+        }
+    }
 
     private function mcpStore(): McpStore
     {

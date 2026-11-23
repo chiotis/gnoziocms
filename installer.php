@@ -1028,7 +1028,27 @@ final class GnozioInstaller
         // The cron job the site should have (CronStatus): scheduled entries, picture sizes and the scheduled backup.
         $root = realpath($base);
         $cron = '*/5 * * * * php ' . escapeshellarg(($root === false ? $base : $root) . '/src/cron-backup.php');
-        return ['ok' => true, 'redirect' => '/admin', 'left' => $left, 'cron' => $cron];
+        return ['ok' => true, 'redirect' => '/admin', 'left' => $left, 'cron' => $cron, 'code' => self::setupCode($base)];
+    }
+
+    /**
+     * The one-time code the first-administrator form asks for (FirstAdmin): shown once here, only its hash kept in
+     * storage/setup-code.json, which the site deletes when the account is made. '' when it could not be written: the
+     * form then asks for no code.
+     */
+    public static function setupCode($base)
+    {
+        $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        $code = '';
+        for ($i = 0; $i < 12; $i++) {
+            $code .= $alphabet[random_int(0, 31)];
+        }
+        $file = $base . '/storage/setup-code.json';
+        if (@file_put_contents($file, json_encode(['hash' => hash('sha256', $code), 'made_at' => time()])) === false) {
+            return '';
+        }
+        @chmod($file, 0600);
+        return implode('-', str_split($code, 4));
     }
 
     // ---------------------------------------------------------------- language
@@ -1076,7 +1096,7 @@ final class GnozioInstaller
                 'docroot_not_yet' => 'The site is still served from the old folder. Make sure the document root is the path above and saved, wait a moment for the web server to reload, then press the button again.', 'docroot_not_public' => 'This page is still coming from the old location. Change the document root, then press the button again.',
                 'finishing' => 'Removing the installer…', 'finish_ok' => 'Installer removed', 'finish_left' => 'These could not be deleted; please delete them by hand: {left}',
                 'last_title' => 'For ChatGPT: one nginx block', 'last_text' => 'To let ChatGPT connect to the site over MCP (docs/mcp.md), nginx must send the files in /.well-known/oauth- as JSON. In the site\'s nginx configuration (CloudPanel: Vhost, in the server block on port 443) add this block before the `location ~ /.well-known` block and reload nginx. Claude and Codex connect without it; you can also do it later.', 'last_cf' => 'Without access to the vhost, behind Cloudflare: Rules > Transform Rules > Modify Response Header, for paths starting with /.well-known/oauth-, set Content-Type to application/json.', 'last_open' => 'Open the admin',
-                'done_title' => 'GnozioCMS is installed: what is left to do', 'cron_title' => 'Add the cron job', 'cron_text' => 'One cron job does the timed work: it publishes scheduled entries, writes picture sizes and takes the automatic backups (once you switch them on in Settings > Backup). Add this line on the server, every 5 minutes. Running it often does no harm: it does nothing when nothing is due.', 'cron_where' => 'CloudPanel: Sites > the site > Cron Jobs. cPanel: Cron Jobs, as a Custom command. If `php` is not this site\'s PHP, give its full path (for example /usr/bin/php8.5). Admin > System shows when the cron job last ran.',
+                'done_title' => 'GnozioCMS is installed: what is left to do', 'code_title' => 'Your setup code', 'code_text' => 'The first-administrator form asks for this code, so nobody else can make the account before you. Keep it until you have made your account; it is shown only here.', 'cron_title' => 'Add the cron job', 'cron_text' => 'One cron job does the timed work: it publishes scheduled entries, writes picture sizes and takes the automatic backups (once you switch them on in Settings > Backup). Add this line on the server, every 5 minutes. Running it often does no harm: it does nothing when nothing is due.', 'cron_where' => 'CloudPanel: Sites > the site > Cron Jobs. cPanel: Cron Jobs, as a Custom command. If `php` is not this site\'s PHP, give its full path (for example /usr/bin/php8.5). Admin > System shows when the cron job last ran.',
                 'e_auth' => 'Your session ended. Reload the page and enter the key again.', 'e_unknown' => 'Unknown step.', 'e_nostate' => 'The installation has not started. Reload the page.', 'e_existing' => 'A GnozioCMS site already exists in this folder; the installer stops here.', 'e_finished' => 'This installation has finished.', 'e_internal' => 'Something unexpected went wrong: {detail}', 'e_manifest' => 'The latest release could not be read from GitHub ({detail}). Try again in a minute.',
                 'e_download' => 'The download failed: {detail}. Try again.', 'e_size' => 'The downloaded file has the wrong size, so it was thrown away. Try again; if it repeats, GitHub or a proxy is altering the download.', 'e_sha' => 'The downloaded package is not the one that was published (its checksum differs), so it was refused and thrown away. Nothing was installed. Try again.',
                 'e_zip_bad' => 'The package is not a valid ZIP file (or the ZIP extension is missing).', 'e_zip_count' => 'The package has an unexpected number of files, so it was refused.', 'e_zip_unsafe' => 'The package holds a file an install may not write ({name}), so it was refused. Nothing was installed.', 'e_zip_link' => 'The package holds a link ({name}), so it was refused. Nothing was installed.', 'e_zip_large' => 'The package is larger than expected once unpacked, so it was refused.', 'e_zip_incomplete' => 'The package is incomplete ({name} is missing).', 'e_zip_version' => 'The package is not version {version}.',
@@ -1111,7 +1131,7 @@ final class GnozioInstaller
                 'docroot_not_yet' => 'Το site σερβίρεται ακόμη από τον παλιό φάκελο. Βεβαιώσου ότι το document root είναι η διαδρομή παραπάνω και αποθηκεύτηκε, περίμενε λίγο να ξαναφορτώσει ο web server και πάτα ξανά το κουμπί.', 'docroot_not_public' => 'Αυτή η σελίδα έρχεται ακόμη από την παλιά θέση. Άλλαξε το document root και πάτα ξανά το κουμπί.',
                 'finishing' => 'Διαγραφή του installer…', 'finish_ok' => 'Ο installer διαγράφηκε', 'finish_left' => 'Αυτά δεν μπόρεσαν να διαγραφούν· σβήσε τα με το χέρι: {left}',
                 'last_title' => 'Για το ChatGPT: ένα block στο nginx', 'last_text' => 'Για να συνδέεται το ChatGPT στο site μέσω MCP (docs/mcp.md), το nginx πρέπει να στέλνει τα αρχεία του /.well-known/oauth- ως JSON. Στη ρύθμιση nginx του site (CloudPanel: Vhost, στο server block της θύρας 443) πρόσθεσε αυτό το block πριν από το `location ~ /.well-known` και κάνε reload το nginx. Το Claude και το Codex συνδέονται και χωρίς αυτό· μπορείς να το κάνεις και αργότερα.', 'last_cf' => 'Χωρίς πρόσβαση στο vhost, πίσω από Cloudflare: Rules > Transform Rules > Modify Response Header, για διαδρομές που αρχίζουν από /.well-known/oauth-, όρισε Content-Type σε application/json.', 'last_open' => 'Άνοιγμα του admin',
-                'done_title' => 'Το GnozioCMS εγκαταστάθηκε: τι μένει να γίνει', 'cron_title' => 'Πρόσθεσε το cron job', 'cron_text' => 'Ένα cron job κάνει τις δουλειές που έχουν ώρα: δημοσιεύει τις προγραμματισμένες καταχωρήσεις, γράφει τα μεγέθη των εικόνων και παίρνει τα αυτόματα backups (όταν τα ενεργοποιήσεις στις Ρυθμίσεις > Backup). Πρόσθεσε αυτή τη γραμμή στον server, κάθε 5 λεπτά. Δεν πειράζει που τρέχει συχνά: δεν κάνει τίποτα όταν δεν υπάρχει κάτι να γίνει.', 'cron_where' => 'CloudPanel: Sites > το site > Cron Jobs. cPanel: Cron Jobs, ως Custom command. Αν η `php` δεν είναι η PHP αυτού του site, δώσε την πλήρη διαδρομή της (για παράδειγμα /usr/bin/php8.5). Το Admin > System δείχνει πότε έτρεξε τελευταία φορά το cron job.',
+                'done_title' => 'Το GnozioCMS εγκαταστάθηκε: τι μένει να γίνει', 'code_title' => 'Ο κωδικός εγκατάστασης', 'code_text' => 'Η φόρμα του πρώτου διαχειριστή ζητά αυτόν τον κωδικό, ώστε κανείς άλλος να μη φτιάξει τον λογαριασμό πριν από σένα. Κράτησέ τον μέχρι να φτιάξεις τον λογαριασμό σου· εμφανίζεται μόνο εδώ.', 'cron_title' => 'Πρόσθεσε το cron job', 'cron_text' => 'Ένα cron job κάνει τις δουλειές που έχουν ώρα: δημοσιεύει τις προγραμματισμένες καταχωρήσεις, γράφει τα μεγέθη των εικόνων και παίρνει τα αυτόματα backups (όταν τα ενεργοποιήσεις στις Ρυθμίσεις > Backup). Πρόσθεσε αυτή τη γραμμή στον server, κάθε 5 λεπτά. Δεν πειράζει που τρέχει συχνά: δεν κάνει τίποτα όταν δεν υπάρχει κάτι να γίνει.', 'cron_where' => 'CloudPanel: Sites > το site > Cron Jobs. cPanel: Cron Jobs, ως Custom command. Αν η `php` δεν είναι η PHP αυτού του site, δώσε την πλήρη διαδρομή της (για παράδειγμα /usr/bin/php8.5). Το Admin > System δείχνει πότε έτρεξε τελευταία φορά το cron job.',
                 'e_auth' => 'Η συνεδρία έληξε. Φόρτωσε ξανά τη σελίδα και γράψε το κλειδί.', 'e_unknown' => 'Άγνωστο βήμα.', 'e_nostate' => 'Η εγκατάσταση δεν έχει ξεκινήσει. Φόρτωσε ξανά τη σελίδα.', 'e_existing' => 'Υπάρχει ήδη site GnozioCMS σε αυτόν τον φάκελο· ο installer σταματά εδώ.', 'e_finished' => 'Η εγκατάσταση έχει ολοκληρωθεί.', 'e_internal' => 'Κάτι δεν πήγε όπως έπρεπε: {detail}', 'e_manifest' => 'Δεν διαβάστηκε η τελευταία έκδοση από το GitHub ({detail}). Ξαναδοκίμασε σε ένα λεπτό.',
                 'e_download' => 'Η λήψη απέτυχε: {detail}. Ξαναδοκίμασε.', 'e_size' => 'Το αρχείο που κατέβηκε έχει λάθος μέγεθος και πετάχτηκε. Ξαναδοκίμασε· αν επαναληφθεί, το GitHub ή κάποιο proxy αλλοιώνει τη λήψη.', 'e_sha' => 'Το πακέτο που κατέβηκε δεν είναι αυτό που δημοσιεύτηκε (διαφέρει το checksum), οπότε απορρίφθηκε και πετάχτηκε. Δεν εγκαταστάθηκε τίποτα. Ξαναδοκίμασε.',
                 'e_zip_bad' => 'Το πακέτο δεν είναι έγκυρο αρχείο ZIP (ή λείπει η επέκταση ZIP).', 'e_zip_count' => 'Το πακέτο έχει μη αναμενόμενο αριθμό αρχείων και απορρίφθηκε.', 'e_zip_unsafe' => 'Το πακέτο περιέχει αρχείο που μια εγκατάσταση δεν επιτρέπεται να γράψει ({name}) και απορρίφθηκε. Δεν εγκαταστάθηκε τίποτα.', 'e_zip_link' => 'Το πακέτο περιέχει σύνδεσμο (link) ({name}) και απορρίφθηκε. Δεν εγκαταστάθηκε τίποτα.', 'e_zip_large' => 'Το πακέτο είναι μεγαλύτερο από το αναμενόμενο μετά την αποσυμπίεση και απορρίφθηκε.', 'e_zip_incomplete' => 'Το πακέτο είναι ελλιπές (λείπει το {name}).', 'e_zip_version' => 'Το πακέτο δεν είναι η έκδοση {version}.',
@@ -1368,6 +1388,10 @@ function finish(){
     // The last instructions: the cron job, and unless nginx was seen to send the discovery documents as JSON (or Apache reads
     // its .htaccess), the block ChatGPT needs. The admin opens on a click, so there is time to copy them.
     m.appendChild(el('h2',null,t('done_title')));
+    if(j.code){
+      var hc=el('h3',null,t('code_title'));hc.style.marginTop='14px';m.appendChild(hc);
+      m.appendChild(el('p',null,t('code_text')));m.appendChild(copyBlock(j.code));
+    }
     if(j.cron){
       var h=el('h3',null,t('cron_title'));h.style.marginTop='14px';m.appendChild(h);
       m.appendChild(el('p',null,t('cron_text')));m.appendChild(copyBlock(j.cron));m.appendChild(el('p','note',t('cron_where')));

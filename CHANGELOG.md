@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.338 — 2026-11-23 — Importers through SafeHttp, logs kept for a set time, a setup code from the installer, a faster admin
+- The WordPress and WooCommerce importers fetch through SafeHttp: no private or local addresses unless `--allow-local` (or the box in Shop > Import) says so, and no redirects to them.
+- Logs are kept for a set time (activity 180 days, emails 90, gateway calls 180; `retention:` in settings.yaml), MCP clients unused for 7 days are removed, and an MCP refresh token used twice ends the connection.
+- Analytics keeps at most 1,200 rows a day per address.
+- Google sign-in in the admin finds a linked account by its Google id first and refuses an email linked to another Google account.
+- installer.php shows a one-time setup code on its last screen; the first-administrator form asks for it.
+- Admin pages run the due backup, scheduled entries and AI schedules after the page is sent (PHP-FPM, LiteSpeed).
+- Saving a draft that stays a draft, and the shop's order, customer, coupon and subscription screens, no longer empty the page cache.
+- Form submissions are listed by opening only the files of the page shown.
+- Audit tasks S18, S21, S22, S23, S24, S25, S26, P9, P10 and P11 are done.
+- Tests: `importer-http`, `log-retention` (new), `mcp`, `analytics`, `login-controller`, `first-admin`, `forms` (unit); `installer` and `page_cache` (HTTP).
+
 ## 0.1.337 — 2026-11-23 — Shop speed: one product read on its own, fewer picture encodes at once, downloads that resume
 - A product is looked up through the content index and only its own file is read; the whole catalogue is loaded for listings only (5,000 products: about 1 ms instead of 400 ms).
 - Adding to the cart prices the product once; a product's stock rows are kept for the request; the account page reads the customer's orders once.

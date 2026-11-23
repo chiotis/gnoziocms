@@ -26,6 +26,9 @@ final class McpStore
     public const DEFAULT_SHOP_LIMIT = 500;
 
     /** @param \Closure(): int|null $clock the time, for tests */
+    /** The connection the last refresh() ended because a replaced token came back after its grace; null when it did not. */
+    public ?int $reused = null;
+
     public function __construct(private SystemDatabase $database, private ?\Closure $clock = null)
     {
     }
@@ -137,6 +140,7 @@ final class McpStore
      */
     public function refresh(string $refreshToken, string $clientId, string $resource): ?array
     {
+        $this->reused = null;
         $stmt = $this->pdo()->prepare(
             'SELECT t.id AS token_id, t.replaced_at, c.* FROM mcp_tokens t JOIN mcp_connections c ON c.id = t.connection_id
              WHERE t.refresh_hash = :hash AND t.refresh_expires_at > :now AND c.client_id = :client AND c.resource = :resource AND c.revoked_at IS NULL'
@@ -147,6 +151,9 @@ final class McpStore
             return null;
         }
         if ($row['replaced_at'] !== null && (string)$row['replaced_at'] <= $this->stamp(-self::REFRESH_GRACE_SECONDS)) {
+            // A replaced token used again after its grace is the sign of a stolen one: the connection ends (audit S22).
+            $this->revoke((int)$row['id']);
+            $this->reused = (int)$row['id'];
             return null;
         }
         if ($row['replaced_at'] === null) {
@@ -173,7 +180,10 @@ final class McpStore
         if (!is_array($row)) {
             return null;
         }
-        $this->pdo()->prepare('UPDATE mcp_connections SET last_used_at = :now WHERE id = :id')->execute(['now' => $this->stamp(), 'id' => (int)$row['id']]);
+        // Written at most once a minute, not on every call (audit P11).
+        if ((string)($row['last_used_at'] ?? '') < $this->stamp(-60)) {
+            $this->pdo()->prepare('UPDATE mcp_connections SET last_used_at = :now WHERE id = :id')->execute(['now' => $this->stamp(), 'id' => (int)$row['id']]);
+        }
         return $row;
     }
 
@@ -342,6 +352,17 @@ final class McpStore
         $this->pdo()->prepare('DELETE FROM mcp_rate_limits WHERE window_start < :old')->execute(['old' => $this->now() - 86400]);
         $this->pdo()->prepare('DELETE FROM mcp_publications WHERE published_at < :day')->execute(['day' => $this->stamp(-2 * 86400)]);
         $this->pdo()->prepare('DELETE FROM mcp_shop_changes WHERE changed_at < :day')->execute(['day' => $this->stamp(-2 * 86400)]);
+    }
+
+    /**
+     * Clients that registered and never made a connection, after a week (audit S23): anyone may register one while MCP is on.
+     * How many went.
+     */
+    public function removeUnusedClients(int $days = 7): int
+    {
+        $stmt = $this->pdo()->prepare('DELETE FROM mcp_clients WHERE created_at < :cutoff AND client_id NOT IN (SELECT client_id FROM mcp_connections WHERE client_id IS NOT NULL) AND client_id NOT IN (SELECT client_id FROM mcp_codes)');
+        $stmt->execute(['cutoff' => $this->stamp(-$days * 86400)]);
+        return $stmt->rowCount();
     }
 
     private function now(): int

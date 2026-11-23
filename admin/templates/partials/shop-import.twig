@@ -76,6 +76,7 @@
               </ol>
             </details>
           </div>
+          <label class="flex items-start gap-2 text-sm text-slate-700 sm:col-span-2"><input type="checkbox" name="allow_local" value="1" class="mt-0.5 h-4 w-4 rounded border-slate-300"{% if state.allow_local|default(false) %} checked{% endif %}><span>The shop is on this server or its network<span class="block text-xs text-slate-500">Only for a site being moved here: lets the import read a local or private address. Off, only public addresses are read.</span></span></label>
           {% if import_languages|length > 1 %}
             <div><label class="{{ label }}" for="imp-lang">Language of the shop's texts</label>
               <select id="imp-lang" name="lang" class="{{ input }}">{% for l in import_languages %}<option value="{{ l }}"{% if l == (state.lang ?: import_languages[0]) %} selected{% endif %}>{{ l|upper }}</option>{% endfor %}</select>
