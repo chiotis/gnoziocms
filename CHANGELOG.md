@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.324 — 2026-11-23 — The picture on hover in the shop's list
+- **Product card in a list built with blocks**: a product's "Picture on hover" never showed on the shop's page or a collection's page. There the card sits under its entry's link, which covers the whole card, so the pointer was on the link and the card's hover never started. The list's item (`.entry-card`) now shows the second picture too, on hover and when its link has the focus (`themes/default/blocks/product-grid/block.css`).
+- Tests: `shop` (HTTP) draws the shop built with blocks with a product that has a picture on hover.
+
 ## 0.1.323 — 2026-11-23 — A label of your own for Add to cart
 - **Product summary block > Add to cart button label**: the button can say something else ("Buy now", "Pre-order"). Empty, it keeps the theme's words in each language (Add to cart, Στο καλάθι). A language with its own set of template blocks can have its own label. The label is also what the button shows again after the shop's script has added the product.
 - Tests: `shop-catalogue` (unit) draws the block with and without a label, in both languages.
