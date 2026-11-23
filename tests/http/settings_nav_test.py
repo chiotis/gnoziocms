@@ -81,5 +81,5 @@ if st == 200 and body:
 else:
     check('Shop settings opens once the shop is on', False, st)
 
-print('\nDONE: %d failed' % len(fails))
+print('\nALL PASSED' if not fails else '\n%d FAILED: %s' % (len(fails), fails))
 sys.exit(1 if fails else 0)
