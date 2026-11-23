@@ -165,6 +165,14 @@ check('the shop opens with its cards', st == 200 and 'class="entry-card-link"' i
 check('a product with a picture on hover has it in its card', re.search(r'product-card-media has-hover">.*?cuff-worn\.jpg', page, re.S) is not None and 'class="product-card-hover"' in page)
 check('hovering the card (its link covers it) shows that picture', re.search(r'\.entry-card:hover \.product-card-hover', page) is not None, re.findall(r'[^{}]*product-card-hover[^{}]*\{', page))
 
+# ---- the shop built with blocks: each product is a Product card under its entry's link
+form = next(f for f in root.forms('/admin/theme?tab=archive_layouts') if any(x[0] == 'active_tab' for x in f['fields']))
+root.request('/admin/theme', data=[tuple(x) for x in form['fields'] if x[0] not in ('archive_template[products]', 'active_tab')] + [('archive_template[products]', 'built'), ('active_tab', 'archive_layouts')])
+st, _, page = pub.get('/products')
+check('the shop opens with its cards', st == 200 and 'class="entry-card-link"' in page and 'block-product-card' in page, str(st) + page[:200])
+check('a product with a picture on hover has it in its card', re.search(r'product-card-media has-hover">.*?cuff-worn\.jpg', page, re.S) is not None and 'class="product-card-hover"' in page)
+check('hovering the card (its link covers it) shows that picture', re.search(r'\.entry-card:hover \.product-card-hover', page) is not None, re.findall(r'[^{}]*product-card-hover[^{}]*\{', page))
+
 # ---- off again
 toggle(root, 'products', False)
 check('switching it off hides Shop settings again', 'admin/shop-settings' not in root.get('/admin')[2])
