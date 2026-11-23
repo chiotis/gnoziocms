@@ -1,4 +1,5 @@
-"""Settings and Shop settings: the section list on the left (admin/templates/partials/section-nav.twig).
+"""Settings and Shop settings: the section list on the left (admin/templates/partials/section-nav.twig), with MCP and
+Omni listed in Settings (partials/settings-sidebar.twig) instead of the main menu.
 
 Groups under small headings, an icon and a label for each section, the current one marked once (?tab= opens it, an
 unknown tab opens General), the other panels hidden, the select for narrow screens offering the same sections, Limits
@@ -22,6 +23,11 @@ def current(body): return re.findall(r'data-section="([a-z_]+)" aria-current="pa
 def options(html):
     m = re.search(r'<select data-section-select[^>]*>(.*?)</select>', html, re.S)
     return (re.findall(r'<option value="([a-z_]+)"', m.group(1)), re.findall(r'<option value="([a-z_]+)"[^>]*selected', m.group(1))) if m else ([], [])
+def aside(html):
+    m = re.search(r'<aside.*?</aside>', html, re.S)
+    return m.group(0) if m else ''
+def menu_current(html):
+    return [re.sub(r'<[^>]+>', '', c).strip() for c in re.findall(r'<a href="[^"]*"[^>]*aria-current="page"[^>]*>(.*?)</a>', aside(html), re.S)]
 def panel_hidden(html, key):
     m = re.search(r'<div class="([^"]*)" data-panel="' + key + '"', html)
     return None if not m else ('hidden' in m.group(1).split())
@@ -31,8 +37,9 @@ root = Client(); root.login()
 st, _, html = root.get('/admin/settings')
 label, body = nav(html)
 check('Settings has the section list', st == 200 and label == 'Settings' and body != '', st)
-check('under the group headings, in order', headings(body) == ['Site', 'Communication', 'Access', 'System'], headings(body))
-check('with every section, in order', items(body) == ['basics', 'smtp', 'auth', 'apis', 'backup', 'updates', 'limits'], items(body))
+check('under the group headings, in order', headings(body) == ['Site', 'Communication', 'Access', 'Integrations', 'System'], headings(body))
+check('with every section, in order, MCP and Omni among them', items(body) == ['basics', 'smtp', 'auth', 'apis', 'mcp', 'omni', 'backup', 'updates', 'limits'], items(body))
+check('MCP and Omni are links to their own screens', re.search(r'href="[^"]*admin/mcp" class="section-nav-link" data-section="mcp"', body) is not None and re.search(r'href="[^"]*admin/omni" class="section-nav-link" data-section="omni"', body) is not None)
 check('each with an icon and a label', re.search(r'data-section="smtp"><svg[^>]*aria-hidden="true">.+?</svg><span>Email / SMTP</span>', body) is not None)
 check('each a link that opens its section', re.search(r'href="[^"]*admin/settings\?tab=backup" class="section-nav-link" data-section="backup"', body) is not None)
 check('General is current, once', current(body) == ['basics'], current(body))
@@ -41,6 +48,8 @@ check('no old tab bar is left', 'class="tab-button' not in html and 'data-tab="s
 check('only the General panel shows', panel_hidden(html, 'basics') is False and all(panel_hidden(html, k) for k in ('smtp', 'auth', 'apis', 'backup', 'updates', 'limits')), [(k, panel_hidden(html, k)) for k in ('basics', 'smtp', 'limits')])
 opts, sel = options(html)
 check('the select offers the same sections, General chosen', opts == items(body) and sel == ['basics'], (opts, sel))
+side = aside(html)
+check('the main menu has no MCP or Omni entries any more', 'admin/mcp"' not in side and 'admin/omni"' not in side and 'admin/settings"' in side)
 check('the select is not sent with the form', not re.search(r'<select data-section-select[^>]*\bname=', html))
 
 st, _, html = root.get('/admin/settings?tab=smtp')
@@ -49,6 +58,13 @@ check('?tab=smtp opens Email / SMTP', current(body) == ['smtp'] and panel_hidden
 check('and the form remembers it', 'name="active_tab" value="smtp"' in html)
 check('the select follows', options(html)[1] == ['smtp'], options(html))
 check('Discard stays on the section', re.search(r'href="[^"]*admin/settings\?tab=smtp"[^>]*data-section-discard', html) is not None)
+
+for path, key in (('/admin/mcp', 'mcp'), ('/admin/omni', 'omni')):
+    st, _, html = root.get(path)
+    label, body = nav(html)
+    check(path + ' opens with the Settings list, itself current', st == 200 and label == 'Settings' and current(body) == [key], (st, current(body)))
+    check(path + ': its list is links, Settings\' sections included', 'data-section-nav="links"' in html and re.search(r'href="[^"]*admin/settings\?tab=smtp"', body) is not None)
+    check(path + ': Settings is the current entry of the main menu', menu_current(html) == ['Settings'], menu_current(html))
 
 st, _, html = root.get('/admin/settings?tab=nonsense')
 check('an unknown section opens General', current(nav(html)[1]) == ['basics'])
@@ -65,6 +81,7 @@ st, _, html = adm.get('/admin/settings?tab=limits')
 body = nav(html)[1]
 check('an admin without the Limits permission has no Limits entry', st == 200 and 'limits' not in items(body) and 'limits' not in options(html)[0], items(body))
 check('and System keeps Backups and Updates', items(body)[-2:] == ['backup', 'updates'], items(body))
+check('nor Omni, which only the super admin may open', 'omni' not in items(body) and 'admin/omni"' not in html, items(body))
 
 # ---- Shop settings: the same list, its sections are pages of their own
 root.submit('/admin/content-types', lambda f: ['type', 'products'] in [list(x) for x in f['fields']] and ['action', 'toggle'] in [list(x) for x in f['fields']], {'enabled': '1'})

@@ -1,6 +1,7 @@
 {% extends '@admin/base.twig' %}
 {% set page_heading = 'Omni' %}
 {% import '@admin/partials/ui.twig' as ui %}
+{% import '@admin/partials/settings-sidebar.twig' as settings_sidebar %}
 {% import '@admin/partials/form-rows.twig' as f %}
 
 {% block content %}
@@ -8,6 +9,10 @@
   {% set modes = {'off': 'Off', 'custom': 'Own tracking code', 'platform': 'GnozioCMS analytics', 'both': 'GnozioCMS analytics and own code'} %}
   {% set btn = 'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium shadow-sm' %}
   {% set removed = connection.status|default('') == 'removed' %}
+
+  <div class="section-layout">
+  {{ settings_sidebar.nav('omni') }}
+  <div class="section-body">
 
   {{ ui.flash(message, done == 'ok' ? 'success' : 'error') }}
 
@@ -134,5 +139,7 @@
         <pre class="max-h-[32rem] overflow-auto rounded-md bg-slate-950 p-3 text-xs leading-relaxed text-slate-100">{{ report_json }}</pre>
       </div>
     </details>
+  </div>
+  </div>
   </div>
 {% endblock %}
