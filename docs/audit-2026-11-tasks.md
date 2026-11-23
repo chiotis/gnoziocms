@@ -131,8 +131,10 @@ group. Size: S (an hour or two), M (half a day to a day), L (more).
 
 ## Bloat
 
-- [ ] **B2** (S) `composer.json`: `replace` the three polyfills, rebuild `vendor/`, drop the hand-loaded `SmartObject` from
+- [x] **B2** (S) `composer.json`: `replace` the three polyfills, rebuild `vendor/`, drop the hand-loaded `SmartObject` from
       `public/index.php`.
+      Done for mbstring and php80, and `SmartObject` (the autoload's class map has it). The ctype polyfill stays: ctype is not
+      among the required extensions and Twig, Yaml and Nette call it; it is one small file.
 - [ ] **B3** (M) Build the skill's snapshot in `scripts/build-release.php` and stop tracking it; the test then checks that the
       build makes it.
 - [x] **B1** (L) Move the shop's wiring and its seven admin handlers out of `App.php` into a `ShopController`, as the first

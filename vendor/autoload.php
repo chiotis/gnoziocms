@@ -6,13 +6,10 @@ $files = [
     $baseDir . '/twig/twig/src/Resources/escaper.php',
     $baseDir . '/twig/twig/src/Resources/string_loader.php',
     $baseDir . '/symfony/deprecation-contracts/function.php',
-    $baseDir . '/symfony/polyfill-mbstring/bootstrap.php',
     $baseDir . '/symfony/polyfill-ctype/bootstrap.php',
-    $baseDir . '/symfony/polyfill-php80/bootstrap.php',
 ];
 foreach ($files as $file) { if (is_file($file)) { require_once $file; } }
 $classmap = [
-    'Attribute' => $baseDir . '/symfony/polyfill-php80/Resources/stubs/Attribute.php',
     'Nette\\ArgumentOutOfRangeException' => $baseDir . '/nette/utils/src/exceptions.php',
     'Nette\\HtmlStringable' => $baseDir . '/nette/utils/src/HtmlStringable.php',
     'Nette\\Iterators\\CachingIterator' => $baseDir . '/nette/utils/src/Iterators/CachingIterator.php',
@@ -56,10 +53,6 @@ $classmap = [
     'Nette\\Utils\\ReflectionMethod' => $baseDir . '/nette/utils/src/Utils/ReflectionMethod.php',
     'Nette\\Utils\\Strings' => $baseDir . '/nette/utils/src/Utils/Strings.php',
     'Nette\\Utils\\Validators' => $baseDir . '/nette/utils/src/Utils/Validators.php',
-    'PhpToken' => $baseDir . '/symfony/polyfill-php80/Resources/stubs/PhpToken.php',
-    'Stringable' => $baseDir . '/symfony/polyfill-php80/Resources/stubs/Stringable.php',
-    'UnhandledMatchError' => $baseDir . '/symfony/polyfill-php80/Resources/stubs/UnhandledMatchError.php',
-    'ValueError' => $baseDir . '/symfony/polyfill-php80/Resources/stubs/ValueError.php',
 ];
 $prefixes = [
     'Twig\\' => [
@@ -74,9 +67,6 @@ $prefixes = [
     'Nette\\' => [
         $baseDir . '/nette/utils/src/',
     ],
-    'Symfony\\Polyfill\\Mbstring\\' => [
-        $baseDir . '/symfony/polyfill-mbstring/',
-    ],
     'Symfony\\Polyfill\\Ctype\\' => [
         $baseDir . '/symfony/polyfill-ctype/',
     ],
@@ -85,9 +75,6 @@ $prefixes = [
     ],
     'Psr\\EventDispatcher\\' => [
         $baseDir . '/psr/event-dispatcher/src/',
-    ],
-    'Symfony\\Polyfill\\Php80\\' => [
-        $baseDir . '/symfony/polyfill-php80/',
     ],
     'Dflydev\\DotAccessData\\' => [
         $baseDir . '/dflydev/dot-access-data/src/',
