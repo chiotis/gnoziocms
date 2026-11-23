@@ -76,6 +76,30 @@
   object-fit: cover;
 }
 
+/* The picture on hover lies over the first picture and shows while the pointer is on it. */
+.product-gallery-frame {
+  position: relative;
+}
+
+.product-gallery .product-gallery-hover {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.45s var(--ease, ease);
+}
+
+.product-gallery-frame.has-hover:hover .product-gallery-hover {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .product-gallery .product-gallery-hover {
+    transition: none;
+  }
+}
+
 /* image() may wrap a picture in <picture>: it fills its frame like the <img>. */
 .product-gallery picture {
   display: block;
