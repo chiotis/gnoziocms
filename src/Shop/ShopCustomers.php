@@ -10,14 +10,18 @@ use PDO;
 /**
  * The shop's customers (table shop_customers, docs/shop-plan.md, section 4): people who buy, never admin users. They sign in
  * with an email and a password (password_hash); a link sent by email confirms the address or sets a new password, and only
- * the hash of its token is kept, for an hour (a new password) or two days (the address). They may sign in with Google too
- * (fromGoogle()): the Google account's `sub` is kept in google_sub, and an account made that way has no password until they set one.
+ * the hash of its token is kept, for an hour (a new password) or two days (the address), each kind in its own columns so one
+ * link does not cancel the other. They may sign in with Google too (fromGoogle()): the Google account's `sub` is kept in
+ * google_sub, and an account made that way has no password until they set one. session_version is raised whenever the password
+ * changes or is cleared; a session that holds an older one is signed out (ShopFront::customer()).
  */
 final class ShopCustomers
 {
     public const MIN_PASSWORD = 8;
     public const RESET_SECONDS = 3600;
     public const VERIFY_SECONDS = 172800;
+    /** A password brought from WordPress and not used here for this long is cleared (clearStaleImportedHashes()). */
+    public const IMPORTED_HASH_SECONDS = 15552000;
 
     public function __construct(private SystemDatabase $database)
     {
@@ -72,6 +76,7 @@ final class ShopCustomers
         $wordpress = $customer !== null && self::isWordPressHash($hash);
         $ok = $customer !== null && $hash !== '' && ($wordpress ? self::wordpressVerify($password, $hash) : password_verify($password, $hash));
         if ($ok && $wordpress) {
+            // The same password in a new hash: other sessions stay signed in.
             $this->pdo()->prepare('UPDATE shop_customers SET password_hash = :hash WHERE id = :id')->execute(['hash' => password_hash($password, PASSWORD_DEFAULT), 'id' => $customer['id']]);
             return $this->authenticate($email, $password);
         }
@@ -83,7 +88,7 @@ final class ShopCustomers
             return null;
         }
         if (password_needs_rehash($customer['password_hash'], PASSWORD_DEFAULT)) {
-            $this->setPassword($customer['id'], $password);
+            $this->pdo()->prepare('UPDATE shop_customers SET password_hash = :hash WHERE id = :id')->execute(['hash' => password_hash($password, PASSWORD_DEFAULT), 'id' => $customer['id']]);
         }
         $this->pdo()->prepare('UPDATE shop_customers SET last_login_at = :now WHERE id = :id')->execute(['now' => time(), 'id' => $customer['id']]);
         return $customer;
@@ -163,9 +168,32 @@ final class ShopCustomers
         if (mb_strlen($password) < self::MIN_PASSWORD || mb_strlen($password) > 200) {
             return false;
         }
-        $this->pdo()->prepare("UPDATE shop_customers SET password_hash = :hash, token_hash = '', token_kind = '', token_expires = 0 WHERE id = :id")
+        // A new password signs out every other session (the one that set it takes the new version, ShopFront) and ends a waiting
+        // link to set one.
+        $this->pdo()->prepare("UPDATE shop_customers SET password_hash = :hash, session_version = session_version + 1, reset_hash = '', reset_expires = 0 WHERE id = :id")
             ->execute(['hash' => password_hash($password, PASSWORD_DEFAULT), 'id' => $id]);
         return true;
+    }
+
+    /**
+     * Clears the passwords brought from WordPress that nobody has used here for six months (a hash of WordPress's is replaced on
+     * its first sign-in, so one still there was never used since the import). Those customers set a password by email
+     * ("forgot password"). Returns how many were cleared. From the shop's tick.
+     */
+    public function clearStaleImportedHashes(?int $now = null): int
+    {
+        $stmt = $this->pdo()->prepare("SELECT id, password_hash FROM shop_customers WHERE password_hash <> '' AND created_at < :before AND (last_login_at IS NULL OR last_login_at < :before2)");
+        $before = ($now ?? time()) - self::IMPORTED_HASH_SECONDS;
+        $stmt->execute(['before' => $before, 'before2' => $before]);
+        $cleared = 0;
+        $clear = $this->pdo()->prepare("UPDATE shop_customers SET password_hash = '', session_version = session_version + 1 WHERE id = :id AND password_hash = :hash");
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            if (self::isWordPressHash((string)$row['password_hash'])) {
+                $clear->execute(['id' => $row['id'], 'hash' => $row['password_hash']]);
+                $cleared += $clear->rowCount();
+            }
+        }
+        return $cleared;
     }
 
     /**
@@ -181,13 +209,16 @@ final class ShopCustomers
         ]);
     }
 
-    /** A token for a link sent by email ('verify' or 'reset'); only its hash is kept. */
+    /**
+     * A token for a link sent by email ('verify' or 'reset'); only its hash is kept, in the columns of its kind, so a new link
+     * to confirm the address leaves a waiting link to set a password working, and the other way round.
+     */
     public function issueToken(int $id, string $kind): string
     {
+        $kind = $kind === 'reset' ? 'reset' : 'verify';
         $token = bin2hex(random_bytes(24));
-        $this->pdo()->prepare('UPDATE shop_customers SET token_hash = :hash, token_kind = :kind, token_expires = :until WHERE id = :id')->execute([
+        $this->pdo()->prepare("UPDATE shop_customers SET {$kind}_hash = :hash, {$kind}_expires = :until WHERE id = :id")->execute([
             'hash' => hash('sha256', $token),
-            'kind' => $kind,
             'until' => time() + ($kind === 'reset' ? self::RESET_SECONDS : self::VERIFY_SECONDS),
             'id' => $id,
         ]);
@@ -197,11 +228,11 @@ final class ShopCustomers
     /** The customer a link's token is for, while it is current; null otherwise. */
     public function byToken(string $token, string $kind): ?array
     {
-        if (preg_match('/^[a-f0-9]{48}$/', $token) !== 1) {
+        if (preg_match('/^[a-f0-9]{48}$/', $token) !== 1 || !in_array($kind, ['verify', 'reset'], true)) {
             return null;
         }
-        $stmt = $this->pdo()->prepare('SELECT * FROM shop_customers WHERE token_hash = :hash AND token_kind = :kind AND token_expires >= :now');
-        $stmt->execute(['hash' => hash('sha256', $token), 'kind' => $kind, 'now' => time()]);
+        $stmt = $this->pdo()->prepare("SELECT * FROM shop_customers WHERE {$kind}_hash = :hash AND {$kind}_expires >= :now");
+        $stmt->execute(['hash' => hash('sha256', $token), 'now' => time()]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         return is_array($row) ? self::row($row) : null;
     }
@@ -226,7 +257,8 @@ final class ShopCustomers
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         $found = is_array($row) ? self::row($row) : $this->byEmail($email);
         if ($found !== null) {
-            $clear = !$found['verified'] && $found['google_sub'] === '' ? ", password_hash = ''" : '';
+            // Clearing the password signs out whoever signed in with it.
+            $clear = !$found['verified'] && $found['google_sub'] === '' ? ", password_hash = '', session_version = session_version + 1" : '';
             $this->pdo()->prepare("UPDATE shop_customers SET google_sub = :sub, last_login_at = :now{$clear} WHERE id = :id")
                 ->execute(['sub' => $sub, 'now' => time(), 'id' => $found['id']]);
             $this->markVerified($found['id']);
@@ -243,7 +275,7 @@ final class ShopCustomers
 
     public function markVerified(int $id): void
     {
-        $this->pdo()->prepare("UPDATE shop_customers SET verified_at = COALESCE(verified_at, :now), token_hash = '', token_kind = '', token_expires = 0 WHERE id = :id")->execute(['now' => time(), 'id' => $id]);
+        $this->pdo()->prepare("UPDATE shop_customers SET verified_at = COALESCE(verified_at, :now), verify_hash = '', verify_expires = 0 WHERE id = :id")->execute(['now' => time(), 'id' => $id]);
     }
 
     public function delete(int $id): void
@@ -293,6 +325,7 @@ final class ShopCustomers
             'lang' => (string)$row['lang'],
             'address' => is_array($address) ? ShopAddress::clean($address) : ShopAddress::clean([]),
             'verified' => $row['verified_at'] !== null,
+            'session_version' => (int)($row['session_version'] ?? 0),
             'created_at' => (int)$row['created_at'],
             'last_login_at' => $row['last_login_at'] === null ? null : (int)$row['last_login_at'],
         ];

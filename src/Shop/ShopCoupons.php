@@ -10,7 +10,8 @@ use PDO;
 /**
  * Coupons (table shop_coupons, docs/shop-plan.md, section 3): a percentage or an amount off, or free shipping; with a minimum,
  * dates, a limit of uses in all and per customer, and optionally only for some collections or products. A use is counted when an order is
- * placed, by one UPDATE that checks the limit, so the last use cannot be taken twice.
+ * placed, by one UPDATE that checks the limit, so the last use cannot be taken twice. A coupon for signed-in customers only
+ * (customers_only) counts its uses per customer by account, so another address does not make a new customer of the same person.
  */
 final class ShopCoupons
 {
@@ -80,6 +81,7 @@ final class ShopCoupons
             'ends_at' => $date($post['ends_at'] ?? ''),
             'usage_limit' => max(0, (int)($post['usage_limit'] ?? 0)),
             'per_customer' => max(0, (int)($post['per_customer'] ?? 0)),
+            'customers_only' => !empty($post['customers_only']) ? 1 : 0,
             'collections' => implode(',', array_slice(array_values(array_filter(array_map(static fn(mixed $id): string => (string)preg_replace('/[^a-z0-9_-]/', '', strtolower((string)$id)), is_array($post['collections'] ?? null) ? $post['collections'] : []))), 0, 50)),
             // Products by their id, as the product picker sends them.
             'products' => implode(',', array_slice(array_values(array_unique(array_filter(array_map(static fn(mixed $id): string => (string)preg_replace('/[^A-Za-z0-9_-]/', '', (string)$id), is_array($post['products'] ?? null) ? $post['products'] : [])))), 0, 200)),
@@ -88,10 +90,10 @@ final class ShopCoupons
         ];
         $pdo = $this->pdo();
         if ($original !== '' && $this->find($original) !== null) {
-            $stmt = $pdo->prepare('UPDATE shop_coupons SET code = :code, kind = :kind, amount = :amount, min_cents = :min_cents, starts_at = :starts_at, ends_at = :ends_at, usage_limit = :usage_limit, per_customer = :per_customer, collections = :collections, products = :products, active = :active, note = :note WHERE code = :original');
+            $stmt = $pdo->prepare('UPDATE shop_coupons SET code = :code, kind = :kind, amount = :amount, min_cents = :min_cents, starts_at = :starts_at, ends_at = :ends_at, usage_limit = :usage_limit, per_customer = :per_customer, customers_only = :customers_only, collections = :collections, products = :products, active = :active, note = :note WHERE code = :original');
             $stmt->execute($values + ['original' => $original]);
         } else {
-            $stmt = $pdo->prepare('INSERT INTO shop_coupons (code, kind, amount, min_cents, starts_at, ends_at, usage_limit, per_customer, collections, products, active, note, used, created_at) VALUES (:code, :kind, :amount, :min_cents, :starts_at, :ends_at, :usage_limit, :per_customer, :collections, :products, :active, :note, 0, :now)');
+            $stmt = $pdo->prepare('INSERT INTO shop_coupons (code, kind, amount, min_cents, starts_at, ends_at, usage_limit, per_customer, customers_only, collections, products, active, note, used, created_at) VALUES (:code, :kind, :amount, :min_cents, :starts_at, :ends_at, :usage_limit, :per_customer, :customers_only, :collections, :products, :active, :note, 0, :now)');
             $stmt->execute($values + ['now' => time()]);
         }
         return '';
@@ -105,12 +107,13 @@ final class ShopCoupons
     }
 
     /**
-     * Whether a coupon can be used on these lines, and what it takes off them.
+     * Whether a coupon can be used on these lines, and what it takes off them. $customerId is the signed-in customer: a coupon for
+     * customers only needs one ('customers_only' otherwise) and counts its uses per customer by them, not by the address.
      *
      * @param list<array<string, mixed>> $lines priced lines (ShopPricing), with total_cents and collections
      * @return array{ok: bool, error: string, code: string, discount: int, free_shipping: bool, per_line: array<int, int>}
      */
-    public function apply(string $code, array $lines, string $email = '', ?string $today = null): array
+    public function apply(string $code, array $lines, string $email = '', ?string $today = null, ?int $customerId = null): array
     {
         $none = ['ok' => false, 'error' => 'unknown', 'code' => self::normalizeCode($code), 'discount' => 0, 'free_shipping' => false, 'per_line' => []];
         $coupon = $this->find($code);
@@ -124,8 +127,14 @@ final class ShopCoupons
         if ($coupon['usage_limit'] > 0 && $coupon['used'] >= $coupon['usage_limit']) {
             return ['error' => 'used_up'] + $none;
         }
-        if ($coupon['per_customer'] > 0 && $email !== '' && $this->usesBy($coupon['code'], $email) >= $coupon['per_customer']) {
-            return ['error' => 'used_up'] + $none;
+        if ($coupon['customers_only'] && ($customerId ?? 0) < 1) {
+            return ['error' => 'customers_only'] + $none;
+        }
+        if ($coupon['per_customer'] > 0) {
+            $uses = $coupon['customers_only'] ? $this->usesByCustomer($coupon['code'], (int)$customerId) : ($email !== '' ? $this->usesBy($coupon['code'], $email) : 0);
+            if ($uses >= $coupon['per_customer']) {
+                return ['error' => 'used_up'] + $none;
+            }
         }
         $weights = [];
         foreach ($lines as $i => $line) {
@@ -176,6 +185,13 @@ final class ShopCoupons
         return (int)$stmt->fetchColumn();
     }
 
+    private function usesByCustomer(string $code, int $customerId): int
+    {
+        $stmt = $this->pdo()->prepare("SELECT COUNT(*) FROM shop_orders WHERE coupon = :code AND customer_id = :id AND status <> 'cancelled'");
+        $stmt->execute(['code' => $code, 'id' => $customerId]);
+        return (int)$stmt->fetchColumn();
+    }
+
     /**
      * @param array<string, mixed> $row
      * @return array<string, mixed>
@@ -191,6 +207,7 @@ final class ShopCoupons
             'ends_at' => (string)$row['ends_at'],
             'usage_limit' => (int)$row['usage_limit'],
             'per_customer' => (int)$row['per_customer'],
+            'customers_only' => (bool)($row['customers_only'] ?? false),
             'collections' => array_values(array_filter(explode(',', (string)$row['collections']))),
             'products' => array_values(array_filter(explode(',', (string)($row['products'] ?? '')))),
             'active' => (bool)$row['active'],

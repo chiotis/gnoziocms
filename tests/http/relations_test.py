@@ -39,7 +39,7 @@ save('authors', '', dict(base, title='Ada Lovelace', slug='ada-lovelace'))
 save('authors', '', dict(base, title='Charles Babbage', slug='charles-babbage'))
 check('the authors exist', os.path.exists('app/content/authors/ada-lovelace.md') and os.path.exists('app/content/authors/charles-babbage.md'))
 ada = open('app/content/authors/ada-lovelace.md', encoding='utf-8').read()
-ada_id = (re.search(r'translation_id: (\w+)', ada) or [None, ''])[1]
+ada_id = (re.search(r"translation_id: '?(\w+)", ada) or [None, ''])[1]
 check('an entry made in the editor has a stable id', len(ada_id) == 16, ada)
 
 # ---- the editor offers the entries
@@ -60,7 +60,7 @@ def volume_form(f): return any(x[0] == 'details[author]' for x in f['fields'])
 st, _ = save('volumes', 'notes', dict(base, title='Notes', **{'details[author]': ada_id, 'details[others][]': ['authors/charles-babbage'], 'details[editions][0][year]': '1843', 'details[editions][0][editor]': 'authors/charles-babbage', 'details[editions][1][year]': '1850', 'details[editions][1][editor]': ''}), volume_form)
 stored = open('app/content/volumes/notes.md', encoding='utf-8').read()
 babbage = open('app/content/authors/charles-babbage.md', encoding='utf-8').read()
-babbage_id = (re.search(r'translation_id: (\w+)', babbage) or [None, ''])[1]
+babbage_id = (re.search(r"translation_id: '?(\w+)", babbage) or [None, ''])[1]
 check('what is stored is the id of the author, not an address', ('author: ' + ada_id) in stored and 'authors/' not in stored.split('---')[1], stored)
 check('an address typed in the form became the id of that entry, also in a list and in a row of a list', stored.count(babbage_id) == 2 and len(babbage_id) == 16, stored)
 st, _, html = root.get('/admin/edit?type=volumes&slug=notes&lang=el')

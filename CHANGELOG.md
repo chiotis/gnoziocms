@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.332 — 2026-11-23 — Shop accounts: signed out everywhere after a new password, members-only coupons
+- **Customers' sessions**: a new password (set from a reset link or in the account's details) signs the customer out in every other browser; the browser that set it stays signed in. A password cleared (an unconfirmed account linked to Google, or an old imported one) signs them out too. Sessions from before this release keep working.
+- **Account links**: the link to confirm the address and the link to set a new password are kept apart, so asking for one no longer cancels the other.
+- **Passwords brought from WordPress** that nobody has used here for six months are cleared by the shop's scheduled work (logged in Activity). Those customers set a new password with "Forgot password".
+- **Coupons > Signed-in customers only**: guests cannot use the coupon, and "uses per customer" is counted by account, so a second order with another email address does not get around it. Also on MCP's `save_coupon` and `list_coupons`.
+- Audit tasks S5, S13, S14 and S16 (W10) are done.
+- Tests: `shop-checkout` (unit) and `shop_checkout` (HTTP).
+
 ## 0.1.331 — 2026-11-23 — One Export, import and reset page for the theme
 - Theme had two exports: one in Branding for the look, and Advanced > Export and import for the whole theme. They are one page now, **Advanced > Export, import and reset**, and Branding links to it.
 - **Export** has a box for each part (Branding, Header, Footer and the other sections, layouts, templates, Footer Blocks, Custom CSS), all ticked by default, and a *Branding only* shortcut. The file lists its parts, and an import only offers those.

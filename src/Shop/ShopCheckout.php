@@ -51,12 +51,12 @@ final class ShopCheckout
      * @param array<string, string> $address at least country and postcode
      * @return array<string, mixed>
      */
-    public function quote(array $cart, string $coupon, array $address, string $methodId, string $paymentId, string $lang, string $email = ''): array
+    public function quote(array $cart, string $coupon, array $address, string $methodId, string $paymentId, string $lang, string $email = '', ?int $customerId = null): array
     {
         $shop = $this->settings->all();
         $priced = $this->pricing->lines($cart, $lang);
         if ($priced['digital_only']) {
-            return $this->digitalQuote($priced, $coupon, $paymentId, $lang, $email);
+            return $this->digitalQuote($priced, $coupon, $paymentId, $lang, $email, $customerId);
         }
         $zone = ($address['country'] ?? '') !== '' ? ShopShipping::zoneFor($shop['shipping'], (string)$address['country'], (string)($address['postcode'] ?? '')) : null;
         $methods = $zone !== null ? ShopShipping::methods($zone, $priced['items_cents'], $priced['grams'], $lang, $this->defaultLang, fn(string $key): string => ($this->t)($key, $lang)) : [];
@@ -69,7 +69,7 @@ final class ShopCheckout
         $method ??= $methods[0] ?? null;
         $payments = $this->ways($shop, (string)($zone['id'] ?? ''), $lang, false, $priced['subscriptions']);
         $payment = $payments[$paymentId] ?? (reset($payments) ?: null);
-        $couponResult = trim($coupon) !== '' ? $this->coupons->apply($coupon, $priced['lines'], $email) : null;
+        $couponResult = trim($coupon) !== '' ? $this->coupons->apply($coupon, $priced['lines'], $email, null, $customerId) : null;
         $totals = $this->pricing->totals($priced['lines'], $couponResult, (int)($method['cents'] ?? 0), (int)($payment['fee'] ?? 0));
         return [
             'priced' => $priced,
@@ -91,13 +91,13 @@ final class ShopCheckout
      * @param array<string, mixed> $priced
      * @return array<string, mixed>
      */
-    private function digitalQuote(array $priced, string $coupon, string $paymentId, string $lang, string $email): array
+    private function digitalQuote(array $priced, string $coupon, string $paymentId, string $lang, string $email, ?int $customerId = null): array
     {
         $shop = $this->settings->all();
         $method = ['id' => 'download', 'kind' => 'download', 'label' => ($this->t)('shop.ship_download', $lang), 'cents' => 0, 'stores' => []];
         $payments = $this->ways($shop, '', $lang, true, $priced['subscriptions']);
         $payment = $payments[$paymentId] ?? (reset($payments) ?: null);
-        $couponResult = trim($coupon) !== '' ? $this->coupons->apply($coupon, $priced['lines'], $email) : null;
+        $couponResult = trim($coupon) !== '' ? $this->coupons->apply($coupon, $priced['lines'], $email, null, $customerId) : null;
         return [
             'priced' => $priced,
             'zone' => ['id' => 'download', 'name' => ''],
@@ -163,7 +163,7 @@ final class ShopCheckout
             }
         }
         $couponCode = ShopCoupons::normalizeCode($input['coupon'] ?? $cart['coupon']);
-        $quote = $this->quote($cart['lines'], $couponCode, $shipping, (string)($input['method'] ?? ''), (string)($input['payment'] ?? ''), $lang, $email);
+        $quote = $this->quote($cart['lines'], $couponCode, $shipping, (string)($input['method'] ?? ''), (string)($input['payment'] ?? ''), $lang, $email, $customer !== null ? (int)$customer['id'] : null);
         $priced = $quote['priced'];
         if ($priced['lines'] === []) {
             $errors[] = 'empty';

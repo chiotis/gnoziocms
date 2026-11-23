@@ -408,6 +408,7 @@ return [
     'shop.coupon_applied' => 'The coupon {code} is applied.',
     'shop.err_coupon_unknown' => 'There is no such coupon.',
     'shop.err_coupon_expired' => 'This coupon is not valid now.',
+    'shop.err_coupon_customers_only' => 'Sign in to your account to use this coupon.',
     'shop.err_coupon_used_up' => 'This coupon has been used up.',
     'shop.err_coupon_minimum' => 'The order is below this coupon\'s minimum.',
     'shop.err_coupon_not_for_these' => 'This coupon is not for these pieces.',
