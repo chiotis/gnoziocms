@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.330 — 2026-11-23 — Theme preview: sticky in place, one toolbar
+- The live preview beside Branding, Typography, Header and Footer now stays just under the page header while you scroll, instead of stopping far down and leaving a gap above it. The section list on the left of Settings, Theme, AI publishing and SEO now stays in view the same way.
+- Site / Style samples / Buttons and links moved into the preview's toolbar, next to Computer / Tablet / Phone and Auto / Light / Dark. Reload is a small icon button at the end of that row.
+
 ## 0.1.329 — 2026-11-23 — Theme, AI publishing and SEO with the section list
 - **Theme**: the tabs are a list on the left, as in Settings: Brand (Branding, Typography), Header and pages (Header, Single Layouts, Archive Layouts), Footer (Footer, Footer Blocks), Theme options (any other section the theme declares, such as Social profiles) and Advanced (Custom CSS, Export and import). A click shows the section in place and keeps `?tab=` in the address; the links between Branding and Typography still open each other.
 - **AI publishing**: Publishing (Schedules, Runs), Setup (Instructions, Settings) and Reports (Usage). The Publishing calendar button is above the schedules.

@@ -4,13 +4,6 @@
   script draws it, as the content editor does with preview_title and preview_note for its own texts).
 #}
 <aside class="bp-preview" aria-label="Preview">
-  {% if branding_samples_url|default('') %}
-    <div class="lc-seg" role="radiogroup" aria-label="Preview content">
-      <label><input type="radio" name="bp_view_branding" value="site" checked data-bp-view><span>Site</span></label>
-      <label><input type="radio" name="bp_view_branding" value="styles" data-bp-view data-url="{{ branding_samples_url }}"><span>Style samples</span></label>
-      {% if branding_specimen_url|default('') %}<label><input type="radio" name="bp_view_branding" value="specimen" data-bp-view data-url="{{ branding_specimen_url }}" data-title="Buttons and links"><span>Buttons and links</span></label>{% endif %}
-    </div>
-  {% endif %}
   <div class="bp-bar">
     <div class="lc-seg" role="radiogroup" aria-label="Size of the preview">
       <label><input type="radio" name="bp_size_{{ preview_key|default('entry') }}" value="1280" checked data-bp-size><span>Computer</span></label>
@@ -22,7 +15,14 @@
       <label><input type="radio" name="bp_mode_{{ preview_key|default('entry') }}" value="light" data-bp-mode><span>Light</span></label>
       <label><input type="radio" name="bp_mode_{{ preview_key|default('entry') }}" value="dark" data-bp-mode><span>Dark</span></label>
     </div>
-    <button type="button" class="bp-reload" data-bp-reload>Reload</button>
+    {% if branding_samples_url|default('') %}
+      <div class="lc-seg" role="radiogroup" aria-label="Preview content">
+        <label><input type="radio" name="bp_view_branding" value="site" checked data-bp-view><span>Site</span></label>
+        <label><input type="radio" name="bp_view_branding" value="styles" data-bp-view data-url="{{ branding_samples_url }}"><span>Style samples</span></label>
+        {% if branding_specimen_url|default('') %}<label><input type="radio" name="bp_view_branding" value="specimen" data-bp-view data-url="{{ branding_specimen_url }}" data-title="Buttons and links"><span>Buttons and links</span></label>{% endif %}
+      </div>
+    {% endif %}
+    <button type="button" class="bp-reload" data-bp-reload title="Reload the preview" aria-label="Reload the preview"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M20 11a8 8 0 0 0-14.3-4.9L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.9L20 16M20 20v-4h-4"/></svg></button>
   </div>
   <div class="bp-stage" data-bp-stage>
     <iframe class="bp-frame" data-bp-frame{% if preview_url|default('') %} src="{{ preview_url }}" loading="lazy"{% endif %} title="{{ preview_title|default('Preview of the site') }}"></iframe>
