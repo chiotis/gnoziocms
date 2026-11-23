@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace GnozioCMS;
 
 /**
- * The web as the WordPress import needs it: read an address, or save one into a file. Only http and https, redirects
- * followed a few times, and a limit on how much one answer may be.
+ * The web as the WordPress and WooCommerce imports need it: read an address, or save one into a file, through SafeHttp (public
+ * addresses only, each redirect checked, unless $allowLocal), at most five redirects, and a limit on how much one answer may be.
  */
 final class WordPressHttp
 {
@@ -36,69 +36,32 @@ final class WordPressHttp
         return self::fetch($url, $to, $maxBytes) ?? 0;
     }
 
-    /** @param list<string> $headers curl does not carry an Authorization header to another host; without curl, a request with headers follows no redirect */
+    /**
+     * An address on this server or its network may be read: the CLI's --allow-local, or the import screen's box, for a site
+     * being moved on the same server. Off, only public addresses are read, and every redirect is checked (audit S18).
+     */
+    public static bool $allowLocal = false;
+
+    /** The fetcher (tests give their own). */
+    public static ?SafeHttp $http = null;
+
+    /** @param list<string> $headers sent only to the host first asked, never on to a host a redirect names */
     private static function fetch(string $url, string $to, int $maxBytes, array $headers = []): ?int
     {
+        self::$lastError = '';
         if (!preg_match('#^https?://#i', $url)) {
             return null;
         }
         // Letters outside ASCII and spaces in the address are sent percent-encoded, as a browser would.
         $url = preg_replace_callback('/[^\x21-\x7e]/u', static fn(array $m): string => rawurlencode($m[0]), $url) ?? $url;
-        if (UpdateNetwork::hasCurl()) {
-            $out = fopen($to, 'wb');
-            if ($out === false) {
-                return null;
-            }
-            $curl = curl_init($url);
-            curl_setopt_array($curl, [
-                CURLOPT_FILE => $out,
-                CURLOPT_FOLLOWLOCATION => true,
-                CURLOPT_MAXREDIRS => 5,
-                CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
-                CURLOPT_REDIR_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
-                CURLOPT_CONNECTTIMEOUT => 15,
-                CURLOPT_TIMEOUT => 60,
-                CURLOPT_USERAGENT => self::AGENT,
-                CURLOPT_HTTPHEADER => $headers,
-                CURLOPT_NOPROGRESS => false,
-                CURLOPT_PROGRESSFUNCTION => static fn($r, int $total, int $got): int => $got > $maxBytes ? 1 : 0,
-            ]);
-            $ok = curl_exec($curl);
-            $status = (int)curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
-            unset($curl);
-            fclose($out);
-            return $ok === false ? null : $status;
-        }
-        $context = stream_context_create(['http' => ['timeout' => 60, 'follow_location' => $headers === [] ? 1 : 0, 'max_redirects' => 5, 'ignore_errors' => true, 'user_agent' => self::AGENT, 'header' => $headers]]);
-        $in = @fopen($url, 'rb', false, $context);
-        if ($in === false) {
+        $answer = (self::$http ?? new SafeHttp())->fetch($url, $to, $maxBytes, 60, '*/*', array_merge(['User-Agent: ' . self::AGENT], $headers), self::$allowLocal, 5);
+        if ($answer['error'] !== '') {
+            self::$lastError = $answer['error'];
             return null;
         }
-        $status = 0;
-        foreach (($http_response_header ?? []) as $header) {
-            if (preg_match('#^HTTP/\S+\s+(\d{3})#', $header, $m)) {
-                $status = (int)$m[1];
-            }
-        }
-        $out = fopen($to, 'wb');
-        $written = 0;
-        while ($out !== false && !feof($in)) {
-            $chunk = fread($in, 65536);
-            if ($chunk === false) {
-                break;
-            }
-            $written += strlen($chunk);
-            if ($written > $maxBytes) {
-                fclose($in);
-                fclose($out);
-                return null;
-            }
-            fwrite($out, $chunk);
-        }
-        fclose($in);
-        if ($out !== false) {
-            fclose($out);
-        }
-        return $status ?: null;
+        return $answer['status'];
     }
+
+    /** Why the last address could not be read ('' when it could). */
+    public static string $lastError = '';
 }

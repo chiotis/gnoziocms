@@ -20,8 +20,9 @@ final class SafeHttp
 
     /**
      * @param (\Closure(string): string[])|null $resolve a host's addresses (tests give their own)
-     * @param (\Closure(string, string, string, int, int, string): array{status: int, location: string, error: string})|null $transport fetches one
-     *   address, connecting to the given IP, into a file, with an Accept header; no redirects followed (tests give their own)
+     * @param (\Closure(string, string, string, int, int, string, list<string>): array{status: int, location: string, error: string})|null $transport
+     *   fetches one address, connecting to the given IP, into a file, with an Accept header and any others; no redirects followed (tests
+     *   give their own)
      */
     public function __construct(private ?\Closure $resolve = null, private ?\Closure $transport = null)
     {
@@ -33,44 +34,60 @@ final class SafeHttp
      */
     public function download(string $url, string $to, int $maxBytes, int $timeout = 15, string $accept = 'image/*'): array
     {
-        $fail = static fn(string $error): array => ['ok' => false, 'error' => $error, 'url' => $url];
-        for ($hop = 0; $hop <= self::MAX_REDIRECTS; $hop++) {
+        $answer = $this->fetch($url, $to, $maxBytes, $timeout, $accept);
+        if ($answer['error'] === '' && $answer['status'] !== 200) {
+            $answer['error'] = 'The address answered ' . $answer['status'] . '.';
+        }
+        return ['ok' => $answer['error'] === '', 'error' => $answer['error'], 'url' => $answer['url']];
+    }
+
+    /**
+     * Fetches an address into a file, following redirects that pass the same checks, whatever the status of the last answer (the
+     * importers read 401 and 404 too). `$headers` (an Authorization) go only to the host first asked. `$allowLocal` lets an
+     * address on this server or its network through, and any port: for a site being moved on the same server (audit S18).
+     *
+     * @param list<string> $headers
+     * @return array{status: int, error: string, url: string}
+     */
+    public function fetch(string $url, string $to, int $maxBytes, int $timeout = 15, string $accept = 'image/*', array $headers = [], bool $allowLocal = false, int $maxRedirects = self::MAX_REDIRECTS): array
+    {
+        $fail = static fn(string $error, string $at): array => ['status' => 0, 'error' => $error, 'url' => $at];
+        $firstHost = strtolower(trim((string)(parse_url($url, PHP_URL_HOST) ?? ''), '[]'));
+        for ($hop = 0; $hop <= $maxRedirects; $hop++) {
             $parts = parse_url($url);
             $scheme = strtolower((string)($parts['scheme'] ?? ''));
             $host = strtolower(trim((string)($parts['host'] ?? ''), '[]'));
             $port = (int)($parts['port'] ?? ($scheme === 'https' ? 443 : 80));
             if (!in_array($scheme, ['http', 'https'], true) || $host === '') {
-                return $fail('Only http and https addresses can be fetched.');
+                return $fail('Only http and https addresses can be fetched.', $url);
             }
             if (isset($parts['user']) || isset($parts['pass'])) {
-                return $fail('An address with a name and password cannot be fetched.');
+                return $fail('An address with a name and password cannot be fetched.', $url);
             }
-            if (!in_array($port, [80, 443], true)) {
-                return $fail('Only the usual ports (80, 443) can be fetched.');
+            if (!$allowLocal && !in_array($port, [80, 443], true)) {
+                return $fail('Only the usual ports (80, 443) can be fetched.', $url);
             }
             $ips = filter_var($host, FILTER_VALIDATE_IP) !== false ? [$host] : ($this->resolve ?? self::lookup(...))($host);
             if ($ips === []) {
-                return $fail('The address ' . $host . ' could not be found.');
+                return $fail('The address ' . $host . ' could not be found.', $url);
             }
-            foreach ($ips as $ip) {
+            foreach ($allowLocal ? [] : $ips as $ip) {
                 if (!self::isPublic($ip)) {
-                    return $fail('The address ' . $host . ' is on a private or reserved network and cannot be fetched.');
+                    return $fail('The address ' . $host . ' is on a private or reserved network and cannot be fetched.', $url);
                 }
             }
-            $answer = ($this->transport ?? self::curl(...))($url, $ips[0], $to, $maxBytes, $timeout, $accept);
+            $sent = $host === $firstHost ? $headers : [];
+            $answer = ($this->transport ?? self::curl(...))($url, $ips[0], $to, $maxBytes, $timeout, $accept, $sent);
             if ($answer['error'] !== '') {
-                return $fail($answer['error']);
+                return $fail($answer['error'], $url);
             }
             if (in_array($answer['status'], [301, 302, 303, 307, 308], true) && $answer['location'] !== '') {
                 $url = self::absolute($answer['location'], $url);
                 continue;
             }
-            if ($answer['status'] !== 200) {
-                return $fail('The address answered ' . $answer['status'] . '.');
-            }
-            return ['ok' => true, 'error' => '', 'url' => $url];
+            return ['status' => (int)$answer['status'], 'error' => '', 'url' => $url];
         }
-        return $fail('Too many redirects.');
+        return $fail('Too many redirects.', $url);
     }
 
     public static function isPublic(string $ip): bool
@@ -130,7 +147,7 @@ final class SafeHttp
     }
 
     /** @return array{status: int, location: string, error: string} */
-    private static function curl(string $url, string $ip, string $to, int $maxBytes, int $timeout, string $accept = 'image/*'): array
+    private static function curl(string $url, string $ip, string $to, int $maxBytes, int $timeout, string $accept = 'image/*', array $headers = []): array
     {
         if (!function_exists('curl_init')) {
             return ['status' => 0, 'location' => '', 'error' => 'This server cannot fetch addresses (no curl).'];
@@ -152,7 +169,7 @@ final class SafeHttp
             CURLOPT_CONNECTTIMEOUT => 5,
             CURLOPT_TIMEOUT => $timeout,
             CURLOPT_USERAGENT => self::AGENT,
-            CURLOPT_HTTPHEADER => ['Accept: ' . $accept],
+            CURLOPT_HTTPHEADER => array_merge(['Accept: ' . $accept], $headers),
             CURLOPT_ENCODING => '',
             CURLOPT_HEADERFUNCTION => static function ($ch, string $line) use (&$location): int {
                 if (stripos($line, 'Location:') === 0) {

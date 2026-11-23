@@ -461,16 +461,20 @@ final class ShopController
             $this->basePath . '/storage/import/woocommerce',
             $this->jobRunner(),
             $this->services()->secrets(),
-            fn(string $site, string $key, string $secret, array $options): WooCommerceImporter => new WooCommerceImporter(
-                new WooCommerceReader($site, static fn(string $url, array $headers): ?array => WordPressHttp::get($url, $headers), $key, $secret),
-                $this->contentDir,
-                $this->media,
-                $this->taxonomies(),
-                static fn(string $url, string $to): int => WordPressHttp::download($url, $to),
-                $this->shopStock(),
-                $this->services()->customers(),
-                $options + ['default_lang' => $this->defaultLanguage()]
-            ),
+            function (string $site, string $key, string $secret, array $options): WooCommerceImporter {
+                // A shop on this server or its network is read only when the import screen's box says so (audit S18).
+                WordPressHttp::$allowLocal = !empty($options['allow_local']);
+                return new WooCommerceImporter(
+                    new WooCommerceReader($site, static fn(string $url, array $headers): ?array => WordPressHttp::get($url, $headers), $key, $secret),
+                    $this->contentDir,
+                    $this->media,
+                    $this->taxonomies(),
+                    static fn(string $url, string $to): int => WordPressHttp::download($url, $to),
+                    $this->shopStock(),
+                    $this->services()->customers(),
+                    $options + ['default_lang' => $this->defaultLanguage()]
+                );
+            },
             function (array $redirects, bool $apply): array {
                 $result = ['added' => 0, 'updated' => 0, 'kept' => 0];
                 if ($apply && $redirects !== []) {

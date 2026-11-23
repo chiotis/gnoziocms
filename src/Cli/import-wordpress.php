@@ -17,6 +17,7 @@
  *                        docs/wordpress-profiles/
  *   --menus              also write the menus the profile reads (replaces menus of the same name)
  *   --custom=PATH        the custom folder, for content type definitions (default ./custom)
+ *   --allow-local        also read a site at a local or private address (one being moved on this same server)
  *   --content=PATH       the content folder (default ./content)
  *   --uploads=PATH       the uploads folder (default ./public/uploads)
  *   --out=PATH           where the report and the redirects list are written (default ./storage/import)
@@ -34,7 +35,7 @@ use Symfony\Component\Yaml\Yaml;
 
 $root = dirname(__DIR__, 2);
 $site = '';
-$opt = ['apply' => false, 'lang' => 'en', 'default-lang' => '', 'home' => 'index', 'kinds' => 'pages,posts,types', 'only-used-media' => false, 'overwrite' => false, 'profile' => '', 'menus' => false, 'custom' => $root . '/custom', 'content' => $root . '/content', 'uploads' => $root . '/public/uploads', 'out' => $root . '/storage/import', 'redirects' => '', 'storage' => ''];
+$opt = ['apply' => false, 'lang' => 'en', 'default-lang' => '', 'home' => 'index', 'kinds' => 'pages,posts,types', 'only-used-media' => false, 'overwrite' => false, 'profile' => '', 'menus' => false, 'custom' => $root . '/custom', 'content' => $root . '/content', 'uploads' => $root . '/public/uploads', 'out' => $root . '/storage/import', 'redirects' => '', 'storage' => '', 'allow-local' => false];
 foreach (array_slice($argv, 1) as $arg) {
     if (str_starts_with($arg, '--')) {
         [$key, $value] = array_pad(explode('=', substr($arg, 2), 2), 2, null);
@@ -56,6 +57,8 @@ if (!in_array($opt['redirects'], ['', 'apply'], true)) {
     exit(2);
 }
 $site = preg_match('#^https?://#i', $site) ? $site : 'https://' . $site;
+// Public addresses only, each redirect checked, unless the site being moved is on this server (audit S18).
+WordPressHttp::$allowLocal = (bool)$opt['allow-local'];
 // The site's redirects, opened only when they are to be put there.
 $siteRedirects = null;
 if ($opt['redirects'] === 'apply') {

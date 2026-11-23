@@ -66,11 +66,12 @@ group. Size: S (an hour or two), M (half a day to a day), L (more).
       SMIL that sets them, no `style` that imports, links only to `#…`); refuse what does not parse. Send the SVG
       Content-Security-Policy from PHP too where PHP serves the file, and make the nginx line a System status check. Tests
       with the entity-encoded, `<set>` and `@import` cases.
-      Done in 0.1.335: `SvgSanitizer` on upload; PHP serves no uploaded SVG (theme SVGs already get the policy from `ThemeAssets`);
+      Done in 0.1.336: `SvgSanitizer` on upload; PHP serves no uploaded SVG (theme SVGs already get the policy from `ThemeAssets`);
       System > Status › SVG uploads header asks the site for a probe drawing once a day.
-- [ ] **S18** (M) The WordPress and WooCommerce imports fetch through `SafeHttp` (public addresses only, redirects checked).
+- [x] **S18** (M) The WordPress and WooCommerce imports fetch through `SafeHttp` (public addresses only, redirects checked).
       A setting or a command-line flag allows a local address for a site being moved on the same server. Test: an address that
       redirects to `127.0.0.1` is refused.
+      Done: `WordPressHttp` fetches through `SafeHttp::fetch()`; `--allow-local` on both CLIs and a box on the import screen.
 - [x] **S19** (M) Backups encrypted with a passphrase (a setting; kept out of the backup). Restore asks for it. Without one,
       the Backups screen says the archives are plain. Goes with S8.
 - [ ] **S20** (M) Signed releases: the build signs `release.json` (Ed25519, libsodium) with a key kept off GitHub; the
