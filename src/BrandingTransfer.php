@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace GnozioCMS;
 
 /**
- * Carries the look of a site (Theme > Branding) from one site to another, and puts it back.
+ * The look of a site (the `appearance` and `design` settings) as a file of its own. Theme > Export, import and reset (ThemeTransfer)
+ * is the one place for this on the screen since 0.1.331: it reads Branding zips through read() below, resets with SECTIONS, and
+ * finds font files with fontFiles(). The rest is kept so the format stays documented and tested:
  *
  *  - export: a zip with `branding.json` (the `appearance` and `design` settings, whole) and the font files they refer to
  *    (`assets/...`, from the site's custom/assets). The tree is exported as it is, with no list of keys, so whatever fields

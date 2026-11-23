@@ -53,6 +53,7 @@ st, _, html = root.get('/admin/theme?tab=transfer')
 check('the Theme screen has the Export and import tab', st == 200 and 'data-section="transfer"' in html and 'data-theme-transfer' in html and 'transfer=export' in html and 'admin-theme-transfer.js' in html, st)
 check('the script is served', get_raw(root, '/assets/js/admin-theme-transfer.js')[0] == 200)
 check('nothing to undo yet', 'data-tt-undo-row hidden' in html)
+check('the page is named Export, import and reset, with parts to export and sections to reset', 'Export, import and reset' in html and 'data-tt-export-part' in html and 'data-tt-reset="section:header"' in html)
 
 # ---- a theme to carry: shadows (Branding), Custom CSS
 save({'theme_settings[design][shadows]': 'strong', 'custom_css': '.carried { color: red; }'})
@@ -84,6 +85,9 @@ html = root.get('/admin/theme?tab=transfer')[2]
 check('Branding came', 'shadows: strong' in stored(), stored()[:200])
 check('the Custom CSS box is still empty', '.carried' not in root.get('/admin/theme?tab=custom_css')[2])
 check('Undo is offered now', 'data-tt-undo-row hidden' not in html and 'Undo the last import' in html)
+st, hdr, part = get_raw(root, '/admin/theme?transfer=export&parts[]=custom_css')
+pdoc = json.loads(zipfile.ZipFile(io.BytesIO(part)).read('theme.json')) if st == 200 else {}
+check('an export of one part holds that part only', pdoc.get('parts') == ['custom_css'] and 'design' not in pdoc.get('settings', {}) and 'archives' not in pdoc, (st, list(pdoc)))
 st, _, body = raw(root, '/admin/theme?transfer=import', [('parts[]', 'custom_css')], upload=exported, csrf=token())
 check('then Custom CSS', st == 200 and '.carried' in root.get('/admin/theme?tab=custom_css')[2], body[:200])
 st, _, body = raw(root, '/admin/theme?transfer=import', [], upload=exported, csrf=token())

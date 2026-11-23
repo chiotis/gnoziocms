@@ -178,6 +178,7 @@ run_js() {
   run_check "content-types-kind" "$ROOT" node tests/js/content-types-kind.test.js
   run_check "map-filters" "$ROOT" node tests/js/map-filters.test.js
   run_check "section-nav" "$ROOT" node tests/js/section-nav.test.js
+  run_check "theme-transfer-js" "$ROOT" node tests/js/theme-transfer.test.js
 }
 
 cleanup_http() {

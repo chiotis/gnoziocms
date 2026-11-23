@@ -1,6 +1,6 @@
 <?php
 /*
- * Theme > Export and import (ThemeTransfer): the whole theme of one site carried to another. Settings sections, Single Layouts, the
+ * Theme > Export, import and reset (ThemeTransfer): the theme of one site, or parts of it, carried to another; old Branding zips; resets. Settings sections, Single Layouts, the
  * templates built with blocks, Archive Layouts (in the site's type and taxonomy files) with the search page, Footer Blocks, Custom CSS
  * and font files; the preview of each part, parts left out, lists the other site does not have, missing pictures, and undo.
  *   php tests/unit/theme-transfer.php
@@ -82,7 +82,10 @@ check('pages and forms have no list, so no archive', [isset($doc['archives']['ty
 $t = $b['transfer'];
 check('a zip that is not an export', $t->read("PKnot a zip")['ok'], false);
 check('JSON of something else', $t->read('{"format":"x","settings":{}}')['error'], 'This is not a GnozioCMS theme export.');
-check('a Branding export is sent to the Branding screen', str_contains($t->read('{"format":"faroscms-branding","settings":{}}')['error'], 'Theme > Branding'), true);
+$old = $t->read('{"format":"faroscms-branding","theme":"default","settings":{"design":{"shadows":"soft"}}}');
+check('a Branding export (older versions) reads as a file with the Branding part only', [$old['ok'], $old['document']['parts'], $old['document']['settings']['design']['shadows']], [true, ['branding'], 'soft']);
+$oldParts = array_column($t->preview($old)['parts'], null, 'key');
+check('its preview: Branding changes, the other parts are not in the file', [in_array('soft', array_column($oldParts['branding']['changes'], 'to'), true), $oldParts['custom_css']['in_file'], $oldParts['custom_css']['changes'], $oldParts['section:header']['in_file']], [true, false, [], false]);
 $read = $t->read((string)file_get_contents($zip));
 check('the zip reads, with its font file', [$read['ok'], array_keys($read['files'])], [true, ['fonts/brand.woff2']]);
 
@@ -135,6 +138,35 @@ check('a backup is kept', $t->backup() !== null, true);
 check('undo', $t->undo(), true);
 check('undo puts back the state before the last import', [$b['store']['settings']['design']['shadows'], $b['types']->customRaw('posts')['archive']['layout'] ?? null], ['strong', 'list']);
 check('and there is nothing more to undo', $t->undo(), false);
+
+// ---- export of some parts only
+$only = "$base/branding.zip";
+$files = $a['transfer']->export($only, ['branding']);
+$z = new ZipArchive();
+$z->open($only);
+$one = json_decode((string)$z->getFromName('theme.json'), true);
+$z->close();
+check('an export of Branding only: its settings and font file, nothing else', [$files, $one['parts'], array_keys($one['settings']), isset($one['archives']), isset($one['custom_css'])], [['assets/fonts/brand.woff2'], ['branding'], ['appearance', 'design', 'made_up'], false, false]);
+$cssOnly = "$base/css.zip";
+check('an export of Custom CSS only has no font file', $a['transfer']->export($cssOnly, ['custom_css']), []);
+$readCss = $t->read((string)file_get_contents($cssOnly));
+$footerBefore = $b['store']['settings']['footer_blocks'] ?? null;
+$t->apply($readCss, ['custom_css', 'footer_blocks', 'branding']);
+check('importing it with every part ticked takes only what the file holds', [(new CustomCss("$base/b/custom"))->read(), $b['store']['settings']['footer_blocks'] ?? null], [".brand { color: red; }\n", $footerBefore]);
+$t->undo();
+
+// ---- reset a section to the defaults
+$resets = $t->resets();
+check('the sections that can be reset: Branding\'s parts, then the settings sections', [isset($resets['branding:colour'], $resets['branding:shape'], $resets['section:header']), isset($resets['section:design']), isset($resets['branding:nope'])], [true, false, false]);
+$b['store']['settings']['design']['shadows'] = 'strong';
+$b['store']['settings']['header']['sticky'] = 'always';
+check('reset of Shape and depth', [$t->reset('branding:shape') > 0, $b['store']['settings']['design']['shadows'] === $b['theme']->defaultSettings()['design']['shadows']], [true, true]);
+check('it is kept for undo, as a reset', $t->backup()['reason'], 'reset');
+check('undo puts the shadows back', [$t->undo(), $b['store']['settings']['design']['shadows']], [true, 'strong']);
+check('reset of the header section', [$t->reset('section:header') > 0, $b['store']['settings']['header']['sticky'], $b['store']['settings']['design']['shadows']], [true, $b['theme']->defaultSettings()['header']['sticky'], 'strong']);
+check('nothing to reset when it is already the default', $t->reset('section:header'), 0);
+check('an unknown section is refused', $t->reset('section:nope'), -1);
+$t->undo();
 
 // ---- a file made by hand
 $footer = $b['store']['settings']['footer'];

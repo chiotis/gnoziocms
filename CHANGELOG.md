@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.331 — 2026-11-23 — One Export, import and reset page for the theme
+- Theme had two exports: one in Branding for the look, and Advanced > Export and import for the whole theme. They are one page now, **Advanced > Export, import and reset**, and Branding links to it.
+- **Export** has a box for each part (Branding, Header, Footer and the other sections, layouts, templates, Footer Blocks, Custom CSS), all ticked by default, and a *Branding only* shortcut. The file lists its parts, and an import only offers those.
+- **Import** also reads the Branding zips of older versions, as the Branding part.
+- **Reset** of a section to the theme's defaults moved here, and now covers every section (Header, Footer, …) besides the parts of Branding.
+- **One undo** for the last import or reset, instead of one for Branding and one for the theme.
+
 ## 0.1.330 — 2026-11-23 — Theme preview: sticky in place, one toolbar
 - The live preview beside Branding, Typography, Header and Footer now stays just under the page header while you scroll, instead of stopping far down and leaving a gap above it. The section list on the left of Settings, Theme, AI publishing and SEO now stays in view the same way.
 - Site / Style samples / Buttons and links moved into the preview's toolbar, next to Computer / Tablet / Phone and Auto / Light / Dark. Reload is a small icon button at the end of that row.
