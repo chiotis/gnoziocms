@@ -5395,7 +5395,10 @@ final class App
             fn(): string => $this->mailer()->provider(),
             fn(): array => $this->ensureContentIndexFresh(),
             fn(): array => $this->backupManager()->scheduleStatus(),
-            fn(): array => $this->cronStatus()['check']
+            fn(): array => $this->cronStatus()['check'],
+            fn(): array => PHP_SAPI === 'cli-server'
+                ? ['label' => 'SVG uploads header', 'value' => 'not checked on the built-in server', 'status' => 'ok']
+                : SystemStatus::svgHeaderCheck($this->basePath . '/public', $this->siteAddress(), $this->basePath . '/storage/cache/svg-header.json', static fn(string $url): ?array => SystemStatus::headersOf($url))
         );
     }
 

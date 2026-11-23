@@ -47,6 +47,19 @@ chmod("$dir/public/uploads", 0555);
 $isRoot = function_exists('posix_geteuid') && posix_geteuid() === 0;
 check('an uploads folder that cannot be written is a warning', $isRoot ? 'warning' : $by($status->checks($storage))['Uploads directory']['status'], 'warning');
 chmod("$dir/public/uploads", 0775);
+// ---- the Content-Security-Policy on uploaded SVG files (audit S17)
+$asked = [];
+$answer = ['content-security-policy' => "default-src 'none'; style-src 'unsafe-inline'; img-src data:"];
+$fetch = function (string $url) use (&$asked, &$answer): ?array { $asked[] = $url; return $answer; };
+$cache = "$dir/storage/svg-header.json";
+check('with no site address it is not asked', [SystemStatus::svgHeaderCheck("$dir/public", '', $cache, $fetch)['status'], $asked], ['warning', []]);
+check('the header sent: ok, a probe drawing asked for at the site address', [SystemStatus::svgHeaderCheck("$dir/public", 'https://example.com', $cache, $fetch), $asked, is_file("$dir/public/uploads/" . SystemStatus::SVG_PROBE)], [['label' => 'SVG uploads header', 'value' => 'sent', 'status' => 'ok'], ['https://example.com/uploads/' . SystemStatus::SVG_PROBE], true]);
+$answer = ['content-type' => 'image/svg+xml'];
+check('kept for a day', [SystemStatus::svgHeaderCheck("$dir/public", 'https://example.com', $cache, $fetch)['status'], count($asked)], ['ok', 1]);
+check('a day later, missing (nginx without the line): a warning that says what to add', SystemStatus::svgHeaderCheck("$dir/public", 'https://example.com', $cache, $fetch, time() + 86401), ['label' => 'SVG uploads header', 'value' => 'missing: add the uploads block of docs/security.md to nginx', 'status' => 'warning']);
+$answer = null;
+check('a site that cannot ask itself: a warning, not an error', SystemStatus::svgHeaderCheck("$dir/public", 'https://other.example', $cache, $fetch)['status'], 'warning');
+
 $dead = new SystemStatus($dir, "$dir/content", new SystemDatabase('/nonexistent/' . getmypid()), fn() => 'none', fn() => ['available' => false], fn() => $schedule);
 $deadChecks = $by($dead->checks($storage));
 check('a database that cannot open is an error with its reason', [$deadChecks['SQLite']['status'], $deadChecks['SQLite']['value'] !== 'available'], ['error', true]);

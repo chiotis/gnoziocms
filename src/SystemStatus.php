@@ -28,6 +28,8 @@ final class SystemStatus
      * @param callable(): array{available: bool, stale?: bool, rows?: int} $contentIndex the state of the content index, rebuilt first when it is small and out of date
      * @param callable(): array{label: string, value: string, status: string} $backupSchedule the check for scheduled backups
      * @param (callable(): array{label: string, value: string, status: string})|null $cronJob the check for the cron job (CronStatus)
+     * @param (callable(): array{label: string, value: string, status: string})|null $svgHeader the check that the web server sends
+     *   uploaded SVG files with their Content-Security-Policy (svgHeaderCheck())
      */
     public function __construct(
         private string $basePath,
@@ -36,7 +38,8 @@ final class SystemStatus
         private $mailProvider,
         private $contentIndex,
         private $backupSchedule,
-        private $cronJob = null
+        private $cronJob = null,
+        private $svgHeader = null
     ) {
     }
 
@@ -67,6 +70,7 @@ final class SystemStatus
             $this->contentIndexCheck(),
             ($this->backupSchedule)(),
             ...($this->cronJob !== null ? [($this->cronJob)()] : []),
+            ...($this->svgHeader !== null ? [($this->svgHeader)()] : []),
         ];
     }
 
@@ -121,6 +125,76 @@ final class SystemStatus
             'OPcache' => function_exists('opcache_get_status') && is_array(@opcache_get_status(false)) ? 'enabled' : 'disabled',
             'HTTPS' => $https ? 'yes' : 'no',
         ];
+    }
+
+    /** The policy an uploaded SVG must be served with (public/uploads/.htaccess, and the nginx line in docs/security.md). */
+    public const SVG_POLICY = "default-src 'none'; style-src 'unsafe-inline'; img-src data:";
+    /** A small drawing kept under the picture variants' folder (never listed in the library), asked for to see the header. */
+    public const SVG_PROBE = '_v/header-check.svg';
+
+    /**
+     * Whether the web server sends uploaded SVG files with a Content-Security-Policy that stops scripts (audit S17): Apache has
+     * it from public/uploads/.htaccess, nginx only when the operator added the line. A probe file is asked for at the site's
+     * address once a day (the answer kept in $cacheFile).
+     *
+     * @param \Closure(string): (array<string, string>|null) $headers the response headers of an address, names in lower case;
+     *   null when it could not be asked
+     * @return array{label: string, value: string, status: string}
+     */
+    public static function svgHeaderCheck(string $publicDir, string $baseUrl, string $cacheFile, \Closure $headers, int $now = 0): array
+    {
+        $label = 'SVG uploads header';
+        $now = $now > 0 ? $now : time();
+        $kept = is_file($cacheFile) ? json_decode((string)file_get_contents($cacheFile), true) : null;
+        if (is_array($kept) && (int)($kept['at'] ?? 0) > $now - 86400 && ($kept['base'] ?? '') === $baseUrl && is_array($kept['check'] ?? null)) {
+            return $kept['check'];
+        }
+        if ($baseUrl === '') {
+            return ['label' => $label, 'value' => 'not checked: set the site address in Settings', 'status' => 'warning'];
+        }
+        $probe = rtrim($publicDir, '/') . '/uploads/' . self::SVG_PROBE;
+        if (!is_file($probe)) {
+            @mkdir(dirname($probe), 0775, true);
+            @file_put_contents($probe, '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>' . "\n");
+        }
+        $answer = $headers(rtrim($baseUrl, '/') . '/uploads/' . self::SVG_PROBE);
+        if ($answer === null) {
+            $check = ['label' => $label, 'value' => 'could not be checked (the site did not answer itself)', 'status' => 'warning'];
+        } else {
+            $policy = strtolower((string)($answer['content-security-policy'] ?? ''));
+            $check = str_contains($policy, "default-src 'none'") || (str_contains($policy, 'script-src') && !str_contains($policy, 'unsafe'))
+                ? ['label' => $label, 'value' => 'sent', 'status' => 'ok']
+                : ['label' => $label, 'value' => 'missing: add the uploads block of docs/security.md to nginx', 'status' => 'warning'];
+        }
+        @file_put_contents($cacheFile, json_encode(['at' => $now, 'base' => $baseUrl, 'check' => $check]));
+        return $check;
+    }
+
+    /** @return array<string, string>|null the headers of a HEAD request to the site's own address, names in lower case */
+    public static function headersOf(string $url): ?array
+    {
+        if (!function_exists('curl_init') || preg_match('#^https?://#i', $url) !== 1) {
+            return null;
+        }
+        $headers = [];
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_NOBODY => true,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => false,
+            CURLOPT_CONNECTTIMEOUT => 3,
+            CURLOPT_TIMEOUT => 4,
+            CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
+            CURLOPT_HEADERFUNCTION => static function ($ch, string $line) use (&$headers): int {
+                $parts = explode(':', $line, 2);
+                if (count($parts) === 2) {
+                    $headers[strtolower(trim($parts[0]))] = trim($parts[1]);
+                }
+                return strlen($line);
+            },
+        ]);
+        $ok = curl_exec($ch) !== false && (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE) === 200;
+        return $ok ? $headers : null;
     }
 
     /** @return array{label: string, value: string, status: string} */

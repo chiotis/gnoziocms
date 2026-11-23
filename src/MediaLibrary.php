@@ -18,7 +18,7 @@ final class MediaLibrary
      */
     public const UPLOAD_GROUPS = [
         'images' => ['label' => 'Images', 'help' => 'JPG, PNG, GIF, WebP, AVIF, BMP, ICO', 'extensions' => ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'bmp', 'ico']],
-        'svg' => ['label' => 'SVG drawings', 'help' => 'Checked for scripts and outside content before they are kept', 'extensions' => ['svg']],
+        'svg' => ['label' => 'SVG drawings', 'help' => 'Kept without scripts, links elsewhere or outside content', 'extensions' => ['svg']],
         'documents' => ['label' => 'Documents', 'help' => 'PDF, Word, Excel, PowerPoint, OpenDocument, RTF, TXT, CSV, Markdown', 'extensions' => ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'odt', 'ods', 'odp', 'rtf', 'txt', 'csv', 'md']],
         'archives' => ['label' => 'Archives', 'help' => 'ZIP', 'extensions' => ['zip']],
         'maps' => ['label' => 'Route files', 'help' => 'GPX, KML and GeoJSON, read as a route before they are kept', 'extensions' => ['gpx', 'kml', 'geojson']],
@@ -443,8 +443,14 @@ final class MediaLibrary
         if (in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'bmp', 'ico'], true) && !str_starts_with($detectedMime, 'image/')) {
             throw new \RuntimeException('The uploaded file is not a valid image.');
         }
-        if ($extension === 'svg' && !$this->isSafeSvg($tmpName)) {
-            throw new \RuntimeException('SVG files with scripts or external content are not allowed.');
+        if ($extension === 'svg') {
+            // Kept as written again with only what a drawing needs (SvgSanitizer); refused when it cannot be read as one.
+            $clean = SvgSanitizer::clean((string)file_get_contents($tmpName));
+            if ($clean === null || file_put_contents($tmpName, $clean) === false) {
+                throw new \RuntimeException('This SVG file could not be read as a drawing, or it has a DOCTYPE. Save it again as plain SVG.');
+            }
+            clearstatcache(true, $tmpName);
+            $sizeBytes = strlen($clean);
         }
         if (in_array($extension, GeoTrack::EXTENSIONS, true)) {
             // A route file is kept only when it can be read as one.
@@ -522,29 +528,6 @@ final class MediaLibrary
             return $existing;
         }
         return $this->upload(['error' => UPLOAD_ERR_OK, 'tmp_name' => $file, 'name' => $name, 'size' => (int)(filesize($file) ?: 0)], '', $by, $maxBytes, $id, $alt);
-    }
-
-    private function isSafeSvg(string $path): bool
-    {
-        $content = (string)file_get_contents($path);
-        if ($content === '') {
-            return false;
-        }
-        $patterns = [
-            '/<script\b/i',
-            '/\son[a-z]+\s*=/i',
-            '/javascript\s*:/i',
-            '/<foreignObject\b/i',
-            '/<!ENTITY/i',
-            '/<(iframe|embed|object)\b/i',
-            '/(xlink:)?href\s*=\s*["\']\s*(data|https?):/i',
-        ];
-        foreach ($patterns as $pattern) {
-            if (preg_match($pattern, $content)) {
-                return false;
-            }
-        }
-        return true;
     }
 
     public function updateTags(string $id, string $tagsCsv, ?string $alt = null): bool

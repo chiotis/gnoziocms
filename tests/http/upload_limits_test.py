@@ -79,7 +79,11 @@ check('ticking documents lets a PDF in', in_library(root, 'paper.pdf'), re.finda
 st, loc, page = outcome(root, 'drawing.svg', b'<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>', 'image/svg+xml')
 check('and a clean SVG when that is ticked', in_library(root, 'drawing.svg'))
 st, loc, page = outcome(root, 'evil.svg', b'<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>', 'image/svg+xml')
-check('an SVG with a script is still refused', not in_library(root, 'evil.svg'))
+import glob
+kept = [open(f, 'rb').read() for f in glob.glob('app/public/uploads/**/evil*.svg', recursive=True)]
+check('an SVG with a script is kept without it (written again with only what a drawing needs)', in_library(root, 'evil.svg') and kept != [] and all(b'script' not in k and b'alert' not in k for k in kept), kept)
+st, loc, page = outcome(root, 'entity.svg', b'<!DOCTYPE svg [<!ENTITY x "javascript:alert(1)">]><svg xmlns="http://www.w3.org/2000/svg"><a href="&x;"/></svg>', 'image/svg+xml')
+check('an SVG with a DOCTYPE is refused', not in_library(root, 'entity.svg') and 'DOCTYPE' in page, re.findall(r'SVG[^<]*', page))
 st, loc, page = outcome(root, 'clip.mp4', b'\0\0\0\x18ftypmp42\0\0\0\0mp42isom', 'video/mp4')
 check('video was not ticked, so it is refused', not in_library(root, 'clip.mp4'))
 st, loc, page = outcome(root, 'run.php', b'<?php echo 1;', 'application/x-php')
