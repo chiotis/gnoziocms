@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.318 — 2026-11-23 — The shop out of App.php
+- **ShopController** (audit B1): the shop's wiring (its services, the cart, checkout and account pages, the product feed, the scheduled work) and the seven Shop screens of the admin moved from `src/App.php` to `src/Shop/ShopController.php`. App routes to it and gives it what it needs as functions. Nothing changes in what the shop does, its addresses or who may open what (`scripts/check-permissions.php` prints the same as before). `App.php` is 450 lines shorter.
+- `shop_test` also opens Shop settings > Import & export and the import's status, which no test reached before.
+
 ## 0.1.317 — 2026-11-20 — The old name, renamed
 - **The update check** (audit B4) uses `X-Gnozio-Update`, `_gnozio_check` and `X-Gnozio-Update-Check`. The check of an update is made by the code of the version it starts from, so the site still answers the old names, under which a site on 0.1.316 or older asks; they can go once no site is left on those.
 - **Browser storage**: the colour mode, palette, dismissed banners, the editor's mode and the entry preview's panel are kept under `gnozio-…` names. A choice kept under the old name is read once and moved, so nobody loses one at the update.

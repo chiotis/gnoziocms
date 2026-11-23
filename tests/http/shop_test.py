@@ -60,6 +60,11 @@ stored = db("select value from system_meta where key = 'shop_settings'")
 check('kept apart from the site settings', stored and json.loads(stored[0][0])['order_prefix'] == 'AL')
 
 check('an editor does not see the entry', 'admin/shop-settings' not in ed.get('/admin')[2])
+st, _, html = root.get('/admin/shop-settings?tab=import')
+check('the import tab draws (Shop settings > Import & export)', st == 200 and 'tab=import' in html, st)
+st, hdr, body = root.get('/admin/shop-import?status=1')
+check('and the import answers how far it is, as JSON', st == 200 and 'application/json' in (hdr.get('Content-Type') or '') and isinstance(json.loads(body), dict), (st, body[:200]))
+check('a plain visit goes back to the tab', (lambda r: r[0] in (302, 303) and 'tab=import' in (r[1].get('Location') or ''))(root.get('/admin/shop-import')))
 check('nor open the screen', ed.get('/admin/shop-settings')[0] == 403)
 
 # ---- a collection and products

@@ -108,7 +108,7 @@ group. Size: S (an hour or two), M (half a day to a day), L (more).
       `public/index.php`.
 - [ ] **B3** (M) Build the skill's snapshot in `scripts/build-release.php` and stop tracking it; the test then checks that the
       build makes it.
-- [ ] **B1** (L) Move the shop's wiring and its seven admin handlers out of `App.php` into a `ShopController`, as the first
+- [x] **B1** (L) Move the shop's wiring and its seven admin handlers out of `App.php` into a `ShopController`, as the first
       step of the App split on the roadmap.
 - [x] **B4** (M) Rename what is left of the old name. The update header and `_faros_check` accept both names for one release.
 - [ ] **B5** (S) Starter media: resize and recompress the pictures, one small DOCX; aim under 1.5 MB.
