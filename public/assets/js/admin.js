@@ -759,6 +759,8 @@
         });
         if (select) select.value = key;
         scope.querySelectorAll('[data-panel]').forEach(function (panel) {
+          // Only the sections' own panels: other [data-panel] boxes (the block editor's settings panel) are left alone.
+          if (keys.indexOf(panel.getAttribute('data-panel')) === -1) return;
           var on = panel.getAttribute('data-panel') === key;
           panel.classList.toggle('hidden', !on);
           panel.classList.toggle('active', on);

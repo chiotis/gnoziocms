@@ -1,5 +1,6 @@
 """Settings and Shop settings: the section list on the left (admin/templates/partials/section-nav.twig), with MCP and
-Omni listed in Settings (partials/settings-sidebar.twig) instead of the main menu.
+Omni listed in Settings (partials/settings-sidebar.twig) instead of the main menu; Theme, AI publishing and SEO have the
+same list.
 
 Groups under small headings, an icon and a label for each section, the current one marked once (?tab= opens it, an
 unknown tab opens General), the other panels hidden, the select for narrow screens offering the same sections, Limits
@@ -82,6 +83,21 @@ body = nav(html)[1]
 check('an admin without the Limits permission has no Limits entry', st == 200 and 'limits' not in items(body) and 'limits' not in options(html)[0], items(body))
 check('and System keeps Backups and Updates', items(body)[-2:] == ['backup', 'updates'], items(body))
 check('nor Omni, which only the super admin may open', 'omni' not in items(body) and 'admin/omni"' not in html, items(body))
+
+# ---- Theme, AI publishing and SEO: the same list
+st, _, html = root.get('/admin/theme?tab=footer')
+label, body = nav(html)
+check('Theme has the list, switching its sections in the page', st == 200 and label == 'Theme' and 'data-section-nav="switch"' in html and current(body) == ['footer'] and panel_hidden(html, 'footer') is False and panel_hidden(html, 'branding') is True, (st, label, current(body)))
+check('Theme: its groups', headings(body)[:3] == ['Brand', 'Header and pages', 'Footer'] and headings(body)[-1] == 'Advanced', headings(body))
+check('Theme: no old tab bar is left', 'class="tab-button' not in html and 'role="tablist" aria-label="Theme sections"' not in html)
+st, _, html = root.get('/admin/ai-publishing?tab=runs')
+label, body = nav(html)
+check('AI publishing has the list, its sections as links', st == 200 and label == 'AI publishing' and 'data-section-nav="links"' in html and current(body) == ['runs'] and headings(body) == ['Publishing', 'Setup', 'Reports'] and items(body) == ['schedules', 'runs', 'instructions', 'settings', 'usage'], (st, label, current(body), headings(body), items(body)))
+check('AI publishing: no old tab bar is left', 'aria-label="AI publishing">' not in html.replace('<nav class="section-nav-list" aria-label="AI publishing">', ''))
+st, _, html = root.get('/admin/seo?tab=crawling')
+label, body = nav(html)
+check('SEO has the list, its sections as links', st == 200 and label == 'SEO' and current(body) == ['crawling'] and headings(body) == ['Health', 'Appearance', 'Search engines'] and items(body) == ['overview', 'search', 'social', 'crawling', 'identity', 'verification'], (st, label, current(body), headings(body), items(body)))
+check('SEO: Overview is the screen itself', re.search(r'href="[^"]*admin/seo" class="section-nav-link" data-section="overview"', body) is not None and 'aria-label="SEO sections"' not in html)
 
 # ---- Shop settings: the same list, its sections are pages of their own
 root.submit('/admin/content-types', lambda f: ['type', 'products'] in [list(x) for x in f['fields']] and ['action', 'toggle'] in [list(x) for x in f['fields']], {'enabled': '1'})

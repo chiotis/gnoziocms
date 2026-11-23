@@ -40,7 +40,7 @@ check('the parts are chips', all(('name="single_layouts[posts][%s]"' % k) in htm
 check('related entries: where they come from, how many, thumbnails', all(('name="single_layouts[posts][%s]"' % k) in html for k in ('entries', 'entries_max', 'entries_images')) and re.search(r'name="single_layouts\[posts\]\[entries\]" value="none" checked', html) is not None, '')
 check('a page has no line above its title to switch', 'name="single_layouts[pages][byline]"' not in html and 'name="single_layouts[posts][byline]"' in html)
 check('a form has no page layout to choose', 'name="single_layouts[forms][template]"' not in html and 'name="single_layouts[forms][title]"' in html)
-check('the old tabs are gone', 'data-tab="hero_layouts"' not in html and 'data-tab="transparent_header"' not in html and 'data-tab="sidebar"' not in html)
+check('the old tabs are gone', 'data-section="hero_layouts"' not in html and 'data-section="transparent_header"' not in html and 'data-section="sidebar"' not in html)
 check('the text of the sidebar card is in this tab', 'name="theme_settings[sidebar][card_heading]"' in html and 'name="theme_settings[sidebar][toc]"' not in html)
 check('the little preview and the script that keeps it in step are there', 'data-lc-preview' in html and 'js/admin-layouts.js' in html)
 

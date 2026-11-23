@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.329 — 2026-11-23 — Theme, AI publishing and SEO with the section list
+- **Theme**: the tabs are a list on the left, as in Settings: Brand (Branding, Typography), Header and pages (Header, Single Layouts, Archive Layouts), Footer (Footer, Footer Blocks), Theme options (any other section the theme declares, such as Social profiles) and Advanced (Custom CSS, Export and import). A click shows the section in place and keeps `?tab=` in the address; the links between Branding and Typography still open each other.
+- **AI publishing**: Publishing (Schedules, Runs), Setup (Instructions, Settings) and Reports (Usage). The Publishing calendar button is above the schedules.
+- **SEO**: Health (Overview), Appearance (Search appearance, Social) and Search engines (Crawling & sitemap, Identity & schema, Verification).
+- Each section of AI publishing and SEO is still its own page. Below 1024 px wide the lists are a select. Another box with `data-panel` on the page (the block editor's settings panel) is never hidden by the list.
+- Tests: `settings_nav`, `theme_page`, `branding`, `footer_blocks`, `header_footer`, `layouts`, `theme_transfer` (HTTP) and `section-nav` (JS).
+
 ## 0.1.328 — 2026-11-23 — MCP and Omni under Settings
 - **MCP** and **Omni** left the main menu: they are in the Settings list, under **Integrations** with APIs. Their screens keep their addresses (`/admin/mcp`, `/admin/omni`) and open with the Settings list beside them, MCP or Omni marked, and Settings is the current entry of the main menu. Each is listed only for whoever may open it (`mcp.manage`, `omni.manage`); someone who may open MCP or Omni but not Settings gets a Settings entry that opens the first of them.
 - On the Settings screen a section with a page of its own is a plain link; the others still switch in place.

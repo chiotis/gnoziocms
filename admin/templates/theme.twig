@@ -2,7 +2,6 @@
 {% set page_heading = 'Theme' %}
 
 {% block content %}
-  {% set tab_button_class = 'tab-button shrink-0 border-b-2 border-transparent px-3 py-2.5 text-sm font-medium text-slate-500 transition hover:text-slate-800' %}
   {% set section_class = 'rounded-lg border border-slate-200 bg-white p-4' %}
   {% set section_header_class = 'mb-3 border-b border-slate-100 pb-3' %}
   {% set secondary_button_class = 'inline-flex shrink-0 items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50' %}
@@ -10,6 +9,7 @@
   {% set grid_columns = {1: '', 2: 'sm:grid-cols-2', 3: 'sm:grid-cols-3', 4: 'sm:grid-cols-2 lg:grid-cols-4', 5: 'sm:grid-cols-2 lg:grid-cols-5'} %}
   {% import '@admin/partials/ui.twig' as ui %}
   {% import '@admin/partials/fields.twig' as fields %}
+  {% import '@admin/partials/section-nav.twig' as section_nav %}
 
   {% if saved %}
     {{ ui.flash('Saved.', 'success') }}
@@ -25,54 +25,70 @@
     {% if theme_tabs is empty %}
       <p class="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-500">This theme has no options to set.</p>
     {% else %}
-      <div>
-        <div class="mb-4 overflow-x-auto border-b border-slate-200">
-          <div class="flex min-w-max gap-1" role="tablist" aria-label="Theme sections">
-            {% for key in theme_tabs %}
-              <button type="button" role="tab" class="{{ tab_button_class }}{% if active_tab == key %} active{% endif %}" data-tab="{{ key }}" aria-selected="{{ active_tab == key ? 'true' : 'false' }}">{{ tab_labels[key] ?? theme_schema[key].label }}</button>
-            {% endfor %}
-          </div>
-        </div>
+      {# The sections in groups; a section a theme declares that no group names goes under Theme options, in its order. #}
+      {% set theme_groups = [
+        ['Brand', ['branding', 'typography']],
+        ['Header and pages', ['header', 'transparent_header', 'hero_layouts', 'single_layouts', 'archive_layouts']],
+        ['Footer', ['footer', 'footer_blocks', 'footer_legal']],
+        ['Theme options', []],
+        ['Advanced', ['custom_css', 'transfer']]
+      ] %}
+      {% set theme_icons = {branding: 'palette', typography: 'type', header: 'layout_top', transparent_header: 'layout_top', hero_layouts: 'image', single_layouts: 'page', archive_layouts: 'grid', footer: 'layout_bottom', footer_blocks: 'blocks', footer_legal: 'layout_bottom', social: 'share', custom_css: 'code', transfer: 'transfer'} %}
+      {% set named = [] %}
+      {% for g in theme_groups %}{% set named = named|merge(g[1]) %}{% endfor %}
+      {% set theme_nav = [] %}
+      {% for g in theme_groups %}
+        {% set keys = g[1] is empty ? theme_tabs|filter(k => k not in named) : g[1]|filter(k => k in theme_tabs) %}
+        {% set items = [] %}
+        {% for key in keys %}
+          {% set items = items|merge([{key: key, label: tab_labels[key] ?? theme_schema[key].label, href: url('admin/theme?tab=' ~ key), icon: section_nav.icon(theme_icons[key] ?? 'sliders')}]) %}
+        {% endfor %}
+        {% if items %}{% set theme_nav = theme_nav|merge([{label: g[0], items: items}]) %}{% endif %}
+      {% endfor %}
+
+      <div class="section-layout">
+        {{ section_nav.nav(theme_nav, active_tab, 'Theme', true) }}
+        <div class="section-body">
 
         {% for key in theme_tabs %}
           {% if key == 'single_layouts' or key == 'archive_layouts' %}
-            <div class="tab-panel space-y-4{% if active_tab != key %} hidden{% else %} active{% endif %}" data-panel="{{ key }}" role="tabpanel">
+            <div class="section-panel space-y-4{% if active_tab != key %} hidden{% else %} active{% endif %}" data-panel="{{ key }}">
               {% include key == 'single_layouts' ? '@admin/partials/theme-single.twig' : '@admin/partials/theme-archives.twig' %}
             </div>
           {% elseif key == 'footer_blocks' %}
             {# Blocks above the footer (partials/theme-footer-blocks.twig). #}
-            <div class="tab-panel space-y-4{% if active_tab != key %} hidden{% else %} active{% endif %}" data-panel="{{ key }}" role="tabpanel">
+            <div class="section-panel space-y-4{% if active_tab != key %} hidden{% else %} active{% endif %}" data-panel="{{ key }}">
               {% include '@admin/partials/theme-footer-blocks.twig' %}
             </div>
           {% elseif key == 'custom_css' %}
             {# The site's own stylesheet (partials/theme-custom-css.twig). #}
-            <div class="tab-panel space-y-4{% if active_tab != key %} hidden{% else %} active{% endif %}" data-panel="{{ key }}" role="tabpanel">
+            <div class="section-panel space-y-4{% if active_tab != key %} hidden{% else %} active{% endif %}" data-panel="{{ key }}">
               {% include '@admin/partials/theme-custom-css.twig' %}
             </div>
           {% elseif key == 'transfer' %}
             {# The whole theme to and from another site (partials/theme-transfer.twig). #}
-            <div class="tab-panel space-y-4{% if active_tab != key %} hidden{% else %} active{% endif %}" data-panel="{{ key }}" role="tabpanel">
+            <div class="section-panel space-y-4{% if active_tab != key %} hidden{% else %} active{% endif %}" data-panel="{{ key }}">
               {% include '@admin/partials/theme-transfer.twig' %}
             </div>
           {% elseif key == 'typography' %}
             {# Fonts, text sizes and headings (partials/theme-typography.twig); stored in the design section like Branding. #}
-            <div class="tab-panel space-y-4{% if active_tab != key %} hidden{% else %} active{% endif %}" data-panel="{{ key }}" role="tabpanel">
+            <div class="section-panel space-y-4{% if active_tab != key %} hidden{% else %} active{% endif %}" data-panel="{{ key }}">
               {% include '@admin/partials/theme-typography.twig' with {schema: theme_schema, values: theme_values, info: branding} %}
             </div>
           {% elseif key == 'branding' %}
             {# Appearance, Brand and Design together (partials/theme-branding.twig). #}
-            <div class="tab-panel space-y-4{% if active_tab != key %} hidden{% else %} active{% endif %}" data-panel="{{ key }}" role="tabpanel">
+            <div class="section-panel space-y-4{% if active_tab != key %} hidden{% else %} active{% endif %}" data-panel="{{ key }}">
               {% include '@admin/partials/theme-branding.twig' with {schema: theme_schema, values: theme_values, info: branding} %}
             </div>
           {% elseif key in ['header', 'footer'] and theme_schema[key].fields.layout is defined %}
             {# Header and Footer are cards with a picture of the result (partials/theme-header.twig, theme-footer.twig). #}
-            <div class="tab-panel space-y-4{% if active_tab != key %} hidden{% else %} active{% endif %}" data-panel="{{ key }}" role="tabpanel">
+            <div class="section-panel space-y-4{% if active_tab != key %} hidden{% else %} active{% endif %}" data-panel="{{ key }}">
               {% include key == 'header' ? '@admin/partials/theme-header.twig' : '@admin/partials/theme-footer.twig' with {section: theme_schema[key], values: theme_values[key], preview_url: preview_url} %}
             </div>
           {% else %}
           {% set section = theme_schema[key] %}
           {% set visible_fields = section.fields|filter(field => not field.hidden) %}
-          <div class="tab-panel space-y-4{% if active_tab != key %} hidden{% else %} active{% endif %}" data-panel="{{ key }}" role="tabpanel">
+          <div class="section-panel space-y-4{% if active_tab != key %} hidden{% else %} active{% endif %}" data-panel="{{ key }}">
             <div class="{{ section_class }}">
               <div class="{{ section_header_class }}">
                 <h2 class="text-sm font-semibold text-slate-900">{{ section.label }}</h2>
@@ -89,6 +105,7 @@
           </div>
           {% endif %}
         {% endfor %}
+        </div>
       </div>
     {% endif %}
 
@@ -99,7 +116,7 @@
 
     {% embed '@admin/partials/action-bar.twig' %}
       {% block leading %}
-        <a href="{{ url('admin/theme?tab=' ~ active_tab) }}" class="{{ secondary_button_class }}">Discard</a>
+        <a href="{{ url('admin/theme?tab=' ~ active_tab) }}" class="{{ secondary_button_class }}" data-section-discard>Discard</a>
       {% endblock %}
       {% block actions %}
         <button type="submit" class="{{ primary_button_class }}">
@@ -115,30 +132,12 @@
 
   <script src="{{ asset('js/admin-langs.js') }}" defer></script>
   <script>
-    (function () {
-      const buttons = document.querySelectorAll('.tab-button');
-      const panels = document.querySelectorAll('.tab-panel');
-      const activeTabInput = document.querySelector('[data-active-tab-input]');
-      // A link inside a tab that opens another one (Branding and Typography point at each other); unsaved choices stay.
-      document.querySelectorAll('[data-goto-tab]').forEach((link) => {
-        link.addEventListener('click', () => {
-          const tab = document.querySelector('.tab-button[data-tab="' + link.getAttribute('data-goto-tab') + '"]');
-          if (tab) { tab.click(); tab.scrollIntoView({block: 'nearest'}); }
-        });
+    // A link inside a section that opens another one (Branding and Typography point at each other); unsaved choices stay.
+    document.querySelectorAll('[data-goto-tab]').forEach((link) => {
+      link.addEventListener('click', () => {
+        const item = document.querySelector('.section-nav-link[data-section="' + link.getAttribute('data-goto-tab') + '"]');
+        if (item) { item.click(); window.scrollTo({top: 0}); }
       });
-      buttons.forEach((button) => {
-        button.addEventListener('click', () => {
-          const target = button.getAttribute('data-tab');
-          buttons.forEach((item) => {
-            item.classList.toggle('active', item === button);
-            item.setAttribute('aria-selected', item === button ? 'true' : 'false');
-          });
-          panels.forEach((panel) => {
-            panel.classList.toggle('active', panel.getAttribute('data-panel') === target);
-          });
-          if (activeTabInput && target) activeTabInput.value = target;
-        });
-      });
-    })();
+    });
   </script>
 {% endblock %}

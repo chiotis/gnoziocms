@@ -54,10 +54,10 @@ check('without any choice the page has no branding style and no icons', 'gnozio-
 
 # ---- the tab
 st, _, html = root.get('/admin/theme')
-labels = re.findall(r'role="tab"[^>]*data-tab="([a-z_]+)"[^>]*>([^<]+)</button>', html)
+labels = re.findall(r'class="section-nav-link" data-section="([a-z_]+)"[^>]*><svg.*?</svg><span>([^<]+)</span>', html)
 check('Branding is the first tab and replaces Appearance and Brand', st == 200 and labels[0] == ('branding', 'Branding') and not any(k in ('appearance', 'brand', 'design') for k, _ in labels), labels)
-check('it is open first', re.search(r'class="[^"]*\bactive\b[^"]*" data-tab="branding"', html) is not None and 'name="active_tab" value="branding"' in html)
-panels = dict(re.findall(r'data-panel="([a-z_]+)" role="tabpanel">(.*?)(?=<div class="tab-panel|<div class="flex flex-col gap-1 rounded-lg)', html, re.S))
+check('it is open first', 'data-section="branding" aria-current="page"' in html and 'name="active_tab" value="branding"' in html)
+panels = dict(re.findall(r'data-panel="([a-z_]+)">(.*?)(?=<div class="section-panel|<div class="flex flex-col gap-1 rounded-lg)', html, re.S))
 typo, brand = panels.get('typography', ''), panels.get('branding', '')
 check('Typography is the tab after Branding', [k for k, _ in labels][:2] == ['branding', 'typography'] and labels[1][1] == 'Typography', labels[:3])
 check('it holds the fonts, the text, the headings and the elements, which Branding no longer has', all(('name="theme_settings[design][%s]"' % k) in typo and ('name="theme_settings[design][%s]"' % k) not in brand for k in ('heading_font', 'body_font', 'base_size', 'line_height', 'scale', 'heading_weight', 'heading_case', 'h1_step', 'h3_tracking', 'lead_step', 'small_weight', 'body_weight', 'paragraph_space')) and 'name="theme_settings[appearance][font]"' in typo and 'data-bf ' in typo, [k for k in ('heading_font', 'base_size', 'h1_step') if ('name="theme_settings[design][%s]"' % k) not in typo])

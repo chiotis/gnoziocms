@@ -39,21 +39,31 @@
     </div>
     {% if ai.paused and ai.paused_reason %}<p class="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">{{ ai.paused_reason }}.</p>{% endif %}
     {% if blocked and not ai.paused %}<p class="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">{{ blocked }}</p>{% endif %}
-    <div class="-mb-4 mt-3 flex items-end justify-between gap-3">
-      <nav class="flex min-w-0 gap-1 overflow-x-auto" aria-label="AI publishing">
-        {% for key, name in tabs %}
-          <a href="{{ url('admin/ai-publishing?tab=' ~ key) }}" class="shrink-0 border-b-2 px-3 py-2 text-sm font-medium {{ tab == key ? 'border-blue-600 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-800' }}"{% if tab == key %} aria-current="page"{% endif %}>{{ name }}</a>
-        {% endfor %}
-      </nav>
-      {% if tab == 'schedules' and schedules and not schedules.editing %}
+  </header>
+
+  {% import '@admin/partials/section-nav.twig' as section_nav %}
+  {% set ai_groups = [['Publishing', ['schedules', 'runs']], ['Setup', ['instructions', 'settings']], ['Reports', ['usage']]] %}
+  {% set ai_icons = {schedules: 'calendar', runs: 'play', instructions: 'pen', settings: 'sliders', usage: 'chart'} %}
+  {% set ai_nav = [] %}
+  {% for g in ai_groups %}
+    {% set items = [] %}
+    {% for key in g[1]|filter(k => tabs[k] is defined) %}
+      {% set items = items|merge([{key: key, label: tabs[key], href: url('admin/ai-publishing?tab=' ~ key), icon: section_nav.icon(ai_icons[key])}]) %}
+    {% endfor %}
+    {% if items %}{% set ai_nav = ai_nav|merge([{label: g[0], items: items}]) %}{% endif %}
+  {% endfor %}
+
+  <div class="section-layout">
+  {{ section_nav.nav(ai_nav, tab, 'AI publishing') }}
+  <div class="section-body">
+  {% if tab == 'schedules' and schedules and not schedules.editing %}
         {# The schedules' runs by day live on Overview > Publishing calendar, with everything else the site publishes. #}
-        <a href="{{ url('admin/publishing-calendar?view=week&source=ai') }}" class="mb-1.5 inline-flex shrink-0 items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 shadow-sm hover:bg-slate-100" data-ai-calendar-link>
+        <a href="{{ url('admin/publishing-calendar?view=week&source=ai') }}" class="mb-3 inline-flex shrink-0 items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 shadow-sm hover:bg-slate-100" data-ai-calendar-link>
           <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 7a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V7zM4 10h16M9 3v4M15 3v4"/></svg>
           Publishing calendar
         </a>
       {% endif %}
-    </div>
-  </header>
+
 
   {% if tab == 'instructions' %}
     <form method="post" action="{{ url('admin/ai-publishing?tab=instructions') }}" class="{{ card }} mb-4" data-ai-writing>
@@ -647,6 +657,9 @@
       {% endfor %}
     </div>
   {% endif %}
+
+  </div>
+  </div>
 
   <script src="{{ asset('js/admin-ai-picture.js') }}" defer></script>
 {% endblock %}
