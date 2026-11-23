@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.323 — 2026-11-23 — A label of your own for Add to cart
+- **Product summary block > Add to cart button label**: the button can say something else ("Buy now", "Pre-order"). Empty, it keeps the theme's words in each language (Add to cart, Στο καλάθι). A language with its own set of template blocks can have its own label. The label is also what the button shows again after the shop's script has added the product.
+- Tests: `shop-catalogue` (unit) draws the block with and without a label, in both languages.
+
 ## 0.1.322 — 2026-11-23 — The preview with a site address that ends with /
 - **Theme preview**: with a site address saved with a slash at the end (`https://example.com/`), the preview of Branding, Typography, Header and Footer loaded `https://example.com//` and stayed blank. The address is now joined with one slash.
 - **Addresses with `//`**: PHP reads an address that starts with `//` as a host, so `//` was a server error (500) and `//products` drew the home page, from the page cache too. A page read at an address with `//` in its path now goes (301) to the same address with single slashes, before the page cache and the router; a form sent to one is answered as if it had them (`FrontRoute::collapsedSlashes()`, in `public/index.php`).
