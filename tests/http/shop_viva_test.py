@@ -1,5 +1,5 @@
 """
-Viva Wallet over HTTP (docs/shop-plan.md, phase 4), against a fake of Viva's API that this test serves on this machine: the keys
+Viva Wallet over HTTP (docs/plans/shop-plan.md, phase 4), against a fake of Viva's API that this test serves on this machine: the keys
 on Shop settings > Payments (kept apart, never shown again) and Check connection; the checkout sending the customer to Viva's page;
 coming back paid (asked of the API first), the order paid and its emails written; a forged return that pays nothing; the webhook's
 key and its events, taken once; coming back without paying, then Pay now; a refund in part and in full from the order's screen.

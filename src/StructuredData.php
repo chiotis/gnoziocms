@@ -267,7 +267,7 @@ final class StructuredData
 
     /** A date from front matter as a Unix time: a `2026-03-04` string, a timestamp the YAML reader made of it, or nothing. */
     /**
-     * A product of the shop (docs/shop-plan.md) as search engines read one: its name, pictures, SKU, barcode and brand, and its
+     * A product of the shop (docs/plans/shop-plan.md) as search engines read one: its name, pictures, SKU, barcode and brand, and its
      * Offer (price in euro, VAT included, and whether it is in stock). A product whose variants differ in price has an AggregateOffer.
      * No price: no Product, since search engines refuse an offer without one.
      *

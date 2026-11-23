@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace GnozioCMS\Shop;
 
 /**
- * Calls a payment provider's API (docs/shop-plan.md, section 5): only the hosts the provider is given, over https; JSON or a form
+ * Calls a payment provider's API (docs/plans/shop-plan.md, section 5): only the hosts the provider is given, over https; JSON or a form
  * in, JSON out, short time limits. Secrets travel only in the headers the caller passes and are cut out of every error. A test may
  * point a provider at a fake on this machine (http://127.0.0.1:port); nothing else is ever called over plain http.
  */

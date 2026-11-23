@@ -1,6 +1,6 @@
 <?php
 /*
- * Cardlink (docs/shop-plan.md, phase 5) against a fake of its XML API: the settings and the shared secret kept apart, the order
+ * Cardlink (docs/plans/shop-plan.md, phase 5) against a fake of its XML API: the settings and the shared secret kept apart, the order
  * sent to this site's signed "go" page, the installments its amount allows, the form's fields in the spec's order and its digest,
  * the answer believed only with the right digest and merchant and paying the order once for its amount, a cancel, an order whose
  * answer never came asked about before it is let go (paid after all, never paid, the bank not reachable), refunds and the void on

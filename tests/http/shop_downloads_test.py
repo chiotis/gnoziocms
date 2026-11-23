@@ -1,5 +1,5 @@
 """
-Digital products over HTTP (docs/shop-plan.md, phase 6): Shop > Files (uploading a product's file, kept out of public/); the
+Digital products over HTTP (docs/plans/shop-plan.md, phase 6): Shop > Files (uploading a product's file, kept out of public/); the
 product page; a cart of downloads only at the checkout (no shipping step, no cash on delivery); the order paid on its screen and
 the paid email with the link; the order's page and the account listing the file; the link sending the file as an attachment and
 counting it to its limit; a refund turning it off; a forged link; removing the file.

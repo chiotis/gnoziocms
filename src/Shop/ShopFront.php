@@ -8,7 +8,7 @@ use GnozioCMS\ActionLimit;
 use GnozioCMS\LoginThrottle;
 
 /**
- * The shop's own pages on the public site (docs/shop-plan.md, sections 3 and 4), in each language under its prefix:
+ * The shop's own pages on the public site (docs/plans/shop-plan.md, sections 3 and 4), in each language under its prefix:
  *   /cart                      the cart: quantities, a coupon
  *   /checkout                  contact, address, shipping, payment, placing the order
  *   /checkout/order/{number}   an order's page (with its key for a guest, or for its customer)

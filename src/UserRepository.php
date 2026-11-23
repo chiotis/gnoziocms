@@ -10,7 +10,7 @@ use Symfony\Component\Yaml\Yaml;
 final class UserRepository
 {
     /**
-     * The `source` of an account that a connection (MCP, docs/mcp-plan.md) acts as: it has a role like anyone, but no password,
+     * The `source` of an account that a connection (MCP, docs/plans/mcp-plan.md) acts as: it has a role like anyone, but no password,
      * no email and no Google link, and it never signs in.
      */
     public const AUTOMATION = 'automation';

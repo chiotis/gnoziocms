@@ -1,6 +1,6 @@
 <?php
 /*
- * Brings a WooCommerce shop into this site's shop (docs/shop-plan.md, section 10): product categories, products with their
+ * Brings a WooCommerce shop into this site's shop (docs/plans/shop-plan.md, section 10): product categories, products with their
  * variants, pictures and stock, customers, and the redirects from the old addresses. By default it only says what it would do
  * (the dry run); add --apply to do it. Run it on a copy of the site first. On a site installed from a release (no scripts/
  * folder), the same commands run as php src/Cli/import-woocommerce.php in the site's folder.

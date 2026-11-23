@@ -11,7 +11,7 @@ use GnozioCMS\Shop\ShopStock;
 use Symfony\Component\Yaml\Yaml;
 
 /**
- * Brings a WooCommerce shop over (docs/shop-plan.md, section 10): its product categories as the Product categories taxonomy, its
+ * Brings a WooCommerce shop over (docs/plans/shop-plan.md, section 10): its product categories as the Product categories taxonomy, its
  * products as Products (price and sale price, SKU, pictures, the description, the short description, options and variants with
  * their own prices, SKUs, pictures and weights, whether it is a download), their stock into the shop's stock, its customers
  * (from a CSV of its users, their WordPress password hashes kept so they sign in as before), and the old addresses that must

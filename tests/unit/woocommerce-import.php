@@ -1,6 +1,6 @@
 <?php
 /*
- * The WooCommerce import (docs/shop-plan.md, section 10) against a fake shop: the REST API with keys (stock, weights, drafts,
+ * The WooCommerce import (docs/plans/shop-plan.md, section 10) against a fake shop: the REST API with keys (stock, weights, drafts,
  * downloads, variations with their own prices) and the public Store API (prices in minor units, variations by slug), the dry
  * run changing nothing, the import (categories with their tree, products with their fields, pictures, stock), running it again,
  * a file of the site's own left alone, grouped products and "any" variations reported, the redirects, the customers' CSV and

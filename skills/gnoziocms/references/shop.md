@@ -1,6 +1,6 @@
 # The shop
 
-A GnozioCMS site has a shop when the **Products** content type is on (Admin > Content types). Switching it on brings **Looks**, the taxonomies **Collections** and **Product categories**, **System › Shop settings**, the **Shop** group of the admin menu and the shop blocks (`product-grid`, `product-card`, `product-price`, `product-gallery`, `product-summary`, `product-details`, `shop-the-look`, `looks`, `mini-cart`). Shop blocks draw nothing while the shop is off. The installed definition is `themes/default/content-types/products.yaml` (and `custom/content-types/products.yaml`); `site_info.py` or MCP `shop_info` list the fields of the installation. The repository's `docs/shop-plan.md` is the full design.
+A GnozioCMS site has a shop when the **Products** content type is on (Admin > Content types). Switching it on brings **Looks**, the taxonomies **Collections** and **Product categories**, **System › Shop settings**, the **Shop** group of the admin menu and the shop blocks (`product-grid`, `product-card`, `product-price`, `product-gallery`, `product-summary`, `product-details`, `shop-the-look`, `looks`, `mini-cart`). Shop blocks draw nothing while the shop is off. The installed definition is `themes/default/content-types/products.yaml` (and `custom/content-types/products.yaml`); `site_info.py` or MCP `shop_info` list the fields of the installation. The repository's `docs/plans/shop-plan.md` is the full design.
 
 ## Products are entries
 

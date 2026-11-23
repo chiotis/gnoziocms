@@ -1,5 +1,5 @@
 /*
- * The shop's pages and parts (docs/shop-plan.md, phase 3): the cart, the checkout, an order, the customer's account, the
+ * The shop's pages and parts (docs/plans/shop-plan.md, phase 3): the cart, the checkout, an order, the customer's account, the
  * header's cart and account, and the cart drawer. Loaded only while the shop is on. Theme tokens only: a collection's
  * tones (--c-bg, --c-surface, --c-deep) colour what they reach, the site's palette everything else.
  */

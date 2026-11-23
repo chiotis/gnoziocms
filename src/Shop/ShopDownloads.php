@@ -9,7 +9,7 @@ use GnozioCMS\SystemMetaRepository;
 use PDO;
 
 /**
- * Digital products (docs/shop-plan.md, section 6). A product's files are kept under storage/shop-files with a random name, never
+ * Digital products (docs/plans/shop-plan.md, section 6). A product's files are kept under storage/shop-files with a random name, never
  * under public/ (table shop_files). When an order is paid, each file of each of its products becomes a download of that order
  * (shop_downloads) with the product's limit on how many times and for how many days; cancelling or refunding the order turns
  * them off. A download's link is its id and an HMAC of it with the shop's own key, so the same link works in the email, on the

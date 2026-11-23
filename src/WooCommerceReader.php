@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace GnozioCMS;
 
 /**
- * Reads a WooCommerce shop for the import (docs/shop-plan.md, section 10): its products with their variations and its product
+ * Reads a WooCommerce shop for the import (docs/plans/shop-plan.md, section 10): its products with their variations and its product
  * categories, all in one shape whichever way they are read.
  *
  *  - With the shop's REST keys (WooCommerce > Settings > Advanced > REST API, read only): /wp-json/wc/v3, which has everything,

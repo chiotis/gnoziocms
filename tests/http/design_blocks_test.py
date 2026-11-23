@@ -1,5 +1,5 @@
 """
-The design blocks of docs/shop-plan.md (phase 2), for every site, over HTTP: the Divider's band of colours (its own colours or a
+The design blocks of docs/plans/shop-plan.md (phase 2), for every site, over HTTP: the Divider's band of colours (its own colours or a
 taxonomy's tones), the Quote's Statement with its second line and dots, the Hero's Mosaic, Text and image's Story, Features' Strip,
 Latest content's Sliding strip (its settings for the script, the script loaded), Term tiles (tiles and the list with a changing picture), the Newsletter with a form (none without one) and Image hotspots (points that
 are buttons, and their list). A collection's page takes its tones; built with blocks it opens with the Chapter title (number, name,

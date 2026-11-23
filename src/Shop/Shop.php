@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace GnozioCMS\Shop;
 
 /**
- * Whether the shop is on, the one check every part of it asks (docs/shop-plan.md, section 1). The shop is on when the catalogue
+ * Whether the shop is on, the one check every part of it asks (docs/plans/shop-plan.md, section 1). The shop is on when the catalogue
  * type `products` is on: Admin > Content types switches it, and with it the Shop settings, the shop blocks and, later, the cart.
  */
 final class Shop

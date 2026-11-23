@@ -1,5 +1,5 @@
 """
-The shop's cart, checkout, orders and accounts over HTTP (docs/shop-plan.md, phase 3). Shop settings' Shipping, Payments and
+The shop's cart, checkout, orders and accounts over HTTP (docs/plans/shop-plan.md, phase 3). Shop settings' Shipping, Payments and
 Accounts tabs; a product page that stays without a session, with its Add to cart form; adding to the cart only from the site's own
 pages, as JSON for the script; the cart, a coupon, the checkout working out shipping from the address, and the order placed
 (stock taken, coupon counted, emails written); the order's page with its key and with nothing else; the Shop group of the admin:

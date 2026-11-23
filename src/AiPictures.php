@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace GnozioCMS;
 
 /**
- * Pictures made by AI publishing (docs/ai-publishing-plan.md, sections 5 and 7). A request is a job on the JobRunner: its handler
+ * Pictures made by AI publishing (docs/plans/ai-publishing-plan.md, sections 5 and 7). A request is a job on the JobRunner: its handler
  * builds the prompt (the house style word for word, the subject, then what not to show), sends it with the reference pictures,
  * records the usage, cuts each picture to the chosen ratio and keeps it as a variant in storage. A variant becomes a picture of the
  * media library only when someone picks it (pick()), tagged `generated`, with alt text from its subject and a row in `ai_pictures`

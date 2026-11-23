@@ -10,7 +10,7 @@ use GnozioCMS\SystemDatabase;
 use PDO;
 
 /**
- * Subscriptions (docs/shop-plan.md, section 7). Buying a subscription product (signed in, paying with a provider that can charge
+ * Subscriptions (docs/plans/shop-plan.md, section 7). Buying a subscription product (signed in, paying with a provider that can charge
  * again: Viva Wallet) makes a subscription that waits for its first order to be paid; then it is active, with the payment's
  * transaction as the token it is charged again with, every period. A renewal is an order of its own, charged without the
  * customer; when the charge fails the subscription is past due and is tried again after 1, 3 and 7 days, the customer told each

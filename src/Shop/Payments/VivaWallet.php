@@ -12,7 +12,7 @@ use GnozioCMS\Shop\ShopSecrets;
 use GnozioCMS\SystemMetaRepository;
 
 /**
- * Viva Wallet Smart Checkout (docs/shop-plan.md, section 5). Placing an order creates a payment order at Viva (POST
+ * Viva Wallet Smart Checkout (docs/plans/shop-plan.md, section 5). Placing an order creates a payment order at Viva (POST
  * /checkout/v2/orders with an OAuth token) and sends the customer to Viva's page, where cards, Apple Pay, Google Pay, IRIS and
  * installments are offered. Viva sends the customer back to the success or failure address of the payment source, and calls the
  * webhook; either way the transaction is asked of Viva's API (GET /checkout/v2/transactions/{id}) before anything is believed.

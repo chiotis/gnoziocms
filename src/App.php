@@ -2355,7 +2355,7 @@ final class App
         ));
     }
 
-    /** Content list > Bulk action > Generate main images: one picture per chosen entry, queued (docs/ai-publishing-plan.md, phase 2). */
+    /** Content list > Bulk action > Generate main images: one picture per chosen entry, queued (docs/plans/ai-publishing-plan.md, phase 2). */
     private function bulkGenerateImages(): void
     {
         $chosen = $this->contentAdmin()->bulkSelection($_POST);
@@ -2415,7 +2415,7 @@ final class App
                 'cost' => $slug !== '' ? $this->aiUsage()->forEntry($type . '/' . $slug . '/' . $lang) : null];
         }
         $form = $this->entryForm()->form($type, $slug, $lang, $_GET, $this->permissions->can($user, 'redirects.manage'));
-        // A product's Stock box: what is on hand of it, or of each of its variants (docs/shop-plan.md).
+        // A product's Stock box: what is on hand of it, or of each of its variants (docs/plans/shop-plan.md).
         $shopStock = null;
         if ($type === Shop::TYPE && Shop::enabled($this->content->getTypes())) {
             $values = is_array($form['type_values'] ?? null) ? $form['type_values'] : [];
@@ -3744,7 +3744,7 @@ final class App
         return $this->mcpOAuthService ??= new McpOAuth($this->mcpStore(), rtrim($this->getBaseUrl(), '/'), fn(string $action, string $level, ?string $type, ?string $id, string $message, array $context) => $this->logActivity($action, $level, $type, $id, $message, $context));
     }
 
-    /** Background jobs, with the handlers of every kind registered (docs/ai-publishing-plan.md, phase 0). */
+    /** Background jobs, with the handlers of every kind registered (docs/plans/ai-publishing-plan.md, phase 0). */
     private function jobRunner(): JobRunner
     {
         if ($this->jobRunnerService === null) {
@@ -4069,7 +4069,7 @@ final class App
         ]);
     }
 
-    /** Manage > AI publishing (docs/ai-publishing-plan.md). */
+    /** Manage > AI publishing (docs/plans/ai-publishing-plan.md). */
     private function handleAiPublishing(): void
     {
         $user = $this->auth->user();
@@ -4836,7 +4836,7 @@ final class App
     }
 
     /**
-     * Switches a type of the catalogue on or off. Products is the shop (docs/shop-plan.md): its Looks go with it, and switching
+     * Switches a type of the catalogue on or off. Products is the shop (docs/plans/shop-plan.md): its Looks go with it, and switching
      * it on writes the shop's taxonomies when they are missing.
      */
     private function switchContentType(string $type, bool $on): bool

@@ -8,7 +8,7 @@ use GnozioCMS\SystemDatabase;
 use PDO;
 
 /**
- * Carts (table shop_carts, docs/shop-plan.md, section 3). A cart is found by its cookie (gz_cart, a random token kept for 30
+ * Carts (table shop_carts, docs/plans/shop-plan.md, section 3). A cart is found by its cookie (gz_cart, a random token kept for 30
  * days), stored by the token's hash. It holds only what was chosen: product, variant and quantity. Prices, names and stock are
  * read again from the products each time it is shown or ordered (ShopPricing), so a page kept by a cache can never set a price.
  */

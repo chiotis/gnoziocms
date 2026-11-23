@@ -1,5 +1,5 @@
 """
-The shop's emails over HTTP (docs/shop-plan.md, section 8): Shop settings > Emails (how they look, what each says in each
+The shop's emails over HTTP (docs/plans/shop-plan.md, section 8): Shop settings > Emails (how they look, what each says in each
 language, the theme's words shown greyed), the preview of each as HTML and as text (on its own, with no scripts), a changed
 subject in the preview, the test, and an order's email sent with its HTML part.
 """

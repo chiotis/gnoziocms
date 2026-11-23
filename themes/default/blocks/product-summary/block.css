@@ -1,4 +1,4 @@
-/* Product summary (docs/shop-plan.md): collection, name, price, options and stock beside the pictures. */
+/* Product summary (docs/plans/shop-plan.md): collection, name, price, options and stock beside the pictures. */
 .product-summary {
   display: grid;
   gap: var(--space-s);

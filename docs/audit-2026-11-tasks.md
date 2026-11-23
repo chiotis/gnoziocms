@@ -143,7 +143,8 @@ group. Size: S (an hour or two), M (half a day to a day), L (more).
 - [x] **B5** (S) Starter media: resize and recompress the pictures, one small DOCX; aim under 1.5 MB.
       Done: 1.5 MB of uploads (was 6.0 MB): a PNG nobody used and the second copy of the DOCX removed, the photo saved as PNG
       made a JPEG, the largest photos at most 1,440 px wide, the DOCX without its embedded fonts (17 KB).
-- [ ] **B6** (S) Move the finished plans to `docs/plans/` and fix the references in comments.
+- [x] **B6** (S) Move the finished plans to `docs/plans/` and fix the references in comments.
+      Done: six plans moved; every reference in code, templates, tests and docs points at `docs/plans/`.
 - [ ] **B7** (S) Gateways: the local test address comes from the injected transport, not from the secrets.
       Left in 0.1.309: the `base` secret also sends the shopper's browser to the fake's checkout page in three HTTP tests, so
       the transport alone cannot replace it; the audit found it safe (local hosts only). Worth it only with those tests reworked.

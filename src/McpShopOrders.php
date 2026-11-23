@@ -13,7 +13,7 @@ use GnozioCMS\Shop\ShopOrders;
 use GnozioCMS\Shop\ShopServices;
 
 /**
- * The shop's orders and coupons through MCP (docs/mcp-shop-plan.md, step 5). Orders hold shoppers' names and addresses, so they
+ * The shop's orders and coupons through MCP (docs/plans/mcp-shop-plan.md, step 5). Orders hold shoppers' names and addresses, so they
  * need the shop:orders scope (off until a person ticks it) and the account's shop.orders permission. An order moves only along
  * the steps the order screen allows, and never to paid or refunded: money is confirmed and given back by a person in the admin.
  * Status, shipping and notes go through the order screen's own actions (ShopAdmin::orderAction), so stock, coupons, emails to

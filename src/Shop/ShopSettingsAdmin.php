@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace GnozioCMS\Shop;
 
 /**
- * System > Shop settings (docs/shop-plan.md, section 8): the screen and its forms. General (the store, VAT, orders), Shipping
+ * System > Shop settings (docs/plans/shop-plan.md, section 8): the screen and its forms. General (the store, VAT, orders), Shipping
  * (zones and their methods), Payments (Viva Wallet, Cardlink, bank transfer, cash on delivery), Accounts and Marketing (the product
  * feed and the Meta Pixel). Accounts holds signing in with Google too; Product details the sections every product page shows after the
  * product's own Details.

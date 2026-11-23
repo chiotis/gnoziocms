@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace GnozioCMS;
 
 /**
- * Calls an AI provider's API (docs/ai-publishing-plan.md). Not for addresses someone else chose (that is SafeHttp): the host is one
+ * Calls an AI provider's API (docs/plans/ai-publishing-plan.md). Not for addresses someone else chose (that is SafeHttp): the host is one
  * of the provider's own, over https only, given when the client is made. JSON or multipart (pictures sent with a request) in, JSON
  * out, long time limits (a picture can take minutes), large answers (pictures come back as base64), and every failure sorted into a
  * kind the caller acts on: no credit, rate limit, refused by the provider's filter, bad request, key, timeout, server, network.

@@ -7,7 +7,7 @@ namespace GnozioCMS;
 use PDO;
 
 /**
- * The schedules of AI publishing (docs/ai-publishing-plan.md, section 4): each writes one post per run, on chosen days of the week
+ * The schedules of AI publishing (docs/plans/ai-publishing-plan.md, section 4): each writes one post per run, on chosen days of the week
  * at one time of day, in the site's time zone. Kept in `ai_schedules` (the settings as JSON); every slot that ran is written down
  * once in `ai_schedule_slots`, which is what makes a slot run once however often cron fires, and what the next runs read so as not
  * to repeat a title.

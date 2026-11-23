@@ -8,7 +8,7 @@ use GnozioCMS\SystemDatabase;
 use PDO;
 
 /**
- * Orders (tables shop_orders, shop_order_lines, shop_order_events; docs/shop-plan.md, section 3). Each keeps what was sold as it
+ * Orders (tables shop_orders, shop_order_lines, shop_order_events; docs/plans/shop-plan.md, section 3). Each keeps what was sold as it
  * was sold, its addresses, how it is paid and sent, and a timeline of everything that happened to it. Numbers follow each other
  * within a year, after the shop's prefix (AL-2026-00042), so they never meet the numbers of a shop the site came from.
  */

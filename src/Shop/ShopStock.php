@@ -8,7 +8,7 @@ use GnozioCMS\SystemDatabase;
 use PDO;
 
 /**
- * The shop's stock (table shop_stock, docs/shop-plan.md): what is on hand for each product and each of its variants, and what
+ * The shop's stock (table shop_stock, docs/plans/shop-plan.md): what is on hand for each product and each of its variants, and what
  * is held for orders waiting to be paid. Products are their translation_id; variants their combination of options as a key.
  * Holding and releasing are single UPDATE statements that check what is free, so two orders can never take the same last piece.
  */

@@ -8,7 +8,7 @@ use GnozioCMS\SystemDatabase;
 use PDO;
 
 /**
- * Coupons (table shop_coupons, docs/shop-plan.md, section 3): a percentage or an amount off, or free shipping; with a minimum,
+ * Coupons (table shop_coupons, docs/plans/shop-plan.md, section 3): a percentage or an amount off, or free shipping; with a minimum,
  * dates, a limit of uses in all and per customer, and optionally only for some collections or products. A use is counted when an order is
  * placed, by one UPDATE that checks the limit, so the last use cannot be taken twice. A coupon for signed-in customers only
  * (customers_only) counts its uses per customer by account, so another address does not make a new customer of the same person.

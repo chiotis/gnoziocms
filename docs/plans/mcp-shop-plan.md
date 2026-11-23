@@ -6,7 +6,7 @@ Status: approved by the owner (2026-11-11), with the decisions in section 7.
 
 An LLM connected through MCP (Claude, ChatGPT, Codex) can run the whole shop: add, change and remove products and their categories and collections, change prices and sale prices and stock, manage pictures, variants and coupons, and follow and move orders. A person can ask it to "raise all earrings by 10%", "add these 12 products from this supplier sheet", or "mark the orders that left today as shipped and add their tracking numbers". It also has to work for unattended jobs, like stock sync from a supplier feed every night.
 
-The rules stay the ones in `docs/mcp-plan.md`: the site refuses what a connection may not do, the job's prompt doesn't. Everything the LLM reads (supplier pages, feeds, customer notes) is data, never instructions.
+The rules stay the ones in `docs/plans/mcp-plan.md`: the site refuses what a connection may not do, the job's prompt doesn't. Everything the LLM reads (supplier pages, feeds, customer notes) is data, never instructions.
 
 ## 2. What MCP can do today
 
@@ -21,7 +21,7 @@ Products are a normal content type (`products`), so `create_entry` and `update_e
 | Stock | lives in SQLite (`ShopStock`), not in the entry |
 | Categories and collections | `list_terms` reads them; nothing creates, edits or removes a term |
 | Coupons, orders, customers, sales | no tools |
-| Removing anything | "no deletes through MCP" (`docs/mcp-plan.md`, section 3) |
+| Removing anything | "no deletes through MCP" (`docs/plans/mcp-plan.md`, section 3) |
 
 ## 3. Design
 

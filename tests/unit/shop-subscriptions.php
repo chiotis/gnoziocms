@@ -1,6 +1,6 @@
 <?php
 /*
- * Subscriptions (docs/shop-plan.md, phase 7) against a fake Viva Wallet: the plan a product's fields make and the next date of a
+ * Subscriptions (docs/plans/shop-plan.md, phase 7) against a fake Viva Wallet: the plan a product's fields make and the next date of a
  * period, the first payment with its sign-up fee, only a way to pay that can charge again and only with an account, the first
  * order allowing recurring payments and starting the subscription with its token, a renewal charged as an order of its own, two
  * runs at once charging once, a refused charge and its tries after 1, 3 and 7 days and then the cancel (with the emails), the

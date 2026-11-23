@@ -225,7 +225,7 @@ return [
     'place.near.other' => 'Άλλα',
     'route.season' => 'Καλύτερη περίοδος',
     'route.profile_hint' => 'Κινηθείτε στο προφίλ για να δείτε το σημείο στον χάρτη',
-    // The shop (docs/shop-plan.md).
+    // The shop (docs/plans/shop-plan.md).
     'shop.from' => 'από',
     'shop.now' => 'Τώρα',
     'shop.was' => 'πριν',

@@ -10,7 +10,7 @@ use GnozioCMS\Shop\ShopSettings;
 use GnozioCMS\Shop\ShopStock;
 
 /**
- * The shop through MCP (docs/mcp-shop-plan.md): what the shop is, its products with their prices and stock, prices and sales
+ * The shop through MCP (docs/plans/mcp-shop-plan.md): what the shop is, its products with their prices and stock, prices and sales
  * changed in batches (checked first, then saved), and stock. Only while the shop is on, and only for connections given the
  * shop scopes, which are off until a person ticks them. Products themselves are entries: create_entry and update_entry make
  * and change them; their categories and collections are changed with the term tools (McpTerms). A price moves at most as far as the connection's rules allow in one change (priceProblems, also applied by

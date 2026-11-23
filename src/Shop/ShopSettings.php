@@ -7,7 +7,7 @@ namespace GnozioCMS\Shop;
 use GnozioCMS\SystemMetaRepository;
 
 /**
- * The settings of System > Shop settings (docs/shop-plan.md), kept in `system_meta` under their own name, apart from the site
+ * The settings of System > Shop settings (docs/plans/shop-plan.md), kept in `system_meta` under their own name, apart from the site
  * settings, so no settings export carries them: the store, money and taxes, orders (General), the shipping zones and their
  * methods (Shipping), the ways to pay (Payments) and the customers' accounts (Accounts). The keys of online payment providers
  * join it in phase 4, kept apart from what a screen is given (view()).

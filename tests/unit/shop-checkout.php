@@ -1,6 +1,6 @@
 <?php
 /*
- * The shop's cart and checkout (docs/shop-plan.md, phase 3): money in cents and VAT in prices, carts, pricing read again from the
+ * The shop's cart and checkout (docs/plans/shop-plan.md, phase 3): money in cents and VAT in prices, carts, pricing read again from the
  * products, shipping zones and methods, coupons, placing an order (stock held and taken, the coupon's use, the order's number),
  * status changes with what they do to the stock, and customers' accounts.
  *   php tests/unit/shop-checkout.php

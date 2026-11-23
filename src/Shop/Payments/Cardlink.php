@@ -11,7 +11,7 @@ use GnozioCMS\Shop\ShopPayments;
 use GnozioCMS\Shop\ShopSecrets;
 
 /**
- * Cardlink's redirect checkout (docs/shop-plan.md, section 5), for the three acquirers that use it: Cardlink itself, Nexi (Alpha
+ * Cardlink's redirect checkout (docs/plans/shop-plan.md, section 5), for the three acquirers that use it: Cardlink itself, Nexi (Alpha
  * Bank) and Worldline (formerly Eurobank's acquiring). Behaves as Cardlink's own WooCommerce plugin does, so a merchant's account
  * moves over as it is: the same Merchant ID and shared secret.
  *

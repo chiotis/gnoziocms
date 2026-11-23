@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace GnozioCMS;
 
 /**
- * Manage > AI publishing (docs/ai-publishing-plan.md, section 1): the Instructions, Settings and Usage tabs of phase 1. Schedules
+ * Manage > AI publishing (docs/plans/ai-publishing-plan.md, section 1): the Instructions, Settings and Usage tabs of phase 1. Schedules
  * and Runs come with phase 3. The key is never sent to the browser: the screen gets AiSettings::view().
  */
 final class AiPublishingAdmin

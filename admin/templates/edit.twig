@@ -230,7 +230,7 @@
           </div>
         </section>
         {% if shop_stock|default(null) %}
-          {# A product's stock, kept by the shop apart from the file (docs/shop-plan.md); saved with the entry. #}
+          {# A product's stock, kept by the shop apart from the file (docs/plans/shop-plan.md); saved with the entry. #}
           <section class="{{ card }}" aria-labelledby="en-h-stock">
             <h2 id="en-h-stock" class="en-card-title">Stock</h2>
             {% if not shop_stock.tracked %}

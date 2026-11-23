@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace GnozioCMS\Shop;
 
 /**
- * An address at the checkout and in an account (docs/shop-plan.md, sections 3 and 4): the name, the street, the city and the
+ * An address at the checkout and in an account (docs/plans/shop-plan.md, sections 3 and 4): the name, the street, the city and the
  * postcode, the country, a phone; a company and its VAT number (ΑΦΜ) for an invoice.
  */
 final class ShopAddress

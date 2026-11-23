@@ -65,7 +65,7 @@
       {% if title_layouts|default([]) is not empty %}<input type="hidden" name="term_hero_layout[]" value="{{ term.hero_layout|default('') }}" data-field="hero_layout">{% endif %}
       <input type="hidden" name="term_image[]" value="{{ term.image|default('') }}" data-field="image">
       {% if taxonomy == 'collections' %}
-        {# A collection of the shop: chapter number, three tones, intro quote (docs/shop-plan.md). #}
+        {# A collection of the shop: chapter number, three tones, intro quote (docs/plans/shop-plan.md). #}
         <input type="hidden" name="term_number[]" value="{{ term.number|default(0) ?: '' }}" data-field="number">
         <input type="hidden" name="term_tone_bg[]" value="{{ term.tones.bg|default('') }}" data-field="tone_bg">
         <input type="hidden" name="term_tone_surface[]" value="{{ term.tones.surface|default('') }}" data-field="tone_surface">

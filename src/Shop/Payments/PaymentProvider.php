@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace GnozioCMS\Shop\Payments;
 
 /**
- * A way to pay at the checkout (docs/shop-plan.md, section 5). The offline ones (bank transfer, cash on delivery) come first;
+ * A way to pay at the checkout (docs/plans/shop-plan.md, section 5). The offline ones (bank transfer, cash on delivery) come first;
  * Viva Wallet and Cardlink add a redirect to their pages and the confirmation that comes back (phases 4 and 5).
  */
 interface PaymentProvider

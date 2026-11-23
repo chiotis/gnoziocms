@@ -1,6 +1,6 @@
 <?php
 /*
- * Digital products (docs/shop-plan.md, phase 6): a product's private files kept under storage/shop-files, a cart of downloads only
+ * Digital products (docs/plans/shop-plan.md, phase 6): a product's private files kept under storage/shop-files, a cart of downloads only
  * (no shipping, no cash on delivery), a mixed cart, downloads given when the order is paid and not before, the signed link, the
  * count and the days, two at once not passing the limit, a cancel or refund turning them off, paying again bringing them back,
  * Allow again from the start, the paid email's links, file names, and a file removed.

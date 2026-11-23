@@ -1,7 +1,7 @@
 {% extends '@admin/base.twig' %}
 {% set page_heading = customer is defined ? (customer.name ?: customer.email) : 'Customers' %}
 {% import '@admin/partials/ui.twig' as ui %}
-{# Shop > Customers (docs/shop-plan.md, section 8): the list with what each has ordered, and one customer with their orders. #}
+{# Shop > Customers (docs/plans/shop-plan.md, section 8): the list with what each has ordered, and one customer with their orders. #}
 {% block content %}
   {% set input = 'rounded-md border border-slate-300 px-2.5 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500' %}
   {% set card = 'rounded-lg border border-slate-200 bg-white' %}
