@@ -24,12 +24,12 @@ def raw(client, path, fields=None, upload=None, csrf=None):
     """POST like a browser (multipart when a file goes with it) and return (status, headers, bytes)."""
     boundary = uuid.uuid4().hex
     body = b''
-    for k, v in (fields or {}).items():
+    for k, v in (fields.items() if isinstance(fields, dict) else (fields or [])):
         body += ('--%s\r\nContent-Disposition: form-data; name="%s"\r\n\r\n%s\r\n' % (boundary, k, v)).encode()
     if csrf:
         body += ('--%s\r\nContent-Disposition: form-data; name="_csrf"\r\n\r\n%s\r\n' % (boundary, csrf)).encode()
     if upload is not None:
-        body += ('--%s\r\nContent-Disposition: form-data; name="branding_file"; filename="b.zip"\r\nContent-Type: application/zip\r\n\r\n' % boundary).encode() + upload + b'\r\n'
+        body += ('--%s\r\nContent-Disposition: form-data; name="theme_file"; filename="b.zip"\r\nContent-Type: application/zip\r\n\r\n' % boundary).encode() + upload + b'\r\n'
     body += ('--%s--\r\n' % boundary).encode()
     req = urllib.request.Request(BASE + path, data=body, headers={'Content-Type': 'multipart/form-data; boundary=' + boundary})
     try:
@@ -52,12 +52,14 @@ def post_theme(overrides):
     fields += [(k, v) for k, v in overrides.items()] + [('active_tab', 'branding')]
     return root.request('/admin/theme', data=fields)
 
-# ---- the screen
+# ---- the screen: Branding has no transfer card of its own any more, it points at Export, import and reset
 st, _, html = root.get('/admin/theme?tab=branding')
-check('the screen has the transfer card, the forms card and the phone card', all(s in html for s in ('data-bp-transfer', 'branding=export', 'data-bt-file', 'data-bt-reset="type"', 'data-bt-reset="forms"', 'name="theme_settings[design][input_ring]"', 'name="theme_settings[design][mobile_gutter]"', 'name="theme_settings[design][h1_step]"', 'name="theme_settings[design][radius_card]"', 'name="theme_settings[design][body_weight]"', 'name="theme_settings[design][radius_input]"', 'admin-branding-transfer.js')))
+check('Branding has the forms and phone cards, and points at Export, import and reset', all(s in html for s in ('data-goto-tab="transfer"', 'name="theme_settings[design][input_ring]"', 'name="theme_settings[design][mobile_gutter]"', 'name="theme_settings[design][h1_step]"', 'name="theme_settings[design][radius_card]"', 'name="theme_settings[design][body_weight]"', 'name="theme_settings[design][radius_input]"')))
+check('and no second export, import or reset', not any(s in html for s in ('data-bp-transfer', 'branding=export', 'data-bt-file', 'data-bt-reset', 'admin-branding-transfer.js')))
+check('the old script is gone', get_raw(root, '/assets/js/admin-branding-transfer.js')[0] == 404)
 check('shadows offer none, soft, medium and strong', re.findall(r'name="theme_settings\[design\]\[shadows\]" value="([^"]+)"', html) == ['auto', 'none', 'soft', 'medium', 'strong'], re.findall(r'name="theme_settings\[design\]\[shadows\]" value="([^"]+)"', html))
-check('the script is served', get_raw(root, '/assets/js/admin-branding-transfer.js')[0] == 200)
-check('nothing undoable yet, so no Undo row is shown', 'data-bt-undo-row hidden' in html)
+st, _, html = root.get('/admin/theme?tab=transfer')
+check('the one page offers each part to export and the Branding sections to reset', all(s in html for s in ('data-tt-export-part', 'value="branding" checked', 'data-tt-only="branding"', 'data-tt-reset="branding:colour"', 'data-tt-reset="branding:forms"', 'data-tt-reset="section:header"')))
 
 # ---- the new choices reach the public page
 post_theme({'theme_settings[design][h1_step]': '4', 'theme_settings[design][h1_weight]': '800', 'theme_settings[design][input_ring]': 'high', 'theme_settings[design][radius_card]': '24', 'theme_settings[design][shadows]': 'medium', 'theme_settings[design][mobile_gutter]': '14', 'theme_settings[design][light_accent]': '#1d4ed8'})
@@ -66,54 +68,58 @@ check('the page carries them', all(s in css for s in ('h1,:root[data-theme][data
 st, _, body = root.request('/admin/theme?preview=branding', data=[('_csrf', token()), ('theme_settings[design][h2_step]', '3'), ('theme_settings[design][error_style]', 'tinted')])
 pcss = json.loads(body)['css']
 check('and the live preview follows the unsaved ones', 'font-size:var(--step-3)' in pcss and 'border-left:3px solid var(--color-danger)' in pcss, pcss[:200])
-mine = stored()
 
-# ---- export
-st, hdr, data = get_raw(root, '/admin/theme?branding=export')
+# ---- export of Branding only
+st, hdr, data = get_raw(root, '/admin/theme?transfer=export&parts[]=branding')
 z = zipfile.ZipFile(io.BytesIO(data)) if st == 200 else None
-doc = json.loads(z.read('branding.json')) if z else {}
-check('export is a zip with branding.json of all design settings (colours as a site palette, not as per-role overrides)', st == 200 and 'zip' in (hdr.get('Content-Type') or '') and doc.get('settings', {}).get('design', {}).get('h1_step') == '4' and doc['settings']['design']['light_accent'] == '' and '"accent":"#1d4ed8"' in doc['settings']['design']['site_palettes'] and doc['settings']['design']['site_palette'] == 'slate-custom', (st, list(doc)))
-check('and only people who may change the theme can download it', [get_raw(ed, '/admin/theme?branding=export')[0] in (302, 403), get_raw(pub, '/admin/theme?branding=export')[0] in (302, 403)] == [True, True])
+doc = json.loads(z.read('theme.json')) if z else {}
+check('Branding only: a zip with the Branding part (colours as a site palette, not as per-role overrides)', st == 200 and 'branding-' in (hdr.get('Content-Disposition') or '') and doc.get('parts') == ['branding'] and doc.get('settings', {}).get('design', {}).get('h1_step') == '4' and doc['settings']['design']['light_accent'] == '' and '"accent":"#1d4ed8"' in doc['settings']['design']['site_palettes'] and 'header' not in doc['settings'] and 'custom_css' not in doc, (st, list(doc), list(doc.get('settings', {}))))
+check('and only people who may change the theme can download it', [get_raw(ed, '/admin/theme?transfer=export&parts[]=branding')[0] in (302, 403), get_raw(pub, '/admin/theme?transfer=export&parts[]=branding')[0] in (302, 403)] == [True, True])
 exported = data
+# A Branding zip as older versions made it: branding.json with the two trees.
+old = io.BytesIO()
+with zipfile.ZipFile(old, 'w') as oz:
+    oz.writestr('branding.json', json.dumps({'format': 'faroscms-branding', 'faroscms': '0.1.300', 'theme': 'default', 'settings': {'appearance': doc['settings'].get('appearance', {}), 'design': doc['settings']['design']}, 'files': []}))
+old_zip = old.getvalue()
 
-# ---- a different site state: reset everything, then import with a preview
+# ---- reset each part of Branding, undo, reset again
 for section in ('colour', 'type', 'layout', 'shape', 'forms', 'buttons'):
-    st, _, body = raw(root, '/admin/theme?branding=reset', {'section': section}, csrf=token())
+    st, _, body = raw(root, '/admin/theme?transfer=reset', {'section': 'branding:' + section}, csrf=token())
     check('reset ' + section + ' answers', st == 200 and json.loads(body)['ok'], body[:150])
 check('after the resets the page has no branding style', style(pub.get('/about')[2]) == '')
-st, _, body = raw(root, '/admin/theme?branding=undo', csrf=token())
+html = root.get('/admin/theme?tab=transfer')[2]
+check('the page offers to undo the reset', 'data-tt-undo-row hidden' not in html and 'Undo the last reset' in html)
+st, _, body = raw(root, '/admin/theme?transfer=undo', csrf=token())
 check('undo restores the last reset only', st == 200 and json.loads(body)['restored'], body[:150])
 for section in ('colour', 'type', 'layout', 'shape', 'forms', 'buttons'):
-    raw(root, '/admin/theme?branding=reset', {'section': section}, csrf=token())
+    raw(root, '/admin/theme?transfer=reset', {'section': 'branding:' + section}, csrf=token())
 
+# ---- import: the new file, then an old Branding zip
 before = stored()
-st, _, body = raw(root, '/admin/theme?branding=preview', upload=exported, csrf=token())
-pv = json.loads(body)
-keys = {c['key']: c for c in pv.get('changes', [])}
-check('the preview lists the differences and writes nothing', st == 200 and keys.get('h1_step', {}).get('to') == '4' and keys.get('shadows', {}).get('to') == 'medium' and stored() == before, body[:300])
-st, _, body = raw(root, '/admin/theme?branding=preview', upload=b'not a branding file', csrf=token())
-check('a wrong file is refused with a message', st == 422 and 'Branding' in json.loads(body)['error'], (st, body[:150]))
-st, _, body = raw(root, '/admin/theme?branding=import', upload=exported, csrf=token())
-check('the import applies', st == 200 and json.loads(body)['ok'], body[:150])
+for label, upload in (('the Branding-only export', exported), ('an old Branding zip', old_zip)):
+    st, _, body = raw(root, '/admin/theme?transfer=preview', upload=upload, csrf=token())
+    pv = json.loads(body)
+    parts = {p['key']: p for p in pv.get('parts', [])}
+    rows = {c['label']: c for c in parts.get('branding', {}).get('changes', [])}
+    check(label + ': the preview lists the Branding differences, the other parts are not in the file, nothing written', st == 200 and any(c['to'] == 'medium' for c in rows.values()) and parts.get('custom_css', {}).get('in_file') is False and stored() == before, body[:300])
+st, _, body = raw(root, '/admin/theme?transfer=import', [('parts[]', 'branding'), ('parts[]', 'custom_css')], upload=old_zip, csrf=token())
+check('the old Branding zip imports', st == 200 and json.loads(body)['ok'], body[:150])
 check('the page has the same branding CSS as before', style(pub.get('/about')[2]) == css, style(pub.get('/about')[2])[:200])
-html = root.get('/admin/theme?tab=branding')[2]
-check('the screen now offers Undo', 'data-bt-undo-row hidden' not in html and 'Undo the last import' in html)
-st, _, body = raw(root, '/admin/theme?branding=undo', csrf=token())
+html = root.get('/admin/theme?tab=transfer')[2]
+check('the page now offers to undo the import', 'data-tt-undo-row hidden' not in html and 'Undo the last import' in html)
+st, _, body = raw(root, '/admin/theme?transfer=undo', csrf=token())
 check('one click undoes the import', st == 200 and style(pub.get('/about')[2]) == '', body[:150])
 
 # ---- permissions and the token
-etok = None
 for client, label in ((ed, 'an editor'), (pub, 'someone not signed in')):
-    codes = []
-    for action in ('preview', 'import'):
-        codes.append(raw(client, '/admin/theme?branding=' + action, upload=exported, csrf=token())[0])
-    for action in ('undo', 'reset'):
-        codes.append(raw(client, '/admin/theme?branding=' + action, {'section': 'type'}, csrf=token())[0])
+    codes = [raw(client, '/admin/theme?transfer=' + a, {'section': 'branding:type', 'parts[]': 'branding'}, upload=exported, csrf=token())[0] for a in ('preview', 'import', 'undo', 'reset')]
     check(label + ' cannot preview, import, undo or reset', all(c in (302, 403, 419) for c in codes), codes)
-st, _, body = raw(root, '/admin/theme?branding=import', upload=exported)
-check('a request without the form token is refused and changes nothing', st in (302, 403, 419) and style(pub.get('/about')[2]) == '', st)
-st, _, body = raw(root, '/admin/theme?branding=reset', {'section': 'bogus'}, csrf=token())
+st, _, body = raw(root, '/admin/theme?transfer=reset', {'section': 'branding:type'})
+check('a reset without the form token is refused', st in (302, 403, 419), st)
+st, _, body = raw(root, '/admin/theme?transfer=reset', {'section': 'bogus'}, csrf=token())
 check('an unknown section is refused', st == 422, (st, body[:100]))
+st, _, body = get_raw(root, '/admin/theme?branding=export')
+check('the old Branding route is gone (the address shows the screen)', not body.startswith(b'PK'))
 
 print('\nALL PASSED' if not fails else '\n%d FAILED: %s' % (len(fails), fails))
 sys.exit(1 if fails else 0)

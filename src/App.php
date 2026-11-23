@@ -2701,11 +2701,7 @@ final class App
         $tabs = [];
         // A theme that declares the design section has the Branding screen: appearance, brand and design in one tab.
         $branding = isset($schema['design']);
-        if ($branding && isset($_GET['branding'])) {
-            $this->handleBrandingTransfer((string)$_GET['branding']);
-            return;
-        }
-        // The whole theme carried to another site (Export and import tab).
+        // Export, import and reset (one page for the whole theme and its parts; Branding's own export was folded into it).
         if (isset($_GET['transfer'])) {
             $this->handleThemeTransfer((string)$_GET['transfer']);
             return;
@@ -2831,11 +2827,11 @@ final class App
             'theme_message' => trim((string)($_GET['theme_msg'] ?? '')),
             'theme_schema' => $schema,
             'theme_tabs' => $tabs,
-            'tab_labels' => ['branding' => 'Branding', 'typography' => 'Typography', 'single_layouts' => 'Single Layouts', 'archive_layouts' => 'Archive Layouts', 'footer_blocks' => 'Footer Blocks', 'custom_css' => 'Custom CSS', 'transfer' => 'Export and import'],
+            'tab_labels' => ['branding' => 'Branding', 'typography' => 'Typography', 'single_layouts' => 'Single Layouts', 'archive_layouts' => 'Archive Layouts', 'footer_blocks' => 'Footer Blocks', 'custom_css' => 'Custom CSS', 'transfer' => 'Export, import and reset'],
             'custom_css' => (new CustomCss($this->theme->customPath()))->read(),
             'footer_blocks_json' => $this->footerBlocksEditorJson($default),
             'branding' => $branding ? $this->brandingScreen() : null,
-            'transfer' => ['parts' => $this->themeTransfer()->parts(), 'backup' => $this->themeTransfer()->backup()],
+            'transfer' => ['parts' => $this->themeTransfer()->parts(), 'backup' => $this->themeTransfer()->backup(), 'resets' => $this->themeTransfer()->resets()],
             'preview_url' => rtrim((string)($this->settings['base_url'] ?? ''), '/') . '/',
             'theme_values' => $this->themeSettings,
             'theme_info' => [
@@ -2858,72 +2854,7 @@ final class App
         ]);
     }
 
-    /** Export, import (preview and apply), undo and reset of Branding (the whole of /admin/theme?branding=…; the route already needs the right to change the theme). */
-    private function handleBrandingTransfer(string $action): void
-    {
-        $transfer = $this->brandingTransfer();
-        if ($action === 'export' && $_SERVER['REQUEST_METHOD'] === 'GET') {
-            $path = tempnam(sys_get_temp_dir(), 'branding');
-            if ($path === false) {
-                $this->redirect('/admin/theme?theme=fail&tab=branding&theme_msg=' . urlencode('The export could not be made.'));
-                return;
-            }
-            $transfer->export($path);
-            $this->logActivity('theme.branding_export', 'info', 'settings', $this->theme->name(), 'Branding exported.');
-            header('Content-Type: application/zip');
-            header('Content-Disposition: attachment; filename="branding-' . gmdate('Y-m-d') . '.zip"');
-            header('Content-Length: ' . (string)(filesize($path) ?: 0));
-            header('Cache-Control: no-store');
-            readfile($path);
-            @unlink($path);
-            exit;
-        }
-        header('Content-Type: application/json; charset=utf-8');
-        header('Cache-Control: no-store');
-        $answer = static function (array $data, int $status = 200): void {
-            http_response_code($status);
-            echo json_encode($data + ['ok' => $status < 400], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG);
-        };
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $answer(['error' => 'Use the buttons of the Branding screen.'], 405);
-            return;
-        }
-        if ($action === 'preview' || $action === 'import') {
-            $upload = $_FILES['branding_file'] ?? null;
-            $tmp = is_array($upload) && ($upload['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK && is_uploaded_file((string)$upload['tmp_name']) && (int)$upload['size'] <= 20 * 1048576 ? (string)$upload['tmp_name'] : '';
-            $read = $tmp !== '' ? $transfer->read((string)file_get_contents($tmp)) : ['ok' => false, 'error' => 'Choose a Branding file (the zip from Export).'];
-            if (($read['ok'] ?? false) !== true) {
-                $answer(['error' => (string)($read['error'] ?? 'The file could not be read.')], 422);
-                return;
-            }
-            if ($action === 'preview') {
-                $answer($transfer->preview($read));
-                return;
-            }
-            $result = $transfer->apply($read);
-            $this->themeSettings = $this->loadThemeSettings();
-            $this->logActivity('theme.branding_import', 'info', 'settings', $this->theme->name(), 'Branding imported.', ['changed' => $result['changed'] ?? 0]);
-            $answer($result, ($result['ok'] ?? false) ? 200 : 500);
-            return;
-        }
-        if ($action === 'undo') {
-            $done = $transfer->undo();
-            $this->logActivity('theme.branding_undo', 'info', 'settings', $this->theme->name(), 'Branding put back as before.');
-            $answer(['restored' => $done], $done ? 200 : 404);
-            return;
-        }
-        if ($action === 'reset') {
-            $changed = $transfer->reset((string)($_POST['section'] ?? ''));
-            if ($changed >= 0) {
-                $this->logActivity('theme.branding_reset', 'info', 'settings', $this->theme->name(), 'A Branding section was reset to its defaults.', ['section' => (string)$_POST['section']]);
-            }
-            $answer(['changed' => max(0, $changed)], $changed >= 0 ? 200 : 422);
-            return;
-        }
-        $answer(['error' => 'Unknown action.'], 404);
-    }
-
-    /** Export, import (preview and apply) and undo of the whole theme (/admin/theme?transfer=…; the route already needs the right to change the theme). */
+    /** Export, import (preview and apply), reset and undo of the theme (/admin/theme?transfer=…; the route already needs the right to change the theme). */
     private function handleThemeTransfer(string $action): void
     {
         $transfer = $this->themeTransfer();
@@ -2933,10 +2864,12 @@ final class App
                 $this->redirect('/admin/theme?theme=fail&tab=transfer&theme_msg=' . urlencode('The export could not be made.'));
                 return;
             }
-            $transfer->export($path);
-            $this->logActivity('theme.export', 'info', 'settings', $this->theme->name(), 'Theme exported.');
+            $parts = is_array($_GET['parts'] ?? null) ? array_map('strval', $_GET['parts']) : null;
+            $transfer->export($path, $parts);
+            $this->logActivity('theme.export', 'info', 'settings', $this->theme->name(), 'Theme exported.', $parts === null ? [] : ['parts' => $parts]);
+            $name = $parts === ['branding'] ? 'branding' : 'theme';
             header('Content-Type: application/zip');
-            header('Content-Disposition: attachment; filename="theme-' . gmdate('Y-m-d') . '.zip"');
+            header('Content-Disposition: attachment; filename="' . $name . '-' . gmdate('Y-m-d') . '.zip"');
             header('Content-Length: ' . (string)(filesize($path) ?: 0));
             header('Cache-Control: no-store');
             readfile($path);
@@ -2950,7 +2883,7 @@ final class App
             echo json_encode($data + ['ok' => $status < 400], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG);
         };
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $answer(['error' => 'Use the buttons of the Export and import tab.'], 405);
+            $answer(['error' => 'Use the buttons of Theme > Export, import and reset.'], 405);
             return;
         }
         if ($action === 'preview' || $action === 'import') {
@@ -2977,9 +2910,23 @@ final class App
         if ($action === 'undo') {
             $done = $transfer->undo();
             if ($done) {
-                $this->logActivity('theme.import_undo', 'info', 'settings', $this->theme->name(), 'Theme put back as before the import.');
+                $this->logActivity('theme.import_undo', 'info', 'settings', $this->theme->name(), 'Theme put back as before the last import or reset.');
             }
             $answer(['restored' => $done], $done ? 200 : 404);
+            return;
+        }
+        if ($action === 'reset') {
+            $section = (string)($_POST['section'] ?? '');
+            if (!isset($transfer->resets()[$section])) {
+                $answer(['error' => 'There is no such section.'], 422);
+                return;
+            }
+            $changed = $transfer->reset($section);
+            if ($changed > 0) {
+                $this->themeSettings = $this->loadThemeSettings();
+                $this->logActivity('theme.reset', 'info', 'settings', $this->theme->name(), 'A theme section was reset to its defaults.', ['section' => $section]);
+            }
+            $answer($changed < 0 ? ['error' => 'The reset could not be saved. Check that the custom/ folder is writable.'] : ['changed' => $changed], $changed < 0 ? 500 : 200);
             return;
         }
         $answer(['error' => 'Unknown action.'], 404);
@@ -3002,19 +2949,6 @@ final class App
             css: new CustomCss($this->theme->customPath()),
             publicDir: $this->basePath . '/public',
             version: trim((string)@file_get_contents($this->basePath . '/VERSION')),
-        );
-    }
-
-    private function brandingTransfer(): BrandingTransfer
-    {
-        return new BrandingTransfer(
-            $this->theme,
-            fn(): array => $this->loadThemeSettings(),
-            function (array $settings): void {
-                $this->setSystemMeta('theme_settings', Yaml::dump($settings, 6, 2));
-            },
-            $this->systemMeta,
-            trim((string)@file_get_contents($this->basePath . '/VERSION'))
         );
     }
 
@@ -3047,8 +2981,6 @@ final class App
             'preview_url' => rtrim((string)($this->settings['base_url'] ?? ''), '/') . '/',
             'palettes' => BuiltinPalettes::all(),
             'font_found' => $found,
-            'backup' => $this->brandingTransfer()->backup(),
-            'sections' => array_map(static fn(array $section): string => $section['label'], BrandingTransfer::SECTIONS),
             'fonts' => BrandingFonts::screen(
                 is_array($this->themeSettings['design'] ?? null) ? $this->themeSettings['design'] : [],
                 $this->theme->customPath(),
