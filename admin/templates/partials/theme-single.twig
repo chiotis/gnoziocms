@@ -158,7 +158,7 @@
     {% if card_fields is not empty %}
       <details class="rounded-xl border border-slate-200 bg-white" data-sidebar-card>
         <summary class="cursor-pointer select-none rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-900">Sidebar card <span class="font-normal text-slate-500">· the text of the card, for every layout that has a sidebar</span></summary>
-        <div class="grid gap-3 border-t border-slate-100 p-3 sm:grid-cols-2">
+        <div class="lc-fields border-t border-slate-100 p-3">
           {% for field in card_fields %}
             {{ fields.field(field, 'theme_settings[sidebar][' ~ field.key ~ ']', theme_values.sidebar[field.key] ?? field.default) }}
           {% endfor %}

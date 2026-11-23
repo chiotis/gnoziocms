@@ -455,10 +455,29 @@ body.fb-dragging, body.fb-dragging * { cursor: grabbing !important; user-select:
 .lc-chip { display: inline-block; }
 .lc-chip input:checked + span { border-color: #2563eb; background: #eff6ff; color: #1d4ed8; }
 .lc-chip input:checked + span::before { content: "\2713" / ""; font-size: .6875rem; }
-.lc-row { display: grid; grid-template-columns: 5.5rem minmax(0, 1fr); align-items: center; gap: .5rem; }
-.lc-row > dt, .lc-row > .lc-label { font-size: .75rem; font-weight: 500; color: #4d5d73; }
+/*
+ * One row per setting, everywhere on the Theme screen: the label in a fixed column on the left, aligned with the first line of
+ * the control; the control, its help and its state (Your value · Reset) on the right. Numbers (.bp-num) and the plain fields of
+ * fields.twig inside .lc-fields take the same shape, so every card reads the same way.
+ */
+.lc-row { display: grid; grid-template-columns: 8.5rem minmax(0, 1fr); align-items: start; gap: .25rem .75rem; }
+.lc-row > dt, .lc-row > .lc-label { padding-top: .3rem; font-size: .75rem; font-weight: 500; line-height: 1.125rem; color: #4d5d73; }
+.lc-row > dd { min-width: 0; }
+.lc-row > dd > .block.text-\[11px\], .lc-row > dd > span.mt-1 { margin-top: .25rem; color: #64748b; font-size: .6875rem; line-height: 1rem; }
+.lc-row > dd > .lc-help { display: block; margin-top: .25rem; color: #64748b; font-size: .6875rem; line-height: 1rem; }
+.lc-built > [data-built-note] { margin-left: 9.25rem; }
+.lc-row .lc-library, .lc-fields .lc-library { padding: .25rem .625rem; font-size: .75rem; line-height: 1.125rem; box-shadow: none; }
+.lc-row .lc-select { width: 100%; max-width: 15rem; }
 .lc-card[data-template="landing"] [data-hide-landing], .lc-card[data-sidebar="none"] [data-sidebar-only], .lc-card[data-template="landing"] [data-sidebar-only] { display: none; }
-@media (max-width: 420px) { .lc-row { grid-template-columns: minmax(0, 1fr); gap: .25rem; } }
+@media (max-width: 480px) {
+  .lc-row, .bp-num, .lc-fields > label.block, .lc-fields > div.block { grid-template-columns: minmax(0, 1fr) !important; gap: .25rem; }
+  .bp-num > label, .lc-fields > label.block > :first-child, .lc-fields > div.block > :first-child { grid-row: auto !important; padding-top: 0 !important; }
+  .lc-row > dt, .lc-row > .lc-label { padding-top: 0; }
+  .lc-built > [data-built-note] { margin-left: 0; }
+  .lc-fields > label.block > :not(:first-child), .lc-fields > div.block > :not(:first-child) { grid-column: 1 !important; }
+  .bp-num > :not(label) { grid-column: 1 !important; }
+  .lc-fields > label.flex { padding-left: 0 !important; }
+}
 
 /* The little page of a single layout card: header, title area, body, with the sidebar on its side. */
 .lc-preview { position: relative; display: flex; flex-direction: column; flex: none; width: 6.75rem; height: 5.5rem; overflow: hidden; border: 1px solid #cbd5e1; border-radius: .375rem; background: #fff; }
@@ -537,10 +556,24 @@ html.dark .lc-input::placeholder { color: #94a3b8; }
 .bp-card > summary small { color: #5f6f85; font-size: .6875rem; font-weight: 400; }
 .bp-card > summary:focus-visible { outline: 2px solid #1d4ed8; outline-offset: -2px; border-radius: .75rem; }
 .bp-body { display: grid; gap: .75rem; padding: .25rem .75rem .75rem; }
-.bp-nums { display: grid; grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr)); gap: .5rem .75rem; }
-.bp-num { display: grid; align-content: start; gap: .2rem; }
-.bp-num label { color: #4d5d73; font-size: .75rem; font-weight: 500; }
-.bp-num small { color: #5f6f85; font-size: .6875rem; line-height: 1rem; }
+.bp-body > dl.space-y-2\.5 > * + *, .lc-stack > * + * { margin-top: .75rem; }
+.bp-nums { display: grid; gap: .75rem; }
+.bp-num { display: grid; grid-template-columns: 8.5rem minmax(0, 1fr); grid-auto-flow: dense; align-items: start; gap: 0 .75rem; }
+.bp-num > label { grid-column: 1; grid-row: 1 / span 4; padding-top: .3rem; color: #4d5d73; font-size: .75rem; font-weight: 500; line-height: 1.125rem; }
+.bp-num > :not(label) { grid-column: 2; }
+.bp-num .lc-unit { max-width: 8rem; }
+.bp-num small { margin-top: .25rem; color: #64748b; font-size: .6875rem; line-height: 1rem; }
+/* Plain fields (fields.twig) inside a Theme card: the same rows. */
+.lc-fields { display: grid; gap: .75rem; }
+.lc-fields > label.block, .lc-fields > div.block { display: grid; grid-template-columns: 8.5rem minmax(0, 1fr); grid-auto-flow: dense; align-items: start; gap: 0 .75rem; }
+.lc-fields > label.block > :first-child, .lc-fields > div.block > :first-child { grid-column: 1; grid-row: 1 / span 4; margin: 0; padding-top: .3rem; color: #4d5d73; font-size: .75rem; font-weight: 500; line-height: 1.125rem; }
+.lc-fields > label.block > :not(:first-child), .lc-fields > div.block > :not(:first-child) { grid-column: 2; min-width: 0; }
+.lc-fields > label.block > span.mt-1, .lc-fields > div.block > span.mt-1 { margin-top: .25rem; color: #64748b; font-size: .6875rem; line-height: 1rem; }
+.lc-fields input:not([type="checkbox"]):not([type="radio"]):not([type="color"]), .lc-fields select, .lc-fields textarea { max-width: 32rem; padding: .25rem .5rem; border-color: #cbd5e1; border-radius: .375rem; font-size: .75rem; line-height: 1.25rem; }
+.lc-fields > label.flex { flex-direction: row-reverse; justify-content: flex-end; gap: .5rem; padding: 0 0 0 9.25rem; border: 0; }
+.lc-fields > label.flex .text-sm { font-size: .75rem; color: #334155; }
+.lc-fields > label.flex .text-xs { font-size: .6875rem; color: #64748b; }
+.lc-fields > .col-span-full { grid-column: auto; }
 .lc-unit { position: relative; display: block; }
 .lc-unit .lc-input { padding-right: 1.75rem; }
 .lc-unit em { position: absolute; top: 50%; right: .5rem; transform: translateY(-50%); color: #5f6f85; font-size: .6875rem; font-style: normal; pointer-events: none; }
@@ -555,6 +588,8 @@ html.dark .lc-input::placeholder { color: #94a3b8; }
 .bp-colours th { padding: .15rem .25rem .15rem 0; color: #4d5d73; font-weight: 500; text-align: left; white-space: nowrap; }
 .bp-colours thead th { color: #5f6f85; font-size: .6875rem; letter-spacing: .04em; text-transform: uppercase; }
 .bp-colours td { padding: .15rem .25rem; }
+/* The row labels of the colour tables line up with the label column of the rows. */
+.bp-colours tbody th { width: 8.5rem; padding-right: .75rem; white-space: normal; }
 .lc-colour { display: flex; align-items: center; gap: .25rem; min-width: 0; }
 .lc-colour input[type="color"] { flex: none; width: 1.75rem; height: 1.75rem; padding: 0; border: 1px solid #cbd5e1; border-radius: .375rem; background: none; cursor: pointer; }
 .lc-colour input[type="text"] { min-width: 0; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
@@ -566,8 +601,13 @@ html.dark .lc-input::placeholder { color: #94a3b8; }
 .bp-goto { padding: 0; border: 0; background: none; color: #1d4ed8; font: inherit; text-decoration: underline; cursor: pointer; }
 .bp-goto:hover { color: #1e3a8a; }
 .bp-moved { margin: 0; padding: .55rem .75rem; border: 1px dashed #cbd5e1; border-radius: .5rem; color: #475569; font-size: .75rem; }
-.bp-value { display: flex; flex-wrap: wrap; align-items: baseline; gap: .4rem; margin-top: .2rem; color: #5f6f85; font-size: .625rem; line-height: 1rem; }
-.bp-value[data-bp-value="custom"] > span { color: #1d4ed8; }
+/* A card's own reset (Reset … overrides) sits at its foot, apart from the rows. */
+.bp-body > .bp-reset { justify-self: start; margin-top: .125rem; padding-top: .625rem; border-top: 1px solid #f1f5f9; width: 100%; text-align: left; }
+.bp-value { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin-top: .25rem; color: #5f6f85; font-size: .6875rem; line-height: 1rem; }
+/* The theme's own value is the quiet default: said to screen readers only. Your own value gets a dot and its Reset. */
+.bp-value[data-bp-value="theme"] { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.bp-value[data-bp-value="custom"] > span:first-child { display: inline-flex; align-items: center; gap: .3rem; color: #1d4ed8; font-weight: 500; }
+.bp-value[data-bp-value="custom"] > span:first-child::before { content: ""; width: .375rem; height: .375rem; border-radius: 50%; background: currentColor; }
 .bp-value .bp-reset { font-size: inherit; }
 .bp-value .bp-reset[hidden] { display: none; }
 .bp [data-bp-inherited-option][hidden] { display: none; }
@@ -586,7 +626,8 @@ html.dark .bp-card { border-color: #334155; background: #0f172a; }
 html.dark .bp-card > summary { color: #f1f5f9; }
 html.dark .bp-card > summary small, html.dark .bp-num small, html.dark .bp-note, html.dark .bp-colours thead th, html.dark .lc-unit em { color: #94a3b8; }
 html.dark .bp-card > summary::before { border-color: #94a3b8; }
-html.dark .bp-num label, html.dark .bp-colours th { color: #94a3b8; }
+html.dark .bp-num label, html.dark .bp-colours th, html.dark .lc-fields > label.block > :first-child, html.dark .lc-fields > div.block > :first-child { color: #94a3b8; }
+html.dark .bp-body > .bp-reset { border-color: #1e293b; }
 html.dark .bp-pal span { border-color: #334155; background: #0f172a; color: #94a3b8; }
 html.dark .bp-pal input:checked + span { border-color: #60a5fa; background: #172554; color: #bfdbfe; }
 html.dark .lc-colour input[type="color"] { border-color: #334155; }
@@ -1877,9 +1918,7 @@ html.dark .bf-x:hover { background: #334155; color: #f8fafc; }
 .bt-style:first-of-type { padding-top: 0; border-top: 0; }
 .bt-h { margin: 0; color: #0f172a; font-size: .8125rem; font-weight: 600; }
 .bt-h small { color: #5f6f85; font-size: .6875rem; font-weight: 400; }
-.bt-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem .75rem; }
-.bt-pair .lc-row { display: grid; gap: .15rem; }
-.bt-pair .lc-select { width: 100%; }
+.bt-pair { display: grid; gap: .75rem; }
 .bt-check th, .bt-check td { padding-top: .1rem; }
 .bt-badges { display: inline-flex; flex-wrap: wrap; gap: .25rem; }
 .bt-badge { display: inline-flex; align-items: center; gap: .25rem; padding: 0 .4rem; border: 1px solid; border-radius: 999px; font-size: .6875rem; font-weight: 600; line-height: 1.1rem; font-variant-numeric: tabular-nums; }

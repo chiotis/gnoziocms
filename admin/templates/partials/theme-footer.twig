@@ -78,7 +78,7 @@
     {% if more is not empty %}
       <section class="lc-card rounded-xl border border-slate-200 bg-white" aria-labelledby="ft-more">
         <h3 id="ft-more" class="px-3 pt-3 text-sm font-semibold text-slate-900">More</h3>
-        <div class="grid gap-3 p-3 sm:grid-cols-2">
+        <div class="lc-fields p-3">
           {% for key, field in more %}{{ fields.field(field, p ~ key ~ ']', v[key] ?? field.default) }}{% endfor %}
         </div>
       </section>

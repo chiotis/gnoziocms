@@ -154,15 +154,17 @@
     </dl>
     <details class="border-t border-slate-100 px-3 py-2.5">
       <summary class="cursor-pointer select-none text-xs font-medium text-slate-600">Page title and subtitle</summary>
-      <div class="mt-2 grid gap-2 sm:grid-cols-2">
-        <label class="grid gap-1 text-xs font-medium text-slate-600">Title
-          <input type="text" name="{{ name }}[title]" value="{{ a.title }}" placeholder="{{ kind == 'taxonomy' ? 'Default: “' ~ (item.kind == 'category' ? 'Category' : (item.kind == 'tag' ? 'Tag' : item.title)) ~ ': Name”' : 'Default: the theme’s text' }}" class="{{ field_class }}">
-        </label>
-        <label class="grid gap-1 text-xs font-medium text-slate-600">Subtitle
-          <input type="text" name="{{ name }}[subtitle]" value="{{ a.subtitle }}" class="{{ field_class }}">
-        </label>
-      </div>
-      {% if kind == 'taxonomy' %}<p class="mt-1 text-[11px] text-slate-500">Write {term} where the name should appear, for example “Articles about {term}”. A term’s own description is the subtitle unless one is written here.</p>{% endif %}
+      <dl class="m-0 mt-2 space-y-2.5">
+        <div class="lc-row">
+          <dt><label for="{{ id }}-title">Title</label></dt>
+          <dd class="m-0"><input id="{{ id }}-title" type="text" name="{{ name }}[title]" value="{{ a.title }}" placeholder="{{ kind == 'taxonomy' ? 'Default: “' ~ (item.kind == 'category' ? 'Category' : (item.kind == 'tag' ? 'Tag' : item.title)) ~ ': Name”' : 'Default: the theme’s text' }}" class="{{ field_class }}"></dd>
+        </div>
+        <div class="lc-row">
+          <dt><label for="{{ id }}-subtitle">Subtitle</label></dt>
+          <dd class="m-0"><input id="{{ id }}-subtitle" type="text" name="{{ name }}[subtitle]" value="{{ a.subtitle }}" class="{{ field_class }}">
+          {% if kind == 'taxonomy' %}<span class="lc-help">Write {term} where the name should appear, for example “Articles about {term}”. A term’s own description is the subtitle unless one is written here.</span>{% endif %}</dd>
+        </div>
+      </dl>
     </details>
   </article>
 {% endmacro %}

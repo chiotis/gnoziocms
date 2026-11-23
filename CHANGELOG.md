@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.333 — 2026-11-23 — Theme: tidier settings rows
+- Every Theme section (Branding, Typography, Header, Footer, Single and Archive Layouts, Social profiles and any other section a theme declares) now lays its settings out the same way: the name on the left, the control on the right, and its help right under the control. On a phone they stack.
+- A setting that still follows the theme no longer says "Theme value": only one you changed is marked, with **Your value** and a Reset beside it.
+- The note under Colour that pointed to Typography is gone; the card's intro says where fonts are.
+- Smaller touches: number boxes are short, selects stop at a sensible width, the button-style pairs are one row each, the Library button beside a picture is compact, the Header's Bottom bar is a plain Show with a line of help, and a list's title and subtitle are rows like the rest.
 ## 0.1.332 — 2026-11-23 — Shop accounts: signed out everywhere after a new password, members-only coupons
 - **Customers' sessions**: a new password (set from a reset link or in the account's details) signs the customer out in every other browser; the browser that set it stays signed in. A password cleared (an unconfirmed account linked to Google, or an old imported one) signs them out too. Sessions from before this release keep working.
 - **Account links**: the link to confirm the address and the link to set a new password are kept apart, so asking for one no longer cancels the other.
