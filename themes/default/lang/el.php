@@ -408,6 +408,7 @@ return [
     'shop.coupon_applied' => 'Το κουπόνι {code} εφαρμόστηκε.',
     'shop.err_coupon_unknown' => 'Δεν υπάρχει τέτοιο κουπόνι.',
     'shop.err_coupon_expired' => 'Το κουπόνι δεν ισχύει αυτή τη στιγμή.',
+    'shop.err_coupon_customers_only' => 'Συνδεθείτε στον λογαριασμό σας για να χρησιμοποιήσετε αυτό το κουπόνι.',
     'shop.err_coupon_used_up' => 'Το κουπόνι έχει ήδη χρησιμοποιηθεί.',
     'shop.err_coupon_minimum' => 'Η παραγγελία δεν φτάνει το ελάχιστο ποσό του κουπονιού.',
     'shop.err_coupon_not_for_these' => 'Το κουπόνι δεν ισχύει για αυτά τα κομμάτια.',

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.331 — 2026-11-23 — Shop accounts: signed out everywhere after a new password, members-only coupons
+- **Customers' sessions**: a new password (set from a reset link or in the account's details) signs the customer out in every other browser; the browser that set it stays signed in. A password cleared (an unconfirmed account linked to Google, or an old imported one) signs them out too. Sessions from before this release keep working.
+- **Account links**: the link to confirm the address and the link to set a new password are kept apart, so asking for one no longer cancels the other.
+- **Passwords brought from WordPress** that nobody has used here for six months are cleared by the shop's scheduled work (logged in Activity). Those customers set a new password with "Forgot password".
+- **Coupons > Signed-in customers only**: guests cannot use the coupon, and "uses per customer" is counted by account, so a second order with another email address does not get around it. Also on MCP's `save_coupon` and `list_coupons`.
+- Audit tasks S5, S13, S14 and S16 (W10) are done.
+- Tests: `shop-checkout` (unit) and `shop_checkout` (HTTP).
+
 ## 0.1.330 — 2026-11-23 — Theme preview: sticky in place, one toolbar
 - The live preview beside Branding, Typography, Header and Footer now stays just under the page header while you scroll, instead of stopping far down and leaving a gap above it. The section list on the left of Settings, Theme, AI publishing and SEO now stays in view the same way.
 - Site / Style samples / Buttons and links moved into the preview's toolbar, next to Computer / Tablet / Phone and Auto / Light / Dark. Reload is a small icon button at the end of that row.

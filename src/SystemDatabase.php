@@ -182,6 +182,28 @@ final class SystemDatabase
             );
             $db->exec('CREATE INDEX IF NOT EXISTS idx_action_limits ON action_limits (action, subject, at)');
         });
+        // A customer's session version (raised when the password changes or is cleared, so other browsers are signed out), the
+        // links to confirm the address and to set a new password kept apart (one does not cancel the other), and a coupon that
+        // only signed-in customers may use.
+        $this->applyMigration($pdo, '202611230002_shop_customer_sessions_tokens', function (PDO $db): void {
+            $columns = array_column($db->query('PRAGMA table_info(shop_customers)')->fetchAll(PDO::FETCH_ASSOC), 'name');
+            if ($columns !== []) {
+                foreach (['session_version' => 'INTEGER NOT NULL DEFAULT 0', 'verify_hash' => "TEXT NOT NULL DEFAULT ''", 'verify_expires' => 'INTEGER NOT NULL DEFAULT 0', 'reset_hash' => "TEXT NOT NULL DEFAULT ''", 'reset_expires' => 'INTEGER NOT NULL DEFAULT 0'] as $name => $type) {
+                    if (!in_array($name, $columns, true)) {
+                        $db->exec("ALTER TABLE shop_customers ADD COLUMN {$name} {$type}");
+                    }
+                }
+                if (in_array('token_hash', $columns, true)) {
+                    $db->exec("UPDATE shop_customers SET verify_hash = token_hash, verify_expires = token_expires WHERE token_kind = 'verify' AND token_hash <> ''");
+                    $db->exec("UPDATE shop_customers SET reset_hash = token_hash, reset_expires = token_expires WHERE token_kind = 'reset' AND token_hash <> ''");
+                    $db->exec("UPDATE shop_customers SET token_hash = '', token_kind = '', token_expires = 0");
+                }
+            }
+            $coupons = array_column($db->query('PRAGMA table_info(shop_coupons)')->fetchAll(PDO::FETCH_ASSOC), 'name');
+            if ($coupons !== [] && !in_array('customers_only', $coupons, true)) {
+                $db->exec('ALTER TABLE shop_coupons ADD COLUMN customers_only INTEGER NOT NULL DEFAULT 0');
+            }
+        });
     }
 
     /**

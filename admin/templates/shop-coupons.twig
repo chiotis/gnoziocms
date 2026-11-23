@@ -10,7 +10,7 @@
   {{ ui.flash(message, done == 'ok' ? 'success' : 'error') }}
 
   {% if editing or creating %}
-    {% set c = editing ?? {code: '', kind: 'percent', amount: '', min_cents: 0, starts_at: '', ends_at: '', usage_limit: 0, per_customer: 0, collections: [], products: [], active: true, used: 0, note: ''} %}
+    {% set c = editing ?? {code: '', kind: 'percent', amount: '', min_cents: 0, starts_at: '', ends_at: '', usage_limit: 0, per_customer: 0, customers_only: false, collections: [], products: [], active: true, used: 0, note: ''} %}
     <form method="post" action="{{ url('admin/shop-coupons') }}" class="{{ card }} mb-4">
       {{ csrf_field() }}<input type="hidden" name="original" value="{{ editing ? c.code : '' }}">
       <div class="flex items-center justify-between border-b border-slate-200 px-4 py-3"><h2 class="text-sm font-semibold text-slate-900">{{ editing ? 'Coupon ' ~ c.code : 'New coupon' }}</h2>{% if editing %}<span class="text-xs text-slate-400">Used {{ c.used }} times</span>{% endif %}</div>
@@ -23,6 +23,7 @@
         <div><label class="{{ label }}" for="c-to">Until</label><input id="c-to" type="date" name="ends_at" value="{{ c.ends_at }}" class="{{ input }}"></div>
         <div><label class="{{ label }}" for="c-limit">Uses in all (0: no limit)</label><input id="c-limit" type="number" name="usage_limit" value="{{ c.usage_limit }}" min="0" class="{{ input }}"></div>
         <div><label class="{{ label }}" for="c-per">Uses per customer (0: no limit)</label><input id="c-per" type="number" name="per_customer" value="{{ c.per_customer }}" min="0" class="{{ input }}"></div>
+        <div class="sm:col-span-3"><label class="inline-flex items-center gap-1.5 text-sm text-slate-700"><input type="checkbox" name="customers_only" value="1" class="h-4 w-4 rounded border-slate-300" {% if c.customers_only %}checked{% endif %}> Signed-in customers only</label><p class="mt-1 text-xs text-slate-500">Guests cannot use it, and uses per customer are counted by account, so another email address does not get around the limit.</p></div>
         <div><label class="{{ label }}" for="c-note">Note (only here)</label><input id="c-note" name="note" value="{{ c.note }}" class="{{ input }}" maxlength="200"></div>
         {% if collections is not empty %}
           <fieldset class="sm:col-span-3"><legend class="{{ label }}">Only for pieces of these collections (none: everything)</legend>

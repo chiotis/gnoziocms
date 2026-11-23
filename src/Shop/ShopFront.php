@@ -214,7 +214,7 @@ final class ShopFront
             if (isset($_POST['coupon']) && trim((string)$_POST['coupon']) !== '') {
                 $code = ShopCoupons::normalizeCode($_POST['coupon']);
                 $priced = $this->pricing->lines($lines, $lang);
-                $applied = $this->checkout->quote($priced['kept'], $code, [], '', '', $lang)['coupon'];
+                $applied = $this->checkout->quote($priced['kept'], $code, [], '', '', $lang, '', $this->customer()['id'] ?? null)['coupon'];
                 if ($applied !== null && $applied['ok']) {
                     $coupon = $code;
                     $this->flash('success', ($this->t)('shop.coupon_applied', $lang, ['code' => $code]));
@@ -233,7 +233,7 @@ final class ShopFront
     {
         $token = $this->token(false);
         $cart = $token === '' ? ['lines' => [], 'coupon' => '', 'customer_id' => null] : $this->carts->load($token);
-        $quote = $this->checkout->quote($cart['lines'], $cart['coupon'], [], '', '', $lang);
+        $quote = $this->checkout->quote($cart['lines'], $cart['coupon'], [], '', '', $lang, '', $this->customer()['id'] ?? null);
         $priced = $quote['priced'];
         if ($priced['changes'] !== [] && $token !== '') {
             $this->carts->save($token, $priced['kept'], $cart['coupon'], $cart['customer_id']);
@@ -310,7 +310,7 @@ final class ShopFront
         }
         $address = !empty($input['ship_elsewhere']) && is_array($input['shipping'] ?? null) ? ShopAddress::clean($input['shipping']) : ShopAddress::clean(is_array($input['billing'] ?? null) ? $input['billing'] : []);
         $coupon = ShopCoupons::normalizeCode($input['coupon'] ?? $cart['coupon']);
-        $quote = $this->checkout->quote($cart['lines'], $coupon, $address, (string)($input['method'] ?? ''), (string)($input['payment'] ?? ''), $lang, (string)($customer['email'] ?? ($input['email'] ?? '')));
+        $quote = $this->checkout->quote($cart['lines'], $coupon, $address, (string)($input['method'] ?? ''), (string)($input['payment'] ?? ''), $lang, (string)($customer['email'] ?? ($input['email'] ?? '')), $customer['id'] ?? null);
         $prefix = ($this->prefixFor)($lang);
         ($this->render)('templates/shop/checkout.twig', $lang, [
             'document_title' => ($this->t)('shop.checkout', $lang),
@@ -709,7 +709,7 @@ final class ShopFront
             return;
         }
         if ($action === 'signout' && $post) {
-            unset($_SESSION['shop_customer']);
+            unset($_SESSION['shop_customer'], $_SESSION['shop_customer_v']);
             session_regenerate_id(true);
             $this->go($prefix . 'account');
             return;
@@ -797,7 +797,9 @@ final class ShopFront
                 } elseif (!$this->customers->setPassword($customer['id'], (string)$_POST['new_password'])) {
                     [$level, $message] = ['error', ($this->t)('shop.err_signup_password', $lang)];
                 } else {
+                    // Other browsers are signed out by the new password; this one keeps going with the new version.
                     session_regenerate_id(true);
+                    $_SESSION['shop_customer_v'] = (int)($this->customers->get($customer['id'])['session_version'] ?? 0);
                     $message = ($this->t)('shop.password_set', $lang);
                 }
             }
@@ -817,7 +819,7 @@ final class ShopFront
             }
             $this->orders->unlink($customer['id']);
             $this->customers->delete($customer['id']);
-            unset($_SESSION['shop_customer']);
+            unset($_SESSION['shop_customer'], $_SESSION['shop_customer_v']);
             session_regenerate_id(true);
             $this->flash('success', ($this->t)('shop.deleted', $lang));
             $this->go($prefix . 'account');
@@ -998,13 +1000,19 @@ final class ShopFront
     {
         session_regenerate_id(true);
         $_SESSION['shop_customer'] = (int)$customer['id'];
+        $_SESSION['shop_customer_v'] = (int)($customer['session_version'] ?? 0);
         $token = $this->token(false);
         if ($token !== '') {
             $this->carts->adopt($token, (int)$customer['id']);
         }
     }
 
-    /** @return array<string, mixed>|null */
+    /**
+     * The signed-in customer, or null. A session whose version is older than the customer's (the password changed or was cleared
+     * since it signed in, ShopCustomers) is signed out here. A session from before versions were kept counts as version 0.
+     *
+     * @return array<string, mixed>|null
+     */
     private function customer(): ?array
     {
         $id = (int)($_SESSION['shop_customer'] ?? 0);
@@ -1012,8 +1020,9 @@ final class ShopFront
             return null;
         }
         $customer = $this->customers->get($id);
-        if ($customer === null) {
-            unset($_SESSION['shop_customer']);
+        if ($customer === null || (int)($_SESSION['shop_customer_v'] ?? 0) !== $customer['session_version']) {
+            unset($_SESSION['shop_customer'], $_SESSION['shop_customer_v']);
+            return null;
         }
         return $customer;
     }
