@@ -2,7 +2,7 @@
 The shop's catalogue over HTTP (docs/shop-plan.md, phase 1): while Products is off there is no Shop settings entry or screen and
 no shop block; switching it on brings Looks, the Collections and Product categories taxonomies, System > Shop settings (saved
 and checked) and the Stock box of a product, whose quantities are kept apart from the file. A product drawn with its starting
-template shows its pictures, price, options and Details sections, a Product in its structured data, and more from its collection;
+template shows its pictures, price, options and Details sections (then the shop's, from Shop settings > Product details), a Product in its structured data, and more from its collection;
 a shared field saved in one language reaches the other; an editor sees neither the screen nor the menu entry.
 """
 import json, os, re, sqlite3, sys
@@ -58,6 +58,22 @@ st, _, html = root.get(re.sub(r'^https?://[^/]+', '', loc))
 check('and shown as saved: name, prefix in capitals, minutes, guest checkout off', 'value="ALALEON"' in html and 'value="AL"' in html and 'value="45"' in html and 'name="guest_checkout" value="1" class="mt-0.5 h-4 w-4 rounded border-slate-300" >' in html, re.findall(r'name="guest_checkout"[^>]*>', html))
 stored = db("select value from system_meta where key = 'shop_settings'")
 check('kept apart from the site settings', stored and json.loads(stored[0][0])['order_prefix'] == 'AL')
+
+# ---- Product details: sections every product page shows after the product's own Details
+st, _, html = root.get('/admin/shop-settings?tab=details')
+check('the Product details tab draws, with a field per language and a template for a new section', st == 200 and 'data-shop-details' in html and 'name="details[__D__][title][el]"' in html and 'name="details[__D__][text][en]"' in html, st)
+st, hdr, _ = root.submit('/admin/shop-settings?tab=details', lambda f: any(x == ['tab', 'details'] for x in [list(y) for y in f['fields']]), {
+    'details[0][title][el]': 'Αποστολή', 'details[0][text][el]': 'Δωρεάν **αποστολή** στην Ελλάδα.',
+    'details[0][title][en]': 'Shipping', 'details[0][text][en]': 'Free **shipping** in Greece.',
+    'details[1][title][el]': 'Care', 'details[1][text][el]': 'The shop\'s care.',
+    'details[1][title][en]': '', 'details[1][text][en]': '',
+}, drop=[n for n in ('details[__D__][title][el]', 'details[__D__][text][el]', 'details[__D__][title][en]', 'details[__D__][text][en]')])
+loc = hdr.get('Location') or ''
+check('Product details is saved', st in (302, 303) and 'done=ok' in loc and 'tab=details' in loc, (st, loc))
+st, _, html = root.get('/admin/shop-settings?tab=details')
+check('and shown as saved, in both languages', 'value="Αποστολή"' in html and 'value="Shipping"' in html and 'Free **shipping** in Greece.</textarea>' in html and 'value="Care"' in html, re.findall(r'name="details\[0\][^"]*"[^>]*', html)[:4])
+stored = db("select value from system_meta where key = 'shop_settings'")
+check('kept with the Shop settings, the General tab untouched', stored and json.loads(stored[0][0])['details'][0]['title'] == {'el': 'Αποστολή', 'en': 'Shipping'} and json.loads(stored[0][0])['order_prefix'] == 'AL', stored[0][0][:300] if stored else '')
 
 check('an editor does not see the entry', 'admin/shop-settings' not in ed.get('/admin')[2])
 st, _, html = root.get('/admin/shop-settings?tab=import')
@@ -148,6 +164,12 @@ check('it shows the pictures, the collection, the name and the price', 'product-
 check('the options as choices, with the variant data the script reads', 'value="Gold"' in page and 'value="Silver"' in page and 'data-variants' in page and '"key":"gold"' in page, re.findall(r'data-variants>[^<]*', page))
 check('a variant on sale: its "was" price waits, hidden, for the script to show when it is chosen', re.search(r'<s class="product-was" data-was hidden>', page) is not None and re.search(r'"key":"silver"[^}]*"was":"(?:€|\\u20ac)175"', page) is not None and re.search(r'"key":"gold"[^}]*"was":""', page) is not None, re.findall(r'data-variants>[^<]*', page))
 check('the Details sections with the Accordion styles', 'Keep it <strong>dry</strong>.' in page and 'accordion-item' in page)
+check('then the shop\'s Details (Shop settings > Product details), after the product\'s own', 'Δωρεάν <strong>αποστολή</strong> στην Ελλάδα.' in page and page.find('Keep it <strong>dry</strong>.') < page.find('>Αποστολή<'), re.findall(r'class="accordion-title">[^<]*', page))
+check('a shop section with the title of one of the product\'s own is left out', 'The shop\'s care.' not in page and len(re.findall(r'class="accordion-title">Care<', page)) == 1, re.findall(r'class="accordion-title">[^<]*', page))
+st, _, page_en = pub.get('/en/products/balos-earrings')
+check('in English, the English words of the shop\'s Details, and its section with no English in Greek words', st == 200 and 'Free <strong>shipping</strong> in Greece.' in page_en and 'The shop\'s care.' in page_en and 'αποστολή</strong>' not in page_en, (st, re.findall(r'class="accordion-title">[^<]*', page_en)))
+st, _, page_cuff = pub.get('/products/balos-cuff')
+check('a product with no Details of its own shows the shop\'s', st == 200 and '>Αποστολή<' in page_cuff and 'The shop\'s care.' in page_cuff, re.findall(r'class="accordion-title">[^<]*', page_cuff))
 check('more from the same collection, without the product itself', 'Balos Cuff' in page and page.count('class="product-card"') == 1)
 m = re.search(r'<script type="application/ld\+json">(.*?)</script>', page, re.S)
 graph = json.loads(m.group(1)).get('@graph', []) if m else []

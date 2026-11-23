@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.326 — 2026-11-23 — Product details for every product
+- **Shop settings > Product details**: a new tab with up to eight sections (Shipping & returns, Warranty, Payment…), each with a title and Markdown text in every language of the site. They can be added, moved up and down, and removed. The **Product details** block shows them on every product page as accordions after the product's own Details. A language left empty shows the default language's words. A product's own section with the same title takes the place of the shop's. A product with no Details of its own now shows the shop's sections. Saving the tab clears the page cache.
+- **Product details block > Add the shop's Details**: on by default; off, a template shows only the product's own sections.
+- Tests: `shop-catalogue` (unit) and `shop` (HTTP).
+
 ## 0.1.325 — 2026-11-23 — The picture on hover on the product page
 - **Product gallery block > Second picture on hover** (on by default): a product's "Picture on hover" lies over its first picture on the product page and shows while the pointer is on it, as on the shop's cards. In the "Large picture and thumbnails" layout it belongs to the first picture: choosing another thumbnail shows that one on its own, and choosing the first again brings the hover back.
 - Tests: `shop` (HTTP) draws the product page of a product with a picture on hover and of one without.

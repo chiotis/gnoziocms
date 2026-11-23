@@ -808,7 +808,7 @@ The whole card of a product: its picture, a second picture on hover, the name an
 | `hover_image` | true / false; default `true` |  |
 
 ### `product-details` — Product details
-The product's Details sections (Details, Care, Shipping & returns, Warranty) as sections that open one at a time. Only in a template built with blocks for products.
+The product's Details sections (Details, Care, Shipping & returns, Warranty) as sections that open one at a time, then the ones every product shows (Shop settings > Product details). Only in a template built with blocks for products.
 
 **Layouts** (`variant`): `default` (Default). First is the default.
 
@@ -816,6 +816,7 @@ The product's Details sections (Details, Care, Shipping & returns, Warranty) as 
 |---|---|---|
 | `heading` | text |  |
 | `initial` | choice; one of `none`, `first`; default `none` |  |
+| `shop_details` | true / false; default `true` | After the product's own sections, the ones written in Shop settings > Product details for every product. A product's own section with the same title takes the place of the shop's. |
 
 ### `product-gallery` — Product gallery
 The pictures of the product: one under the other beside its details, or a large one with small ones to choose from. Only in a template built with blocks for products.
