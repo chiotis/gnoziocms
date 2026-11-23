@@ -171,6 +171,45 @@ final class ShopOrders
         return $stmt->rowCount() === 1;
     }
 
+    /**
+     * Runs $work in one transaction of the system database, which also holds the stock and the coupons, so an order's status,
+     * the stock it holds and its coupon change together or not at all. Inside a transaction already, it joins that one.
+     *
+     * @template T
+     * @param \Closure(): T $work
+     * @return T
+     */
+    public function atomically(\Closure $work): mixed
+    {
+        $pdo = $this->pdo();
+        if ($pdo->inTransaction()) {
+            return $work();
+        }
+        $pdo->beginTransaction();
+        try {
+            $result = $work();
+            $pdo->commit();
+            return $result;
+        } catch (\Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
+    }
+
+    /**
+     * What the orders holding stock hold, line by line: product id, variant key and quantity of each tracked line of an order
+     * whose stock is held (stock_held 1), for the shop's tick to check `reserved` against.
+     *
+     * @return list<array{product_id: string, variant_key: string, quantity: int}>
+     */
+    public function heldLines(): array
+    {
+        $rows = $this->pdo()->query('SELECT l.product_id, l.variant_key, l.quantity FROM shop_order_lines l JOIN shop_orders o ON o.id = l.order_id WHERE o.stock_held = 1 AND l.tracked = 1')->fetchAll(PDO::FETCH_ASSOC);
+        return array_map(static fn(array $r): array => ['product_id' => (string)$r['product_id'], 'variant_key' => (string)$r['variant_key'], 'quantity' => (int)$r['quantity']], $rows);
+    }
+
     /** @param array<string, string|int|null> $fields carrier, tracking, stock_held, paid_at */
     public function update(int $id, array $fields): void
     {

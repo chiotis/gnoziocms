@@ -119,6 +119,15 @@ $sub = $subs->get($sub['id']);
 check('the subscription moves a period on from when it was due, its token kept', [$sub['renewed'], date('Y-m-d', $sub['next_at']), $sub['token']], [1, date('Y-m-d', ShopSubscriptions::nextAt($due, 'month', 1)), '7f9b0a2e-0000-4000-8000-000000000001']);
 check('and is not charged twice', $subs->renewDue(), 0);
 
+// ---- a renewal that stopped half way (S10b)
+$pdo->exec('UPDATE shop_subscriptions SET next_at = -' . ($due + 999) . ', updated_at = ' . (time() - 120) . ' WHERE id = ' . $sub['id']);
+check('claimed a moment ago: left alone', $subs->recoverStuck(), []);
+$pdo->exec('UPDATE shop_subscriptions SET updated_at = ' . (time() - 3700) . ' WHERE id = ' . $sub['id']);
+check('claimed over an hour ago: put back', array_column($subs->recoverStuck(), 'id'), [$sub['id']]);
+$stuck = $subs->get($sub['id']);
+check('its period back, paused for a look so it is never charged twice on its own', [$stuck['next_at'], $stuck['status']], [$due + 999, 'paused']);
+$pdo->exec("UPDATE shop_subscriptions SET status = 'active', next_at = " . $sub['next_at'] . ' WHERE id = ' . $sub['id']);
+
 // ---- refused, tried again, given up
 $fake['refuse'] = true;
 $pdo->exec('UPDATE shop_subscriptions SET next_at = ' . (time() - 60) . ' WHERE id = ' . $sub['id']);

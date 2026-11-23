@@ -41,11 +41,15 @@ group. Size: S (an hour or two), M (half a day to a day), L (more).
       and outside backups (`storage/key`), so a backup alone opens nothing. A restore on another server asks for the keys again.
 - [x] **S9a** (S) Admin sessions end after a time without use (a setting, 2 hours by default) and after 24 hours in any case.
 - [x] **S9b** (L) A second factor (TOTP) for password sign-in, required for roles that hold `shop.manage`, settings or users.
-- [ ] **S10a** (M) A check in the shop's tick: `reserved` of each stock row equals what open orders hold; put right and log
+- [x] **S10a** (M) A check in the shop's tick: `reserved` of each stock row equals what open orders hold; put right and log
       when it does not.
-- [ ] **S10b** (S) A subscription whose `next_at` has been negative for more than an hour is put back and flagged for a look
+      Done in 0.1.334: `ShopStock::reconcile()` from the shop's tick; rows changed in the last 5 minutes wait for the next tick.
+- [x] **S10b** (S) A subscription whose `next_at` has been negative for more than an hour is put back and flagged for a look
       (was the card charged?). Send Viva an idempotency reference with each renewal charge if its API takes one.
-- [ ] **S10c** (S) `changeStatus()`: the status, the stock and the coupon in one transaction.
+      Done in 0.1.334: `ShopSubscriptions::recoverStuck()` puts the period back and pauses the subscription for a look. Viva's
+      recurring charge takes no idempotency key; `merchantTrns` carries the renewal order's number.
+- [x] **S10c** (S) `changeStatus()`: the status, the stock and the coupon in one transaction.
+      Done in 0.1.334: `ShopOrders::atomically()`.
 - [x] **S11** (S) Sign-up with an address that has an account answers like a new one ("check your email") and mails the owner
       a sign-in link instead.
 - [x] **S13** (S) Separate columns (or a small table) for the verify and the reset token.
