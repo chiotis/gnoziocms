@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.339 — 2026-11-23 — Lighter: two polyfills and 4.5 MB of starter media out, plans in docs/plans
+- Two unused polyfills (mbstring, php80) are gone from `vendor/` and no longer loaded on every request; `public/index.php` no longer loads Nette's `SmartObject` by hand (the autoload has it). The ctype polyfill stays: ctype is not a required extension and Twig, Yaml and Nette call it.
+- The starter's media is 1.5 MB instead of 6.0 MB: a picture nobody used and a second copy of the proposal DOCX are gone, a photo saved as PNG is a JPEG, the largest photos are at most 1,440 px wide, and the DOCX has no embedded fonts. Every release package is 4.5 MB smaller.
+- The finished plans (shop, MCP, MCP shop, AI publishing, typography tab, places and routes v2) moved to `docs/plans/`; every reference points there.
+- ROADMAP.md: "Where we are" brought up to this version.
+- Audit tasks B2, B5 and B6 are done. B3 (the skill's snapshot made by the build), B7 and B8 are left, with the reasons in the tasks file.
+
 ## 0.1.338 — 2026-11-23 — Importers through SafeHttp, logs kept for a set time, a setup code from the installer, a faster admin
 - The WordPress and WooCommerce importers fetch through SafeHttp: no private or local addresses unless `--allow-local` (or the box in Shop > Import) says so, and no redirects to them.
 - Logs are kept for a set time (activity 180 days, emails 90, gateway calls 180; `retention:` in settings.yaml), MCP clients unused for 7 days are removed, and an MCP refresh token used twice ends the connection.

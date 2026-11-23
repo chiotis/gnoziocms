@@ -22,11 +22,6 @@ if (file_exists($vendorAutoload)) {
     require $vendorAutoload;
 }
 
-$smartObject = dirname(__DIR__) . '/vendor/nette/utils/src/SmartObject.php';
-if (!trait_exists('Nette\\SmartObject') && file_exists($smartObject)) {
-    require_once $smartObject;
-}
-
 // An address with "//" in its path (https://site//products, as an address joined to a site address that ends with "/"): a page
 // that is read goes to the same address with one slash (PHP would read "//products" as a host); anything else is answered as if
 // it had one.

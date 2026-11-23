@@ -1,5 +1,5 @@
 """
-Subscriptions over HTTP (docs/shop-plan.md, phase 7), against a fake Viva Wallet served by this test: the product page's period;
+Subscriptions over HTTP (docs/plans/shop-plan.md, phase 7), against a fake Viva Wallet served by this test: the product page's period;
 the checkout offering only Viva and asking a guest for an account; a signed-in customer's first payment allowing recurring
 charges and starting the subscription; the account listing it; Shop > Subscriptions; the cron script charging a renewal as an
 order of its own; the shop pausing and resuming; the customer cancelling.

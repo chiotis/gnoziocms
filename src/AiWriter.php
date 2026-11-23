@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace GnozioCMS;
 
 /**
- * Posts written on a timetable (docs/ai-publishing-plan.md, section 6). tick() finds the schedules' slots that are due, takes each
+ * Posts written on a timetable (docs/plans/ai-publishing-plan.md, section 6). tick() finds the schedules' slots that are due, takes each
  * once (AiSchedules::claim) and queues an `ai_post` job. The job asks OpenAI for the post as JSON bound to a schema, built from the
  * general writing instructions, the facts about the site, what never to do, the schedule's own lines, the terms it may choose and
  * the titles it wrote before; checks the answer (once more with the problems if it falls short); saves it as a draft through the

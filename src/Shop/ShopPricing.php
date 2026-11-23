@@ -7,7 +7,7 @@ namespace GnozioCMS\Shop;
 use GnozioCMS\ContentItem;
 
 /**
- * What a cart costs, read again from the products every time (docs/shop-plan.md, section 3): each line's name, picture, price
+ * What a cart costs, read again from the products every time (docs/plans/shop-plan.md, section 3): each line's name, picture, price
  * (the variant's or the product's), VAT class and what is free of it in stock; then the totals with a coupon, shipping and a
  * fee. Prices have VAT in them; each line's VAT is of what is paid for it after its share of the discount. Lines whose product
  * is gone, or that are no longer sold, leave the cart; a quantity larger than what is free is lowered to it.

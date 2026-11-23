@@ -1,5 +1,5 @@
 """
-The shop through MCP (docs/mcp-shop-plan.md, step 3): the shop scopes are off by default; the shop's tools are listed only while
+The shop through MCP (docs/plans/mcp-shop-plan.md, step 3): the shop scopes are off by default; the shop's tools are listed only while
 the shop is on and only for a connection given them; shop_info, list_products with its filters and get_product; set_stock (a
 product with variants needs one, on_hand or adjust, a check that saves nothing); update_prices with a check first, sales started
 and ended, a variant's own price shared by the translations, every problem at once; the price limit, also for update_entry; and

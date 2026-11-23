@@ -2,7 +2,7 @@
 {% set page_heading = 'Files' %}
 {% import '@admin/partials/ui.twig' as ui %}
 {#
-  Shop > Files (docs/shop-plan.md, section 6): an overview of the private files the digital products sell, and how each has done. They are
+  Shop > Files (docs/plans/shop-plan.md, section 6): an overview of the private files the digital products sell, and how each has done. They are
   uploaded and removed in the Downloads card of their product, which each row links to.
 #}
 {% macro bytes(n) %}{{ n < 1048576 ? (max(1, n / 1024)|number_format(0) ~ ' KB') : ((n / 1048576)|number_format(1) ~ ' MB') }}{% endmacro %}

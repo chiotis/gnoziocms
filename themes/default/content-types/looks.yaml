@@ -1,4 +1,4 @@
-# Looks: a picture of pieces worn together, the products in it and where each sits on the picture (docs/shop-plan.md).
+# Looks: a picture of pieces worn together, the products in it and where each sits on the picture (docs/plans/shop-plan.md).
 # It comes with the shop: switching Products on switches it on. The Shop the look and Looks blocks draw them.
 # Never rename a field key: content refers to it by name. Retire a field with `hidden: true`.
 label: { el: Looks, en: Looks }

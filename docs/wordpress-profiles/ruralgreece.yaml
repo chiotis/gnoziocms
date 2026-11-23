@@ -1,6 +1,6 @@
 # Profile for ruralgreece.gr: its three custom post types (route, business, pois) with their ACF fields, its sixteen
 # taxonomies, and the duplicates among their terms. The content model it follows is docs/ruralgreece-content-model.md, the
-# decisions are in docs/places-and-routes-v2-plan.md. Run it against a copy, look through the report, then add --apply:
+# decisions are in docs/plans/places-and-routes-v2-plan.md. Run it against a copy, look through the report, then add --apply:
 #
 #   php scripts/import-wordpress.php https://ruralgreece.gr --lang=el --default-lang=el --kinds=types --only-used-media \
 #     --profile=docs/wordpress-profiles/ruralgreece.yaml --content=/path/to/site/content --uploads=/path/to/site/public/uploads \
@@ -155,7 +155,7 @@ rest_types:
       tags: tags
 
 # Duplicates among the terms: <source id>: <source id it goes into>, by the REST base of the taxonomy. The table of
-# docs/places-and-routes-v2-plan.md, as lines; the importer prints each merge it makes, and the old address of a merged term
+# docs/plans/places-and-routes-v2-plan.md, as lines; the importer prints each merge it makes, and the old address of a merged term
 # leads to the one it went into. Names that differ only in case, accents or ς/σ under one parent are merged without a line.
 term_map:
   activity:

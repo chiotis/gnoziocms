@@ -1,5 +1,5 @@
 /*
- * AI pictures in the admin (docs/ai-publishing-plan.md): the editor's "Generate with AI" panel next to the main image, and the test
+ * AI pictures in the admin (docs/plans/ai-publishing-plan.md): the editor's "Generate with AI" panel next to the main image, and the test
  * pictures on Manage > AI publishing. A request is queued, then its state is asked for until it is done; asking also works the job
  * when it is due, so the picture comes even where cron runs rarely. Every wait has a deadline.
  */

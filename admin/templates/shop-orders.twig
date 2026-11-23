@@ -1,7 +1,7 @@
 {% extends '@admin/base.twig' %}
 {% set page_heading = 'Orders' %}
 {% import '@admin/partials/ui.twig' as ui %}
-{# Shop > Orders (docs/shop-plan.md, section 8): status chips with their counts, search, dates, the list and its CSV. #}
+{# Shop > Orders (docs/plans/shop-plan.md, section 8): status chips with their counts, search, dates, the list and its CSV. #}
 {% block content %}
   {% set input = 'rounded-md border border-slate-300 px-2.5 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500' %}
   {% set tones = {pending_payment: 'amber', on_hold: 'amber', paid: 'blue', processing: 'violet', shipped: 'blue', completed: 'green', cancelled: 'slate', refunded: 'red'} %}

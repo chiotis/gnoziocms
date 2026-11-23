@@ -1,6 +1,6 @@
 # Starting template for the list of products when it is "Built with blocks" (Admin > Theme > Archive Layouts). Data, not code: blocks in the
 # shape they are stored in. A site overrides it with custom/archive-templates/products.yaml. See docs/theming.md, "Starting templates".
-# The shop and a collection's page (docs/shop-plan.md): the title, the product categories as a filter, the count, then four products
+# The shop and a collection's page (docs/plans/shop-plan.md): the title, the product categories as a filter, the count, then four products
 # across. The card is the picture, the name and the price.
 blocks:
   - { type: archive-title }

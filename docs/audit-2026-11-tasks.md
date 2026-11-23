@@ -131,17 +131,25 @@ group. Size: S (an hour or two), M (half a day to a day), L (more).
 
 ## Bloat
 
-- [ ] **B2** (S) `composer.json`: `replace` the three polyfills, rebuild `vendor/`, drop the hand-loaded `SmartObject` from
+- [x] **B2** (S) `composer.json`: `replace` the three polyfills, rebuild `vendor/`, drop the hand-loaded `SmartObject` from
       `public/index.php`.
+      Done for mbstring and php80, and `SmartObject` (the autoload's class map has it). The ctype polyfill stays: ctype is not
+      among the required extensions and Twig, Yaml and Nette call it; it is one small file.
 - [ ] **B3** (M) Build the skill's snapshot in `scripts/build-release.php` and stop tracking it; the test then checks that the
       build makes it.
+      Left for the owner (2026-11-23): the skill is installed from the repository today; untracking the snapshot means it must
+      ship with each release instead, which changes how it is installed.
 - [x] **B1** (L) Move the shop's wiring and its seven admin handlers out of `App.php` into a `ShopController`, as the first
       step of the App split on the roadmap.
 - [x] **B4** (M) Rename what is left of the old name. The update header and `_faros_check` accept both names for one release.
-- [ ] **B5** (S) Starter media: resize and recompress the pictures, one small DOCX; aim under 1.5 MB.
-- [ ] **B6** (S) Move the finished plans to `docs/plans/` and fix the references in comments.
+- [x] **B5** (S) Starter media: resize and recompress the pictures, one small DOCX; aim under 1.5 MB.
+      Done: 1.5 MB of uploads (was 6.0 MB): a PNG nobody used and the second copy of the DOCX removed, the photo saved as PNG
+      made a JPEG, the largest photos at most 1,440 px wide, the DOCX without its embedded fonts (17 KB).
+- [x] **B6** (S) Move the finished plans to `docs/plans/` and fix the references in comments.
+      Done: six plans moved; every reference in code, templates, tests and docs points at `docs/plans/`.
 - [ ] **B7** (S) Gateways: the local test address comes from the injected transport, not from the secrets.
       Left in 0.1.309: the `base` secret also sends the shopper's browser to the fake's checkout page in three HTTP tests, so
       the transport alone cannot replace it; the audit found it safe (local hosts only). Worth it only with those tests reworked.
 - [ ] **B8** (S) On this machine: remove the three old worktrees (`git worktree remove`), move `storage/alaleon/` out of the
       checkout.
+      Left: this is on the owner's machine, not in the repository.

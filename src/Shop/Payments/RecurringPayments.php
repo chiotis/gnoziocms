@@ -6,7 +6,7 @@ namespace GnozioCMS\Shop\Payments;
 
 /**
  * A provider that can charge a customer again without them, with the token of a payment they made allowing it (Viva Wallet's
- * recurring payments). Only these are offered for a cart with a subscription (docs/shop-plan.md, section 7).
+ * recurring payments). Only these are offered for a cart with a subscription (docs/plans/shop-plan.md, section 7).
  */
 interface RecurringPayments
 {

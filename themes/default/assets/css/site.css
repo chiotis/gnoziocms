@@ -4407,7 +4407,7 @@ p[align="center"], h1[align="center"], h2[align="center"], h3[align="center"], h
 p[align="right"], h1[align="right"], h2[align="right"], h3[align="right"], h4[align="right"], h5[align="right"], h6[align="right"] { text-align: right; }
 p[align="justify"] { text-align: justify; hyphens: auto; }
 
-/* A collection's tones (docs/shop-plan.md): its page and its products' pages take its background, surface and deep tone for the
+/* A collection's tones (docs/plans/shop-plan.md): its page and its products' pages take its background, surface and deep tone for the
    content, in light mode; the header, the footer and dark mode keep the site's own colours. */
 :root:not(.dark) .has-tones .main-shell {
   --color-bg: var(--c-bg);

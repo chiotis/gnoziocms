@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace GnozioCMS;
 
 /**
- * The settings of Manage > AI publishing (docs/ai-publishing-plan.md): the provider key, the models, the instructions for pictures,
+ * The settings of Manage > AI publishing (docs/plans/ai-publishing-plan.md): the provider key, the models, the instructions for pictures,
  * the limits and the price table. Kept in `system_meta` under its own name, apart from the site settings, so no settings form or
  * export ever carries the key; the screens get view(), which never holds it.
  */

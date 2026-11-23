@@ -114,7 +114,7 @@
           </svg>{% endif %}
         </a>
       {% endif %}
-      {# The shop's account and cart (docs/shop-plan.md). The count is the page's script's, read from a cookie, so the page stays the same for everyone. #}
+      {# The shop's account and cart (docs/plans/shop-plan.md). The count is the page's script's, read from a cookie, so the page stays the same for everyone. #}
       {% if shop_enabled|default(false) %}
         <a class="shop-header-link" href="{{ url(prefix ~ 'account') }}" aria-label="{{ t('shop.account', 'Your account') }}">{{ tools_text ? ('<span class="header-tool-text">' ~ t('shop.account_short', 'Account')|e ~ '</span>')|raw : icon('user') }}</a>
         <a class="shop-header-link" href="{{ url(prefix ~ 'cart') }}" aria-label="{{ t('shop.cart', 'Cart') }}" data-shop-cart-link data-shop-strings="{{ {title: t('shop.cart', 'Cart'), view: t('shop.view_cart', 'View the cart'), checkout: t('shop.to_checkout', 'Checkout'), close: t('shop.close', 'Close'), subtotal: t('shop.subtotal', 'Subtotal'), empty: t('shop.cart_empty', 'Your cart is empty.')}|json_encode }}">{% if tools_text %}<span class="header-tool-text">{{ t('shop.cart', 'Cart') }}</span> <span class="shop-count-words">(<span data-shop-count data-show-zero>0</span>)</span>{% else %}{{ icon('bag') }}<span class="shop-count" data-shop-count hidden></span>{% endif %}</a>

@@ -7,7 +7,7 @@ namespace GnozioCMS;
 use PDO;
 
 /**
- * Tokens used by AI publishing and what they are estimated to cost (docs/ai-publishing-plan.md, section 8a). Every call to a
+ * Tokens used by AI publishing and what they are estimated to cost (docs/plans/ai-publishing-plan.md, section 8a). Every call to a
  * provider writes one row, a failed one too, with the exact counts the provider returned and the prices of the price table at that
  * moment, so a later price change never rewrites the past. A model with no price is counted in tokens and costs null ("unknown").
  * The figure is an estimate: the bill is the provider's.

@@ -120,7 +120,7 @@ final class ShopController
 
     /**
      * The shop's work that does not wait for a shopper: orders whose time to be paid ran out, passwords brought from WordPress
-     * and never used here in six months, cleared, the held stock checked against the open orders, renewals stuck half way put back, and subscriptions whose period has come, charged again (docs/shop-plan.md, section 7). From cron, and, at most once an hour, from the shop's admin screens.
+     * and never used here in six months, cleared, the held stock checked against the open orders, renewals stuck half way put back, and subscriptions whose period has come, charged again (docs/plans/shop-plan.md, section 7). From cron, and, at most once an hour, from the shop's admin screens.
      */
     public function tick(bool $throttle = true): int
     {
@@ -334,7 +334,7 @@ final class ShopController
         return ['title' => $title, 'types' => $this->content->getTypes(), 'user' => $this->auth->user(), 'admin_section' => $section, 'current_type' => 'pages'];
     }
 
-    /** Shop > Orders (docs/shop-plan.md, section 8): the list, one order, its packing slip, the CSV. */
+    /** Shop > Orders (docs/plans/shop-plan.md, section 8): the list, one order, its packing slip, the CSV. */
     public function ordersScreen(): void
     {
         if (!Shop::enabled($this->content->getTypes())) {
@@ -433,7 +433,7 @@ final class ShopController
         ]);
     }
 
-    /** Shop > Subscriptions (docs/shop-plan.md, section 7): the list by status, one with its orders, pause, resume, skip, cancel. */
+    /** Shop > Subscriptions (docs/plans/shop-plan.md, section 7): the list by status, one with its orders, pause, resume, skip, cancel. */
     public function subscriptionsScreen(): void
     {
         if (!Shop::enabled($this->content->getTypes())) {
@@ -544,7 +544,7 @@ final class ShopController
         return array_values(array_unique(array_merge([$this->defaultLanguage()], array_map('strval', $this->settings()['languages']['available'] ?? []))));
     }
 
-    /** Shop > Files: the private files the digital products sell (docs/shop-plan.md, section 6). */
+    /** Shop > Files: the private files the digital products sell (docs/plans/shop-plan.md, section 6). */
     public function filesScreen(): void
     {
         if (!Shop::enabled($this->content->getTypes())) {
@@ -585,7 +585,7 @@ final class ShopController
     }
 
 
-    /** System > Shop settings (docs/shop-plan.md): there only while the shop is on. */
+    /** System > Shop settings (docs/plans/shop-plan.md): there only while the shop is on. */
     public function settingsScreen(): void
     {
         if (!Shop::enabled($this->content->getTypes())) {

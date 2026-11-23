@@ -411,7 +411,7 @@ The page of an entry can be **built with blocks** instead of drawn by a Twig fil
 
 ### Blocks that draw the entry
 
-These blocks (`scope: template` in `block.yaml`) are offered only in a template, under the *Entry* kind. A block can also ask for a feature with `requires: shop` (or `requires: {feature: shop}`): while the feature is off it does not exist, so no editor offers it and a page that holds one draws nothing for it, its settings kept in the file. The shop's blocks (Product grid, gallery, summary, details and price) need the shop, which is on while the Products type is (`docs/shop-plan.md`). Any other block can be used too (hero, text, image, text and image, buttons, call to action, containers for columns…).
+These blocks (`scope: template` in `block.yaml`) are offered only in a template, under the *Entry* kind. A block can also ask for a feature with `requires: shop` (or `requires: {feature: shop}`): while the feature is off it does not exist, so no editor offers it and a page that holds one draws nothing for it, its settings kept in the file. The shop's blocks (Product grid, gallery, summary, details and price) need the shop, which is on while the Products type is (`docs/plans/shop-plan.md`). Any other block can be used too (hero, text, image, text and image, buttons, call to action, containers for columns…).
 
 | Block | Draws |
 |---|---|
@@ -710,7 +710,7 @@ All optional, all empty or "Theme" by default (a site that sets none gets exactl
 - **Buttons and forms**: the size, weight, case and letter spacing of button text (`button_size`, `button_weight`, `button_case`, `button_tracking`; the spacing wins over the one capitals bring), the size and weight of labels and the **field text size** (`input_size`, never below 16px so phones do not zoom into a field). Their height, padding, corners and colours stay in Branding.
 - **Navigation**: the header menu, dropdowns, the mobile menu, the top bar, the footer menu, the footer headings, breadcrumbs and the site name, each with a size in pixels (written as rem, so the visitor's zoom still applies), a weight, a case (as typed, capitals, first letters) and a letter spacing. They are written as `--type-*` variables on the root (`BrandingTypography::navigation`) and the theme reads them with its own values as fallbacks, so an empty size or "Theme" changes nothing. The dropdown follows the header menu unless it is set; the full-screen mobile menu keeps its large links and takes the size for its inner links. The site name's size is `brand.name_size`, moved here from Identity.
 
-Each card has its own reset, which changes only the unsaved form. The plan for the rest of the tab (button and label text, the fonts extras) is in `docs/typography-tab-plan.md`.
+Each card has its own reset, which changes only the unsaved form. The plan for the rest of the tab (button and label text, the fonts extras) is in `docs/plans/typography-tab-plan.md`.
 ## Design tokens
 
 `site.css` defines semantic tokens (`--color-bg`, `--color-surface`, `--color-text`, `--color-muted`, `--color-border`, `--accent`, `--accent-soft`, `--accent-contrast`, spacing `--space-*`, type scale `--step-*`, radii `--radius-*`). Theme settings switch them through attributes on `<html>`:

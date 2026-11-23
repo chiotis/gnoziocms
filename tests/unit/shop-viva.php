@@ -1,6 +1,6 @@
 <?php
 /*
- * Viva Wallet (docs/shop-plan.md, phase 4) against a fake of its API: the OAuth token kept and asked again when it runs out, the
+ * Viva Wallet (docs/plans/shop-plan.md, phase 4) against a fake of its API: the OAuth token kept and asked again when it runs out, the
  * payment order and what it carries, the redirect, the transaction asked of the API and an order paid only when it matches (amount,
  * currency, number, once), a failed one, a payment after the order was cancelled, refunds, the webhook key, Check connection,
  * installments, the keys kept apart and the hosts it may call.

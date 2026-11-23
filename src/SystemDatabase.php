@@ -207,7 +207,7 @@ final class SystemDatabase
     }
 
     /**
-     * The stock of the shop (docs/shop-plan.md): how many of a product, or of one of its variants, are on hand, and how many are held
+     * The stock of the shop (docs/plans/shop-plan.md): how many of a product, or of one of its variants, are on hand, and how many are held
      * for orders waiting to be paid. A product is its translation_id, so a new address or language changes nothing; a variant is its
      * combination of options as a key (ShopStock::variantKey()), '' for a product without variants. Kept here, not in the product's
      * file, so two orders at the same moment can never sell the same last piece.
@@ -227,7 +227,7 @@ final class SystemDatabase
     }
 
     /**
-     * The shop's carts, orders, customers and coupons (docs/shop-plan.md, sections 3 and 4). Money is in cents. A cart is found by
+     * The shop's carts, orders, customers and coupons (docs/plans/shop-plan.md, sections 3 and 4). Money is in cents. A cart is found by
      * the hash of its cookie, never the cookie itself. An order keeps what was sold as it was sold (title, price, VAT of each line),
      * so a product changed or removed later changes no order. Customers are the shop's, never admin users.
      */
@@ -352,7 +352,7 @@ final class SystemDatabase
     }
 
     /**
-     * The shop's payments through a provider (docs/shop-plan.md, section 5): one row each time an order is sent to pay (the provider's
+     * The shop's payments through a provider (docs/plans/shop-plan.md, section 5): one row each time an order is sent to pay (the provider's
      * reference, then its transaction, the amount, what was refunded), and every call a provider made to the site, once by its key,
      * so a notification that comes twice changes nothing the second time.
      */
@@ -390,7 +390,7 @@ final class SystemDatabase
     }
 
     /**
-     * Digital products (docs/shop-plan.md, section 6): the private files a product sells, kept under storage/shop-files with a
+     * Digital products (docs/plans/shop-plan.md, section 6): the private files a product sells, kept under storage/shop-files with a
      * random name and never under public/; and what each paid order may download, by a signed link, with a count and an end.
      */
     private function createShopDownloadTables(PDO $pdo): void
@@ -426,7 +426,7 @@ final class SystemDatabase
     }
 
     /**
-     * Subscriptions (docs/shop-plan.md, section 7): what a customer is subscribed to, at what price every period, the provider's
+     * Subscriptions (docs/plans/shop-plan.md, section 7): what a customer is subscribed to, at what price every period, the provider's
      * token it is charged again with, its status and when it is next due; and the orders of each (the first and every renewal).
      */
     private function createShopSubscriptionTables(PDO $pdo): void

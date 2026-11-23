@@ -6,7 +6,7 @@ namespace GnozioCMS;
 
 /**
  * Reads RSS (0.9x, 1.0, 2.0) and Atom feeds, and the readable text of a web page, for AI publishing schedules
- * (docs/ai-publishing-plan.md, phase 4). Fetched through SafeHttp, so the addresses get the same guards as pictures from MCP: public
+ * (docs/plans/ai-publishing-plan.md, phase 4). Fetched through SafeHttp, so the addresses get the same guards as pictures from MCP: public
  * hosts only, a size and a time limit. What comes back is plain text: tags, scripts and entities are gone, and every field is cut to
  * a length, because it is sent to a model as quoted material, never as instructions.
  */

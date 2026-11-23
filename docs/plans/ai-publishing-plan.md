@@ -1,6 +1,6 @@
 # AI publishing: plan
 
-Status: proposal (2026-11-06). Nothing of it is built yet. It joins two earlier plans (main images made by the site, and publishing schedules) into one module. The safety pieces it reuses (automation accounts, bylines, `source_key`, strict writes, scheduled publishing and its release) are built and described in `docs/mcp-plan.md`.
+Status: proposal (2026-11-06). Nothing of it is built yet. It joins two earlier plans (main images made by the site, and publishing schedules) into one module. The safety pieces it reuses (automation accounts, bylines, `source_key`, strict writes, scheduled publishing and its release) are built and described in `docs/plans/mcp-plan.md`.
 
 Decided by the owner:
 

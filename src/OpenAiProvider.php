@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace GnozioCMS;
 
 /**
- * OpenAI for AI publishing (docs/ai-publishing-plan.md): the models a key can use, and pictures (images/generations, or images/edits
+ * OpenAI for AI publishing (docs/plans/ai-publishing-plan.md): the models a key can use, and pictures (images/generations, or images/edits
  * when reference pictures go with the prompt). Writing comes in phase 3. Every call goes through AiHttp, so failures arrive sorted
  * by kind and the key never appears in a message.
  */

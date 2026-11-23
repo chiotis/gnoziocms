@@ -225,7 +225,7 @@ return [
     'place.near.other' => 'Other',
     'route.season' => 'Best season',
     'route.profile_hint' => 'Move along the profile to see the place on the map',
-    // The shop (docs/shop-plan.md).
+    // The shop (docs/plans/shop-plan.md).
     'shop.from' => 'from',
     'shop.now' => 'Now',
     'shop.was' => 'was',

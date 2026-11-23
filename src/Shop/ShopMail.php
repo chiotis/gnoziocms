@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace GnozioCMS\Shop;
 
 /**
- * The shop's emails (docs/shop-plan.md, section 8), in the customer's language: the order received (with the bank accounts for
+ * The shop's emails (docs/plans/shop-plan.md, section 8), in the customer's language: the order received (with the bank accounts for
  * a transfer) and a notice of it to the shop; the order paid (with its downloads), shipped (with its tracking), cancelled or
  * refunded; the account's links (confirm the address, set a new password); a subscription's renewal refused or given up.
  *

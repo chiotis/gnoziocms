@@ -1,6 +1,6 @@
 <?php
 /*
- * The shop's catalogue (docs/shop-plan.md, phase 1): the shop is on with the Products type, blocks that ask for it (`requires: shop`)
+ * The shop's catalogue (docs/plans/shop-plan.md, phase 1): the shop is on with the Products type, blocks that ask for it (`requires: shop`)
  * exist only then, fields every translation shares (`shared: true`), the stock and its holds, a collection's number, tones and quote,
  * the products a Product grid lists with their prices, options and variants, the Shop settings (with the Details every product shows),
  * and the Product in structured data.

@@ -22,7 +22,7 @@ use Symfony\Component\Yaml\Yaml;
  *             /category/books/english. A slug is unique among the terms of one parent. A term can also have a picture
  *             (`image`: an address in the library, or a full link; `image_alt` per language) and its own text for search
  *             engines per language (`seo_title`, `seo_description`), each kept only when written. A collection of the shop
- *             (docs/shop-plan.md) also has a chapter `number`, three `tones` (bg, surface, deep: hex colours its pages and blocks
+ *             (docs/plans/shop-plan.md) also has a chapter `number`, three `tones` (bg, surface, deep: hex colours its pages and blocks
  *             use) and an intro `quote` per language with its `quote_author`, each kept only when written.
  *   archive:  only the layout choices that differ from the defaults, the same ones a content type has
  *             (layout, columns, per_page, order, show_*, title, subtitle, taxonomies), plus `types`: the

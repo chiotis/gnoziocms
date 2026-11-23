@@ -1,6 +1,6 @@
 # MCP: AI assistants and scheduled jobs
 
-GnozioCMS has an MCP server, so an AI assistant (Claude, ChatGPT) or a job of theirs that runs on a schedule can read and write the site's content as one of its accounts. The plan and what comes next are in `docs/mcp-plan.md`; this file describes what is built.
+GnozioCMS has an MCP server, so an AI assistant (Claude, ChatGPT) or a job of theirs that runs on a schedule can read and write the site's content as one of its accounts. The plan and what comes next are in `docs/plans/mcp-plan.md`; this file describes what is built.
 
 ## Turning it on
 
@@ -107,7 +107,7 @@ The read tools need `content.manage` on the account (they show drafts). Writing 
 - the codes that prove who owns the site (Admin > SEO > Verification);
 - Theme settings that are lists, links or galleries, the site's address, languages, limits, mail, backups and keys.
 
-**The shop** (`src/McpShop.php`, `docs/mcp-shop-plan.md`). Its tools are listed only while the shop is on, and need `content.manage` like the product editor. Its categories and collections are changed with the term tools above. Products themselves are entries of the type `products`, made and changed with `create_entry` and `update_entry`; `update_prices` and `set_stock` are the batch tools. Prices and stock are written as the admin writes them: the history keeps each change, prices reach every translation, and a published product's price can change without `content:publish`. Every problem in a batch is named at once and nothing is saved while there is one. Two rules of the connection (Settings > MCP, shown with `shop:write`) hold whatever the job asks:
+**The shop** (`src/McpShop.php`, `docs/plans/mcp-shop-plan.md`). Its tools are listed only while the shop is on, and need `content.manage` like the product editor. Its categories and collections are changed with the term tools above. Products themselves are entries of the type `products`, made and changed with `create_entry` and `update_entry`; `update_prices` and `set_stock` are the batch tools. Prices and stock are written as the admin writes them: the history keeps each change, prices reach every translation, and a published product's price can change without `content:publish`. Every problem in a batch is named at once and nothing is saved while there is one. Two rules of the connection (Settings > MCP, shown with `shop:write`) hold whatever the job asks:
 
 **Orders** (`src/McpShopOrders.php`) hold shoppers' personal data: they need `shop:orders` and the account's `shop.orders`, and coupons need `shop.manage`. An order changes through the order screen's own actions, so stock, coupons, the customer's email and the timeline follow as there (a cancelled order gives its stock back). Money stays with a person: an order is never marked paid or refunded through MCP, and refunds are made in the admin.
 

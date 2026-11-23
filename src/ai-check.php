@@ -1,7 +1,7 @@
 <?php
 /*
  * One real call of each kind to OpenAI, from the command line, before the AI publishing module is built on them
- * (docs/ai-publishing-plan.md, phase 0): it checks the key and the models, writes one short post as structured JSON
+ * (docs/plans/ai-publishing-plan.md, phase 0): it checks the key and the models, writes one short post as structured JSON
  * (Responses API) and makes one picture (with reference pictures when given), and prints how long each took, how big each answer
  * was, the rate-limit headers and the exact `usage` fields. The key is read from the environment and never printed.
  *

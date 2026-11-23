@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace GnozioCMS\Shop;
 
 /**
- * The Shop group of the admin (docs/shop-plan.md, section 8): Orders (the list with its status chips, search and dates, a CSV for
+ * The Shop group of the admin (docs/plans/shop-plan.md, section 8): Orders (the list with its status chips, search and dates, a CSV for
  * the accountant, and each order with its timeline, status changes, shipping and tracking, notes, its email sent again and a
  * packing slip), Customers (the list, each with their orders, deleting one) and Coupons.
  */

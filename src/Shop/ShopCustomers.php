@@ -8,7 +8,7 @@ use GnozioCMS\SystemDatabase;
 use PDO;
 
 /**
- * The shop's customers (table shop_customers, docs/shop-plan.md, section 4): people who buy, never admin users. They sign in
+ * The shop's customers (table shop_customers, docs/plans/shop-plan.md, section 4): people who buy, never admin users. They sign in
  * with an email and a password (password_hash); a link sent by email confirms the address or sets a new password, and only
  * the hash of its token is kept, for an hour (a new password) or two days (the address), each kind in its own columns so one
  * link does not cancel the other. They may sign in with Google too (fromGoogle()): the Google account's `sub` is kept in

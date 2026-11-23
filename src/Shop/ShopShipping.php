@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace GnozioCMS\Shop;
 
 /**
- * Shipping (docs/shop-plan.md, section 3): zones by country, each with its methods. A zone can be narrowed to postcodes that
+ * Shipping (docs/plans/shop-plan.md, section 3): zones by country, each with its methods. A zone can be narrowed to postcodes that
  * start with given digits (the Greek islands), and the first zone that matches an address is its zone, so the narrower zones
  * come first. `*` as a country is everywhere else. A method is a flat rate (free over an amount, if it says so), free
  * shipping over an amount, a rate by weight, or pickup at one of the shop's stores.

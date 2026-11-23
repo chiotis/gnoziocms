@@ -11,7 +11,7 @@ use GnozioCMS\Slug;
 use GnozioCMS\Taxonomies;
 
 /**
- * The products as the shop blocks and the product page show them (docs/shop-plan.md, sections 2 and 9): which products a
+ * The products as the shop blocks and the product page show them (docs/plans/shop-plan.md, sections 2 and 9): which products a
  * Product grid lists, and for one product its price, its options and variants, its pictures, its collection with the
  * collection's tones, and whether it can be bought. Prices are read from the product's file; stock from ShopStock.
  */

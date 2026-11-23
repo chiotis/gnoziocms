@@ -7,7 +7,7 @@ namespace GnozioCMS\Shop;
 use GnozioCMS\Shop\Payments\PaymentProvider;
 
 /**
- * The checkout (docs/shop-plan.md, section 3): what a cart costs sent to an address, with a shipping method, a way to pay and a
+ * The checkout (docs/plans/shop-plan.md, section 3): what a cart costs sent to an address, with a shipping method, a way to pay and a
  * coupon (quote()); placing the order, which prices everything again, holds the stock, counts the coupon's use and writes the
  * order (place()); and every later change of an order's status, with what it does to the stock (changeStatus()).
  *

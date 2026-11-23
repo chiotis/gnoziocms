@@ -1,5 +1,5 @@
 """
-The shop's catalogue over HTTP (docs/shop-plan.md, phase 1): while Products is off there is no Shop settings entry or screen and
+The shop's catalogue over HTTP (docs/plans/shop-plan.md, phase 1): while Products is off there is no Shop settings entry or screen and
 no shop block; switching it on brings Looks, the Collections and Product categories taxonomies, System > Shop settings (saved
 and checked) and the Stock box of a product, whose quantities are kept apart from the file. A product drawn with its starting
 template shows its pictures, price, options and Details sections (then the shop's, from Shop settings > Product details), a Product in its structured data, and more from its collection;

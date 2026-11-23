@@ -8,7 +8,7 @@ use GnozioCMS\SystemDatabase;
 use PDO;
 
 /**
- * Payments through a provider (tables shop_payments and shop_gateway_events, docs/shop-plan.md, section 5): each attempt to pay an
+ * Payments through a provider (tables shop_payments and shop_gateway_events, docs/plans/shop-plan.md, section 5): each attempt to pay an
  * order with its reference at the provider, the transaction that paid it and what was refunded; and the calls providers made, each
  * written once by its key, so the same notification twice is noticed and changes nothing.
  */

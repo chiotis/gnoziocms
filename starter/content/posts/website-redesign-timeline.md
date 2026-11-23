@@ -13,7 +13,7 @@ tags:
   - growth
 categories:
   - news
-main_image: /uploads/media/0db003e8ca184774.png
+main_image: /uploads/media/0db003e8ca184774.jpg
 blocks:
   -
     type: cta

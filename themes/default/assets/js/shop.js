@@ -1,4 +1,4 @@
-// The shop on every page while it is on (docs/shop-plan.md, phase 3): the header's count of pieces (from the gz_cart_n cookie,
+// The shop on every page while it is on (docs/plans/shop-plan.md, phase 3): the header's count of pieces (from the gz_cart_n cookie,
 // so pages stay the same for everyone), Add to cart without leaving the page and the cart drawer it opens, and the cart and the
 // checkout working out their totals again when a quantity, the country, the shipping or the payment changes.
 (function () {

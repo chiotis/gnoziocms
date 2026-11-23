@@ -86,7 +86,7 @@
           </a>
         {% endif %}
 
-        {# The shop's group (docs/shop-plan.md, section 8): only while the shop is on. #}
+        {# The shop's group (docs/plans/shop-plan.md, section 8): only while the shop is on. #}
         {% if shop_enabled and (can('shop.orders') or can('shop.manage')) %}
           <p class="px-2 pb-1.5 pt-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400">Shop</p>
           {% for key, item in {

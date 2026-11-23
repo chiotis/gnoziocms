@@ -1,6 +1,6 @@
 <?php
 /*
- * The shop's HTML emails and the Emails tab (docs/shop-plan.md, section 8): the mail's body as text alone or text and HTML
+ * The shop's HTML emails and the Emails tab (docs/plans/shop-plan.md, section 8): the mail's body as text alone or text and HTML
  * (multipart/alternative, the HTML in base64); each email built once and sent as both, in the shop's colour, logo and footer,
  * everything in it escaped; plain text only when HTML is off; a subject and text changed on the tab, per language, with its
  * placeholders, the theme's words otherwise; the settings kept tidy; the preview and the test.

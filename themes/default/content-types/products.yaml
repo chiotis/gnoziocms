@@ -1,4 +1,4 @@
-# Products: what the shop sells (docs/shop-plan.md). Switching it on in Admin > Content types turns the shop on: Looks, the
+# Products: what the shop sells (docs/plans/shop-plan.md). Switching it on in Admin > Content types turns the shop on: Looks, the
 # Collections and Product categories taxonomies, System > Shop settings and the shop blocks come with it.
 # Sites can add fields or change the archive in custom/content-types/products.yaml (kept across updates).
 # Never rename a field key: content and orders refer to it by name. Retire a field with `hidden: true`.

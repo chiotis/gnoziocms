@@ -1,6 +1,6 @@
 # Shop: the demo install checklist
 
-The shop's code (`docs/shop-plan.md`, phases 1–7, the HTML emails and the WooCommerce import) was tested against fakes on one
+The shop's code (`docs/plans/shop-plan.md`, phases 1–7, the HTML emails and the WooCommerce import) was tested against fakes on one
 machine. This list is what is checked once on a real install, on a public https domain, before a shop takes real money. Tick
 each line; write down anything that differs (an answer, a status name, a field) and it is fixed in the code before going on.
 

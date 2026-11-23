@@ -1,5 +1,5 @@
 """
-Cardlink over HTTP (docs/shop-plan.md, phase 5), against a fake of its XML API that this test serves on this machine: the Payments
+Cardlink over HTTP (docs/plans/shop-plan.md, phase 5), against a fake of its XML API that this test serves on this machine: the Payments
 tab's card (the shared secret kept apart, never shown again) and Check connection; the checkout sending the customer to the signed
 go page, the installments asked there and the signed form to the bank; a forged answer paying nothing; the bank's answer paying the
 order (and its emails); a cancel, then Pay now; a refund from the order's screen.

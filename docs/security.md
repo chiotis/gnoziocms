@@ -52,7 +52,7 @@ After adding or changing an admin action, run `php scripts/check-permissions.php
 
 ### Automation accounts
 
-An account that a connection (MCP, `docs/mcp-plan.md`) writes as, made by someone who manages users with **Add automation account** (`users.source = 'automation'`). It has a role like anyone and its name is in the history and the logs, but it has no password, no email and no Google link, so it never signs in: the password form, Google sign-in (which matches by email) and `Auth::loginUser` refuse it, and a session that somehow names it ends at the next look. It can never be the super admin, the fallback that makes a super admin when none is left skips it, and a person never becomes one (or the other way round). Making it inactive stops every connection that uses it. Tests: `tests/unit/accounts.php`, `tests/http/automation_accounts_test.py`.
+An account that a connection (MCP, `docs/plans/mcp-plan.md`) writes as, made by someone who manages users with **Add automation account** (`users.source = 'automation'`). It has a role like anyone and its name is in the history and the logs, but it has no password, no email and no Google link, so it never signs in: the password form, Google sign-in (which matches by email) and `Auth::loginUser` refuse it, and a session that somehow names it ends at the next look. It can never be the super admin, the fallback that makes a super admin when none is left skips it, and a person never becomes one (or the other way round). Making it inactive stops every connection that uses it. Tests: `tests/unit/accounts.php`, `tests/http/automation_accounts_test.py`.
 
 ### MCP (AI assistants)
 

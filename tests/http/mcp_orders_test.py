@@ -1,5 +1,5 @@
 """
-Orders and coupons through MCP (docs/mcp-shop-plan.md, step 5): the orders tools only with shop:orders; list_orders with its
+Orders and coupons through MCP (docs/plans/mcp-shop-plan.md, step 5): the orders tools only with shop:orders; list_orders with its
 filters, get_order in full with the statuses it can move to; update_order along the order's steps (never to paid or refunded),
 shipped with carrier and tracking and the customer told, a cancelled order giving its stock back, a note; coupons listed, made,
 changed, renamed, refused when wrong, and deleted only with shop:delete.

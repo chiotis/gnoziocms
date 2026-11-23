@@ -335,7 +335,7 @@ All blocks use the theme tokens. Collection tones only change the CSS variables.
 - `themes/default/blocks/{product-grid,product-gallery,product-summary,product-details,shop-the-look,looks,mini-cart,term-tiles,newsletter,next-term,image-hotspots}/`
 - `themes/default/templates/shop/{cart,checkout,account*}.twig`
 - `public/assets/js/shop.js`
-- `docs/shop-plan.md`, `docs/shop.md`
+- `docs/plans/shop-plan.md`, `docs/shop.md`
 
 **Changed:**
 - `src/App.php` (routes, `needsSession()`, factories, job registration)

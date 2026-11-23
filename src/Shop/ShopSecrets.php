@@ -8,7 +8,7 @@ use GnozioCMS\SecretBox;
 use GnozioCMS\SystemMetaRepository;
 
 /**
- * The payment providers' keys (docs/shop-plan.md, section 5), in their own `system_meta` document (`shop_secrets`): never in the
+ * The payment providers' keys (docs/plans/shop-plan.md, section 5), in their own `system_meta` document (`shop_secrets`): never in the
  * Shop settings, never in a settings export, never sent to a browser or written to a log. A screen is told only whether each one
  * is set and its last four characters; a blank input keeps what is stored. Kept encrypted (SecretBox), so a backup carries no
  * usable key; one that cannot be opened on this server reads as empty and the screen asks for it again.

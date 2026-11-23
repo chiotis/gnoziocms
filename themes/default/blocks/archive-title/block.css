@@ -1,4 +1,4 @@
-/* Archive title, Chapter layout: a collection's page (docs/shop-plan.md). The picture across the page, then the chapter's number
+/* Archive title, Chapter layout: a collection's page (docs/plans/shop-plan.md). The picture across the page, then the chapter's number
    and name on one side and its quote on the other. The other layouts are drawn by components/title-area.twig. */
 .chapter-picture {
   overflow: hidden;

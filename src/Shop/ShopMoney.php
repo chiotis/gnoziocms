@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace GnozioCMS\Shop;
 
 /**
- * Money in the shop (docs/shop-plan.md, section 1): whole cents, never floats, from the moment a price leaves a product's file.
+ * Money in the shop (docs/plans/shop-plan.md, section 1): whole cents, never floats, from the moment a price leaves a product's file.
  * Prices are written with VAT in them, so the VAT of an amount is the part of it the rate makes up.
  */
 final class ShopMoney

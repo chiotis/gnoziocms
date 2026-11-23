@@ -119,7 +119,7 @@
   {% endif %}
   {% endif %}
   <link rel="stylesheet" href="{{ theme_asset('css/site.css') }}">
-  {# The shop's cart, checkout and account, the header's cart and the cart drawer (docs/shop-plan.md): only while the shop is on. #}
+  {# The shop's cart, checkout and account, the header's cart and the cart drawer (docs/plans/shop-plan.md): only while the shop is on. #}
   {% if shop_enabled|default(false) %}<link rel="stylesheet" href="{{ theme_asset('css/shop.css') }}">{% endif %}
   {# A small block stylesheet goes into the page: one request fewer before the page can be drawn. #}
   {% for href in block_styles|default([]) %}
@@ -146,7 +146,7 @@
   {% block head %}{% endblock %}
 </head>
 
-{# A collection's page, or a product in a collection, takes the collection's tones (docs/shop-plan.md). #}
+{# A collection's page, or a product in a collection, takes the collection's tones (docs/plans/shop-plan.md). #}
 {% set page_tone_style = page_tones() %}
 <body class="theme-body{% if transparent_header %} has-transparent-header{% endif %}{% if header_overlay %} has-header-overlay{% endif %}{% if header_settings.mobile_bar|default(false) %} has-mobile-bar{% endif %}{% if page_tone_style %} has-tones{% endif %}"{% if page_tone_style %} style="{{ page_tone_style }}"{% endif %}>
   {{ analytics_body() }}

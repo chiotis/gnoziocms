@@ -1,4 +1,4 @@
-/* Product grid (docs/shop-plan.md): cards with a still picture, a worn one on hover, the name and the price. */
+/* Product grid (docs/plans/shop-plan.md): cards with a still picture, a worn one on hover, the name and the price. */
 .product-grid-head {
   display: flex;
   flex-wrap: wrap;
