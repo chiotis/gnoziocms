@@ -22,16 +22,38 @@
     <p class="mb-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">The site address is not set (<a class="underline" href="{{ url('admin/settings') }}">Settings &gt; General</a>). Card payments and customer accounts cannot be turned on without it, because links in emails and the payment returns are built from it only.</p>
   {% endif %}
 
+  {% import '@admin/partials/section-nav.twig' as section_nav %}
+  {% set shop_groups = [
+    {label: 'Store', items: ['general', 'details']},
+    {label: 'Checkout', items: ['shipping', 'payments']},
+    {label: 'Customers', items: ['accounts', 'emails']},
+    {label: 'Growth', items: ['marketing']},
+    {label: 'Data', items: ['import']}
+  ] %}
+  {% set shop_icons = {general: 'store', details: 'list', shipping: 'truck', payments: 'card', accounts: 'users', emails: 'mail', marketing: 'megaphone', import: 'transfer'} %}
+  {% set shop_nav = [] %}
+  {% set placed = [] %}
+  {% for group in shop_groups %}
+    {% set items = [] %}
+    {% for key in group.items|filter(k => tabs[k] is defined) %}
+      {% set items = items|merge([{key: key, label: tabs[key], href: url('admin/shop-settings?tab=' ~ key), icon: section_nav.icon(shop_icons[key] ?? '')}]) %}
+      {% set placed = placed|merge([key]) %}
+    {% endfor %}
+    {% if items %}{% set shop_nav = shop_nav|merge([group|merge({items: items})]) %}{% endif %}
+  {% endfor %}
+  {% set rest = [] %}
+  {% for key, name in tabs|filter((n, k) => k not in placed) %}
+    {% set rest = rest|merge([{key: key, label: name, href: url('admin/shop-settings?tab=' ~ key)}]) %}
+  {% endfor %}
+  {% if rest %}{% set shop_nav = shop_nav|merge([{label: 'More', items: rest}]) %}{% endif %}
+
   <header class="mb-4 border-b border-slate-200 pb-4">
     <p class="max-w-3xl text-xs text-slate-500">The shop is on because the <strong>Products</strong> content type is on. Products, Looks, Collections and Product categories are edited like any content; this screen holds what the shop needs besides them. Orders, customers and coupons are in the <strong>Shop</strong> group of the menu.</p>
-    <div class="-mb-4 mt-3">
-      <nav class="flex min-w-0 gap-1 overflow-x-auto" aria-label="Shop settings">
-        {% for key, name in tabs %}
-          <a href="{{ url('admin/shop-settings?tab=' ~ key) }}" class="shrink-0 border-b-2 px-3 py-2 text-sm font-medium {{ tab == key ? 'border-blue-600 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-800' }}"{% if tab == key %} aria-current="page"{% endif %}>{{ name }}</a>
-        {% endfor %}
-      </nav>
-    </div>
   </header>
+
+  <div class="section-layout">
+  {{ section_nav.nav(shop_nav, tab, 'Shop settings') }}
+  <div class="section-body">
 
   {% if tab == 'general' %}
     <form method="post" action="{{ url('admin/shop-settings?tab=general') }}" class="grid gap-4" data-shop-general>
@@ -356,4 +378,6 @@
   {% if tab == 'import' %}
     {% include '@admin/partials/shop-import.twig' %}
   {% endif %}
+  </div>
+  </div>
 {% endblock %}

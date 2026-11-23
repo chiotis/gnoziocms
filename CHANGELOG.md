@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.327 — 2026-11-23 — Settings with a section list on the left
+- **Settings**: the tabs are now a list on the left under small group headings (Site: General; Communication: Email / SMTP; Access: Sign-in, APIs; System: Backups, Updates, Limits), each with an icon, the current one in a white pill and its form on the right. A click shows the section without loading the page and puts `?tab=` in the address, so a reload or a shared link opens the same section (`#smtp` works too); saving and Discard stay on it. The Auth tab is called **Sign-in**. Below 1024 px wide the list is a select above the form.
+- **Shop settings** has the same list: Store (General, Product details), Checkout (Shipping, Payments), Customers (Accounts, Emails), Growth (Marketing) and Data (Import & export). Each section is still its own page.
+- One partial draws both (`admin/templates/partials/section-nav.twig`, styles in `app.css`, behaviour in `admin.js`).
+- Tests: `settings_nav` (HTTP) and `section-nav` (JS).
+
 ## 0.1.326 — 2026-11-23 — Product details for every product
 - **Shop settings > Product details**: a new tab with up to eight sections (Shipping & returns, Warranty, Payment…), each with a title and Markdown text in every language of the site. They can be added, moved up and down, and removed. The **Product details** block shows them on every product page as accordions after the product's own Details. A language left empty shows the default language's words. A product's own section with the same title takes the place of the shop's. A product with no Details of its own now shows the shop's sections. Saving the tab clears the page cache.
 - **Product details block > Add the shop's Details**: on by default; off, a template shows only the product's own sections.

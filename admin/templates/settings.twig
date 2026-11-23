@@ -2,8 +2,7 @@
 {% set page_heading = 'Settings' %}
 
 {% block content %}
-  {% set tab_button_class = 'tab-button shrink-0 border-b-2 border-transparent px-3 py-2.5 text-sm font-medium text-slate-500 transition hover:text-slate-800' %}
-  {% set panel_class = 'tab-panel space-y-4' %}
+  {% set panel_class = 'section-panel space-y-4' %}
   {% set section_class = 'rounded-lg border border-slate-200 bg-white p-4' %}
   {% set section_header_class = 'mb-3 border-b border-slate-100 pb-3' %}
   {% set secondary_button_class = 'inline-flex shrink-0 items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50' %}
@@ -24,6 +23,7 @@
   {% import _self as local %}
   {% import '@admin/partials/ui.twig' as ui %}
   {% import '@admin/partials/fields.twig' as fields %}
+  {% import '@admin/partials/section-nav.twig' as section_nav %}
 
   {% if saved %}
     {{ ui.flash('Saved.', 'success') }}
@@ -59,18 +59,32 @@
       </div>
     </div>
 
-    <div>
-      <div class="mb-4 overflow-x-auto border-b border-slate-200">
-        <div class="flex min-w-max gap-1" role="tablist">
-          <button type="button" class="{{ tab_button_class }}{% if active_tab == 'basics' %} active{% endif %}" data-tab="basics">General</button>
-          <button type="button" class="{{ tab_button_class }}{% if active_tab == 'smtp' %} active{% endif %}" data-tab="smtp">Email / SMTP</button>
-          <button type="button" class="{{ tab_button_class }}{% if active_tab == 'auth' %} active{% endif %}" data-tab="auth">Auth</button>
-          <button type="button" class="{{ tab_button_class }}{% if active_tab == 'backup' %} active{% endif %}" data-tab="backup">Backups</button>
-          <button type="button" class="{{ tab_button_class }}{% if active_tab == 'updates' %} active{% endif %}" data-tab="updates">Updates</button>
-          <button type="button" class="{{ tab_button_class }}{% if active_tab == 'apis' %} active{% endif %}" data-tab="apis">APIs</button>
-          {% if can('limits.manage') %}<button type="button" class="{{ tab_button_class }}{% if active_tab == 'limits' %} active{% endif %}" data-tab="limits">Limits</button>{% endif %}
-        </div>
-      </div>
+    {% set settings_groups = [
+      {label: 'Site', items: [
+        {key: 'basics', label: 'General', icon: section_nav.icon('sliders')}
+      ]},
+      {label: 'Communication', items: [
+        {key: 'smtp', label: 'Email / SMTP', icon: section_nav.icon('mail')}
+      ]},
+      {label: 'Access', items: [
+        {key: 'auth', label: 'Sign-in', icon: section_nav.icon('key')},
+        {key: 'apis', label: 'APIs', icon: section_nav.icon('plug')}
+      ]},
+      {label: 'System', items: [
+        {key: 'backup', label: 'Backups', icon: section_nav.icon('archive')},
+        {key: 'updates', label: 'Updates', icon: section_nav.icon('refresh')}
+      ]|merge(can('limits.manage') ? [{key: 'limits', label: 'Limits', icon: section_nav.icon('gauge')}] : [])}
+    ] %}
+    {% set settings_nav = [] %}
+    {% for group in settings_groups %}
+      {% set items = [] %}
+      {% for item in group.items %}{% set items = items|merge([item|merge({href: url('admin/settings?tab=' ~ item.key)})]) %}{% endfor %}
+      {% set settings_nav = settings_nav|merge([group|merge({items: items})]) %}
+    {% endfor %}
+
+    <div class="section-layout">
+      {{ section_nav.nav(settings_nav, active_tab, 'Settings', true) }}
+      <div class="section-body">
 
       {% if can('limits.manage') %}
       <div class="{{ panel_class }}{% if active_tab != 'limits' %} hidden{% else %} active{% endif %}" data-panel="limits">
@@ -604,11 +618,12 @@
         </section>
       </div>
 
+      </div>
     </div>
 
     {% embed '@admin/partials/action-bar.twig' %}
       {% block leading %}
-        <a href="{{ url('admin/settings?tab=' ~ active_tab) }}" class="{{ secondary_button_class }}">Discard</a>
+        <a href="{{ url('admin/settings?tab=' ~ active_tab) }}" class="{{ secondary_button_class }}" data-section-discard>Discard</a>
       {% endblock %}
       {% block actions %}
         <button type="submit" class="{{ primary_button_class }}">
@@ -627,24 +642,8 @@
 
   <script>
     (function () {
-      const buttons = document.querySelectorAll('.tab-button');
-      const panels = document.querySelectorAll('.tab-panel');
-      const activeTabInput = document.querySelector('[data-active-tab-input]');
       const backupToggle = document.querySelector('input[name="backup_auto_enabled"]');
       const backupSchedule = document.querySelector('[data-backup-schedule]');
-
-      buttons.forEach((button) => {
-        button.addEventListener('click', () => {
-          const target = button.getAttribute('data-tab');
-          buttons.forEach((item) => item.classList.toggle('active', item === button));
-          panels.forEach((panel) => {
-            panel.classList.toggle('active', panel.getAttribute('data-panel') === target);
-          });
-          if (activeTabInput && target) {
-            activeTabInput.value = target;
-          }
-        });
-      });
 
       const syncBackupScheduleState = () => {
         if (!backupToggle || !backupSchedule) return;

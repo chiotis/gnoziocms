@@ -5,6 +5,7 @@
  *   data-toggle="sidebar"            -> show/hide mobile sidebar
  *   data-dropdown                    -> wrapper; [data-dropdown-trigger] + [data-dropdown-menu]
  *   data-tabs                        -> wrapper; [data-tab="key"] buttons + [data-tab-panel="key"]
+ *   data-section-nav                 -> a settings screen's section list (partials/section-nav.twig)
  *   data-toggle="filter" data-target -> show/hide a filter panel by id
  *   data-offcanvas-open="id"         -> open off-canvas panel #id
  *   data-offcanvas-close             -> close nearest open off-canvas
@@ -728,12 +729,66 @@
   }
   window.addEventListener('resize', makeScrollersFocusable);
 
+  /* ---- Settings screens: the section list on the left (partials/section-nav.twig) ----
+   * [data-section-nav="switch"]: every section is a [data-panel] of the form around it; a click shows that panel,
+   * marks the link (aria-current) and the select, sets the form's active_tab and Discard link, and keeps ?tab= in the
+   * address so a reload or a shared link opens the same section (#key works too). [data-section-nav="links"]: the
+   * links load their page; the select (narrow screens) goes to the chosen one. */
+  function enhanceSectionNav() {
+    document.querySelectorAll('[data-section-nav]').forEach(function (nav) {
+      var select = nav.querySelector('[data-section-select]');
+      var links = Array.prototype.slice.call(nav.querySelectorAll('[data-section]'));
+      if (nav.getAttribute('data-section-nav') !== 'switch') {
+        if (select) select.addEventListener('change', function () {
+          var option = select.options[select.selectedIndex];
+          if (option && option.getAttribute('data-href')) window.location.assign(option.getAttribute('data-href'));
+        });
+        return;
+      }
+      var scope = nav.closest('form') || document;
+      var keys = links.map(function (a) { return a.getAttribute('data-section'); });
+      function show(key, updateUrl) {
+        if (keys.indexOf(key) === -1) return false;
+        links.forEach(function (a) {
+          if (a.getAttribute('data-section') === key) a.setAttribute('aria-current', 'page');
+          else a.removeAttribute('aria-current');
+        });
+        if (select) select.value = key;
+        scope.querySelectorAll('[data-panel]').forEach(function (panel) {
+          var on = panel.getAttribute('data-panel') === key;
+          panel.classList.toggle('hidden', !on);
+          panel.classList.toggle('active', on);
+        });
+        var input = scope.querySelector('[data-active-tab-input]');
+        if (input) input.value = key;
+        var link = links.filter(function (a) { return a.getAttribute('data-section') === key; })[0];
+        var discard = document.querySelector('[data-section-discard]');
+        if (discard && link) discard.setAttribute('href', link.getAttribute('href'));
+        if (updateUrl && link && window.history && window.history.replaceState) {
+          try { window.history.replaceState(null, '', link.getAttribute('href')); } catch (e) { /* another origin in a test */ }
+        }
+        return true;
+      }
+      links.forEach(function (a) {
+        a.addEventListener('click', function (event) {
+          if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button > 0) return;
+          event.preventDefault();
+          show(a.getAttribute('data-section'), true);
+        });
+      });
+      if (select) select.addEventListener('change', function () { show(select.value, true); });
+      var hash = (window.location.hash || '').replace(/^#/, '');
+      if (hash) show(hash, true);
+    });
+  }
+
   /* Activate first tab in each tab group on load */
   document.addEventListener('DOMContentLoaded', function () {
     injectThemeToggle();
     showServerFlashes();
     decorateSortableHeaders();
     enhanceTabs();
+    enhanceSectionNav();
     makeScrollersFocusable();
     document.querySelectorAll('[data-tabs]').forEach(function (wrap) {
       var first = wrap.querySelector('[data-tab][data-tab-default]') || wrap.querySelector('[data-tab]');
