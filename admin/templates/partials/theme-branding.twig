@@ -62,7 +62,7 @@
 
 <div class="bp" data-bp data-bp-defaults="{{ defaults|json_encode }}" data-preview data-mode="css" data-endpoint="{{ url('admin/theme?preview=branding') }}">
   <h2 class="sr-only">Branding</h2>
-  <p class="mb-3 text-xs text-slate-500">Logo, colours, spacing, corners and buttons (fonts and text sizes are on the Typography tab). “Theme value” follows the selected presets, even when a concrete choice is shown. Choosing a value makes it your own; Reset restores the theme value. Group resets keep your preset choices. Nothing changes on the site until you save.</p>
+  <p class="mb-3 text-xs text-slate-500">Logo, colours, spacing, corners and buttons; fonts and text sizes are in Typography. Every setting follows the theme until you choose a value: then it shows <span class="font-medium text-blue-700">Your value</span> and a Reset that puts the theme's back. Nothing changes on the site until you save.</p>
 
   <div class="bp-grid">
     <div class="bp-cards">
@@ -96,7 +96,7 @@
           </dl>
           {% set more_b = b|filter((field, key) => key not in known_b and not field.hidden) %}
           {% if more_b is not empty %}
-            <div class="grid gap-3 sm:grid-cols-2">{% for key, field in more_b %}{{ fields.field(field, pb ~ key ~ ']', vb[key] ?? field.default) }}{% endfor %}</div>
+            <div class="lc-fields">{% for key, field in more_b %}{{ fields.field(field, pb ~ key ~ ']', vb[key] ?? field.default) }}{% endfor %}</div>
           {% endif %}
         </div>
       </details>
@@ -129,8 +129,6 @@
           <button type="button" class="bp-reset" data-bp-reset="colour">Reset heading colour</button>
         </div>
       </details>
-
-      <p class="bp-moved">Fonts, text sizes and headings are on the <button type="button" class="bp-goto" data-goto-tab="typography">Typography</button> tab.</p>
 
       <details class="bp-card">
         <summary><span>Layout and spacing</span><small>Widths, margins, rhythm</small></summary>
@@ -198,7 +196,7 @@
         <details class="bp-card">
           <summary><span>More</span><small>Other choices of this theme</small></summary>
           <div class="bp-body">
-            <div class="grid gap-3 sm:grid-cols-2">
+            <div class="lc-fields">
               {% for key, field in more_a %}{{ fields.field(field, pa ~ key ~ ']', va[key] ?? field.default) }}{% endfor %}
               {% for key, field in more_d %}{{ fields.field(field, pd ~ key ~ ']', vd[key] ?? field.default) }}{% endfor %}
             </div>

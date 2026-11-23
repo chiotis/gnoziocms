@@ -98,7 +98,7 @@
       <h3 id="hd-phone" class="px-3 pt-3 text-sm font-semibold text-slate-900">Phone</h3>
       <dl class="m-0 space-y-2.5 p-3">
         {% if f.mobile_menu is defined %}{{ c.choice(f.mobile_menu, p ~ 'mobile_menu]', v.mobile_menu, 'select', {}) }}{% endif %}
-        {% if f.mobile_bar is defined %}{{ c.toggles('Bottom bar', [[p ~ 'mobile_bar]', 'A bar of icons fixed at the bottom of the screen', v.mobile_bar]]) }}{% endif %}
+        {% if f.mobile_bar is defined %}{{ c.toggles('Bottom bar', [[p ~ 'mobile_bar]', 'Show', v.mobile_bar]], 'A bar of icons fixed at the bottom of the screen.') }}{% endif %}
       </dl>
       {% if f.bar_items is defined %}
         <div class="border-t border-slate-100 p-3">{{ fields.field(f.bar_items, p ~ 'bar_items]', v.bar_items) }}</div>
@@ -109,7 +109,7 @@
     {% if more is not empty %}
       <section class="lc-card rounded-xl border border-slate-200 bg-white" aria-labelledby="hd-more">
         <h3 id="hd-more" class="px-3 pt-3 text-sm font-semibold text-slate-900">More</h3>
-        <div class="grid gap-3 p-3 sm:grid-cols-2">
+        <div class="lc-fields p-3">
           {% for key, field in more %}{{ fields.field(field, p ~ key ~ ']', v[key] ?? field.default) }}{% endfor %}
         </div>
       </section>

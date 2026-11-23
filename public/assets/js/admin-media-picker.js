@@ -277,7 +277,7 @@
     // Only a picture has a thumbnail to show; a video, a route or any other file is named by its address.
     var video = kind !== 'image';
     var thumb = el('img', { alt: '', class: 'h-9 w-9 shrink-0 rounded border border-slate-200 bg-slate-50 object-cover' });
-    var choose = el('button', { type: 'button', class: CLS.btn + ' shrink-0', text: 'Library' });
+    var choose = el('button', { type: 'button', class: CLS.btn + ' shrink-0 lc-library', text: 'Library' });
     choose.setAttribute('aria-label', kind === 'video' ? 'Choose a video from the media library' : (kind === 'image' ? 'Choose from the media library' : (kind === 'audio' ? 'Choose a sound file from the media library' : 'Choose a file from the media library')));
     input.parentNode.insertBefore(wrap, input);
     wrap.appendChild(thumb);

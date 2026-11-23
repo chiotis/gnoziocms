@@ -73,12 +73,13 @@
 {% endmacro %}
 
 {# A row of yes or no chips: items is a list of [name, label, checked]. #}
-{% macro toggles(label, items) %}
+{% macro toggles(label, items, help) %}
   {% import _self as c %}
   <div class="lc-row">
     <dt>{{ label }}</dt>
-    <dd class="m-0 flex flex-wrap gap-1.5">
-      {% for item in items %}{{ c.chip(item[0], item[1], item[2]) }}{% endfor %}
+    <dd class="m-0">
+      <span class="flex flex-wrap gap-1.5">{% for item in items %}{{ c.chip(item[0], item[1], item[2]) }}{% endfor %}</span>
+      {% if help %}<span class="lc-help">{{ help }}</span>{% endif %}
     </dd>
   </div>
 {% endmacro %}
