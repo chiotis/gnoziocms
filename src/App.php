@@ -1491,7 +1491,8 @@ final class App
                 }
             },
             null,
-            $this->secondFactor()
+            $this->secondFactor(),
+            $this->basePath . '/storage/setup-code.json'
         );
     }
 

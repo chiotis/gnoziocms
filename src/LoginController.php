@@ -28,6 +28,7 @@ final class LoginController
      * @param \Closure(int, array<int, string>): void $respond sets the status of the answer and the header lines to send with it
      * @param (callable(string, array<int, mixed>, string): array{body: mixed, status: int, error: string})|null $googleHttp replaces the calls to Google (for tests)
      * @param SecondFactor|null $secondFactor asks for a code after the password of a person who has set one up
+     * @param string $setupCodeFile where installer.php keeps the hash of the first administrator's one-time code
      */
     public function __construct(
         private Auth $auth,
@@ -41,7 +42,8 @@ final class LoginController
         private \Closure $redirect,
         private \Closure $respond,
         private $googleHttp = null,
-        private ?SecondFactor $secondFactor = null
+        private ?SecondFactor $secondFactor = null,
+        private string $setupCodeFile = ''
     ) {
     }
 
@@ -236,7 +238,7 @@ final class LoginController
             $payload = $result['payload'];
             $error = $result['error'];
         }
-        ($this->render)('@admin/setup.twig', ['error' => $error, 'payload' => $payload]);
+        ($this->render)('@admin/setup.twig', ['error' => $error, 'payload' => $payload, 'needs_code' => $this->firstAdmin()->needsCode()]);
     }
 
     private function googleLogin(): void
@@ -354,7 +356,8 @@ final class LoginController
         return $this->firstAdmin ??= new FirstAdmin(
             $this->users,
             $this->auth,
-            fn(string $action, string $level, ?string $type, ?string $id, string $message, array $context) => ($this->log)($action, $level, $type, $id, $message, $context, null)
+            fn(string $action, string $level, ?string $type, ?string $id, string $message, array $context) => ($this->log)($action, $level, $type, $id, $message, $context, null),
+            $this->setupCodeFile
         );
     }
 }

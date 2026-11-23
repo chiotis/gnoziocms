@@ -157,7 +157,7 @@ set, and says why. Pages themselves are still built with the request's host when
 
 ### First administrator and default credentials
 
-- A new site ships no account. While the users table is empty, the sign-in page asks for the first administrator (username, email, a password of at least 8 characters that is not the shipped one) and makes a super admin. The page is gone as soon as one account exists, and a second account cannot be made through it. **Open `/admin` right after putting a site on a server**: until the first account exists, whoever visits first can make it.
+- A new site ships no account. While the users table is empty, the sign-in page asks for the first administrator (username, email, a password of at least 8 characters that is not the shipped one) and makes a super admin. The page is gone as soon as one account exists, and a second account cannot be made through it. A site set up by `installer.php` is closed to strangers: the installer's last screen shows a one-time setup code, keeps only its hash in `storage/setup-code.json`, and the form asks for it; the file is deleted when the account is made (delete it by hand if the code is lost). A site unpacked by hand has no code: **open `/admin` right after putting it on a server**, because until the first account exists, whoever visits first can make it.
 - Older sites may still have `content/users/users.yaml` with a plain-text development account. It is imported into SQLite only when the users table is empty. Signing in with that shipped password shows a red banner on every admin page and creates a `security.default_password` notification until the password is changed.
 - New passwords must be at least 8 characters and cannot equal the shipped password.
 

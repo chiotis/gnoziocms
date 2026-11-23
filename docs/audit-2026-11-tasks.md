@@ -91,7 +91,8 @@ group. Size: S (an hour or two), M (half a day to a day), L (more).
 - [x] **S25** (S) Admin Google sign-in: recognise a linked user by `sub` first; an email that matches a user linked to another
       `sub` is refused. `hash_equals` for the state.
       Done: `UserRepository::findByGoogleSub()`; `auth.google_mismatch` in Activity.
-- [ ] **S26** (S) The installer gives a one-time code; the first-administrator form asks for it.
+- [x] **S26** (S) The installer gives a one-time code; the first-administrator form asks for it.
+      Done: `Installer::setupCode()` and `storage/setup-code.json`; `FirstAdmin::needsCode()`. A site unpacked by hand has no code.
 
 ## Speed
 

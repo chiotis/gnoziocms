@@ -34,9 +34,16 @@
 
       <form method="post" class="mt-5 grid gap-4">
         {{ csrf_field() }}
+        {% if needs_code %}
+        <label class="grid gap-1 text-sm font-medium text-slate-700" for="setup_code">
+          Setup code
+          <input id="setup_code" type="text" name="setup_code" autocomplete="one-time-code" required autofocus spellcheck="false" autocapitalize="characters" class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 font-mono text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-300">
+          <span class="text-xs font-normal text-slate-500">The code the installer showed on its last screen.</span>
+        </label>
+        {% endif %}
         <label class="grid gap-1 text-sm font-medium text-slate-700" for="username">
           Username
-          <input id="username" type="text" name="username" autocomplete="username" required autofocus value="{{ payload.username }}" class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-300"> 
+          <input id="username" type="text" name="username" autocomplete="username" required{{ needs_code ? '' : ' autofocus' }} value="{{ payload.username }}" class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-300"> 
         </label>
         <label class="grid gap-1 text-sm font-medium text-slate-700" for="display_name">
           Name (optional)

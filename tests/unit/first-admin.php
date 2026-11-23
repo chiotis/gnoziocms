@@ -53,6 +53,32 @@ check('a second account cannot be made this way', [$r['ok'], $r['error'], $users
 $noName = new FirstAdmin(new UserRepository(new SystemDatabase("$dir/none"), "$dir/x.yaml"), $auth, fn() => null);
 check('a site whose database cannot be used does not offer it', $noName->needed(), false);
 
+// A site set up by installer.php: the form asks for the one-time code the installer showed.
+$dir2 = "$dir/coded";
+mkdir("$dir2/storage", 0775, true);
+mkdir("$dir2/content/users", 0775, true);
+file_put_contents("$dir2/content/users/users.yaml", "");
+$db2 = new SystemDatabase("$dir2/storage");
+$db2->initialize();
+$users2 = new UserRepository($db2, "$dir2/content/users/users.yaml");
+$auth2 = new Auth("$dir2/content/users/users.yaml", $users2);
+$_SESSION = [];
+$codeFile = "$dir2/storage/setup-code.json";
+file_put_contents($codeFile, json_encode(['hash' => hash('sha256', 'ABCD2345WXYZ')]));
+$coded = new FirstAdmin($users2, $auth2, fn() => null, $codeFile);
+check('with the installer\'s file the form asks for the code', $coded->needsCode(), true);
+check('a site with no such file asks for none', (new FirstAdmin($users2, $auth2, fn() => null, "$dir2/storage/none.json"))->needsCode(), false);
+foreach (['no code' => '', 'a wrong code' => 'ABCD-2345-WXYA'] as $label => $code) {
+    $r = $coded->create(['setup_code' => $code] + $form);
+    check("$label is refused, and nothing is made", [$r['ok'], str_contains($r['error'], 'setup code'), $users2->count(), is_file($codeFile)], [false, true, 0, true]);
+}
+$r = $coded->create(['setup_code' => ' abcd-2345 wxyz '] + $form);
+check('the right code, however it is spaced or cased, makes the account', [$r['ok'], $r['error'], $users2->count()], [true, '', 1]);
+check('and the code is gone with it', is_file($codeFile), false);
+file_put_contents($codeFile, 'not json');
+$broken = new FirstAdmin($users2, $auth2, fn() => null, $codeFile);
+check('a file that cannot be read still asks for a code', $broken->needsCode(), true);
+
 exec('rm -rf ' . escapeshellarg($dir));
 echo $fail === 0 ? "\nALL PASSED\n" : "\n$fail FAILED\n";
 exit($fail === 0 ? 0 : 1);
