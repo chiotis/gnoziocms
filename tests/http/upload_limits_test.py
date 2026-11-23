@@ -78,9 +78,11 @@ st, loc, page = outcome(root, 'paper.pdf', b'%PDF-1.4\n%test\n', 'application/pd
 check('ticking documents lets a PDF in', in_library(root, 'paper.pdf'), re.findall(r'not allowed[^<]*', page))
 st, loc, page = outcome(root, 'drawing.svg', b'<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>', 'image/svg+xml')
 check('and a clean SVG when that is ticked', in_library(root, 'drawing.svg'))
-st, loc, page = outcome(root, 'evil.svg', b'<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>', 'image/svg+xml')
 import glob
-kept = [open(f, 'rb').read() for f in glob.glob('app/public/uploads/**/evil*.svg', recursive=True)]
+svgs = lambda: set(glob.glob('app/public/uploads/**/*.svg', recursive=True))
+before = svgs()
+st, loc, page = outcome(root, 'evil.svg', b'<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>', 'image/svg+xml')
+kept = [open(f, 'rb').read() for f in sorted(svgs() - before)]
 check('an SVG with a script is kept without it (written again with only what a drawing needs)', in_library(root, 'evil.svg') and kept != [] and all(b'script' not in k and b'alert' not in k for k in kept), kept)
 st, loc, page = outcome(root, 'entity.svg', b'<!DOCTYPE svg [<!ENTITY x "javascript:alert(1)">]><svg xmlns="http://www.w3.org/2000/svg"><a href="&x;"/></svg>', 'image/svg+xml')
 check('an SVG with a DOCTYPE is refused', not in_library(root, 'entity.svg') and 'DOCTYPE' in page, re.findall(r'SVG[^<]*', page))
