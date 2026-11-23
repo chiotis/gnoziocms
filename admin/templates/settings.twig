@@ -23,7 +23,7 @@
   {% import _self as local %}
   {% import '@admin/partials/ui.twig' as ui %}
   {% import '@admin/partials/fields.twig' as fields %}
-  {% import '@admin/partials/section-nav.twig' as section_nav %}
+  {% import '@admin/partials/settings-sidebar.twig' as settings_sidebar %}
 
   {% if saved %}
     {{ ui.flash('Saved.', 'success') }}
@@ -59,31 +59,8 @@
       </div>
     </div>
 
-    {% set settings_groups = [
-      {label: 'Site', items: [
-        {key: 'basics', label: 'General', icon: section_nav.icon('sliders')}
-      ]},
-      {label: 'Communication', items: [
-        {key: 'smtp', label: 'Email / SMTP', icon: section_nav.icon('mail')}
-      ]},
-      {label: 'Access', items: [
-        {key: 'auth', label: 'Sign-in', icon: section_nav.icon('key')},
-        {key: 'apis', label: 'APIs', icon: section_nav.icon('plug')}
-      ]},
-      {label: 'System', items: [
-        {key: 'backup', label: 'Backups', icon: section_nav.icon('archive')},
-        {key: 'updates', label: 'Updates', icon: section_nav.icon('refresh')}
-      ]|merge(can('limits.manage') ? [{key: 'limits', label: 'Limits', icon: section_nav.icon('gauge')}] : [])}
-    ] %}
-    {% set settings_nav = [] %}
-    {% for group in settings_groups %}
-      {% set items = [] %}
-      {% for item in group.items %}{% set items = items|merge([item|merge({href: url('admin/settings?tab=' ~ item.key)})]) %}{% endfor %}
-      {% set settings_nav = settings_nav|merge([group|merge({items: items})]) %}
-    {% endfor %}
-
     <div class="section-layout">
-      {{ section_nav.nav(settings_nav, active_tab, 'Settings', true) }}
+      {{ settings_sidebar.nav(active_tab, true) }}
       <div class="section-body">
 
       {% if can('limits.manage') %}

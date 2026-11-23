@@ -9,6 +9,7 @@
  *   5. #key opens it        /admin/settings#backup opens Backups
  *   6. unknown keys         an unknown #key changes nothing
  *   7. links mode           in Shop settings a click is a plain link (not stopped)
+ *   8. pages of their own   in Settings, MCP (no panel in the page) stays a plain link and switches nothing
  *
  *   node tests/js/section-nav.test.js        (after: npm ci --prefix tests/js)
  */
@@ -33,17 +34,19 @@ function check(label, ok, detail) {
 const source = fs.readFileSync(path.join(__dirname, '..', '..', 'public', 'assets', 'js', 'admin.js'), 'utf8');
 
 const sections = [['basics', 'General'], ['smtp', 'Email / SMTP'], ['backup', 'Backups']];
+const pages = [['mcp', 'MCP']];
 function page(mode, url, current) {
   const base = mode === 'switch' ? '/admin/settings' : '/admin/shop-settings';
-  const link = ([key, label]) => `<li><a href="${base}?tab=${key}" class="section-nav-link" data-section="${key}"${key === current ? ' aria-current="page"' : ''}><svg></svg><span>${label}</span></a></li>`;
-  const option = ([key, label]) => `<option value="${key}" data-href="${base}?tab=${key}"${key === current ? ' selected' : ''}>${label}</option>`;
+  const href = (key) => (key === 'mcp' ? '/admin/mcp' : `${base}?tab=${key}`);
+  const link = ([key, label]) => `<li><a href="${href(key)}" class="section-nav-link" data-section="${key}"${key === current ? ' aria-current="page"' : ''}><svg></svg><span>${label}</span></a></li>`;
+  const option = ([key, label]) => `<option value="${key}" data-href="${href(key)}"${key === current ? ' selected' : ''}>${label}</option>`;
   const panel = ([key]) => `<div class="section-panel${key === current ? ' active' : ' hidden'}" data-panel="${key}">${key}</div>`;
   const html = `<!doctype html><body><form method="post">
     <input type="hidden" name="active_tab" value="${current}" data-active-tab-input>
     <div class="section-layout">
       <div class="section-nav" data-section-nav="${mode}">
-        <label class="section-nav-select"><select data-section-select><optgroup label="Site">${sections.map(option).join('')}</optgroup></select></label>
-        <nav class="section-nav-list" aria-label="Settings"><ul>${sections.map(link).join('')}</ul></nav>
+        <label class="section-nav-select"><select data-section-select><optgroup label="Site">${sections.concat(pages).map(option).join('')}</optgroup></select></label>
+        <nav class="section-nav-list" aria-label="Settings"><ul>${sections.concat(pages).map(link).join('')}</ul></nav>
       </div>
       <div class="section-body">${mode === 'switch' ? sections.map(panel).join('') : ''}</div>
     </div>
@@ -116,6 +119,15 @@ const click = (w, el, opts) => {
   w.document.addEventListener('click', (e) => { seen = e.defaultPrevented; e.preventDefault(); });
   click(w, w.document.querySelector('[data-section="smtp"]'));
   check('7. in links mode a click is a plain link', seen === false && state(w).current === 'basics', String(seen));
+}
+
+{
+  const w = page('switch', 'http://localhost/admin/settings?tab=smtp', 'smtp');
+  let seen = null;
+  w.document.addEventListener('click', (e) => { seen = e.defaultPrevented; e.preventDefault(); });
+  click(w, w.document.querySelector('[data-section="mcp"]'));
+  const s = state(w);
+  check('8. MCP stays a link to its own screen', seen === false && s.shown === 'smtp' && s.current === 'smtp' && s.input === 'smtp', JSON.stringify(s) + ' ' + seen);
 }
 
 console.log(failed ? `\n${failed} FAILED` : '\nALL PASSED');

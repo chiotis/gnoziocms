@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.328 — 2026-11-23 — MCP and Omni under Settings
+- **MCP** and **Omni** left the main menu: they are in the Settings list, under **Integrations** with APIs. Their screens keep their addresses (`/admin/mcp`, `/admin/omni`) and open with the Settings list beside them, MCP or Omni marked, and Settings is the current entry of the main menu. Each is listed only for whoever may open it (`mcp.manage`, `omni.manage`); someone who may open MCP or Omni but not Settings gets a Settings entry that opens the first of them.
+- On the Settings screen a section with a page of its own is a plain link; the others still switch in place.
+- Tests: `settings_nav`, `mcp_oauth` (HTTP) and `section-nav` (JS).
+
 ## 0.1.327 — 2026-11-23 — Settings with a section list on the left
 - **Settings**: the tabs are now a list on the left under small group headings (Site: General; Communication: Email / SMTP; Access: Sign-in, APIs; System: Backups, Updates, Limits), each with an icon, the current one in a white pill and its form on the right. A click shows the section without loading the page and puts `?tab=` in the address, so a reload or a shared link opens the same section (`#smtp` works too); saving and Discard stay on it. The Auth tab is called **Sign-in**. Below 1024 px wide the list is a select above the form.
 - **Shop settings** has the same list: Store (General, Product details), Checkout (Shipping, Payments), Customers (Accounts, Emails), Growth (Marketing) and Data (Import & export). Each section is still its own page.

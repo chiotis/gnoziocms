@@ -730,9 +730,10 @@
   window.addEventListener('resize', makeScrollersFocusable);
 
   /* ---- Settings screens: the section list on the left (partials/section-nav.twig) ----
-   * [data-section-nav="switch"]: every section is a [data-panel] of the form around it; a click shows that panel,
+   * [data-section-nav="switch"]: a section that is a [data-panel] of the form around it is shown in place: a click shows that panel,
    * marks the link (aria-current) and the select, sets the form's active_tab and Discard link, and keeps ?tab= in the
-   * address so a reload or a shared link opens the same section (#key works too). [data-section-nav="links"]: the
+   * address so a reload or a shared link opens the same section (#key works too); a section without a panel is a link.
+   * [data-section-nav="links"]: the
    * links load their page; the select (narrow screens) goes to the chosen one. */
   function enhanceSectionNav() {
     document.querySelectorAll('[data-section-nav]').forEach(function (nav) {
@@ -746,7 +747,10 @@
         return;
       }
       var scope = nav.closest('form') || document;
-      var keys = links.map(function (a) { return a.getAttribute('data-section'); });
+      // Only the sections that are panels here switch; the others (MCP, Omni) are pages of their own.
+      var keys = links.map(function (a) { return a.getAttribute('data-section'); }).filter(function (key) {
+        return scope.querySelector('[data-panel="' + key + '"]') !== null;
+      });
       function show(key, updateUrl) {
         if (keys.indexOf(key) === -1) return false;
         links.forEach(function (a) {
@@ -770,13 +774,18 @@
         return true;
       }
       links.forEach(function (a) {
+        if (keys.indexOf(a.getAttribute('data-section')) === -1) return;
         a.addEventListener('click', function (event) {
           if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button > 0) return;
           event.preventDefault();
           show(a.getAttribute('data-section'), true);
         });
       });
-      if (select) select.addEventListener('change', function () { show(select.value, true); });
+      if (select) select.addEventListener('change', function () {
+        if (show(select.value, true)) return;
+        var option = select.options[select.selectedIndex];
+        if (option && option.getAttribute('data-href')) window.location.assign(option.getAttribute('data-href'));
+      });
       var hash = (window.location.hash || '').replace(/^#/, '');
       if (hash) show(hash, true);
     });

@@ -4,7 +4,7 @@ GnozioCMS has an MCP server, so an AI assistant (Claude, ChatGPT) or a job of th
 
 ## Turning it on
 
-**Admin > MCP** (super admin only, `mcp.manage`). It is off until turned on; off, its addresses answer as ordinary pages and no connection works, and connections are kept for when it is on again. The screen shows the address to give the assistant, checks from the browser that the discovery documents answer (a web server that does not pass `/.well-known/` to the site shows a red cross), lists the connections, and makes tokens by hand.
+**Settings > MCP** (super admin only, `mcp.manage`). It is off until turned on; off, its addresses answer as ordinary pages and no connection works, and connections are kept for when it is on again. The screen shows the address to give the assistant, checks from the browser that the discovery documents answer (a web server that does not pass `/.well-known/` to the site shows a red cross), lists the connections, and makes tokens by hand.
 
 While MCP is on, the two discovery documents are also written as files, `public/.well-known/oauth-protected-resource` and `public/.well-known/oauth-authorization-server` (with a `.htaccess` that gives them their JSON type on Apache), and they are removed when it is turned off. A web server that answers `/.well-known/` itself, as nginx panels such as CloudPanel do for certificates, then serves them without the site. Each visit of the screen writes them again if the site's address changed.
 
@@ -27,7 +27,7 @@ The site's address comes from Settings > *Base URL* (`base_url`), or the address
 
 - **Claude** (web and desktop): Settings > Connectors > *Add custom connector*, with `https://<site>/mcp`. Claude registers itself, sends you to the consent screen of this admin, and keeps its tokens. For a scheduled job, set the tools it writes with to **Always allow**; otherwise the run stops at the first write, waiting for an approval nobody gives.
 - **ChatGPT**: Developer mode, a new app with that address and OAuth.
-- **A client that sends its own header** (Claude Code, the API, n8n): *Make a token by hand* in Admin > MCP, then `Authorization: Bearer <token>`. The token is shown once and works for the days chosen (at most 365).
+- **A client that sends its own header** (Claude Code, the API, n8n): *Make a token by hand* in Settings > MCP, then `Authorization: Bearer <token>`. The token is shown once and works for the days chosen (at most 365).
 
 On the consent screen you choose whom the connection **acts as** (yourself, or an automation account from Users > *Add automation account*, which keeps your name out of the history) and untick any permission it should not have. Approving sends you back to the assistant.
 
@@ -107,7 +107,7 @@ The read tools need `content.manage` on the account (they show drafts). Writing 
 - the codes that prove who owns the site (Admin > SEO > Verification);
 - Theme settings that are lists, links or galleries, the site's address, languages, limits, mail, backups and keys.
 
-**The shop** (`src/McpShop.php`, `docs/mcp-shop-plan.md`). Its tools are listed only while the shop is on, and need `content.manage` like the product editor. Its categories and collections are changed with the term tools above. Products themselves are entries of the type `products`, made and changed with `create_entry` and `update_entry`; `update_prices` and `set_stock` are the batch tools. Prices and stock are written as the admin writes them: the history keeps each change, prices reach every translation, and a published product's price can change without `content:publish`. Every problem in a batch is named at once and nothing is saved while there is one. Two rules of the connection (Admin > MCP, shown with `shop:write`) hold whatever the job asks:
+**The shop** (`src/McpShop.php`, `docs/mcp-shop-plan.md`). Its tools are listed only while the shop is on, and need `content.manage` like the product editor. Its categories and collections are changed with the term tools above. Products themselves are entries of the type `products`, made and changed with `create_entry` and `update_entry`; `update_prices` and `set_stock` are the batch tools. Prices and stock are written as the admin writes them: the history keeps each change, prices reach every translation, and a published product's price can change without `content:publish`. Every problem in a batch is named at once and nothing is saved while there is one. Two rules of the connection (Settings > MCP, shown with `shop:write`) hold whatever the job asks:
 
 **Orders** (`src/McpShopOrders.php`) hold shoppers' personal data: they need `shop:orders` and the account's `shop.orders`, and coupons need `shop.manage`. An order changes through the order screen's own actions, so stock, coupons, the customer's email and the timeline follow as there (a cancelled order gives its stock back). Money stays with a person: an order is never marked paid or refunded through MCP, and refunds are made in the admin.
 
@@ -132,7 +132,7 @@ A field marked `shared` (a product's price, its variants) has one value for ever
 
 ## Rules of a connection
 
-Each connection in Admin > MCP has **Rules**: the content types and languages it may write (none ticked: all), how many entries it may publish or schedule in 24 hours (10 by default, 0 for no limit) and the byline for new entries. A draft is never counted. `site_info` tells the job its rules and what is left of today's limit.
+Each connection in Settings > MCP has **Rules**: the content types and languages it may write (none ticked: all), how many entries it may publish or schedule in 24 hours (10 by default, 0 for no limit) and the byline for new entries. A draft is never counted. `site_info` tells the job its rules and what is left of today's limit.
 
 ## The protocol
 
@@ -140,7 +140,7 @@ Each connection in Admin > MCP has **Rules**: the content types and languages it
 - No token or a bad one: `401` with `WWW-Authenticate: Bearer resource_metadata="<site>/.well-known/oauth-protected-resource"`.
 - Discovery: `/.well-known/oauth-protected-resource` (also with `/mcp`) and `/.well-known/oauth-authorization-server`.
 - OAuth 2.1: registration `POST /_mcp/register` (public clients, HTTPS redirect addresses, or http on localhost), authorization `/admin/mcp-authorize` (S256 PKCE only, `resource` must be the endpoint), tokens `POST /_mcp/token` (`authorization_code`, `refresh_token`). The OAuth endpoints are under `/_mcp/` so they never take the address of a page.
-- Lifetimes: codes 5 minutes and once; access tokens 1 hour; refresh tokens 90 days, rotated on each use, the replaced one still good for 60 seconds so two refreshes at once do not end the connection. Admin > MCP marks a connection that ends within a week.
+- Lifetimes: codes 5 minutes and once; access tokens 1 hour; refresh tokens 90 days, rotated on each use, the replaced one still good for 60 seconds so two refreshes at once do not end the connection. Settings > MCP marks a connection that ends within a week.
 - Limits: 300 requests a minute per address and 120 per token at `/mcp`; 60 token requests per 10 minutes and 20 registrations an hour per address. Over a limit: `429` with `Retry-After`.
 - A request with an `Origin` other than the site's is refused (`403`).
 - Errors of a tool are a result with `isError: true` and a sentence the model can act on.

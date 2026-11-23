@@ -217,7 +217,7 @@ A report holds no content, no user names or email addresses, no form submissions
 - Right after a backup run and after an update, whether it succeeded or not, so Omni sees the outcome without waiting. The site keeps a fingerprint of the newest backup run and its version with each report sent; when either has changed, a report is due at the next scheduled tick (in the same request for a scheduled backup, the cron script, and the admin page that follows a manual backup or an update).
 - When a superadmin presses **Send report now** in the site's Omni settings.
 
-A report is sent with a 10-second timeout and never delays a visitor: after a visit only where the response can be finished first (PHP-FPM, LiteSpeed); after an admin page the same way where it can, otherwise before that page ends. After a failed send the next attempt waits 15 minutes (or as long as a `429`'s `Retry-After` says), so an Omni that is down slows an admin page at most once in that time. The site keeps the time and the error of the last attempt, and Admin > Omni shows them. Requests go through PHP's streams, with cURL only where streams cannot open addresses, and never follow a redirect.
+A report is sent with a 10-second timeout and never delays a visitor: after a visit only where the response can be finished first (PHP-FPM, LiteSpeed); after an admin page the same way where it can, otherwise before that page ends. After a failed send the next attempt waits 15 minutes (or as long as a `429`'s `Retry-After` says), so an Omni that is down slows an admin page at most once in that time. The site keeps the time and the error of the last attempt, and Settings > Omni shows them. Requests go through PHP's streams, with cURL only where streams cannot open addresses, and never follow a redirect.
 
 Omni marks a site as **silent** when it has not reported for twice its `report_every`, or for 48 hours, whichever is longer.
 
@@ -262,7 +262,7 @@ X-Omni-Signature: v1=<hex>
 | `202` `{"ok": true, "command_id": "…", "state": "accepted"}` | — | Accepted. The answer goes at once; the work starts after it. |
 | `400` | `invalid_request`, `unknown_command` | No good nonce; not `update`, or no good `command_id` |
 | `401` | `unknown_site`, `invalid_signature`, `stale_timestamp`, `replayed_nonce` | |
-| `403` | `not_allowed` | The site's super admin switched off **Allow Omni to install updates** (Admin > Omni; on by default) |
+| `403` | `not_allowed` | The site's super admin switched off **Allow Omni to install updates** (Settings > Omni; on by default) |
 | `409` | `busy` | A command is still running (one older than 30 minutes is taken as dead) |
 | `426` | `unsupported_protocol` | |
 
@@ -297,7 +297,7 @@ The report carries the outcome in an added field (protocol 1 still):
 - `up_to_date`: nothing newer;
 - `failed`: nothing changed, for example because the backup failed.
 
-The site keeps the last command and shows it on Admin > Omni. Omni shows it per site until the next one.
+The site keeps the last command and shows it on Settings > Omni. Omni shows it per site until the next one.
 
 ## Versioning
 
@@ -306,7 +306,7 @@ The site keeps the last command and shows it on Admin > Omni. Omni shows it per 
 
 ## On the site
 
-- **Admin > Omni** is for superadmins only (the `omni.manage` permission, which cannot be given to another role). It shows:
+- **Settings > Omni** is for superadmins only (the `omni.manage` permission, which cannot be given to another role). It shows:
   - while not connected: the Omni address, filled in with `https://omni.faroscms.com` and editable, and the connection code (**Connect** first checks the address with `ping`, then sends the code, then the first report),
   - while connected: the Omni, the site id, when it connected, the last report, how often it reports, and the last problem with when it will try again,
   - after Omni removed the site: a note saying so, and the form to connect again,
