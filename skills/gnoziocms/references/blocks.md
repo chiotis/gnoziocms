@@ -1,4 +1,4 @@
-# Blocks of this installation (GnozioCMS 0.1.320)
+# Blocks of this installation (GnozioCMS 0.1.322)
 
 ## Fields every block has
 
@@ -589,7 +589,7 @@ The newest posts, projects, or any content type, shown from a quiet text list to
 | `eyebrow` | text |  |
 | `heading` | text |  |
 | `intro` | text (several lines) |  |
-| `source` | choice; a content type of the site; default `posts` |  |
+| `source` | choice; a content type of the site |  |
 | `term` | text | Optional. The slug of a category or tag, as in Taxonomies. |
 | `limit` | whole number; 0 to None; default `3` | 0 shows all of them. |
 | `order` | choice; one of `date_desc`, `date_asc`, `title_asc`, `title_desc`, `random`; default `date_desc` |  |
@@ -871,6 +871,7 @@ The product's collection, name and price, its options as choices (finish, size),
 | `show_collection` | true / false; default `true` |  |
 | `show_sku` | true / false; default `false` |  |
 | `note` | text |  |
+| `button_label` | text | Leave it empty for the usual words in each language (Add to cart, Στο καλάθι). A language with its own set of blocks can have its own label. |
 
 ### `quote` — Quote
 One large quotation, with who said it and an optional photo.

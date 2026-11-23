@@ -9,6 +9,8 @@
   <script type="application/json" data-shop-track>{{ {event: 'ViewContent', data: {content_type: product.variants is not empty ? 'product_group' : 'product', content_ids: [product.id], content_name: product.title, value: product.price, currency: 'EUR'}}|json_encode(constant('JSON_HEX_TAG') b-or constant('JSON_HEX_AMP'))|raw }}</script>
 {% endif %}
 {% set prefix = lang_prefix|default('') %}
+{# The button's words: the block's own label when it has one, else the theme's wording in the page's language. #}
+{% set add_label = block.button_label|default('')|trim ?: t('shop.add_to_cart', 'Add to cart') %}
 {% set title_tag = block.show_title ? 'h1' : 'p' %}
 <div class="container">
   <div class="product-summary" data-product-summary data-lang="{{ lang|default('') }}">
@@ -54,7 +56,7 @@
     {% if sellable %}
       <div class="product-buy-row">
         <label class="product-qty"><span class="visually-hidden">{{ t('shop.quantity', 'Quantity') }}</span><input type="number" name="quantity" value="1" min="1" max="99" inputmode="numeric"></label>
-        <button class="btn btn-primary product-add" type="submit" data-add-label="{{ t('shop.add_to_cart', 'Add to cart') }}" data-adding="{{ t('shop.adding', 'Adding…') }}"{% if not product.available %} disabled{% endif %}>{{ t('shop.add_to_cart', 'Add to cart') }}</button>
+        <button class="btn btn-primary product-add" type="submit" data-add-label="{{ add_label }}" data-adding="{{ t('shop.adding', 'Adding…') }}"{% if not product.available %} disabled{% endif %}>{{ add_label }}</button>
       </div>
       <p class="product-buy-message" data-shop-message role="status" aria-live="polite"></p>
     {% endif %}

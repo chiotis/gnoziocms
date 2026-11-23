@@ -23,3 +23,8 @@ fields:
     type: text
     label: Note under the price
     placeholder: Handmade in Greece · Gift wrapping
+  button_label:
+    type: text
+    label: Add to cart button label
+    placeholder: Add to cart
+    help: 'Leave it empty for the usual words in each language (Add to cart, Στο καλάθι). A language with its own set of blocks can have its own label.'
