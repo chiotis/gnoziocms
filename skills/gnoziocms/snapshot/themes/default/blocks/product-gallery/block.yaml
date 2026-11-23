@@ -15,3 +15,8 @@ fields:
       portrait: Portrait (4:5)
       square: Square
       natural: As they are
+  hover_image:
+    type: toggle
+    label: Second picture on hover
+    default: true
+    help: The product's "Picture on hover", for example the piece worn, over the first picture while the pointer is on it.

@@ -825,6 +825,7 @@ The pictures of the product: one under the other beside its details, or a large 
 | field | kind and choices | notes |
 |---|---|---|
 | `ratio` | choice; one of `portrait`, `square`, `natural`; default `portrait` |  |
+| `hover_image` | true / false; default `true` | The product's "Picture on hover", for example the piece worn, over the first picture while the pointer is on it. |
 
 ### `product-grid` — Product grid
 Products as cards with their price: all of them, one collection or kind, a list you choose, or (on a product's page) more from its collection. A picture with a few words can sit between the cards.

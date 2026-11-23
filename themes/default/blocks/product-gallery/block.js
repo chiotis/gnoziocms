@@ -11,6 +11,9 @@
         current.removeAttribute('srcset');
         gallery.querySelectorAll('.product-gallery-thumb').forEach(function (other) { other.removeAttribute('aria-current'); });
         thumb.setAttribute('aria-current', 'true');
+        // The picture on hover belongs to the first picture: another one chosen shows on its own.
+        var frame = current.closest('.product-gallery-frame');
+        if (frame) frame.classList.toggle('has-hover', thumb === gallery.querySelector('.product-gallery-thumb'));
       });
     });
   });

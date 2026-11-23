@@ -1,10 +1,12 @@
-{# Product gallery: the product's pictures (its gallery, or its main image). Data from ShopCatalogue::details(). #}
+{# Product gallery: the product's pictures (its gallery, or its main image), and its picture on hover over the first. Data from ShopCatalogue::details(). #}
 {% set product = block.product %}
+{% set hover = block.hover_image and product.hover_image %}
 <div class="container">
   <div class="product-gallery product-gallery-{{ block.ratio|default('portrait') }}" data-product-gallery>
     {% if block.variant == 'thumbs' %}
-      <div class="product-gallery-main">
+      <div class="product-gallery-main{% if hover %} product-gallery-frame has-hover{% endif %}">
         {{ image(product.images[0], {alt: product.title, sizes: '(min-width: 900px) 55vw, 92vw', max_width: 1800, priority: true, class: 'product-gallery-current'}) }}
+        {% if hover %}{{ image(product.hover_image, {alt: '', sizes: '(min-width: 900px) 55vw, 92vw', max_width: 1800, class: 'product-gallery-hover', loading: 'lazy'}) }}{% endif %}
       </div>
       {% if product.images|length > 1 %}
         <ul class="product-gallery-thumbs" role="list">
@@ -18,7 +20,10 @@
     {% else %}
       <ul class="product-gallery-stack" role="list">
         {% for src in product.images %}
-          <li>{{ image(src, {alt: loop.first ? product.title : '', sizes: '(min-width: 900px) 55vw, 92vw', max_width: 1800, priority: loop.first}) }}</li>
+          <li{% if hover and loop.first %} class="product-gallery-frame has-hover"{% endif %}>
+            {{ image(src, {alt: loop.first ? product.title : '', sizes: '(min-width: 900px) 55vw, 92vw', max_width: 1800, priority: loop.first}) }}
+            {% if hover and loop.first %}{{ image(product.hover_image, {alt: '', sizes: '(min-width: 900px) 55vw, 92vw', max_width: 1800, class: 'product-gallery-hover', loading: 'lazy'}) }}{% endif %}
+          </li>
         {% endfor %}
       </ul>
     {% endif %}

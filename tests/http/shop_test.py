@@ -153,6 +153,9 @@ m = re.search(r'<script type="application/ld\+json">(.*?)</script>', page, re.S)
 graph = json.loads(m.group(1)).get('@graph', []) if m else []
 products = [n for n in graph if n.get('@type') == 'Product']
 check('its structured data has a Product with prices in euro', products and products[0]['offers']['@type'] == 'AggregateOffer' and products[0]['offers']['priceCurrency'] == 'EUR' and products[0]['offers']['availability'] == 'https://schema.org/InStock', products)
+check('a product without a picture on hover has none over its first picture', 'class="product-gallery-hover"' not in page and 'product-gallery-frame has-hover' not in page)
+st, _, page = pub.get('/products/balos-cuff')
+check('a product with one has it over its first picture, shown on hover', st == 200 and re.search(r'<li class="product-gallery-frame has-hover">.*?cuff-worn\.jpg.*?</li>', page, re.S) is not None and re.search(r'\.product-gallery-frame\.has-hover:hover \.product-gallery-hover', page) is not None, re.findall(r'<li class="product-gallery[^>]*>', page))
 
 # ---- the shop built with blocks: each product is a Product card under its entry's link
 form = next(f for f in root.forms('/admin/theme?tab=archive_layouts') if any(x[0] == 'active_tab' for x in f['fields']))
