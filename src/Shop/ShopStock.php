@@ -16,6 +16,9 @@ final class ShopStock
 {
     public const MAX = 1_000_000;
 
+    /** @var array<string, array<string, array{on_hand: int, reserved: int}>> a product's rows, read once per request (audit P5) */
+    private array $rows = [];
+
     public function __construct(private SystemDatabase $database)
     {
     }
@@ -68,13 +71,16 @@ final class ShopStock
         if (!$this->database->isAvailable()) {
             return [];
         }
+        if (isset($this->rows[$productId])) {
+            return $this->rows[$productId];
+        }
         $stmt = $this->pdo()->prepare('SELECT variant_key, on_hand, reserved FROM shop_stock WHERE product_id = :id');
         $stmt->execute(['id' => $productId]);
         $rows = [];
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
             $rows[(string)$row['variant_key']] = ['on_hand' => (int)$row['on_hand'], 'reserved' => (int)$row['reserved']];
         }
-        return $rows;
+        return $this->rows[$productId] = $rows;
     }
 
     /** @return array<string, array<string, array{on_hand: int, reserved: int}>> every product's stock, by product id, then variant key */
@@ -137,6 +143,7 @@ final class ShopStock
      */
     public function setOnHand(string $productId, array $quantities, array $keys): void
     {
+        $this->rows = [];
         if (!$this->database->isAvailable() || $productId === '') {
             return;
         }
@@ -170,6 +177,7 @@ final class ShopStock
      */
     public function adjust(string $productId, string $variantKey, int $delta): void
     {
+        $this->rows = [];
         if (!$this->database->isAvailable() || $productId === '' || $delta === 0) {
             return;
         }
@@ -182,6 +190,7 @@ final class ShopStock
     /** Holds pieces for an order waiting to be paid; false (nothing held) when fewer are free. */
     public function reserve(string $productId, string $variantKey, int $quantity): bool
     {
+        $this->rows = [];
         if (!$this->database->isAvailable() || $quantity < 1) {
             return false;
         }
@@ -193,6 +202,7 @@ final class ShopStock
     /** Gives back pieces held for an order that was not paid. */
     public function release(string $productId, string $variantKey, int $quantity): void
     {
+        $this->rows = [];
         if (!$this->database->isAvailable() || $quantity < 1) {
             return;
         }
@@ -203,6 +213,7 @@ final class ShopStock
     /** A paid order takes what it held: on hand and held both go down. */
     public function commit(string $productId, string $variantKey, int $quantity): void
     {
+        $this->rows = [];
         if (!$this->database->isAvailable() || $quantity < 1) {
             return;
         }
@@ -213,6 +224,7 @@ final class ShopStock
     /** Puts pieces back on hand: an order that had taken them was cancelled. A product no longer stocked is left as it is. */
     public function restock(string $productId, string $variantKey, int $quantity): void
     {
+        $this->rows = [];
         if (!$this->database->isAvailable() || $quantity < 1) {
             return;
         }
@@ -230,6 +242,7 @@ final class ShopStock
      */
     public function reconcile(array $heldLines, int $settleSeconds = 300): array
     {
+        $this->rows = [];
         if (!$this->database->isAvailable()) {
             return [];
         }

@@ -215,5 +215,36 @@ check('a sold-out product says so', $r['offers']['availability'], 'https://schem
 $put('free.md', "title: No price\ntranslation_id: aaaa000000000006\n");
 check('a product without a price has no Product (search engines refuse an offer without one)', $product($structured->forItem((new ContentRepository("$root/content", $markdown, $settings))->parseFile('products', "$root/content/products/free.md"), 'el', 'https://shop.test/x', false)), null);
 
+// ---- one product looked up through the content index (audit P4), with 5,000 products
+$big = sys_get_temp_dir() . '/shopbig' . getmypid();
+mkdir("$big/content/products", 0775, true);
+mkdir("$big/storage", 0775, true);
+register_shutdown_function(function () use ($big) { @exec('rm -rf ' . escapeshellarg($big)); });
+for ($i = 1; $i <= 5000; $i++) {
+    $tid = sprintf('big%013d', $i);
+    file_put_contents("$big/content/products/p$i.md", "---\ntitle: Product $i\ntranslation_id: $tid\n" . ($i === 7 ? "status: draft\n" : '') . "custom_fields:\n  price: $i\n---\n\nText\n");
+}
+file_put_contents("$big/content/products/p1.en.md", "---\ntitle: Product 1 EN\ntranslation_id: big0000000000001\ncustom_fields:\n  price: 1\n---\n\nText\n");
+$bigDb = new \GnozioCMS\SystemDatabase("$big/storage");
+$bigDb->initialize();
+$bigIndex = new \GnozioCMS\ContentIndex($bigDb, "$big/content", new SystemMetaRepository($bigDb));
+$bigContent = new ContentRepository("$big/content", $markdown, $settings, fn(): array => $types->catalogue());
+check('the index of 5,000 products is built', $bigIndex->rebuild($bigContent, ['products'])['ok'], true);
+$reads = new ContentRepository("$big/content", $markdown, $settings, fn(): array => $types->catalogue());
+$byIndex = new ShopCatalogue($reads, fn(): Taxonomies => $taxonomies, fn(): ContentTypes => $types, new ShopStock($bigDb), fn(): string => 'el', false, null, $bigIndex);
+$start = microtime(true);
+$one = $byIndex->product(sprintf('big%013d', 4321), 'el');
+$took = microtime(true) - $start;
+$scanned = new ShopCatalogue(new ContentRepository("$big/content", $markdown, $settings, fn(): array => $types->catalogue()), fn(): Taxonomies => $taxonomies, fn(): ContentTypes => $types, new ShopStock($bigDb), fn(): string => 'el');
+$start = microtime(true);
+$same = $scanned->product(sprintf('big%013d', 4321), 'el');
+$scanTook = microtime(true) - $start;
+check('a product by its id: the same entry as reading the catalogue', [$one?->slug, $one?->meta['title'] ?? null, $same?->slug], ['p4321', 'Product 4321', 'p4321']);
+check('found by reading its one file, far faster than reading 5,000 (' . round($took * 1000, 1) . ' ms against ' . round($scanTook * 1000) . ' ms)', $took * 5 < $scanTook, true);
+check('a translation in its language; a language without one falls back to the site\'s', [$byIndex->product('big0000000000001', 'en')?->meta['title'] ?? null, $byIndex->product('big0000000000002', 'en')?->slug], ['Product 1 EN', 'p2']);
+check('a draft is not sold; an unknown id is nothing', [$byIndex->product('big0000000000007', 'el'), $byIndex->product('nothing00000000', 'el')], [null, null]);
+touch("$big/content/products/p9.md", time() + 5);
+check('a file changed since the index saw it is read from the catalogue instead', $byIndex->product('big0000000000009', 'el')?->slug, 'p9');
+
 echo $fail === 0 ? "ALL PASSED\n" : "$fail FAILED\n";
 exit($fail === 0 ? 0 : 1);

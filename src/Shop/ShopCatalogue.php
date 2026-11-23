@@ -22,6 +22,8 @@ final class ShopCatalogue
 
     /** @var array<string, array<string, ContentItem>> products by translation_id, per language */
     private array $byId = [];
+    /** @var array<string, array<string, ContentItem|null>> products looked up one at a time, per language */
+    private array $one = [];
 
     /**
      * @param \Closure(): Taxonomies $taxonomies
@@ -37,7 +39,8 @@ final class ShopCatalogue
         private ShopStock $stock,
         private \Closure $defaultLanguage,
         private bool $includeHidden = false,
-        private ?\Closure $shopDetails = null
+        private ?\Closure $shopDetails = null,
+        private ?\GnozioCMS\ContentIndex $index = null
     ) {
     }
 
@@ -566,11 +569,43 @@ final class ShopCatalogue
     private function byTranslationId(string $id, string $lang): ?ContentItem
     {
         if (!isset($this->byId[$lang])) {
+            // One product (a cart, an order, the Add to cart button): found through the content index and its one file read, so
+            // the whole catalogue is loaded only for a listing (audit P4). When the index cannot tell, the catalogue is read.
+            if (array_key_exists($id, $this->one[$lang] ?? [])) {
+                return $this->one[$lang][$id];
+            }
+            $found = $this->lookUp($id, $lang);
+            if ($found !== false) {
+                return $this->one[$lang][$id] = $found;
+            }
             $this->byId[$lang] = [];
             foreach ($this->content->getItems(Shop::TYPE, $lang, $this->includeHidden, true) as $p) {
                 $this->byId[$lang][(string)($p->meta['translation_id'] ?? '')] = $p;
             }
         }
         return $this->byId[$lang][$id] ?? null;
+    }
+
+    /** The product through the content index: the entry, null when it is not listed, false when the index cannot tell. */
+    private function lookUp(string $id, string $lang): ContentItem|null|false
+    {
+        if ($this->index === null || $this->content->hasDraft()) {
+            return false;
+        }
+        $default = ($this->defaultLanguage)();
+        try {
+            $row = $this->index->entryByTranslation(Shop::TYPE, $id, [$lang, $default]);
+        } catch (\Throwable) {
+            return false;
+        }
+        if ($row === null) {
+            return false;
+        }
+        $items = $this->content->itemsAt([$row]);
+        if ($items === null || !isset($items[0])) {
+            $this->index->markStale();
+            return false;
+        }
+        return $this->content->isListed($items[0], $this->includeHidden) ? $items[0] : null;
     }
 }

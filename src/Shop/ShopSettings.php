@@ -231,6 +231,8 @@ final class ShopSettings
             'guest_checkout' => !empty($post['guest_checkout']),
             'terms_page' => $post['terms_page'] ?? '',
             'returns_page' => $post['returns_page'] ?? '',
+            'download_server' => $post['download_server'] ?? 'php',
+            'download_location' => $post['download_location'] ?? '',
         ];
         $this->meta->setJson(self::META, self::normalize(array_replace($this->meta->getJson(self::META) ?? [], $values)));
     }
@@ -284,6 +286,10 @@ final class ShopSettings
             'guest_checkout' => array_key_exists('guest_checkout', $stored) ? (bool)$stored['guest_checkout'] : true,
             'terms_page' => $page($stored['terms_page'] ?? ''),
             'returns_page' => $page($stored['returns_page'] ?? ''),
+            // Who sends a bought file (audit P7): PHP, or the web server from a header (Apache's X-Sendfile, nginx's
+            // X-Accel-Redirect to an internal location that maps to storage/shop-files/).
+            'download_server' => in_array($stored['download_server'] ?? 'php', ['php', 'sendfile', 'accel'], true) ? (string)($stored['download_server'] ?? 'php') : 'php',
+            'download_location' => preg_match('#^/[A-Za-z0-9._/-]{1,100}/$#', (string)($stored['download_location'] ?? '')) === 1 && !str_contains((string)$stored['download_location'], '..') ? (string)$stored['download_location'] : '/_shop-files/',
             'shipping' => $zones,
             'payments' => [
                 'viva' => [

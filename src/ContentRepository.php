@@ -361,6 +361,12 @@ final class ContentRepository
         return $items;
     }
 
+    /** Whether getItems() would list the entry: published and not hidden, unless hidden ones are wanted (filterVisibility()). */
+    public function isListed(ContentItem $item, bool $includeHidden): bool
+    {
+        return $this->filterVisibility([$item], $includeHidden) !== [];
+    }
+
     /** @param ContentItem[] $items */
     private function withDraft(string $type, ?string $lang, array $items): array
     {

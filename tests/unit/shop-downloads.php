@@ -92,7 +92,8 @@ check('a link of the site, its id signed', [str_starts_with($url, 'https://shop.
 check('it opens its file', [$downloads->open($token)['ok'], $downloads->open($token)['file']['name']], [true, 'The Book (2026).pdf']);
 [$id, $sig] = explode('-', $token);
 check('another id with the same signature does not', [$downloads->open(($id + 1) . '-' . $sig)['reason'], $downloads->open($id . '-' . str_repeat('a', 32))['reason'], $downloads->open('../etc')['reason']], ['gone', 'gone', 'gone']);
-check('counted, up to its limit', [$downloads->count((int)$id), $downloads->count((int)$id), $downloads->count((int)$id)], [true, true, false]);
+$back = static fn() => $db->connection()->exec('UPDATE shop_downloads SET last_at = last_at - 700 WHERE id = ' . (int)$id);
+check('counted, once within ten minutes, up to its limit', [$downloads->count((int)$id), $downloads->count((int)$id), $downloads->download((int)$id)['downloads'], $back(), $downloads->count((int)$id), $back(), $downloads->count((int)$id)], [true, true, 1, 1, true, 1, false]);
 check('then used up', [$downloads->open($token)['ok'], $downloads->open($token)['reason']], [false, 'used']);
 check('the other file has its own count', $downloads->open(substr($given[1]['url'], strrpos($given[1]['url'], '/') + 1))['ok'], true);
 check('Allow again from the start', [$downloads->reset($order['id'], (int)$id), $downloads->open($token)['ok'], $downloads->reset($order['id'] + 99, (int)$id)], [true, true, false]);

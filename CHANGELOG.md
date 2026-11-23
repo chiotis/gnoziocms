@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.337 — 2026-11-23 — Shop speed: one product read on its own, fewer picture encodes at once, downloads that resume
+- A product is looked up through the content index and only its own file is read; the whole catalogue is loaded for listings only (5,000 products: about 1 ms instead of 400 ms).
+- Adding to the cart prices the product once; a product's stock rows are kept for the request; the account page reads the customer's orders once.
+- At most two picture sizes are made at once; a request over that gets the next smaller size that exists, or 503 with Retry-After.
+- Downloads can be sent by the web server (X-Accel-Redirect for nginx, X-Sendfile for Apache), set in Shop settings > Downloads.
+- The download key is read once per request; expired downloads are cleared by the shop's own requests only when cron has not run in 15 minutes, and on the checkout.
+- Downloads resume (Range requests) and count once per 10 minutes, so a download manager does not use up the limit.
+- Audit tasks P4, P5, P6, P7, P8 and S15 are done.
+- Tests: `shop-catalogue`, `shop-downloads`, `image-variants` (unit) and `shop_downloads` (HTTP).
+
 ## 0.1.336 — 2026-11-23 — SVG uploads cleaned of scripts
 - **SVG uploads are cleaned, not just screened**: an uploaded SVG is now read as a drawing and written again with only what a drawing needs. Scripts, event attributes (`onclick`…), `<foreignObject>`, animations that set an event or a link, stylesheets that import something, and links to other addresses are removed, however they are written (entity-encoded `javascript:` included). Links within the drawing and raster pictures inlined in it are kept. A file with a DOCTYPE, or one that does not parse, is refused with a message saying to save it again as plain SVG. An SVG with a script used to be refused; it is now kept without the script.
 - **System > Status › SVG uploads header**: once a day the site asks itself for a small drawing to see that the web server sends uploaded SVG files with their Content-Security-Policy (Apache has it from `public/uploads/.htaccess`; nginx needs the uploads block in `docs/security.md`). A warning says what to add when it is missing.
