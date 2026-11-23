@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.336 — 2026-11-23 — SVG uploads cleaned of scripts
+- **SVG uploads are cleaned, not just screened**: an uploaded SVG is now read as a drawing and written again with only what a drawing needs. Scripts, event attributes (`onclick`…), `<foreignObject>`, animations that set an event or a link, stylesheets that import something, and links to other addresses are removed, however they are written (entity-encoded `javascript:` included). Links within the drawing and raster pictures inlined in it are kept. A file with a DOCTYPE, or one that does not parse, is refused with a message saying to save it again as plain SVG. An SVG with a script used to be refused; it is now kept without the script.
+- **System > Status › SVG uploads header**: once a day the site asks itself for a small drawing to see that the web server sends uploaded SVG files with their Content-Security-Policy (Apache has it from `public/uploads/.htaccess`; nginx needs the uploads block in `docs/security.md`). A warning says what to add when it is missing.
+- Audit task S17 (W22) is done.
+- Tests: `svg-sanitizer` and `system-status` (unit), `upload_limits` (HTTP).
+
 ## 0.1.335 — 2026-11-23 — Signed releases, ready to switch on
 - **Signed releases** (audit S20): a release's `release.json` can carry an Ed25519 signature made with a key that stays on the maintainer's computer, never on GitHub. Sites check it against the public key in the code before they install, so someone who gets into the GitHub account or the release workflow cannot make sites install a package.
 - Nothing changes yet: the code lists no key, so releases install as before. Once a key is listed, a release that is unsigned, changed after signing or signed by another key is not offered; the Updates screen says it is waiting for its signature (or refused), and Omni's remote install follows the same rule. The install panel shows whether the package's signature was verified.

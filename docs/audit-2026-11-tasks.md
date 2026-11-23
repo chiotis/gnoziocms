@@ -61,10 +61,12 @@ group. Size: S (an hour or two), M (half a day to a day), L (more).
 
 ### From part 2
 
-- [ ] **S17** (M) SVG uploads: parse the file and keep only known elements and attributes (no script, no event attributes, no
+- [x] **S17** (M) SVG uploads: parse the file and keep only known elements and attributes (no script, no event attributes, no
       SMIL that sets them, no `style` that imports, links only to `#…`); refuse what does not parse. Send the SVG
       Content-Security-Policy from PHP too where PHP serves the file, and make the nginx line a System status check. Tests
       with the entity-encoded, `<set>` and `@import` cases.
+      Done in 0.1.335: `SvgSanitizer` on upload; PHP serves no uploaded SVG (theme SVGs already get the policy from `ThemeAssets`);
+      System > Status › SVG uploads header asks the site for a probe drawing once a day.
 - [ ] **S18** (M) The WordPress and WooCommerce imports fetch through `SafeHttp` (public addresses only, redirects checked).
       A setting or a command-line flag allows a local address for a site being moved on the same server. Test: an address that
       redirects to `127.0.0.1` is refused.

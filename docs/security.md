@@ -227,6 +227,7 @@ set, and says why. Pages themselves are still built with the request's host when
    location ^~ /storage/ { deny all; return 404; }
    ```
 5. Make sure uploads can never execute:
+   - SVG drawings are parsed on upload and written again with only the elements and attributes a drawing needs (`SvgSanitizer`): no script, event attribute, `<foreignObject>`, animation that sets an event or a link, stylesheet that imports, or link outside the drawing; a file with a DOCTYPE, or that does not parse, is refused. The header below is the second line of defence, and **System > Status › SVG uploads header** asks the site for a small drawing once a day to see that it is sent.
    - Apache: `public/uploads/.htaccess` ships with the project and disables script handlers, denies script/HTML extensions, and adds a restrictive CSP to SVG responses. It requires `AllowOverride` to be enabled for that directory.
    - nginx: add an equivalent block, for example:
 
