@@ -48,7 +48,7 @@ $t = function (string $key, string $lang, array $values): string {
     return $text;
 };
 $mail = new ShopMail($shop, fn(): array => ['title' => 'Site'], $t, function (string $to, string $subject, string $text, array $headers, ?string $html = null) use (&$sent): bool { $sent[] = compact('to', 'subject', 'text', 'headers', 'html'); return true; }, fn(string $id) => $id === 'bank_transfer' ? new BankTransfer() : null, fn(int $id): array => [['name' => 'guide.pdf', 'url' => 'https://aleon.test/_shop/download/1-abc', 'title' => 'The guide', 'usable' => true, 'max_downloads' => 3, 'expires_at' => 0]], 'https://aleon.test');
-$order = ['id' => 7, 'number' => 'AL-2026-00007', 'created_at' => time(), 'email' => 'maria@example.com', 'lang' => 'el', 'items_cents' => 12400, 'discount_cents' => 0, 'shipping_cents' => 0, 'fee_cents' => 0, 'tax_cents' => 2400, 'total_cents' => 12400, 'coupon' => '', 'payment_method' => 'bank_transfer', 'shipping_label' => 'Courier', 'gift_note' => '<script>x</script>', 'gift_wrap' => 0, 'billing' => ['first_name' => 'Maria <b>', 'last_name' => 'Patera'], 'shipping' => ['first_name' => 'Maria', 'last_name' => 'Patera', 'address' => 'Ermou 1', 'city' => 'Athens', 'postcode' => '10563', 'country' => 'GR'], 'carrier' => '', 'tracking' => ''];
+$order = ['id' => 7, 'number' => 'AL-2026-00007', 'customer_id' => 3, 'paid_at' => null, 'created_at' => time(), 'email' => 'maria@example.com', 'lang' => 'el', 'items_cents' => 12400, 'discount_cents' => 0, 'shipping_cents' => 0, 'fee_cents' => 0, 'tax_cents' => 2400, 'total_cents' => 12400, 'coupon' => '', 'payment_method' => 'bank_transfer', 'shipping_label' => 'Courier', 'gift_note' => '<script>x</script>', 'gift_wrap' => 0, 'billing' => ['first_name' => 'Maria <b>', 'last_name' => 'Patera'], 'shipping' => ['first_name' => 'Maria', 'last_name' => 'Patera', 'address' => 'Ermou 1', 'city' => 'Athens', 'postcode' => '10563', 'country' => 'GR'], 'carrier' => '', 'tracking' => ''];
 $lines = [['quantity' => 1, 'title' => 'Earrings "Balos"', 'variant' => 'Gold', 'total_cents' => 12400]];
 $mail->orderPlaced($order, $lines, 'https://aleon.test/checkout/order/AL-2026-00007?key=k', 'https://aleon.test/admin/shop-orders?id=7');
 [$customer, $notice] = $sent;
@@ -59,6 +59,15 @@ check('the HTML: the same, in a layout of its own', [str_starts_with($h, '<!doct
 check('everything in it escaped', [str_contains($h, '<script>'), str_contains($h, '&lt;script&gt;'), str_contains($h, 'Maria &lt;b&gt;'), str_contains($h, 'Aleon &amp; Co'), str_contains($h, 'Earrings &quot;Balos&quot;')], [false, true, true, true, true]);
 check('the shop\'s notice, in English, replies to the customer', [$notice['to'], $notice['headers']['Reply-To'], str_starts_with($notice['subject'], 'New order AL-2026-00007'), $notice['html'] !== null], ['orders@aleon.test', 'maria@example.com', true, true]);
 check('from the store, replies to the shop', [$customer['headers']['From'], $customer['headers']['Reply-To']], ['Aleon & Co <noreply@localhost>', 'orders@aleon.test']);
+
+// A guest's order not yet paid can name anyone's email: what was written for the gift goes only to the shop.
+$sent = [];
+$mail->orderPlaced(['customer_id' => null, 'gift_note' => 'Visit https://phish.test now', 'gift_wrap' => 1] + $order, $lines, 'https://aleon.test/checkout/order/AL-2026-00007?key=k', 'https://aleon.test/admin/shop-orders?id=7');
+[$guest, $guestNotice] = $sent;
+check('a guest\'s unpaid order: the gift note is left out of their email, the shop\'s notice keeps it', [str_contains($guest['text'] . $guest['html'], 'phish.test'), str_contains($guest['text'], 'el:shop.gift_wrap'), str_contains($guestNotice['text'], 'phish.test')], [false, true, true]);
+$sent = [];
+$mail->orderPlaced(['customer_id' => null, 'paid_at' => time(), 'gift_note' => 'For you'] + $order, $lines, 'https://aleon.test/checkout/order/AL-2026-00007?key=k', 'https://aleon.test/admin/shop-orders?id=7');
+check('once paid, it is in theirs too', str_contains($sent[0]['text'], 'For you'), true);
 
 // ---- the Emails tab
 $shop->saveEmails(['emails' => ['html' => '1', 'accent' => '#B4532A', 'logo' => 'javascript:alert(1)', 'footer' => "Ermou 1\r\nAthens", 'texts' => [

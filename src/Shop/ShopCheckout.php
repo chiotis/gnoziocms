@@ -457,7 +457,18 @@ final class ShopCheckout
         return $this->payments?->once($providerId, $key, $kind, $orderId, $outcome) ?? false;
     }
 
-    /** Cancels the orders whose time to be paid ran out, giving back their stock. How many. */
+    /** A call taken by noteEvent() whose work could not be done: forgotten, so the provider's next try is taken. */
+    public function releaseEvent(string $providerId, string $key): void
+    {
+        $this->payments?->forget($providerId, $key);
+    }
+
+    /** What came of a call taken by noteEvent(). */
+    public function settleEvent(string $providerId, string $key, ?int $orderId, string $outcome): void
+    {
+        $this->payments?->settle($providerId, $key, $orderId, $outcome);
+    }
+
     /**
      * Before an order is let go for not being paid in time, a provider that can be asked (Cardlink, whose answer comes only with
      * the customer's browser) is asked about the payment it started: true when it was paid after all, or when the provider could

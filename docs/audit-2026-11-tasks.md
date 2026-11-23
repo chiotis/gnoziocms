@@ -23,13 +23,13 @@ group. Size: S (an hour or two), M (half a day to a day), L (more).
 
 ## Security
 
-- [ ] **S4a** (M) Limit by address and by target email: sign-up, forgot password, verify again (the `LoginThrottle` table can
+- [x] **S4a** (M) Limit by address and by target email: sign-up, forgot password, verify again (the `LoginThrottle` table can
       hold them). The answer stays the same either way.
-- [ ] **S4b** (M) Limit orders placed per address and per cart in a time window; a setting for the number. Count unpaid card
+- [x] **S4b** (M) Limit orders placed per address and per cart in a time window; a setting for the number. Count unpaid card
       orders that hold stock, so one visitor holds at most a few.
-- [ ] **S4c** (S) Send the guest's order confirmation without the customer's free text (note, gift note) for orders not yet
+- [x] **S4c** (S) Send the guest's order confirmation without the customer's free text (note, gift note) for orders not yet
       paid, or strip links from it.
-- [ ] **S4d** (S) Viva webhook: take an event once by its key before calling Viva, and limit calls per address.
+- [x] **S4d** (S) Viva webhook: take an event once by its key before calling Viva, and limit calls per address.
 - [ ] **S5** (M) A session version on `shop_customers`, kept in the session and raised when the password changes or is cleared:
       other browsers are signed out. Test: reset in one browser signs out the other.
 - [x] **S6 + S12** (M) One "trusted proxies" setting. `X-Forwarded-For`, `-Proto` and `-Host` count only when `REMOTE_ADDR` is
@@ -46,7 +46,7 @@ group. Size: S (an hour or two), M (half a day to a day), L (more).
 - [ ] **S10b** (S) A subscription whose `next_at` has been negative for more than an hour is put back and flagged for a look
       (was the card charged?). Send Viva an idempotency reference with each renewal charge if its API takes one.
 - [ ] **S10c** (S) `changeStatus()`: the status, the stock and the coupon in one transaction.
-- [ ] **S11** (S) Sign-up with an address that has an account answers like a new one ("check your email") and mails the owner
+- [x] **S11** (S) Sign-up with an address that has an account answers like a new one ("check your email") and mails the owner
       a sign-in link instead.
 - [ ] **S13** (S) Separate columns (or a small table) for the verify and the reset token.
 - [ ] **S14** (S) Clear imported WordPress hashes not used after 6 months; those customers set a password by email.

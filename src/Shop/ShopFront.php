@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace GnozioCMS\Shop;
 
+use GnozioCMS\ActionLimit;
 use GnozioCMS\LoginThrottle;
 
 /**
@@ -28,6 +29,15 @@ final class ShopFront
 {
     public const SESSION_NAME = 'gz_shop';
     private const RETURNS = ['account', 'checkout'];
+    /** Account emails (sign-up, a new password, the confirmation again): at most this many an hour from one address, and to one. */
+    public const MAILS_PER_ADDRESS = 6;
+    public const MAILS_PER_EMAIL = 3;
+    public const MAIL_WINDOW = 3600;
+    /** Orders placed: at most orders_per_hour (Shop settings) from one address, and from one cart, in an hour. */
+    public const ORDER_WINDOW = 3600;
+    /** Viva webhook events that Viva does not know: at most this many from one address in ten minutes, then 429. */
+    public const WEBHOOK_UNKNOWN = 20;
+    public const WEBHOOK_WINDOW = 600;
 
     /**
      * @param \Closure(string, string, array<string, mixed>): void $render a theme template, in a language, with its data
@@ -60,7 +70,9 @@ final class ShopFront
         private ?ShopDownloads $downloads = null,
         private ?ShopSubscriptions $subscriptions = null,
         private ?ShopMarketing $marketing = null,
-        private ?\GnozioCMS\GoogleSignIn $google = null
+        private ?\GnozioCMS\GoogleSignIn $google = null,
+        private ?ActionLimit $limits = null,
+        private string $visitor = ''
     ) {
     }
 
@@ -266,10 +278,17 @@ final class ShopFront
             }
         }
         $errors = [];
-        if ($post && isset($_POST['place'])) {
+        $limited = $post && isset($_POST['place']) ? $this->orderLimit($token, (string)($input['payment'] ?? '')) : '';
+        if ($limited !== '') {
+            $errors = [$limited];
+        } elseif ($post && isset($_POST['place'])) {
             $result = $this->checkout->place($input, $cart, $customer, $lang);
             if ($result['ok'] && $result['order'] !== null) {
                 $order = $result['order'];
+                $this->limits?->record('shop.order', $this->visitor !== '' ? 'ip:' . $this->visitor : '', 'cart:' . $token);
+                if ($order['status'] === 'pending_payment') {
+                    $this->limits?->recordFor('shop.unpaid', (string)$order['id'], $this->visitor !== '' ? 'ip:' . $this->visitor : '', 'cart:' . $token);
+                }
                 $this->carts->delete($token);
                 $this->countCookie(0);
                 if ($customer !== null && ($customer['address']['address'] ?? '') === '') {
@@ -448,14 +467,28 @@ final class ShopFront
             return;
         }
         $key = $type . ':' . $transaction;
+        // An event is taken once, before Viva is asked about it: the same event sent again costs nothing.
+        if (!$this->checkout->noteEvent(Payments\VivaWallet::ID, $key, 'webhook ' . $type, null, '')) {
+            $this->json([]);
+            return;
+        }
+        $from = $this->visitor !== '' ? 'ip:' . $this->visitor : '';
+        if ($this->limits !== null && $this->limits->reached('shop.viva_unknown', $from, self::WEBHOOK_UNKNOWN, self::WEBHOOK_WINDOW)) {
+            $this->checkout->releaseEvent(Payments\VivaWallet::ID, $key);
+            $this->json(['error' => 'too many'], 429);
+            return;
+        }
         $tx = $this->viva->transaction($settings, $transaction);
         if (!$tx['ok']) {
-            // Viva calls again when it is not answered with 200; it is, once Viva can be asked.
+            // Viva calls again when it is not answered with 200; it is, once Viva can be asked. Events Viva does not know count
+            // against the address they came from.
+            $this->checkout->releaseEvent(Payments\VivaWallet::ID, $key);
+            $this->limits?->record('shop.viva_unknown', $from);
             $this->json(['error' => 'not now'], 503);
             return;
         }
         $result = $this->checkout->confirm(Payments\VivaWallet::ID, $tx, 'viva webhook');
-        $this->checkout->noteEvent(Payments\VivaWallet::ID, $key, 'webhook ' . $type, $result['order'] !== null ? (int)$result['order']['id'] : null, $result['outcome']);
+        $this->checkout->settleEvent(Payments\VivaWallet::ID, $key, $result['order'] !== null ? (int)$result['order']['id'] : null, $result['outcome']);
         if ($result['outcome'] === 'paid' && $result['order'] !== null) {
             $this->toldPaid($result['order']);
         }
@@ -610,7 +643,7 @@ final class ShopFront
         }
         if ($action === 'signin' && $post) {
             $email = trim((string)($_POST['email'] ?? ''));
-            $address = (string)($_SERVER['REMOTE_ADDR'] ?? '');
+            $address = $this->visitor !== '' ? $this->visitor : (string)($_SERVER['REMOTE_ADDR'] ?? '');
             $limit = $this->throttle->check($address, 'shop:' . mb_strtolower($email));
             if ($limit['blocked']) {
                 $this->flash('error', ($this->t)('shop.err_too_many', $lang, ['minutes' => (string)max(1, (int)ceil($limit['retry_after'] / 60))]));
@@ -637,13 +670,33 @@ final class ShopFront
                 return;
             }
             $email = trim((string)($_POST['email'] ?? ''));
+            // Past the limit nothing is made or sent, and the answer is the one a new account gets.
+            if (!$this->mayMail($email)) {
+                $this->flash('success', ($this->t)('shop.check_email', $lang, ['email' => $email]));
+                $this->go($prefix . 'account');
+                return;
+            }
             $created = $this->customers->create($email, (string)($_POST['password'] ?? ''), trim((string)($_POST['name'] ?? '')), $lang);
+            if ($created === 'taken') {
+                // The answer tells nobody the address has an account: its owner is mailed a way in instead.
+                $found = $this->customers->byEmail($email);
+                if ($found !== null) {
+                    $this->mailed($found['email']);
+                    $foundLang = $found['lang'] !== '' ? $found['lang'] : $lang;
+                    $token = $this->customers->issueToken($found['id'], 'reset');
+                    $this->mail->accountLink('exists', $found['email'], $found['name'], $foundLang, ($this->absoluteUrl)(($this->prefixFor)($foundLang) . 'account/reset?token=' . $token));
+                }
+                $this->flash('success', ($this->t)('shop.check_email', $lang, ['email' => $email]));
+                $this->go($prefix . 'account');
+                return;
+            }
             if (!is_int($created)) {
                 $this->flash('error', ($this->t)('shop.err_signup_' . $created, $lang));
                 $this->go($prefix . 'account?return=' . $return . '#signup');
                 return;
             }
             $new = $this->customers->get($created);
+            $this->mailed($email);
             $this->sendVerify($new, $lang);
             if ($shop['accounts']['verify']) {
                 $this->flash('success', ($this->t)('shop.check_email', $lang, ['email' => $email]));
@@ -663,12 +716,14 @@ final class ShopFront
         }
         if ($action === 'forgot') {
             if ($post) {
-                $found = $this->customers->byEmail(trim((string)($_POST['email'] ?? '')));
+                $email = trim((string)($_POST['email'] ?? ''));
+                $found = $this->mayMail($email) ? $this->customers->byEmail($email) : null;
+                $this->mailed($email);
                 if ($found !== null) {
                     $token = $this->customers->issueToken($found['id'], 'reset');
                     $this->mail->accountLink('reset', $found['email'], $found['name'], $found['lang'] !== '' ? $found['lang'] : $lang, ($this->absoluteUrl)(($this->prefixFor)($found['lang'] !== '' ? $found['lang'] : $lang) . 'account/reset?token=' . $token));
                 }
-                // The same answer either way, so the form tells nobody who has an account.
+                // The same answer either way, so the form tells nobody who has an account, or that it was asked too often.
                 $this->flash('success', ($this->t)('shop.reset_sent', $lang));
                 $this->go($prefix . 'account');
                 return;
@@ -724,7 +779,10 @@ final class ShopFront
         }
 
         if ($action === 'verify-again' && $post) {
-            $this->sendVerify($customer, $lang);
+            if ($this->mayMail($customer['email'])) {
+                $this->mailed($customer['email']);
+                $this->sendVerify($customer, $lang);
+            }
             $this->flash('success', ($this->t)('shop.check_email', $lang, ['email' => $customer['email']]));
             $this->go($prefix . 'account');
             return;
@@ -878,6 +936,51 @@ final class ShopFront
             'customer' => $this->customer(),
             'flash' => $this->takeFlash(),
         ]);
+    }
+
+    /** Whether an account email may go to this address now, from this visitor (MAILS_PER_ADDRESS, MAILS_PER_EMAIL). */
+    private function mayMail(string $email): bool
+    {
+        if ($this->limits === null) {
+            return true;
+        }
+        return !($this->visitor !== '' && $this->limits->reached('shop.mail', 'ip:' . $this->visitor, self::MAILS_PER_ADDRESS, self::MAIL_WINDOW))
+            && !(trim($email) !== '' && $this->limits->reached('shop.mail', 'to:' . $email, self::MAILS_PER_EMAIL, self::MAIL_WINDOW));
+    }
+
+    /** Counts an account email (or the asking for one) against the visitor and the address. */
+    private function mailed(string $email): void
+    {
+        $this->limits?->record('shop.mail', $this->visitor !== '' ? 'ip:' . $this->visitor : '', trim($email) !== '' ? 'to:' . $email : '');
+    }
+
+    /**
+     * Why an order may not be placed now, or ''. From one address and from one cart, at most orders_per_hour (Shop settings) an
+     * hour; and at most unpaid_holds orders paid by card, which hold their pieces until paid, within the time they are held.
+     */
+    private function orderLimit(string $token, string $payment): string
+    {
+        if ($this->limits === null) {
+            return '';
+        }
+        $shop = $this->settings->all();
+        $subjects = array_filter([$this->visitor !== '' ? 'ip:' . $this->visitor : '', $token !== '' ? 'cart:' . $token : '']);
+        foreach ($subjects as $subject) {
+            if ($this->limits->reached('shop.order', $subject, (int)$shop['limits']['orders_per_hour'], self::ORDER_WINDOW)) {
+                return 'too_many_orders';
+            }
+            if (!in_array($payment, ['bank_transfer', 'cod'], true)) {
+                // Only the orders still waiting to be paid, and holding their pieces, count.
+                $waiting = array_filter($this->limits->refs('shop.unpaid', $subject, (int)$shop['reserve_minutes'] * 60), function (string $id): bool {
+                    $order = $this->orders->get((int)$id);
+                    return $order !== null && $order['status'] === 'pending_payment' && (int)$order['stock_held'] === 1;
+                });
+                if (count($waiting) >= (int)$shop['limits']['unpaid_holds']) {
+                    return 'too_many_unpaid';
+                }
+            }
+        }
+        return '';
     }
 
     /** @param array<string, mixed> $customer */

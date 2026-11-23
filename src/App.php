@@ -3761,6 +3761,11 @@ final class App
                 $this->rebuildContentIndex();
                 $this->frontCache()->purgeAll();
             },
+            visitorAddress: function (): string {
+                // Behind a proxy the site does not trust, every visitor looks like the proxy: limits by address are left off.
+                $origin = $this->requestOrigin();
+                return $origin->viaTrustedProxy() || !isset($_SERVER['HTTP_X_FORWARDED_FOR']) ? $origin->clientIp() : '';
+            },
         );
     }
 

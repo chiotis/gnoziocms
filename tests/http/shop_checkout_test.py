@@ -342,6 +342,90 @@ check('and the Looks block: 2 pieces', 'looks-card' in html and '2 κομμάτ�
 st, _, body = pub.request('/_shop/cart', data={'items[0][product]': 'ring00000000000a', 'items[0][variant]': 'gold', 'items[1][product]': 'scarf0000000000a', 'items[1][variant]': ''}, headers=ORIGIN)
 check('Add the look puts both in the cart', st == 200 and json.loads(body)['count'] == 2, body[:200])
 
+# ---- limits for anonymous visitors (audit S4, S11): reached, refused with the same answer, free again after the window
+def mails_to(address):
+    return db("select count(*) from email_logs where recipient = ?", (address,))[0][0]
+
+def age_limits():
+    db("update action_limits set at = at - 7200")
+
+def flash_of(client, hdr):
+    st, _, html = client.get(local(hdr.get('Location')))
+    m = re.search(r'role="(?:status|alert)"[^>]*>(.*?)</', html, re.S)
+    return re.sub(r'\s+', ' ', m.group(1)).strip() if m else html[:300]
+
+signup_pick = lambda f: (f['attrs'].get('action') or '').endswith('/signup')
+forgot_pick = lambda f: (f['attrs'].get('action') or '').endswith('/forgot')
+root.submit('/admin/shop-settings?tab=accounts', has_field('tab'), {'verify': '1'})
+db("delete from action_limits")
+fresh = Client()
+st, hdr, _ = fresh.submit('/account', signup_pick, {'name': 'Nikos', 'email': 'nikos@example.test', 'password': 'a long password'})
+new_answer = flash_of(fresh, hdr)
+before = mails_to('eleni@example.test')
+taken = Client()
+st, hdr, _ = taken.submit('/account', signup_pick, {'name': 'Someone', 'email': 'eleni@example.test', 'password': 'another long one'})
+taken_answer = flash_of(taken, hdr)
+check('sign-up with an address that has an account answers as a new one does', new_answer.replace('nikos@', 'X@') == taken_answer.replace('eleni@', 'X@') and 'Στείλαμε σύνδεσμο' in taken_answer, (new_answer, taken_answer))
+check('and the owner is mailed a way in instead; the account is not changed', mails_to('eleni@example.test') == before + 1 and 'έχετε ήδη λογαριασμό' in db("select subject from email_logs where recipient = 'eleni@example.test' order by id desc limit 1")[0][0] and db("select name from shop_customers where email = 'eleni@example.test'")[0][0] == 'Eleni', db("select subject from email_logs where recipient = 'eleni@example.test' order by id desc limit 1"))
+check('nikos was made, not signed in, waiting to confirm', db("select verified_at from shop_customers where email = 'nikos@example.test'") == [(None,)])
+root.submit('/admin/shop-settings?tab=accounts', has_field('tab'), {'verify': ''})
+
+# forgot password, by the email asked for: three an hour
+db("delete from action_limits")
+asker = Client()
+before = mails_to('nikos@example.test')
+answers = set()
+for i in range(4):
+    st, hdr, _ = asker.submit('/account/forgot', forgot_pick, {'email': 'nikos@example.test'})
+    answers.add(flash_of(asker, hdr))
+check('forgot password: three links to one email in an hour, the fourth not sent', mails_to('nikos@example.test') == before + 3, mails_to('nikos@example.test') - before)
+check('with the same answer each time', len(answers) == 1 and 'Αν υπάρχει λογαριασμός' in answers.pop(), answers)
+age_limits()
+asker.submit('/account/forgot', forgot_pick, {'email': 'nikos@example.test'})
+check('an hour later, sent again', mails_to('nikos@example.test') == before + 4)
+
+# by the address asking: six an hour, whatever the emails
+db("delete from action_limits")
+for i in range(6):
+    asker.submit('/account/forgot', forgot_pick, {'email': 'nobody%d@example.test' % i})
+before = mails_to('nikos@example.test')
+asker.submit('/account/forgot', forgot_pick, {'email': 'nikos@example.test'})
+check('one address asking for six emails: the seventh is not sent', mails_to('nikos@example.test') == before)
+st, hdr, _ = Client().submit('/account', signup_pick, {'name': 'Late', 'email': 'late@example.test', 'password': 'a long password'})
+check('nor is a sign-up from it made, though it answers as one', db("select count(*) from shop_customers where email = 'late@example.test'")[0][0] == 0 and mails_to('late@example.test') == 0)
+age_limits()
+asker.submit('/account/forgot', forgot_pick, {'email': 'nikos@example.test'})
+check('an hour later, free again', mails_to('nikos@example.test') == before + 1)
+
+# the confirmation again, for a signed-in customer not confirmed yet
+db("delete from action_limits")
+before = mails_to('eleni@example.test')
+for i in range(4):
+    shopper.submit('/account', lambda f: (f['attrs'].get('action') or '').endswith('/verify-again'), {})
+check('verify again: three an hour, the fourth not sent', mails_to('eleni@example.test') == before + 3, mails_to('eleni@example.test') - before)
+age_limits()
+shopper.submit('/account', lambda f: (f['attrs'].get('action') or '').endswith('/verify-again'), {})
+check('an hour later, sent again', mails_to('eleni@example.test') == before + 4)
+
+# orders: Shop settings' number an hour from one address
+root.submit('/admin/shop-settings?tab=general', has_field('order_prefix'), {'orders_per_hour': '2'})
+st, _, html = root.get('/admin/shop-settings?tab=general')
+check('the general tab keeps the order limits', 'name="orders_per_hour" value="2"' in html and 'name="unpaid_holds" value="3"' in html)
+db("delete from action_limits")
+def guest_order(email):
+    buyer = Client()
+    buyer.request('/_shop/cart', data={'product': 'scarf0000000000a', 'quantity': '1'}, headers=ORIGIN)
+    st, _, html = buyer.get('/checkout')
+    picked = re.search(r'name="method" value="([a-z0-9]+)" checked', html).group(1)
+    data = {'email': email, 'billing[first_name]': 'G', 'billing[last_name]': 'Uest', 'billing[address]': 'Athinas 2', 'billing[city]': 'Athens', 'billing[postcode]': '10551', 'billing[country]': 'GR', 'billing[phone]': '210', 'payment': 'cod', 'method': picked, 'terms': '1'}
+    return buyer.submit('/checkout', has_field('email'), data, button=('place', '1'))
+placed = [guest_order('g%d@example.test' % i)[0] for i in range(2)]
+st, _, html = guest_order('g2@example.test')
+check('two orders an hour from one address; the third is refused, with why', placed == [303, 303] and st == 200 and 'Πολλές παραγγελίες' in html and db("select count(*) from shop_orders where email = 'g2@example.test'")[0][0] == 0, (placed, st))
+age_limits()
+check('an hour later, it is placed', guest_order('g2@example.test')[0] == 303)
+root.submit('/admin/shop-settings?tab=general', has_field('order_prefix'), {'orders_per_hour': '10'})
+
 # ---- an editor
 root.submit('/admin/users-edit', has_field('username'), {'username': 'shop_ed2', 'email': 'shop_ed2@example.test', 'display_name': 'shop_ed2', 'role': 'editor', 'status': 'active', 'password': 'Sturdy-pass-99', 'password_confirm': 'Sturdy-pass-99'})
 ed = Client(); ed.login('shop_ed2', 'Sturdy-pass-99')

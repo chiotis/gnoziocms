@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.320 — 2026-11-23 — Limits for anonymous visitors in the shop
+- **Account emails** (audit S4a): sign-up, forgot password and "send the confirmation again" send at most 6 emails an hour from one address and 3 an hour to one email. Past that the visitor gets the same answer and nothing is sent.
+- **Sign-up with an address that has an account** (S11) answers like a new sign-up ("we sent a link to …") and mails the owner a link to set a new password instead, so the form no longer tells who has an account. The email is in Shop settings > Emails as "Already has an account".
+- **Orders** (S4b): at most 10 an hour from one address and from one cart, and at most 3 card orders still waiting to be paid (they hold their pieces) per visitor. Both numbers are in Shop settings > General.
+- **A guest's order not yet paid** (S4c): the confirmation sent to the email typed at the checkout leaves out the gift note; the shop's own notice keeps it.
+- **Viva webhook** (S4d): an event is taken once by its key before Viva is asked about it. Events Viva does not know count against the address they came from: after 20 in ten minutes the webhook answers 429 without asking Viva.
+- Counted in a new `action_limits` table (`src/ActionLimit.php`), by hashes, not addresses. Behind a proxy not listed under Trusted proxies, the limits by address are left off. The shop's sign-in throttle now uses the same visitor address as the rest of the site.
+
 ## 0.1.319 — 2026-11-23 — The QR code with a Greek title
 - **Second factor**: the authenticator app names the site by its domain (from the site address, else the request; without `www.`), not its title. A title in Greek grew six-fold in the `otpauth://` address, so the QR code no longer fitted and was left out without a word. Accounts already set up keep the old name and keep working.
 - When the QR code still cannot be drawn (a very long username), the setup screen says so and asks for the key to be typed.

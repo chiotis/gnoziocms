@@ -178,6 +178,7 @@ final class ShopSettings
             'tax_rates' => $rates,
             'order_prefix' => $post['order_prefix'] ?? '',
             'reserve_minutes' => $post['reserve_minutes'] ?? 30,
+            'limits' => ['orders_per_hour' => $post['orders_per_hour'] ?? 10, 'unpaid_holds' => $post['unpaid_holds'] ?? 3],
             'guest_checkout' => !empty($post['guest_checkout']),
             'terms_page' => $post['terms_page'] ?? '',
             'returns_page' => $post['returns_page'] ?? '',
@@ -202,6 +203,7 @@ final class ShopSettings
         $currency = (string)($stored['currency'] ?? 'EUR');
         $prefix = strtoupper((string)preg_replace('/[^A-Za-z0-9-]/', '', (string)($stored['order_prefix'] ?? '')));
         $minutes = (int)($stored['reserve_minutes'] ?? 30);
+        $number = static fn(mixed $value, int $min, int $max, int $default): int => is_numeric($value) && (int)$value >= $min && (int)$value <= $max ? (int)$value : $default;
         $page = static fn(mixed $value): string => preg_match('/^[a-z0-9][a-z0-9-]*$/', (string)$value) === 1 ? (string)$value : '';
         $payments = is_array($stored['payments'] ?? null) ? $stored['payments'] : [];
         $bank = is_array($payments['bank_transfer'] ?? null) ? $payments['bank_transfer'] : [];
@@ -225,6 +227,11 @@ final class ShopSettings
             'tax_rates' => $rates,
             'order_prefix' => substr($prefix, 0, 12),
             'reserve_minutes' => $minutes >= 5 && $minutes <= 240 ? $minutes : 30,
+            // What one visitor (an address, a cart) may do: orders placed in an hour, and card orders holding pieces while unpaid.
+            'limits' => [
+                'orders_per_hour' => $number($stored['limits']['orders_per_hour'] ?? 10, 1, 200, 10),
+                'unpaid_holds' => $number($stored['limits']['unpaid_holds'] ?? 3, 1, 50, 3),
+            ],
             'guest_checkout' => array_key_exists('guest_checkout', $stored) ? (bool)$stored['guest_checkout'] : true,
             'terms_page' => $page($stored['terms_page'] ?? ''),
             'returns_page' => $page($stored['returns_page'] ?? ''),

@@ -108,6 +108,29 @@ Admin > History and the editor's History tab need `content.manage`. Restoring or
 - 8 failures from one address, or 12 failures for one username, within 15 minutes block further attempts (HTTP 429 with `Retry-After`) until the oldest counted failure ages out.
 - The address is the visitor's address as *Trusted proxies* (below) defines it: `REMOTE_ADDR`, unless the request comes from a listed proxy. MCP's limits and the activity log use the same address.
 
+### Shop limits for anonymous visitors
+
+What anyone can make the shop do without signing in is counted in the `action_limits` table (`src/ActionLimit.php`), by the
+visitor's address and by what it is done to, kept as hashes. Past a limit the visitor gets the answer they would get anyway, and
+nothing is made or sent:
+
+- **Account emails** (sign-up, forgot password, the confirmation again): at most 6 an hour from one address and 3 an hour to one
+  email (`ShopFront::MAILS_PER_ADDRESS`, `MAILS_PER_EMAIL`).
+- **Sign-up with an address that has an account** answers as a new sign-up does ("we sent a link to …") and mails the owner a
+  link to set a new password instead; the account is not changed. With *Confirm the email address* off a new account is signed in
+  at once while a taken address is not, so that setting still tells the two apart.
+- **Orders**: at most *Orders from one visitor in an hour* (Shop settings > General, 10 by default) from one address and from
+  one cart. Card orders, which hold their pieces until paid, at most *Unpaid card orders one visitor may hold* (3) that are
+  still waiting.
+- **A guest's order not yet paid** can be placed with anyone's email: the confirmation sent to it leaves out the gift note (the
+  shop's own notice keeps it).
+- **The Viva webhook** takes an event once by its key before it asks Viva about it; an event Viva does not know is forgotten (so
+  Viva's next try is asked again) and counts against the address it came from: past 20 in ten minutes it is answered 429 without
+  asking Viva.
+
+When a request comes through `X-Forwarded-For` from a proxy that is not listed under *Trusted proxies*, every visitor would look
+like the proxy, so the limits by address are left off and only those by email and cart count.
+
 ### Trusted proxies and the site address
 
 `X-Forwarded-For`, `X-Forwarded-Proto` and `X-Forwarded-Host` are written by whoever sends a request, so the site believes them

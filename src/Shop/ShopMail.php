@@ -19,11 +19,11 @@ final class ShopMail
     /** Statuses the customer is told about. */
     public const TOLD = ['paid', 'shipped', 'cancelled', 'refunded'];
     /** The emails whose subject and text Shop settings > Emails can change, and the {placeholders} each may use. */
-    public const KINDS = ['received', 'paid', 'shipped', 'cancelled', 'refunded', 'verify', 'reset', 'sub_failed', 'sub_cancelled'];
+    public const KINDS = ['received', 'paid', 'shipped', 'cancelled', 'refunded', 'verify', 'reset', 'exists', 'sub_failed', 'sub_cancelled'];
     public const PLACEHOLDERS = [
         'received' => ['store', 'number', 'name'], 'paid' => ['store', 'number', 'name'], 'shipped' => ['store', 'number', 'name'],
         'cancelled' => ['store', 'number', 'name'], 'refunded' => ['store', 'number', 'name'], 'verify' => ['store', 'name'],
-        'reset' => ['store', 'name'], 'sub_failed' => ['store', 'product', 'amount', 'date', 'name'], 'sub_cancelled' => ['store', 'product', 'amount', 'name'],
+        'reset' => ['store', 'name'], 'exists' => ['store', 'name'], 'sub_failed' => ['store', 'product', 'amount', 'date', 'name'], 'sub_cancelled' => ['store', 'product', 'amount', 'name'],
     ];
 
     /**
@@ -50,7 +50,13 @@ final class ShopMail
      */
     public function orderPlaced(array $order, array $lines, string $viewUrl, string $adminUrl): bool
     {
-        $message = $this->orderMessage('received', $order, $lines, $viewUrl);
+        // A guest's order not yet paid can be placed with anyone's email: what they wrote for the gift is not sent to it, so the
+        // shop's own address carries no stranger's text. The shop's notice below keeps it.
+        $theirs = $order;
+        if (($order['customer_id'] ?? null) === null && ($order['paid_at'] ?? null) === null) {
+            $theirs['gift_note'] = '';
+        }
+        $message = $this->orderMessage('received', $theirs, $lines, $viewUrl);
         $sent = $this->deliver((string)$order['email'], $message);
 
         $shop = (string)$this->settings->all()['store_email'];
@@ -126,7 +132,7 @@ final class ShopMail
         $lines = [['quantity' => 1, 'title' => 'Balos earrings', 'variant' => 'Gold', 'total_cents' => 18600]];
         $url = rtrim($this->siteUrl, '/') . '/checkout/order/AL-2026-00042';
         $message = match (true) {
-            in_array($kind, ['verify', 'reset'], true) => [
+            in_array($kind, ['verify', 'reset', 'exists'], true) => [
                 'subject' => $this->say($kind, 'subject', $lang, ['store' => $this->storeName(), 'name' => 'Maria']),
                 'lang' => $lang,
                 'parts' => [['hello', 'Maria'], ['p', $this->say($kind, 'text', $lang, ['store' => $this->storeName(), 'name' => 'Maria'])], ['button', $this->t('shop.mail_' . $kind . '_button', $lang, []), rtrim($this->siteUrl, '/') . '/account'], ['small', $this->t('shop.mail_' . $kind . '_note', $lang, [])]],

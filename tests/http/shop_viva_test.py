@@ -168,6 +168,8 @@ def post_event(e):
         return err.code
 check('the same payment by the webhook: answered, nothing changes twice', post_event(event) == 200 and len([1 for (s,) in db('select subject from email_logs where recipient = ?', ('maria@example.test',)) if order[1] in s]) == 1)
 check('the event is written', db("select kind, outcome from shop_gateway_events where event_key = ?", ('1796:' + tx,)) == [('webhook 1796', 'already')])
+asked = len([c for c in VIVA['calls'] if c[1].startswith('/checkout/v2/transactions/')])
+check('the same event again is taken once: Viva is not asked again', post_event(event) == 200 and len([c for c in VIVA['calls'] if c[1].startswith('/checkout/v2/transactions/')]) == asked)
 
 # ---- a second order, paid by the webhook alone
 pub.request('/_shop/cart', data={'product': 'ring00000000000v', 'quantity': '1'}, headers=ORIGIN)
@@ -177,6 +179,13 @@ second = db("select id, number from shop_orders order by id desc limit 1")[0]
 tx2 = pay(code2)
 check('the webhook alone pays an order (the customer closed the page)', post_event({'EventTypeId': 1796, 'EventData': {'TransactionId': tx2}}) == 200 and db('select status from shop_orders where id = ?', (second[0],))[0][0] == 'paid')
 check('an event for a transaction Viva does not know changes nothing', post_event({'EventTypeId': 1796, 'EventData': {'TransactionId': '7f9b0a2e-0000-4000-8000-000000000000'}}) == 503)
+check('and is not kept as taken, so Viva\'s next try is asked again', db("select count(*) from shop_gateway_events where event_key = ?", ('1796:7f9b0a2e-0000-4000-8000-000000000000',))[0][0] == 0)
+unknown = [post_event({'EventTypeId': 1796, 'EventData': {'TransactionId': '7f9b0a2e-0000-4000-8000-1%011d' % i}}) for i in range(19)]
+asked = len(VIVA['calls'])
+st = post_event({'EventTypeId': 1796, 'EventData': {'TransactionId': '7f9b0a2e-0000-4000-8000-200000000000'}})
+check('twenty unknown events from one address in ten minutes; the next is refused without asking Viva', unknown == [503] * 19 and st == 429 and len(VIVA['calls']) == asked, (unknown[-1], st))
+db("update action_limits set at = at - 700")
+check('ten minutes later Viva is asked again', post_event({'EventTypeId': 1796, 'EventData': {'TransactionId': '7f9b0a2e-0000-4000-8000-200000000000'}}) == 503)
 
 # ---- coming back without paying, then Pay now
 pub.request('/_shop/cart', data={'product': 'ring00000000000v', 'quantity': '1'}, headers=ORIGIN)
@@ -193,6 +202,19 @@ check('Pay now: off to Viva again with a new payment order', st == 303 and (hdr.
 check('the failed one is written as failed', db("select status from shop_payments where reference = ?", (code3,))[0][0] == 'failed')
 st, _, _ = Client().get('/_shop/pay/viva/failure?s=0000000000000000')
 check('a failure for a payment the shop never made: nothing there', st == 404, st)
+
+# ---- unpaid card orders holding stock: Shop settings' number per visitor; paid ones do not count
+root.submit('/admin/shop-settings?tab=general', lambda f: any(x[0] == 'order_prefix' for x in f['fields']), {'unpaid_holds': '2'})
+pub.request('/_shop/cart', data={'product': 'ring00000000000v', 'quantity': '1'}, headers=ORIGIN)
+st, _, _ = pub.submit('/checkout', has_field('email'), form, button=('place', '1'))
+check('two paid and one waiting: another card order is placed', st == 303, st)
+pub.request('/_shop/cart', data={'product': 'ring00000000000v', 'quantity': '1'}, headers=ORIGIN)
+waiting = db("select count(*) from shop_orders where status = 'pending_payment' and stock_held = 1")[0][0]
+st, _, html = pub.submit('/checkout', has_field('email'), form, button=('place', '1'))
+check('two waiting to be paid: the next is refused, with why', waiting == 2 and st == 200 and 'περιμένουν πληρωμή' in html and db("select count(*) from shop_orders where status = 'pending_payment'")[0][0] == 2, (waiting, st))
+db("update action_limits set at = at - 7200")
+st, _, _ = pub.submit('/checkout', has_field('email'), form, button=('place', '1'))
+check('once their time to be held is over, it is placed', st == 303, st)
 
 # ---- refunds
 st, _, html = root.get('/admin/shop-orders?id=%d' % order[0])

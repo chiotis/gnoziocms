@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace GnozioCMS\Shop;
 
+use GnozioCMS\ActionLimit;
 use GnozioCMS\Auth;
 use GnozioCMS\ContentItem;
 use GnozioCMS\ContentPaths;
@@ -75,6 +76,7 @@ final class ShopController
      * @param \Closure(): Taxonomies $taxonomies
      * @param \Closure(): JobRunner $jobRunner
      * @param \Closure(): void $contentChanged the content index made again and the kept pages emptied (after an import)
+     * @param \Closure(): string $visitorAddress the visitor's address for the shop's limits, '' when it cannot be told
      */
     public function __construct(
         private string $basePath,
@@ -111,6 +113,7 @@ final class ShopController
         private \Closure $taxonomies,
         private \Closure $jobRunner,
         private \Closure $contentChanged,
+        private \Closure $visitorAddress,
     ) {
     }
 
@@ -266,7 +269,9 @@ final class ShopController
             $services->downloads(),
             $services->subscriptions(),
             $services->marketing(),
-            $this->google()
+            $this->google(),
+            new ActionLimit($this->systemDatabase),
+            ($this->visitorAddress)()
         );
         // Orders whose time to be paid ran out give their stock back before a shopper sees it (Shop › Orders does too).
         $services->checkout()->expire();

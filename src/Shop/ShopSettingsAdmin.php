@@ -14,7 +14,7 @@ final class ShopSettingsAdmin
     public const TABS = ['general' => 'General', 'shipping' => 'Shipping', 'payments' => 'Payments', 'emails' => 'Emails', 'accounts' => 'Accounts', 'marketing' => 'Marketing', 'import' => 'Import & export'];
     public const EMAIL_LABELS = [
         'received' => 'Order received', 'paid' => 'Order paid', 'shipped' => 'Order shipped', 'cancelled' => 'Order cancelled', 'refunded' => 'Order refunded',
-        'verify' => 'Confirm the email address', 'reset' => 'A new password', 'sub_failed' => 'Subscription not renewed', 'sub_cancelled' => 'Subscription cancelled',
+        'verify' => 'Confirm the email address', 'reset' => 'A new password', 'exists' => 'Already has an account', 'sub_failed' => 'Subscription not renewed', 'sub_cancelled' => 'Subscription cancelled',
     ];
 
     /**

@@ -88,6 +88,20 @@ final class ShopPayments
         return $stmt->rowCount() === 1;
     }
 
+    /** Forgets a call taken by once() whose work could not be done, so the provider's next try of it is taken. */
+    public function forget(string $provider, string $key): void
+    {
+        $this->pdo()->prepare('DELETE FROM shop_gateway_events WHERE provider = :provider AND event_key = :key')
+            ->execute(['provider' => $provider, 'key' => mb_substr($key, 0, 200)]);
+    }
+
+    /** Writes what came of a call taken by once(): its order and outcome. */
+    public function settle(string $provider, string $key, ?int $orderId, string $outcome): void
+    {
+        $this->pdo()->prepare('UPDATE shop_gateway_events SET order_id = :order, outcome = :outcome WHERE provider = :provider AND event_key = :key')
+            ->execute(['provider' => $provider, 'key' => mb_substr($key, 0, 200), 'order' => $orderId, 'outcome' => mb_substr($outcome, 0, 300)]);
+    }
+
     /** @param array<string, mixed> $row @return array<string, mixed> */
     private static function row(array $row): array
     {

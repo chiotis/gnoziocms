@@ -170,6 +170,18 @@ final class SystemDatabase
                 enabled_at TEXT NOT NULL
             )"
         ));
+        // What anonymous visitors made the site do, by action and a hash of the subject (ActionLimit).
+        $this->applyMigration($pdo, '202611230001_action_limits', function (PDO $db): void {
+            $db->exec(
+                'CREATE TABLE IF NOT EXISTS action_limits (
+                    action TEXT NOT NULL,
+                    subject TEXT NOT NULL,
+                    ref TEXT NOT NULL DEFAULT \'\',
+                    at INTEGER NOT NULL
+                )'
+            );
+            $db->exec('CREATE INDEX IF NOT EXISTS idx_action_limits ON action_limits (action, subject, at)');
+        });
     }
 
     /**
