@@ -6,7 +6,7 @@ pages, as JSON for the script; the cart, a coupon, the checkout working out ship
 orders with their screen, status changes, shipping with tracking, the timeline and the CSV; customers' accounts (sign up, sign
 in, a wrong password, details, the account's orders, signing out); coupons; Shop the look; and an editor kept out.
 """
-import json, os, re, sqlite3, sys, urllib.parse
+import json, os, re, sqlite3, sys, time, urllib.parse
 sys.path.insert(0, '.')
 from client import Client, has_field, BASE
 
@@ -425,6 +425,34 @@ check('two orders an hour from one address; the third is refused, with why', pla
 age_limits()
 check('an hour later, it is placed', guest_order('g2@example.test')[0] == 303)
 root.submit('/admin/shop-settings?tab=general', has_field('order_prefix'), {'orders_per_hour': '10'})
+
+# ---- a new password signs out the customer's other browsers (S5); a verify link leaves a reset link working (S13)
+import hashlib
+db("delete from action_limits")
+signin_pick = lambda f: (f['attrs'].get('action') or '').endswith('/signin')
+reset_pick = lambda f: (f['attrs'].get('action') or '').endswith('/account/reset')
+details_pick = lambda f: (f['attrs'].get('action') or '').endswith('/account/details')
+here, there = Client(), Client()
+for c in (here, there):
+    c.submit('/account', signin_pick, {'email': 'eleni@example.test', 'password': 'a long password'})
+st, _, html = there.get('/account')
+check('two browsers signed in as one customer', 'action="/account/signout"' in html and 'action="/account/signin"' not in html)
+link = 'ab' * 24
+db("update shop_customers set reset_hash = ?, reset_expires = ? where email = 'eleni@example.test'", (hashlib.sha256(link.encode()).hexdigest(), int(time.time()) + 600))
+here.submit('/account', lambda f: (f['attrs'].get('action') or '').endswith('/verify-again'), {})
+st, _, html = here.get('/account/reset?token=' + link)
+check('a new confirmation link leaves the waiting reset link working', st == 200 and 'name="password"' in html and 'action="/account/reset"' in html, st)
+st, hdr, _ = here.submit('/account/reset?token=' + link, reset_pick, {'password': 'a reset password'})
+st, _, html = here.get('/account')
+check('the reset signs in the browser that used it', 'action="/account/signout"' in html)
+st, _, html = there.get('/account')
+check('and signs out the other one', 'action="/account/signin"' in html and 'action="/account/signout"' not in html)
+there.submit('/account', signin_pick, {'email': 'eleni@example.test', 'password': 'a reset password'})
+st, hdr, _ = here.submit('/account', details_pick, {'password': 'a reset password', 'new_password': 'a long password'})
+st, _, html = here.get('/account')
+check('changing the password in the details keeps that browser signed in', 'action="/account/signout"' in html)
+st, _, html = there.get('/account')
+check('and signs out the other one too', 'action="/account/signin"' in html)
 
 # ---- an editor
 root.submit('/admin/users-edit', has_field('username'), {'username': 'shop_ed2', 'email': 'shop_ed2@example.test', 'display_name': 'shop_ed2', 'role': 'editor', 'status': 'active', 'password': 'Sturdy-pass-99', 'password_confirm': 'Sturdy-pass-99'})

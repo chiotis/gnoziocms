@@ -118,8 +118,8 @@ final class ShopController
     }
 
     /**
-     * The shop's work that does not wait for a shopper: orders whose time to be paid ran out, and subscriptions whose period has
-     * come, charged again (docs/shop-plan.md, section 7). From cron, and, at most once an hour, from the shop's admin screens.
+     * The shop's work that does not wait for a shopper: orders whose time to be paid ran out, passwords brought from WordPress
+     * and never used here in six months, cleared, and subscriptions whose period has come, charged again (docs/shop-plan.md, section 7). From cron, and, at most once an hour, from the shop's admin screens.
      */
     public function tick(bool $throttle = true): int
     {
@@ -133,6 +133,10 @@ final class ShopController
             $this->systemMeta->set('shop_tick_at', (string)time());
             $services = $this->services();
             $services->checkout()->expire();
+            $cleared = $services->customers()->clearStaleImportedHashes();
+            if ($cleared > 0) {
+                $this->logActivity('shop.imported_passwords_cleared', 'info', 'shop', null, $cleared . ' password(s) brought from WordPress and unused for six months were cleared; those customers set a new one by email.', ['count' => $cleared]);
+            }
             return $services->subscriptions()->renewDue();
         } catch (\Throwable $e) {
             $this->logActivity('shop.tick', 'error', 'shop', null, 'The shop\'s scheduled work failed: ' . $e->getMessage(), []);

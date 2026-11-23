@@ -224,6 +224,49 @@ check('an unconfirmed one is linked and confirmed, and loses the password someon
 $customers->setPassword($squat, 'my own password');
 check('a Google customer may set a password, and then signs in either way', [$customers->authenticate('kostas@example.com', 'my own password')['id'] ?? null, $customers->fromGoogle('g-3', 'kostas@example.com', '', 'el', false)['has_password'] ?? null], [$squat, true]);
 
+// ---- a customer's session version (S5), the two kinds of link apart (S13), old imported passwords (S14)
+$sv = $customers->create('sessions@example.com', 'first password', '', 'el');
+$v0 = $customers->get($sv)['session_version'];
+$customers->authenticate('sessions@example.com', 'first password');
+check('signing in leaves the session version as it was', $customers->get($sv)['session_version'], $v0);
+$customers->setPassword($sv, 'second password');
+check('a new password raises the session version, so other sessions are signed out', $customers->get($sv)['session_version'], $v0 + 1);
+$resetLink = $customers->issueToken($sv, 'reset');
+$verifyLink = $customers->issueToken($sv, 'verify');
+check('a new link to confirm the address leaves a waiting reset link working', [$customers->byToken($resetLink, 'reset')['id'] ?? null, $customers->byToken($verifyLink, 'verify')['id'] ?? null], [$sv, $sv]);
+check('each link only for its own purpose', [$customers->byToken($resetLink, 'verify'), $customers->byToken($verifyLink, 'reset')], [null, null]);
+$customers->markVerified($sv);
+check('confirming the address uses up its link, not the reset link', [$customers->byToken($verifyLink, 'verify'), $customers->byToken($resetLink, 'reset')['id'] ?? null], [null, $sv]);
+$customers->setPassword($sv, 'third password');
+check('setting the password uses up the reset link', $customers->byToken($resetLink, 'reset'), null);
+$squatV = $customers->create('squat@example.com', 'someone elses', '', 'el');
+$before = $customers->get($squatV)['session_version'];
+$customers->fromGoogle('g-9', 'squat@example.com', '', 'el', false);
+check('a password cleared on linking Google raises the session version', $customers->get($squatV)['session_version'], $before + 1);
+$phpass = '$P$BO7tTUuWHCXf6eL7tGW8gq9pyCfC6c.';
+$customers->import('old@example.com', $phpass, 'Old', '', [], 'el');
+$customers->import('fresh@example.com', $phpass, 'Fresh', '', [], 'el');
+$customers->import('native@example.com', password_hash('x', PASSWORD_DEFAULT), 'Native', '', [], 'el');
+$longAgo = time() - ShopCustomers::IMPORTED_HASH_SECONDS - 86400;
+$db->connection()->prepare('UPDATE shop_customers SET created_at = :t WHERE email IN (\'old@example.com\', \'native@example.com\')')->execute(['t' => $longAgo]);
+$oldV = $customers->byEmail('old@example.com')['session_version'];
+check('an imported WordPress password unused for six months is cleared, a fresh one and a native one are not', [$customers->clearStaleImportedHashes(), $customers->byEmail('old@example.com')['has_password'], $customers->byEmail('fresh@example.com')['has_password'], $customers->byEmail('native@example.com')['has_password']], [1, false, true, true]);
+check('clearing it raises the session version, and a second run clears nothing', [$customers->byEmail('old@example.com')['session_version'], $customers->clearStaleImportedHashes()], [$oldV + 1, 0]);
+check('that customer sets a password by email', [$customers->byToken($customers->issueToken($customers->byEmail('old@example.com')['id'], 'reset'), 'reset')['email'] ?? null], ['old@example.com']);
+
+// ---- a coupon for signed-in customers only (S16)
+$coupons->save(['code' => 'MEMBERS', 'kind' => 'percent', 'amount' => '10', 'active' => '1', 'per_customer' => 1, 'customers_only' => '1']);
+check('the option is kept', [$coupons->find('MEMBERS')['customers_only'], $coupons->find('SPRING-10')['customers_only']], [true, false]);
+check('a guest cannot use it', [$coupons->apply('MEMBERS', $two, 'guest@example.com')['error'], $coupons->apply('MEMBERS', $two, 'guest@example.com', null, $sv)['ok']], ['customers_only', true]);
+$memberForm = $form;
+$memberOrder = $checkout->place(['payment' => 'cod', 'coupon' => 'MEMBERS'] + $memberForm, ['lines' => [['product_id' => 'book0000000000001', 'variant_key' => '', 'quantity' => 1]], 'coupon' => ''], $customers->get($sv), 'el');
+check('a signed-in customer uses it once', [$memberOrder['ok'], $memberOrder['order']['coupon'] ?? null], [true, 'MEMBERS']);
+$db->connection()->prepare('UPDATE shop_orders SET email = :e WHERE id = :id')->execute(['e' => 'other@example.com', 'id' => $memberOrder['order']['id']]);
+$again = $checkout->place(['payment' => 'cod', 'coupon' => 'MEMBERS'] + $memberForm, ['lines' => [['product_id' => 'book0000000000001', 'variant_key' => '', 'quantity' => 1]], 'coupon' => ''], $customers->get($sv), 'el');
+check('a second order is refused, whatever address the first went to', [$again['ok'], $again['errors']], [false, ['coupon_used_up']]);
+check('a guest order is refused too', $checkout->place(['payment' => 'cod', 'coupon' => 'MEMBERS', 'email' => 'new@example.com'] + $memberForm, ['lines' => [['product_id' => 'book0000000000001', 'variant_key' => '', 'quantity' => 1]], 'coupon' => ''], null, 'el')['errors'], ['coupon_customers_only']);
+$checkout->changeStatus($memberOrder['order']['id'], 'cancelled', 'test');
+
 // ---- options with no variants: any combination, at the product's price, from its one stock
 $charm = static fn(string $key, int $q = 1): array => $pricing->lines([['product_id' => 'charm000000000001', 'variant_key' => $key, 'quantity' => $q]], 'el');
 check('a combination of the options can be bought, and is named', [$charm('red / m')['lines'][0]['variant'], $charm('red / m')['lines'][0]['unit_cents']], ['Red / M', 3000]);

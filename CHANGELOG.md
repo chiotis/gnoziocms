@@ -1,10 +1,17 @@
 # Changelog
 
-## 0.1.332 — 2026-11-23 — Theme: tidier settings rows
+## 0.1.333 — 2026-11-23 — Theme: tidier settings rows
 - Every Theme section (Branding, Typography, Header, Footer, Single and Archive Layouts, Social profiles and any other section a theme declares) now lays its settings out the same way: the name on the left, the control on the right, and its help right under the control. On a phone they stack.
 - A setting that still follows the theme no longer says "Theme value": only one you changed is marked, with **Your value** and a Reset beside it.
 - The note under Colour that pointed to Typography is gone; the card's intro says where fonts are.
 - Smaller touches: number boxes are short, selects stop at a sensible width, the button-style pairs are one row each, the Library button beside a picture is compact, the Header's Bottom bar is a plain Show with a line of help, and a list's title and subtitle are rows like the rest.
+## 0.1.332 — 2026-11-23 — Shop accounts: signed out everywhere after a new password, members-only coupons
+- **Customers' sessions**: a new password (set from a reset link or in the account's details) signs the customer out in every other browser; the browser that set it stays signed in. A password cleared (an unconfirmed account linked to Google, or an old imported one) signs them out too. Sessions from before this release keep working.
+- **Account links**: the link to confirm the address and the link to set a new password are kept apart, so asking for one no longer cancels the other.
+- **Passwords brought from WordPress** that nobody has used here for six months are cleared by the shop's scheduled work (logged in Activity). Those customers set a new password with "Forgot password".
+- **Coupons > Signed-in customers only**: guests cannot use the coupon, and "uses per customer" is counted by account, so a second order with another email address does not get around it. Also on MCP's `save_coupon` and `list_coupons`.
+- Audit tasks S5, S13, S14 and S16 (W10) are done.
+- Tests: `shop-checkout` (unit) and `shop_checkout` (HTTP).
 
 ## 0.1.331 — 2026-11-23 — One Export, import and reset page for the theme
 - Theme had two exports: one in Branding for the look, and Advanced > Export and import for the whole theme. They are one page now, **Advanced > Export, import and reset**, and Branding links to it.

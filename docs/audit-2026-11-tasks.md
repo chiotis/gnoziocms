@@ -30,7 +30,7 @@ group. Size: S (an hour or two), M (half a day to a day), L (more).
 - [x] **S4c** (S) Send the guest's order confirmation without the customer's free text (note, gift note) for orders not yet
       paid, or strip links from it.
 - [x] **S4d** (S) Viva webhook: take an event once by its key before calling Viva, and limit calls per address.
-- [ ] **S5** (M) A session version on `shop_customers`, kept in the session and raised when the password changes or is cleared:
+- [x] **S5** (M) A session version on `shop_customers`, kept in the session and raised when the password changes or is cleared:
       other browsers are signed out. Test: reset in one browser signs out the other.
 - [x] **S6 + S12** (M) One "trusted proxies" setting. `X-Forwarded-For`, `-Proto` and `-Host` count only when `REMOTE_ADDR` is
       one of them; `clientIpAddress()` and the sign-in throttle use the same helper. Document it for CloudPanel, Varnish and
@@ -48,10 +48,10 @@ group. Size: S (an hour or two), M (half a day to a day), L (more).
 - [ ] **S10c** (S) `changeStatus()`: the status, the stock and the coupon in one transaction.
 - [x] **S11** (S) Sign-up with an address that has an account answers like a new one ("check your email") and mails the owner
       a sign-in link instead.
-- [ ] **S13** (S) Separate columns (or a small table) for the verify and the reset token.
-- [ ] **S14** (S) Clear imported WordPress hashes not used after 6 months; those customers set a password by email.
+- [x] **S13** (S) Separate columns (or a small table) for the verify and the reset token.
+- [x] **S14** (S) Clear imported WordPress hashes not used after 6 months; those customers set a password by email.
 - [ ] **S15** (S) Downloads: answer `Range`, and count a download when it finishes, or only once within ten minutes per link.
-- [ ] **S16** (S) Coupons: an option "signed-in customers only", which makes the per-customer limit firm.
+- [x] **S16** (S) Coupons: an option "signed-in customers only", which makes the per-customer limit firm.
 - [x] **S-next** (L) Review what this audit did not read: the admin screens, MCP, the importers, backups, updates, AI
       publishing, the admin's JavaScript. Done: [audit-2026-11-part-2.md](audit-2026-11-part-2.md); its tasks follow.
 
