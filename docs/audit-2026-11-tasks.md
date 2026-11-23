@@ -141,7 +141,7 @@ group. Size: S (an hour or two), M (half a day to a day), L (more).
       step of the App split on the roadmap.
 - [x] **B4** (M) Rename what is left of the old name. The update header and `_faros_check` accept both names for one release.
 - [x] **B5** (S) Starter media: resize and recompress the pictures, one small DOCX; aim under 1.5 MB.
-      Done: 1.49 MB of uploads (was 5.6 MB): a PNG nobody used and the second copy of the DOCX removed, the photo saved as PNG
+      Done: 1.5 MB of uploads (was 6.0 MB): a PNG nobody used and the second copy of the DOCX removed, the photo saved as PNG
       made a JPEG, the largest photos at most 1,440 px wide, the DOCX without its embedded fonts (17 KB).
 - [ ] **B6** (S) Move the finished plans to `docs/plans/` and fix the references in comments.
 - [ ] **B7** (S) Gateways: the local test address comes from the injected transport, not from the secrets.
