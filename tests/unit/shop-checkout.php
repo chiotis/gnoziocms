@@ -190,6 +190,31 @@ $stock->reserve('ring0000000000001', 'silver', 2);
 check('its pieces are held', $stock->forProduct('ring0000000000001')['silver'], ['on_hand' => 5, 'reserved' => 2]);
 check('the time ran out: cancelled, and the pieces are free again', [$checkout->expire(), $orders->get($held['id'])['status'], $stock->forProduct('ring0000000000001')['silver']], [1, 'cancelled', ['on_hand' => 5, 'reserved' => 0]]);
 
+// ---- a status change is one transaction (S10c), and the tick puts `reserved` right (S10a)
+$atomic = $orders->create(['status' => 'pending_payment', 'email' => 'y@example.com', 'coupon' => 'SPRING-10', 'stock_held' => ShopCheckout::HELD, 'reserve_until' => time() + 600], [['product_id' => 'ring0000000000001', 'variant_key' => 'silver', 'title' => 'Ring', 'variant' => 'Silver', 'sku' => '', 'quantity' => 1, 'unit_cents' => 100, 'total_cents' => 100, 'tax_rate' => 24, 'tracked' => true]], 'AL');
+$stock->reserve('ring0000000000001', 'silver', 1);
+$coupons->take('SPRING-10');
+$usedBefore = $coupons->find('SPRING-10')['used'];
+$pdo = $db->connection();
+$pdo->exec("CREATE TEMP TRIGGER fail_coupon BEFORE UPDATE ON shop_coupons BEGIN SELECT RAISE(ABORT, 'coupon write failed'); END");
+$threw = false;
+try {
+    $checkout->changeStatus($atomic['id'], 'cancelled', 'admin');
+} catch (\Throwable) {
+    $threw = true;
+}
+$pdo->exec('DROP TRIGGER fail_coupon');
+check('a failure half way through a cancel leaves the status, the stock and the coupon as they were', [$threw, $orders->get($atomic['id'])['status'], $orders->get($atomic['id'])['stock_held'], $stock->forProduct('ring0000000000001')['silver']['reserved'], $coupons->find('SPRING-10')['used']], [true, 'pending_payment', ShopCheckout::HELD, 1, $usedBefore]);
+check('the tick finds nothing to put right when `reserved` matches the open orders', $stock->reconcile($orders->heldLines(), 0), []);
+$pdo->exec("UPDATE shop_stock SET reserved = 4 WHERE product_id = 'ring0000000000001' AND variant_key = 'silver'");
+check('a row changed a moment ago is left for the next tick', $stock->reconcile($orders->heldLines()), []);
+check('an older one is put right to what open orders hold, and says what it was', $stock->reconcile($orders->heldLines(), 0), [['product_id' => 'ring0000000000001', 'variant_key' => 'silver', 'was' => 4, 'now' => 1]]);
+$pdo->exec("UPDATE shop_stock SET reserved = 3 WHERE product_id = 'ring0000000000001' AND variant_key = 'gold'");
+$stock->reconcile($orders->heldLines(), 0);
+check('a row no open order holds goes back to 0', $stock->forProduct('ring0000000000001')['gold']['reserved'], 0);
+$checkout->changeStatus($atomic['id'], 'cancelled', 'admin');
+check('cancelled as usual once nothing fails', [$orders->get($atomic['id'])['status'], $stock->forProduct('ring0000000000001')['silver']['reserved'], $coupons->find('SPRING-10')['used']], ['cancelled', 0, $usedBefore - 1]);
+
 // ---- customers
 $customers = new ShopCustomers($db);
 $id = $customers->create('Maria@Example.com', 'long enough', 'Maria', 'el');

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.334 — 2026-11-23 — Shop: order changes in one transaction, held stock checked, stuck renewals recovered
+- **Order status changes are all or nothing**: an order's new status, the stock it holds or gives back and its coupon's use are now written in one transaction, so a failure half way can no longer leave a cancelled order still holding stock, or a coupon counted twice.
+- **Held stock checked every hour**: the shop's scheduled work compares each product's held stock with what the orders waiting for payment really hold, puts it right when it differs, and writes a warning in Activity. A product changed in the last five minutes is left for the next run, so an order being placed is never disturbed.
+- **Subscriptions stuck in a renewal**: a renewal that stopped half way (the server went down mid-charge) used to leave the subscription never charged again. After an hour it is now put back to its period and **paused**, with a warning in Activity and a note on its renewal order, so you can check in Viva whether the card was charged before resuming it. It is never charged twice on its own. Viva's recurring-charge API takes no idempotency key; each charge carries the renewal order's number, so a double charge can be traced.
+- Audit tasks S10a, S10b and S10c (W11) are done.
+- Tests: `shop-checkout` and `shop-subscriptions` (unit).
+
 ## 0.1.333 — 2026-11-23 — Theme: tidier settings rows
 - Every Theme section (Branding, Typography, Header, Footer, Single and Archive Layouts, Social profiles and any other section a theme declares) now lays its settings out the same way: the name on the left, the control on the right, and its help right under the control. On a phone they stack.
 - A setting that still follows the theme no longer says "Theme value": only one you changed is marked, with **Your value** and a Reset beside it.

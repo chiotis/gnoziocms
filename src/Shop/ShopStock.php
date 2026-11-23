@@ -220,6 +220,46 @@ final class ShopStock
         $stmt->execute(['q' => $quantity, 'now' => time(), 'id' => $productId, 'key' => $variantKey]);
     }
 
+    /**
+     * Puts `reserved` right where it differs from what the orders holding stock hold (the shop's tick). A row changed in the
+     * last few minutes is left for the next tick, since an order being placed holds its pieces a moment before it is written;
+     * each correction only applies when the row is still as it was read.
+     *
+     * @param list<array{product_id: string, variant_key: string, quantity: int}> $heldLines ShopOrders::heldLines()
+     * @return list<array{product_id: string, variant_key: string, was: int, now: int}> what was put right
+     */
+    public function reconcile(array $heldLines, int $settleSeconds = 300): array
+    {
+        if (!$this->database->isAvailable()) {
+            return [];
+        }
+        $rows = [];
+        foreach ($this->pdo()->query('SELECT product_id, variant_key, reserved, updated_at FROM shop_stock')->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $rows[(string)$row['product_id'] . "\0" . (string)$row['variant_key']] = $row;
+        }
+        $expected = [];
+        foreach ($heldLines as $line) {
+            // The same key the order was held from (keyHeld()): its variant's row, or the product's one row.
+            $key = isset($rows[$line['product_id'] . "\0" . $line['variant_key']]) ? $line['variant_key'] : '';
+            $id = $line['product_id'] . "\0" . $key;
+            $expected[$id] = ($expected[$id] ?? 0) + $line['quantity'];
+        }
+        $fixed = [];
+        $cutoff = time() - $settleSeconds;
+        $update = $this->pdo()->prepare('UPDATE shop_stock SET reserved = :expected, updated_at = :now WHERE product_id = :id AND variant_key = :key AND reserved = :seen AND updated_at = :at');
+        foreach ($rows as $id => $row) {
+            $want = $expected[$id] ?? 0;
+            if ((int)$row['reserved'] === $want || (int)$row['updated_at'] > $cutoff) {
+                continue;
+            }
+            $update->execute(['expected' => $want, 'now' => time(), 'id' => (string)$row['product_id'], 'key' => (string)$row['variant_key'], 'seen' => (int)$row['reserved'], 'at' => (int)$row['updated_at']]);
+            if ($update->rowCount() === 1) {
+                $fixed[] = ['product_id' => (string)$row['product_id'], 'variant_key' => (string)$row['variant_key'], 'was' => (int)$row['reserved'], 'now' => $want];
+            }
+        }
+        return $fixed;
+    }
+
     private function pdo(): PDO
     {
         return $this->database->connection();
