@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.343 — 2026-11-24 — Search: an index, tolerance for typos, filters for places
+- Search keeps its words in a SQLite index (`storage/cache/search/index.sqlite`, disposable, not in backups) and reads only the entries that can match. The old cache (a 16 MB file per type and language) was full at about 1,000 entries, after which every search extracted the rest again. Measured on entries of about 600 words: 3,000 entries 0.3 s a search (before 0.8 s), 10,000 entries 0.7 s (before 3 s). Visibility is still decided by the repository, so results are the same as before.
+- Tolerance for typos: a word of five or more letters that is nowhere on the site also finds the site's words one letter away (two from nine letters; two neighbours swapped count as one). «ξενοδοχιο» finds «Ξενοδοχείο». They rank below the word as typed and its other forms, and the page says which words it included. A word on the site is never corrected; numbers and short words are not either.
+- Filters for places: when the results include places, the search page offers Area (the `area` field) and Category (a parent includes its children), each with counts that follow the other filters, as `area=` and `category=`.
+- Tests: `search-typos` (new), `search`, `search-document` (unit); `geo` (HTTP).
+
 ## 0.1.342 — 2026-11-24 — Settings, Shop settings, SEO and AI publishing in the Theme's field rows
 - **Settings**, **Shop settings**, **SEO** and **AI publishing** lay out their fields as the Theme sections do: the label in a column on the left, the control on the right with its help under it, checkboxes under the controls, compact boxes (numbers short, lists at most 20rem, texts at most 32rem). On a phone the rows stack.
 - Settings: the storage limit and its unit are one row and Used now another; picture quality and the kinds of file allowed are small cards beside their label; Google Sign-In is a checkbox like the Theme's. The card headings lose the line under them, as on Theme.
