@@ -75,11 +75,13 @@
     radio: { label: 'Single choice', glyph: '◉', group: 'Choices', choice: true },
     checkboxes: { label: 'Multiple choice', glyph: '☑', group: 'Choices', choice: true },
     checkbox: { label: 'Checkbox', glyph: '✓', group: 'Choices', check: true },
+    rating: { label: 'Rating', glyph: '★', group: 'Choices', rating: true },
     date: { label: 'Date', glyph: '31', group: 'Date and time', value: true },
     time: { label: 'Time', glyph: '12:00', group: 'Date and time', value: true },
     'datetime-local': { label: 'Date and time', glyph: '31·12', group: 'Date and time', value: true },
     heading: { label: 'Heading', glyph: 'H', group: 'Layout', display: true },
     paragraph: { label: 'Text', glyph: '¶', group: 'Layout', display: true },
+    step: { label: 'New step', glyph: '⇥', group: 'Layout', display: true, step: true },
     file: { label: 'File upload', glyph: '⇪', group: 'Files', file: true },
     range: { label: 'Slider', glyph: '⇆', group: 'Other', range: true, value: true },
     color: { label: 'Colour', glyph: '◐', group: 'Other', value: true },
@@ -96,6 +98,8 @@
     { label: 'Message', type: 'textarea', name: 'message', required: true, rows: 5 },
     { label: 'Consent', type: 'checkbox', name: 'consent', required: true, text: 'I agree to the processing of my information.' }
   ];
+  /** The tests a field can be shown for, and how the inspector says them. */
+  var OPS = { is: 'is', not: 'is not', filled: 'is answered', empty: 'is not answered' };
   var CHANGE_TO = [['text', 'email', 'tel', 'url', 'number', 'textarea'], ['select', 'radio', 'checkboxes'], ['date', 'time', 'datetime-local']];
 
   var GREEK = { 'α': 'a', 'β': 'v', 'γ': 'g', 'δ': 'd', 'ε': 'e', 'ζ': 'z', 'η': 'i', 'θ': 'th', 'ι': 'i', 'κ': 'k', 'λ': 'l', 'μ': 'm', 'ν': 'n', 'ξ': 'x', 'ο': 'o', 'π': 'p', 'ρ': 'r', 'σ': 's', 'ς': 's', 'τ': 't', 'υ': 'y', 'φ': 'f', 'χ': 'ch', 'ψ': 'ps', 'ω': 'o', 'ά': 'a', 'έ': 'e', 'ή': 'i', 'ί': 'i', 'ό': 'o', 'ύ': 'y', 'ώ': 'o', 'ϊ': 'i', 'ϋ': 'y', 'ΐ': 'i', 'ΰ': 'y' };
@@ -191,6 +195,7 @@
       width: WIDTH_ORDER.indexOf(o.width || '') !== -1 ? (o.width || '') : '',
       upload: normalizeUpload(o.upload, o.type),
       button: o.button || '', error_size: o.error_size || '', error_type: o.error_type || '', error_max: o.error_max || '', error_min: o.error_min || '',
+      condition: o.condition && o.condition.field ? { field: String(o.condition.field), op: OPS[o.condition.op] ? o.condition.op : 'is', value: String(o.condition.value === undefined ? '' : o.condition.value) } : null,
       saved: !!o.saved,
       nameTouched: !!o.saved || !!o.nameTouched,
       tr: JSON.parse(JSON.stringify(o.translations && !Array.isArray(o.translations) ? o.translations : {}))
@@ -221,6 +226,7 @@
       type: f.type, name: f.name, label: f.label, required: f.required, placeholder: f.placeholder, help: f.help, 'default': f['default'],
       options: f.options.map(function (o) { return { value: o.value, label: o.label }; }), rows: f.rows, min: f.min, max: f.max, step: f.step, width: f.width,
       upload: f.type === 'file' ? f.upload : undefined, button: f.button, error_size: f.error_size, error_type: f.error_type, error_max: f.error_max, error_min: f.error_min,
+      condition: f.condition && f.condition.field ? f.condition : undefined,
       translations: cleanTranslations(f)
     };
   }
@@ -398,6 +404,8 @@
     Object.keys(extra || {}).forEach(function (k) { o[k] = extra[k]; });
     if (type === 'heading') o.label = (extra && extra.label) || 'Section heading';
     if (type === 'paragraph') o.label = (extra && extra.label) || 'A few words of explanation for the person filling in the form.';
+    if (type === 'step') o.label = (extra && extra.label) || 'Next step';
+    if (type === 'rating') o.max = (extra && extra.max) || '5';
     if (extra && extra.text) o.label = extra.text;
     if (t.choice) {
       o.options = (extra && extra.options) || [{ value: 'option-1', label: 'Option 1' }, { value: 'option-2', label: 'Option 2' }, { value: 'option-3', label: 'Option 3' }];
@@ -471,6 +479,18 @@
     var shared = { disabled: off, tabindex: off ? '-1' : false, 'aria-label': f.label || f.name || def(f.type).label };
     if (type === 'heading') return h('div', { 'class': 'text-lg font-semibold text-slate-900' }, [f.label || 'Heading']);
     if (type === 'paragraph') return h('p', { 'class': 'whitespace-pre-line text-sm text-slate-600' }, [f.label || 'Text']);
+    if (type === 'step') {
+      return h('div', { 'class': 'flex items-center gap-3' }, [
+        h('span', { 'class': 'h-px flex-1 bg-slate-300' }),
+        h('span', { 'class': 'rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white' }, ['Step: ' + (f.label || 'Untitled')]),
+        h('span', { 'class': 'h-px flex-1 bg-slate-300' })
+      ]);
+    }
+    if (type === 'rating') {
+      var stars = [];
+      for (var n = 1; n <= ratingMax(f); n++) stars.push(h('span', { 'class': 'text-2xl leading-none text-slate-300', 'aria-hidden': 'true' }, ['★']));
+      return h('div', { 'class': 'flex gap-1', role: 'img', 'aria-label': ratingMax(f) + ' stars' }, stars);
+    }
     if (type === 'hidden') return h('div', { 'class': 'inline-flex items-center gap-2 rounded-md border border-dashed border-slate-300 bg-slate-50 px-2.5 py-1.5 text-xs text-slate-500' }, ['Hidden field ', h('code', { 'class': 'font-medium text-slate-700' }, [f.name]), f['default'] ? ' = ' + f['default'] : '']);
     if (type === 'textarea') return h('textarea', Object.assign({ 'class': inputBase, rows: f.rows, placeholder: f.placeholder }, shared));
     if (type === 'select') {
@@ -499,13 +519,33 @@
     return h('input', Object.assign({ type: type === 'datetime-local' ? 'datetime-local' : type, 'class': inputBase, placeholder: f.placeholder, value: f['default'] || false, min: type === 'number' ? (f.min || false) : false, max: type === 'number' ? (f.max || false) : false }, shared));
   }
 
+  function ratingMax(f) {
+    var n = parseInt(f.max, 10);
+    return n > 0 ? Math.max(2, Math.min(10, n)) : 5;
+  }
+
+  /** The condition of a field in words, for its card: "Shown when Topic is Sales". */
+  function conditionText(f) {
+    var c = f.condition;
+    if (!c || !c.field) return '';
+    var target = fields.filter(function (x) { return x.name === c.field; })[0];
+    if (!target) return 'Shown when a field that is gone is answered (choose another)';
+    var shown = view(target);
+    var value = c.value;
+    if (target.type === 'checkbox') return 'Shown when ' + (shown.label || target.name) + (c.op === 'empty' || c.op === 'not' ? ' is not ticked' : ' is ticked');
+    var opt = target.options.filter(function (o) { return o.value === c.value; })[0];
+    if (opt) value = opt.label;
+    return 'Shown when ' + (shown.label || target.name) + ' ' + OPS[c.op] + (c.op === 'is' || c.op === 'not' ? ' “' + value + '”' : '');
+  }
+
   function fieldBody(f, live) {
     var t = def(f.type);
     var showLabel = !t.display && !t.check && f.type !== 'hidden';
     return [
       showLabel ? h('div', { 'class': 'mb-1 text-sm font-medium text-slate-800' }, [f.label || 'Untitled', f.required ? h('span', { 'class': 'ml-0.5 text-red-600', 'aria-hidden': 'true' }, ['*']) : null]) : null,
       control(f, live),
-      f.help && !t.display ? h('p', { 'class': 'mt-1 text-xs text-slate-500' }, [f.help]) : null
+      f.help && !t.display ? h('p', { 'class': 'mt-1 text-xs text-slate-500' }, [f.help]) : null,
+      f.condition && f.condition.field && !live ? h('p', { 'class': 'mt-1.5 inline-flex items-center gap-1 rounded bg-violet-50 px-1.5 py-0.5 text-[11px] font-medium text-violet-700 ring-1 ring-inset ring-violet-200' }, [conditionText(f)]) : null
     ];
   }
 
@@ -626,7 +666,7 @@
       return field(labelText, box, langName('') + ': ' + (f[key] || '—'));
     }
 
-    items.push(text('label', f.type === 'heading' ? 'Heading' : (f.type === 'paragraph' ? 'Text' : 'Label'), f.type === 'paragraph'));
+    items.push(text('label', f.type === 'heading' ? 'Heading' : (f.type === 'paragraph' ? 'Text' : (f.type === 'step' ? 'Title of the step' : 'Label')), f.type === 'paragraph'));
     if (t.placeholder && filled(f.placeholder)) items.push(text('placeholder', 'Placeholder'));
     if (!t.display && filled(f.help)) items.push(text('help', 'Help text'));
     if (t.file) {
@@ -706,12 +746,13 @@
     labelInput.addEventListener('input', function () {
       edit(f, 'label:' + f.id, function () {
         f.label = labelInput.value;
-        if (!f.nameTouched) f.name = uniqueName(slugify(f.label) || f.type, f.id);
+        if (!f.nameTouched) renameField(f, uniqueName(slugify(f.label) || f.type, f.id));
       });
+      fields.forEach(function (x) { if (x.condition && x.condition.field === f.name) refreshCard(x); });
       var nameBox = inspector.querySelector('[data-fb-name]');
       if (nameBox && !f.nameTouched) nameBox.value = f.name;
     });
-    items.push(field(f.type === 'heading' ? 'Heading' : (f.type === 'paragraph' ? 'Text' : 'Label'), labelInput));
+    items.push(field(f.type === 'heading' ? 'Heading' : (f.type === 'paragraph' ? 'Text' : (f.type === 'step' ? 'Title of the step' : 'Label')), labelInput, f.type === 'step' ? 'Everything below, up to the next step, is shown as one step: the visitor goes on with Next.' : ''));
 
     if (!t.display) {
       items.push(toggle('This field is required', f.required, function (on) { edit(f, '', function () { f.required = on; }); }));
@@ -729,6 +770,11 @@
 
     if (t.choice) items.push(optionsEditor(f));
     if (t.file) items.push(uploadEditor(f));
+    if (t.rating) {
+      var starsInput = h('input', { type: 'number', min: '2', max: '10', step: '1', 'class': cls.input, value: String(ratingMax(f)) });
+      starsInput.addEventListener('input', function () { edit(f, 'stars:' + f.id, function () { f.max = String(Math.max(2, Math.min(10, parseInt(starsInput.value, 10) || 5))); }); });
+      items.push(field('Number of stars', starsInput, 'From 2 to 10. The answer is a number, such as 4 of 5.'));
+    }
 
     if (t.rows) {
       var rows = h('input', { type: 'number', min: '2', max: '30', 'class': cls.input, value: f.rows });
@@ -760,8 +806,10 @@
       }
     }
 
+    items.push(conditionEditor(f));
+
     // How wide the field is in its row.
-    if (f.type !== 'hidden') {
+    if (f.type !== 'hidden' && f.type !== 'step') {
       items.push(h('div', { 'class': cls.label }, [
         'Width',
         h('div', { 'class': 'inline-flex w-full rounded-md border border-slate-300 bg-white p-0.5', role: 'group', 'aria-label': 'Width' }, ['', 'two-thirds', 'half', 'third'].map(function (w) {
@@ -775,9 +823,9 @@
     // The name: what the answer is called in the emails and in the stored answers.
     var nameInput = h('input', { type: 'text', 'class': cls.input + ' font-mono text-xs', value: f.name, 'data-fb-name': '1' });
     nameInput.addEventListener('input', function () {
-      edit(f, 'name:' + f.id, function () { f.nameTouched = true; f.name = slugify(nameInput.value) || f.name; });
+      edit(f, 'name:' + f.id, function () { f.nameTouched = true; renameField(f, slugify(nameInput.value) || f.name); });
     });
-    nameInput.addEventListener('change', function () { nameInput.value = f.name = uniqueName(f.name, f.id); changed(false); });
+    nameInput.addEventListener('change', function () { renameField(f, uniqueName(f.name, f.id)); nameInput.value = f.name; changed(false); });
     items.push(h('details', { 'class': 'rounded-md border border-slate-200 bg-slate-50/60 px-3 py-2' }, [
       h('summary', { 'class': 'cursor-pointer text-xs font-medium text-slate-600' }, ['Advanced']),
       h('div', { 'class': 'mt-3 grid gap-2' }, [
@@ -791,6 +839,83 @@
     ]));
 
     inspector.appendChild(h('div', { 'class': 'grid gap-4' }, items));
+  }
+
+  /** A new name for a field, and the same name in what is shown only for its answers. */
+  function renameField(f, name) {
+    if (name === f.name) return;
+    var before = f.name;
+    f.name = name;
+    fields.forEach(function (x) { if (x !== f && x.condition && x.condition.field === before) x.condition.field = name; });
+  }
+
+  /**
+   * "Show only when": a field earlier in the form, a test (is, is not, is answered, is not answered) and, for is and is not,
+   * one of its choices (or a value typed in). The form on the site and the server follow it.
+   */
+  function conditionEditor(f) {
+    var index = indexOf(f.id);
+    var candidates = fields.slice(0, index).filter(function (x) { var d = def(x.type); return !d.display && !d.file && x.name; });
+    var c = f.condition;
+    var box = h('div', { 'class': 'grid gap-2 rounded-md border border-slate-200 bg-slate-50/60 p-3' });
+    var on = h('input', { type: 'checkbox', 'class': 'h-4 w-4 rounded border-slate-300', checked: !!(c && c.field), disabled: !candidates.length && !(c && c.field) });
+    on.addEventListener('change', function () {
+      edit(f, '', function () {
+        f.condition = on.checked && candidates.length ? { field: candidates[candidates.length - 1].name, op: 'is', value: '' } : null;
+        if (f.condition) {
+          var target = candidates[candidates.length - 1];
+          if (target.options.length) f.condition.value = target.options[0].value;
+          else if (target.type === 'checkbox') f.condition.op = 'filled';
+          else if (target.type !== 'rating') f.condition.op = 'filled';
+          else f.condition.value = String(ratingMax(target));
+        }
+      }, true);
+    });
+    box.appendChild(h('label', { 'class': 'flex items-center gap-2 text-xs font-medium text-slate-700' }, [on, f.type === 'step' ? 'Show this step only when…' : 'Show only when…']));
+    if (!candidates.length && !(c && c.field)) {
+      box.appendChild(h('p', { 'class': 'text-xs text-slate-500' }, ['Needs a field above this one that takes an answer.']));
+      return box;
+    }
+    if (!c || !c.field) {
+      box.appendChild(h('p', { 'class': 'text-xs text-slate-500' }, [f.type === 'step' ? 'Shown always. Tick to skip the step for some answers.' : 'Shown always. Tick to show it only for some answer to a field above.']));
+      return box;
+    }
+    var target = fields.filter(function (x) { return x.name === c.field; })[0];
+    var pickField = h('select', { 'class': cls.input, 'aria-label': 'The field it depends on' }, (target && candidates.indexOf(target) === -1 ? [target] : []).concat(candidates).map(function (x) {
+      return h('option', { value: x.name, selected: x.name === c.field }, [(x.label || x.name)]);
+    }).concat(target ? [] : [h('option', { value: c.field, selected: true }, [c.field + ' (gone)'])]));
+    pickField.addEventListener('change', function () {
+      edit(f, '', function () {
+        var t2 = fields.filter(function (x) { return x.name === pickField.value; })[0];
+        f.condition.field = pickField.value;
+        f.condition.op = t2 && (t2.options.length || t2.type === 'rating') ? 'is' : 'filled';
+        f.condition.value = t2 && t2.options.length ? t2.options[0].value : (t2 && t2.type === 'rating' ? String(ratingMax(t2)) : '');
+      }, true);
+    });
+    box.appendChild(pickField);
+    var isCheck = target && target.type === 'checkbox';
+    var opNames = isCheck ? { filled: 'is ticked', empty: 'is not ticked' } : OPS;
+    var pickOp = h('select', { 'class': cls.input, 'aria-label': 'Test' }, Object.keys(opNames).map(function (op) { return h('option', { value: op, selected: op === c.op }, [opNames[op]]); }));
+    pickOp.addEventListener('change', function () { edit(f, '', function () { f.condition.op = pickOp.value; }, true); });
+    box.appendChild(pickOp);
+    if (c.op === 'is' || c.op === 'not') {
+      var choices = target ? (target.type === 'rating' ? Array.apply(null, Array(ratingMax(target))).map(function (_, n) { return { value: String(n + 1), label: (n + 1) + ' of ' + ratingMax(target) }; }) : target.options) : [];
+      var pickValue;
+      if (choices.length) {
+        pickValue = h('select', { 'class': cls.input, 'aria-label': 'Answer' }, choices.map(function (o) { return h('option', { value: o.value, selected: o.value === c.value }, [o.label]); }));
+        if (!choices.some(function (o) { return o.value === c.value; })) { c.value = choices[0].value; }
+        pickValue.addEventListener('change', function () { edit(f, '', function () { f.condition.value = pickValue.value; }); });
+      } else {
+        pickValue = h('input', { type: 'text', 'class': cls.input, value: c.value, placeholder: 'The answer', 'aria-label': 'Answer' });
+        pickValue.addEventListener('input', function () { edit(f, 'cond:' + f.id, function () { f.condition.value = pickValue.value.trim(); }); });
+      }
+      box.appendChild(pickValue);
+      if (!String(c.value || '').trim()) box.appendChild(h('p', { 'class': 'text-xs text-amber-700' }, ['Give the answer, or it is shown always.']));
+    }
+    if (target && target.type === 'checkboxes' && (c.op === 'is' || c.op === 'not')) {
+      box.appendChild(h('p', { 'class': 'text-xs text-slate-500' }, [c.op === 'is' ? 'Shown when this choice is among those ticked.' : 'Shown when this choice is not ticked.']));
+    }
+    return box;
   }
 
   /* ---------- file upload fields ---------- */
@@ -1155,6 +1280,7 @@
   /** A choice whose value changed keeps its translations. */
   function renameChoice(f, from, to) {
     if (from === to) return;
+    fields.forEach(function (x) { if (x.condition && x.condition.field === f.name && x.condition.value === from) x.condition.value = to; });
     Object.keys(f.tr || {}).forEach(function (lang) {
       var o = f.tr[lang] && f.tr[lang].options;
       if (o && Object.prototype.hasOwnProperty.call(o, from)) { o[to] = o[from]; delete o[from]; }
@@ -1214,6 +1340,8 @@
     if (what === 'remove') {
       record('');
       fields.splice(i, 1);
+      // What was shown only for an answer of this field is shown always again.
+      if (!fields.some(function (x) { return x.name === f.name; })) fields.forEach(function (x) { if (x.condition && x.condition.field === f.name) x.condition = null; });
       if (state.selected === id) state.selected = fields.length ? fields[Math.min(i, fields.length - 1)].id : 0;
       changed(true);
       announce('Removed ' + (f.label || f.name));
@@ -1237,7 +1365,7 @@
       changed(true);
       refocusHandle(id);
       announce('Moved ' + (f.label || f.name) + ' to position ' + (to + 1) + ' of ' + fields.length);
-    } else if (what === 'narrower' || what === 'wider') {
+    } else if ((what === 'narrower' || what === 'wider') && f.type !== 'step') {
       var at = WIDTH_ORDER.indexOf(f.width);
       var next = what === 'narrower' ? Math.max(0, at - 1) : Math.min(WIDTH_ORDER.length - 1, at + 1);
       if (next === at) return;

@@ -62,10 +62,12 @@ final class FormProcessor
         $accepted = [];
         $totalBytes = 0;
         $required = fn(): string => ($this->translate)('form.error.required', 'This field is required.');
+        // What is not shown for these answers (FormConditions) is neither checked nor kept, whatever was sent for it.
+        $shown = FormConditions::visible($fields, self::sent($fields, $payload));
         foreach ($fields as $field) {
             $name = (string)($field['name'] ?? '');
             $type = (string)($field['type'] ?? 'text');
-            if ($name === '' || FormFields::isDisplay($type)) {
+            if ($name === '' || FormFields::isDisplay($type) || !($shown[$name] ?? true)) {
                 continue;
             }
             $isRequired = (bool)($field['required'] ?? false);
@@ -112,7 +114,7 @@ final class FormProcessor
                 continue;
             }
 
-            $value = trim((string)($payload[$name] ?? ''));
+            $value = is_scalar($payload[$name] ?? '') ? trim((string)($payload[$name] ?? '')) : '';
             if ($type === 'email' && $value !== '' && !filter_var($value, FILTER_VALIDATE_EMAIL)) {
                 $errors[$name] = ($this->translate)('form.error.email', 'Please enter a valid email.');
             }
@@ -128,6 +130,10 @@ final class FormProcessor
             if ($isRequired && $value === '') {
                 $errors[$name] = $required();
             }
+            if ($type === 'rating' && $value !== '' && (!ctype_digit($value) || (int)$value < 1 || (int)$value > FormFields::ratingMax($field['max'] ?? ''))) {
+                $errors[$name] = ($this->translate)('form.error.option', 'Please select a valid option.');
+                $value = '';
+            }
             $values[$name] = $value;
         }
         if ($errors === [] && $accepted !== [] && $uploads !== null && !$uploads->hasRoom($totalBytes)) {
@@ -139,6 +145,34 @@ final class FormProcessor
             $accepted = [];
         }
         return ['values' => $values, 'errors' => $errors, 'uploads' => $accepted];
+    }
+
+    /**
+     * The answers as they were sent, before they are checked: enough to decide what is shown (FormConditions::visible).
+     *
+     * @param array<int, array<string, mixed>> $fields
+     * @param array<string, mixed> $payload
+     * @return array<string, mixed>
+     */
+    public static function sent(array $fields, array $payload): array
+    {
+        $values = [];
+        foreach ($fields as $field) {
+            $name = (string)($field['name'] ?? '');
+            $type = (string)($field['type'] ?? 'text');
+            if ($name === '' || FormFields::isDisplay($type) || $type === 'file') {
+                continue;
+            }
+            $raw = $payload[$name] ?? '';
+            if ($type === 'checkboxes') {
+                $values[$name] = array_values(array_map(static fn($v): string => trim((string)$v), is_array($raw) ? array_filter($raw, 'is_scalar') : []));
+            } elseif ($type === 'checkbox') {
+                $values[$name] = is_scalar($raw) && (string)$raw !== '' ? '1' : '';
+            } else {
+                $values[$name] = is_scalar($raw) ? trim((string)$raw) : '';
+            }
+        }
+        return $values;
     }
 
     /**
@@ -275,12 +309,13 @@ final class FormProcessor
     public function body(ContentItem $form, array $values, array $fields, string $formUrl): string
     {
         $lines = ['Form: ' . (string)($form->meta['title'] ?? $form->slug), 'URL: ' . $formUrl, ''];
+        $shown = FormConditions::visible($fields, $values);
         foreach ($fields as $field) {
             $name = (string)($field['name'] ?? '');
-            if ($name === '' || FormFields::isDisplay((string)($field['type'] ?? ''))) {
+            if ($name === '' || FormFields::isDisplay((string)($field['type'] ?? '')) || !($shown[$name] ?? true)) {
                 continue;
             }
-            $lines[] = (string)($field['label'] ?? $name) . ': ' . self::text($values[$name] ?? '');
+            $lines[] = (string)($field['label'] ?? $name) . ': ' . self::answer($field, $values[$name] ?? '');
         }
         return implode("\n", $lines);
     }
@@ -327,6 +362,16 @@ final class FormProcessor
             return (string)$values['email'];
         }
         return '';
+    }
+
+    /** An answer as one line of text, as the field asks for it: a rating as "4 / 5". @param array<string, mixed> $field */
+    public static function answer(array $field, mixed $value): string
+    {
+        $text = self::text($value);
+        if (($field['type'] ?? '') === 'rating' && $text !== '') {
+            return $text . ' / ' . FormFields::ratingMax($field['max'] ?? '');
+        }
+        return $text;
     }
 
     /** A value as one line of text: a list of choices is joined with commas. */

@@ -1,10 +1,18 @@
 # Changelog
 
-## 0.1.343 — 2026-11-24 — Import tools for every importer: a dry-run preview, one row undone, a stopped import resumed
+## 0.1.344 — 2026-11-24 — Import tools for every importer: a dry-run preview, one row undone, a stopped import resumed
 - The dry run of the WordPress, WooCommerce and CSV imports says of each row whether it is new, would change (with the lines added and removed), would stay the same or is left out; `import-wordpress` writes it to `out/preview.txt` with the changed lines, and the WooCommerce screen shows it per product.
 - Every import is kept as a run in `storage/import/runs/` (the 30 newest): each file it wrote, and a copy of the file it replaced. Admin › Imports lists the runs and undoes one row: the old file comes back, or the new one goes. A file edited since the import is undone only when asked again; a product needs `shop.manage`.
 - An import that stopped goes on where it was: `--resume` on `import-wordpress` and `import-woocommerce`, and *Go on with the import* on the WooCommerce screen. Rows already written are skipped.
 - Tests: `import-runs` (new), `wordpress-import`, `woocommerce-import`, `content-csv` (unit); `import` (HTTP).
+
+## 0.1.343 — 2026-11-24 — Forms: show only when, steps, a rating, archived submissions and two looks
+- A field, heading, paragraph or step can carry `condition: {field, op, value}` (is, not, filled, empty): it is shown only while that field's answer meets the test. The builder has "Show only when…" on each card, renames follow into conditions, and removing a field clears them. The server decides again from what was sent (`FormConditions`): hidden fields are not checked, kept or emailed.
+- A `step` field splits a form into steps with progress, Back and Next (`form-logic.js`, loaded only where needed). Next checks the step's required fields, a step hidden by its condition is skipped, and after a server error the step with it is opened. Without JavaScript every step is shown.
+- A `rating` field of 2 to 10 stars (default 5), shown as "4 / 5" on the Submissions screen and in emails. The Feedback template uses it.
+- Submissions can be archived and restored, one or several at a time, with Inbox and Archived views, a CSV export of the archive and an archived count on the Forms list.
+- A form's Settings offer the compact or stacked look (`style`). MCP `save_form`/`get_form` take and return `style`, `condition`, `step` and `rating`.
+- Tests: `form-logic` (unit, HTTP and JS, new), `form-fields`.
 
 ## 0.1.342 — 2026-11-24 — Settings, Shop settings, SEO and AI publishing in the Theme's field rows
 - **Settings**, **Shop settings**, **SEO** and **AI publishing** lay out their fields as the Theme sections do: the label in a column on the left, the control on the right with its help under it, checkboxes under the controls, compact boxes (numbers short, lists at most 20rem, texts at most 32rem). On a phone the rows stack.

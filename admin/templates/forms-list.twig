@@ -159,6 +159,7 @@
                 <td class="px-4 py-2.5" data-sort-value="{{ row.submissions }}">
                   <a href="{{ url('admin/form-submissions?slug=' ~ row.slug) }}" class="font-medium text-slate-700 hover:text-blue-600">{{ row.submissions|number_format }}</a>
                   {% if row.recent > 0 %}<span class="ml-1 text-xs text-emerald-600">+{{ row.recent }} this week</span>{% endif %}
+                  {% if row.archived|default(0) > 0 %}<a href="{{ url('admin/form-submissions?slug=' ~ row.slug ~ '&view=archived') }}" class="ml-1 text-xs text-slate-400 hover:text-blue-600">{{ row.archived|number_format }} archived</a>{% endif %}
                   {% if row.latest_submission %}<div class="text-[11px] text-slate-400">Last {{ row.latest_submission }}</div>{% endif %}
                 </td>
                 <td class="px-4 py-2.5">

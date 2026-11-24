@@ -223,6 +223,22 @@
 
         <section class="{{ section_class }}" data-default-only>
           <div class="{{ section_header_class }}">
+            <h2 class="text-sm font-semibold text-slate-900">Look</h2>
+            <p class="mt-0.5 text-xs text-slate-500">How the form is drawn on the site. The fields stay as they are.</p>
+          </div>
+          <fieldset class="grid gap-2">
+            <legend class="sr-only">Look</legend>
+            {% for key, look in {'': ['As the theme draws it', 'Fields side by side where you gave them a width.'], 'compact': ['Compact', 'Less room between fields and slimmer boxes, for a sidebar or a narrow column.'], 'stacked': ['Stacked', 'One field to a row whatever its width, and the button across the form.']} %}
+              <label class="flex cursor-pointer items-start gap-2.5 rounded-md border border-slate-200 px-3 py-2 text-sm hover:bg-slate-50 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50/40">
+                <input type="radio" name="form_style" value="{{ key }}" class="mt-0.5 h-4 w-4 border-slate-300" {% if form_settings.style|default('') == key %}checked{% endif %}>
+                <span><span class="block font-medium text-slate-800">{{ look[0] }}</span><span class="block text-xs text-slate-500">{{ look[1] }}</span></span>
+              </label>
+            {% endfor %}
+          </fieldset>
+        </section>
+
+        <section class="{{ section_class }}" data-default-only>
+          <div class="{{ section_header_class }}">
             <h2 class="text-sm font-semibold text-slate-900">Answers</h2>
             <p class="mt-0.5 text-xs text-slate-500">Where the answers go.</p>
           </div>

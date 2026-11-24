@@ -14,6 +14,9 @@ use Symfony\Component\Yaml\Yaml;
  */
 final class ContentEditor
 {
+    /** How a form may be drawn besides the theme's own way (Forms > Settings > Look): with less room, or one field to a row. */
+    public const FORM_STYLES = ['compact', 'stacked'];
+
     /**
      * @param array<string, mixed> $settings site settings (languages, home page, date format)
      * @param \Closure(): BlockRegistry $blocks
@@ -94,6 +97,8 @@ final class ContentEditor
         $formRedirectUrl = trim((string)($post['form_redirect_url'] ?? ''));
         $formHoneypot = trim((string)($post['form_honeypot'] ?? ''));
         $formRateLimit = trim((string)($post['form_rate_limit_seconds'] ?? ''));
+        // How the form is drawn on the site; left as it is when the request does not say.
+        $formStyle = array_key_exists('form_style', $post) ? strtolower(trim((string)$post['form_style'])) : null;
         $translationId = trim((string)($post['translation_id'] ?? ''));
         $originalSlug = Slug::plain((string)($post['original_slug'] ?? ''));
         $originalLang = Slug::plain((string)($post['original_lang'] ?? ''));
@@ -469,6 +474,14 @@ final class ContentEditor
             }
 
             $data['store_submissions'] = $formStoreSubmissions;
+
+            if ($formStyle !== null) {
+                if (in_array($formStyle, self::FORM_STYLES, true)) {
+                    $data['style'] = $formStyle;
+                } else {
+                    unset($data['style']);
+                }
+            }
 
             $antispam = [];
             if ($formHoneypot !== '') {

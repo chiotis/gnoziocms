@@ -103,3 +103,37 @@ A field of type `file` lets a visitor attach files. Everything about it is set i
 **In the admin.** Submissions shows a paperclip with the number of files in the list, each file with its size and a download link in the details, *Download all as ZIP* for a submission, a filter *Only with files*, and the CSV has the file names. A file is only given out by `/admin/form-file?slug=…&id=…&f=…` (and `/admin/form-files-zip`) to a signed-in user who may manage forms, as an attachment with `X-Content-Type-Options: nosniff`; each download is written to the activity log.
 
 **Email.** The notification always has an admin link for each file (and one for all of them). *Email > Also attach the files to the email* attaches them when they are together no larger than the size set there (10 MB by default); above it only the links are sent and the email says so. The visitor's automatic reply never carries files or admin links; with *Add a copy of their answers* it lists the names.
+
+## Showing a field only for some answers
+
+Any part of a form (a field, a heading, a text, a step) can be shown only when a field above it has a certain answer: in the builder, *Show only when…* in the inspector, then the field, the test and the answer. In the file it is a `condition` on the part:
+
+```yaml
+  - type: text
+    name: company
+    label: Company
+    required: true
+    condition: {field: topic, op: is, value: sales}     # op: is, not, filled (answered), empty (not answered)
+```
+
+- `is` and `not` compare with the **value** of a choice (not its label), so they work in every language; for multiple choice `is` means "among those ticked". For a single checkbox the builder offers *is ticked* / *is not ticked* (`filled` / `empty`). A rating compares with the number of stars.
+- A part whose field is hidden is hidden too, and a step that is hidden hides everything in it.
+- **The server decides again** from what was sent (`FormConditions`): a hidden field is not checked (a hidden required field is not asked for), not kept and not in the emails, whatever the browser sent for it. The browser shows and hides parts as the visitor answers (`themes/default/assets/js/form-logic.js`, loaded only by a form that has conditions or steps); a hidden part's controls are disabled, so they are not sent.
+- Renaming a field in the builder renames it in the conditions that use it; deleting it removes them. A condition that names no field of the form is dropped when the form is saved.
+
+## Forms in several steps
+
+A **New step** part (`type: step`, under *Layout* in the builder) starts the next step; its label is the step's title. What comes before the first step is the first step. On the site one step is shown at a time, with *Step 2 of 3: Title* and a bar above it; *Next* checks the step's required fields first, *Back* goes back, and the send button is on the last step. A step can have a condition: it is skipped when it does not apply. When the server finds a mistake the form opens at the first step that has one. Without JavaScript every step is shown, one under the other, and the form is sent as one page. The texts (*Next*, *Back*, *Step {n} of {count}*) are theme strings (`form.step.*`) and can be changed under Translations.
+
+## Rating
+
+A **Rating** field (`type: rating`, under *Choices*) is a row of stars, `max` of them (2 to 10, 5 by default). The answer is the number chosen; the server refuses anything else. The admin and the emails show it as `4 / 5`. Each star is a radio button named for screen readers (*4 of 5*, theme string `form.rating.star`). The *Feedback* template starts with one.
+
+## The form's look
+
+*Settings > Look* chooses how the form is drawn, without changing its fields (`style` in the file): as the theme draws it (fields side by side where they were given a width), **compact** (less room between fields and slimmer boxes, for a sidebar or a narrow column) or **stacked** (one field to a row whatever its width, a measure that reads well, and the button across the form). It is a class on the form (`form-style-compact`, `form-style-stacked`) that a theme can style.
+
+## Archiving submissions
+
+Submissions has two lists, **Inbox** and **Archived**. *Archive* (on a row, in a submission's details, or *Archive selected*) moves a submission you have dealt with out of the inbox, the counts and the editor's Submissions tab; it is kept as it is, with its files, in `content/forms-submissions/<slug>/archive/`, and *Restore* brings it back. The archive can be searched and filtered like the inbox, exported on its own (*Export CSV* while Archived is open) and deleted from. The Forms list says how many each form has archived. Each archive and restore is written to the activity log.
+

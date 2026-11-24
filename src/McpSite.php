@@ -135,7 +135,8 @@ final class McpSite
                 . 'Where its emails go and where it sends people are changed in the admin only.', $schema([
                 'form' => $str('Its slug: a known one to change it, a new one to add one.', 80),
                 'title' => $str('Its name.', 200),
-                'fields' => ['type' => 'array', 'maxItems' => 100, 'items' => ['type' => 'object'], 'description' => 'Every field in order, in the shape get_form gives: type, name, label, required, placeholder, help, options ([{"value", "label"}]), width, translations ({"en": {"label": ...}}).'],
+                'fields' => ['type' => 'array', 'maxItems' => 100, 'items' => ['type' => 'object'], 'description' => 'Every field in order, in the shape get_form gives: type, name, label, required, placeholder, help, options ([{"value", "label"}]), width, translations ({"en": {"label": ...}}), and condition ({"field": "<name of an earlier field>", "op": "is|not|filled|empty", "value": "<a choice\'s value>"}) to show it only for that answer. A "step" part begins the next step of a form in several steps (its label is the step\'s title); a "rating" field has max stars (2 to 10, 5 when left out).'],
+                'style' => ['type' => 'string', 'enum' => ['', 'compact', 'stacked'], 'description' => 'How the form is drawn: "" as the theme draws it, "compact" with less room, "stacked" one field to a row.'],
                 'submit_label' => $str('The button\'s text.', 120),
                 'success_message' => $str('What is shown once it is sent.', 1000),
                 'translations' => ['type' => 'object', 'description' => 'The form\'s own texts in other languages, as get_form gives them: {"en": {"title": ..., "submit_label": ..., "success_message": ...}}.'],
@@ -670,6 +671,7 @@ final class McpSite
             'title' => (string)($item->meta['title'] ?? ''),
             'status' => (string)($meta['status'] ?? 'published'),
             'fields' => array_map(static fn(array $f): array => array_diff_key($f, ['saved' => 1]), FormFields::forBuilder($meta['fields'] ?? [])),
+            'style' => (string)($meta['style'] ?? ''),
             'submit_label' => (string)($meta['submit_label'] ?? ''),
             'success_message' => (string)($meta['success_message'] ?? ''),
             'translations' => is_array($meta['translations'] ?? null) ? $meta['translations'] : new \stdClass(),
@@ -756,6 +758,7 @@ final class McpSite
             'form_submit_label' => array_key_exists('submit_label', $args) ? trim((string)$args['submit_label']) : (string)($meta['submit_label'] ?? ''),
             'form_success_message' => array_key_exists('success_message', $args) ? trim((string)$args['success_message']) : (string)($meta['success_message'] ?? ''),
             'form_redirect_url' => (string)($meta['redirect_url'] ?? ''),
+            'form_style' => array_key_exists('style', $args) ? (string)$args['style'] : (string)($meta['style'] ?? ''),
             'form_honeypot' => (string)($antispam['honeypot'] ?? ($new ? 'website' : '')),
             'form_rate_limit_seconds' => (string)($antispam['rate_limit_seconds'] ?? ($new ? '20' : '')),
         ];
