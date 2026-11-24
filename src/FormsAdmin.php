@@ -6,12 +6,15 @@ namespace GnozioCMS;
 
 /**
  * What the Forms screens show and do with what people sent: the list of forms with how many submissions each got, one
- * form's submissions filtered and paged, deleting submissions, and the CSV export.
+ * form's submissions filtered and paged (the new ones, or the archived ones), archiving, restoring and deleting
+ * submissions, and the CSV export.
  */
 final class FormsAdmin
 {
     public const PER_PAGE_OPTIONS = [25, 50, 100];
     public const SORTS = ['updated', 'submissions', 'name'];
+    /** What can be done to submissions from their screen: to one (by `id`) or to the ticked ones (`bulk_…`, by `selected_ids`). */
+    public const ACTIONS = ['delete', 'bulk_delete', 'archive', 'bulk_archive', 'restore', 'bulk_restore'];
 
     /** Columns every export starts with; one more per field the submissions have, in alphabetical order. */
     private const EXPORT_HEADERS = ['id', 'submitted_at', 'site_title', 'form_title', 'form', 'lang', 'translation_id', 'ip', 'user_agent'];
@@ -55,6 +58,7 @@ final class FormsAdmin
                 'translations' => FormTranslations::overview($texts, $languages, $defaultLang),
                 'copies' => array_values(array_diff(array_keys($versions), [$primary->lang])),
                 'submissions' => $stats['total'],
+                'archived' => $this->submissions->archivedCount((string)$slug),
                 'recent' => $stats['last_7_days'],
                 'latest_submission' => $stats['latest'] !== '' ? FormProcessor::date($stats['latest']) : '',
                 'updated' => max(array_map(static fn(ContentItem $version): int => $version->mtime, $versions)),
@@ -127,6 +131,35 @@ final class FormsAdmin
     }
 
     /**
+     * Archives, restores or deletes submissions, as `submission_action` says (one of ACTIONS).
+     *
+     * @param array<string, mixed> $post
+     * @return array{action: string, count: int, ids: string[], files: int} action: archive, restore or delete ('' when nothing was asked); files: how many attached files went with deleted ones
+     */
+    public function changeSubmissions(string $slug, array $post): array
+    {
+        $action = (string)($post['submission_action'] ?? '');
+        if (!in_array($action, self::ACTIONS, true)) {
+            return ['action' => '', 'count' => 0, 'ids' => [], 'files' => 0];
+        }
+        $verb = str_replace('bulk_', '', $action);
+        if ($verb === 'delete') {
+            $result = $this->deleteSubmissions($slug, $post);
+            return ['action' => 'delete', 'count' => $result['deleted'], 'ids' => $result['ids'], 'files' => $result['files']];
+        }
+        $ids = $verb === $action
+            ? [(string)($post['id'] ?? '')]
+            : (is_array($post['selected_ids'] ?? null) ? array_map('strval', $post['selected_ids']) : []);
+        $count = 0;
+        foreach ($ids as $id) {
+            if ($this->submissions->archive($slug, $id, $verb === 'archive')) {
+                $count++;
+            }
+        }
+        return ['action' => $verb, 'count' => $count, 'ids' => $ids, 'files' => 0];
+    }
+
+    /**
      * Deletes submissions: one (`delete`, by `id`) or the ticked ones (`bulk_delete`, by `selected_ids`).
      *
      * @param array<string, mixed> $post
@@ -156,11 +189,12 @@ final class FormsAdmin
     /**
      * One page of a form's submissions, each with its fields labelled the way the form labels them.
      *
-     * @param array<string, mixed> $get lang, q, date_from, date_to (YYYY-MM-DD), has_files, page, per_page
-     * @return array{rows: array<int, array<string, mixed>>, filters: array<string, string>, total_all: int, total: int, recent: int, page: int, total_pages: int, per_page: int, has_file_field: bool}
+     * @param array<string, mixed> $get lang, q, date_from, date_to (YYYY-MM-DD), has_files, page, per_page, view (`archived` for the archive)
+     * @return array{rows: array<int, array<string, mixed>>, filters: array<string, string>, total_all: int, total: int, recent: int, page: int, total_pages: int, per_page: int, has_file_field: bool, archived: bool, inbox_total: int, archived_total: int}
      */
     public function page(ContentItem $form, array $get): array
     {
+        $archived = (string)($get['view'] ?? '') === 'archived';
         $filters = [
             'lang' => Slug::plain((string)($get['lang'] ?? '')),
             'q' => trim((string)($get['q'] ?? '')),
@@ -172,15 +206,15 @@ final class FormsAdmin
         $perPage = in_array($perPage, self::PER_PAGE_OPTIONS, true) ? $perPage : 25;
         // With no filter only the files of the page asked for are opened (FormSubmissionRepository::newest()).
         $wanted = max(1, (int)($get['page'] ?? 1));
-        $quick = implode('', $filters) === '' ? $this->submissions->newest($form->slug, 0, 0) : null;
+        $quick = implode('', $filters) === '' ? $this->submissions->newest($form->slug, 0, 0, $archived) : null;
         if ($quick !== null) {
             $total = $quick['total'];
             $totalAll = $total;
             $totalPages = max(1, (int)ceil($total / $perPage));
             $page = min($wanted, $totalPages);
-            $pageEntries = $this->submissions->newest($form->slug, ($page - 1) * $perPage, $perPage)['entries'] ?? [];
+            $pageEntries = $this->submissions->newest($form->slug, ($page - 1) * $perPage, $perPage, $archived)['entries'] ?? [];
         } else {
-            $all = $this->submissions->all($form->slug);
+            $all = $this->submissions->all($form->slug, $archived);
             $totalAll = count($all);
             $filtered = $this->submissions->filter($all, $filters);
             $total = count($filtered);
@@ -190,18 +224,20 @@ final class FormsAdmin
         }
 
         $labels = [];
+        $byName = [];
         $formFields = FormFields::normalize($form->meta['fields'] ?? []);
         foreach ($formFields as $field) {
             $name = (string)($field['name'] ?? '');
             if ($name !== '') {
                 $labels[$name] = (string)($field['label'] ?? Slug::title($name));
+                $byName[$name] = $field;
             }
         }
         $rows = [];
         foreach ($pageEntries as $entry) {
             $fields = [];
             foreach ($entry['fields'] as $key => $value) {
-                $fields[] = ['key' => (string)$key, 'label' => $labels[(string)$key] ?? Slug::title((string)$key), 'value' => FormProcessor::text($value)];
+                $fields[] = ['key' => (string)$key, 'label' => $labels[(string)$key] ?? Slug::title((string)$key), 'value' => FormProcessor::answer($byName[(string)$key] ?? [], $value)];
             }
             $summaryParts = [];
             foreach ($fields as $field) {
@@ -242,9 +278,15 @@ final class FormsAdmin
                 'fields' => $fields,
                 'ip' => (string)$entry['ip'],
                 'user_agent' => (string)$entry['user_agent'],
+                'archived' => $archived,
             ];
         }
+        $inboxTotal = $archived ? (int)$this->submissions->stats($form->slug)['total'] : $totalAll;
+        $archivedTotal = $archived ? $totalAll : $this->submissions->archivedCount($form->slug);
         return [
+            'archived' => $archived,
+            'inbox_total' => $inboxTotal,
+            'archived_total' => $archivedTotal,
             'rows' => $rows,
             'filters' => $filters,
             'total_all' => $totalAll,
@@ -282,13 +324,13 @@ final class FormsAdmin
     }
 
     /**
-     * Every submission of a form as rows for a CSV file: the fixed columns, then one for each field any submission has.
+     * Every submission of a form (or every archived one) as rows for a CSV file: the fixed columns, then one for each field any submission has.
      *
      * @return array{filename: string, headers: string[], rows: array<int, array<int, string>>, count: int}
      */
-    public function export(ContentItem $form, string $siteTitle): array
+    public function export(ContentItem $form, string $siteTitle, bool $archived = false): array
     {
-        $submissions = $this->submissions->all($form->slug);
+        $submissions = $this->submissions->all($form->slug, $archived);
         $fieldKeys = [];
         foreach ($submissions as $submission) {
             foreach (array_keys($submission['fields'] ?? []) as $key) {
@@ -316,7 +358,7 @@ final class FormsAdmin
         }
         $siteSlug = Slug::plain($siteTitle !== '' ? $siteTitle : 'site') ?: 'site';
         $formSlug = Slug::plain($formTitle) ?: $form->slug;
-        return ['filename' => $siteSlug . '-' . $formSlug . '-submissions.csv', 'headers' => $headers, 'rows' => $rows, 'count' => count($submissions)];
+        return ['filename' => $siteSlug . '-' . $formSlug . ($archived ? '-archived' : '') . '-submissions.csv', 'headers' => $headers, 'rows' => $rows, 'count' => count($submissions)];
     }
 
     /**

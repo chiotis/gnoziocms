@@ -7,6 +7,8 @@ namespace GnozioCMS;
 /**
  * Form submissions stored as JSON files in content/forms-submissions/<form-slug>/<id>.json.
  * Submissions are shared by every language version of a form (they are keyed by slug).
+ * An archived submission is moved, as it is, to content/forms-submissions/<form-slug>/archive/<id>.json: out of the
+ * list and the counts, kept with its files, and brought back with restore().
  */
 final class FormSubmissionRepository
 {
@@ -29,17 +31,23 @@ final class FormSubmissionRepository
         return $this->contentDir . '/forms-submissions/' . $slug;
     }
 
+    /** Where the archived submissions of a form are kept. */
+    public function archiveDirectory(string $slug): string
+    {
+        return $this->directory($slug) . '/archive';
+    }
+
     public static function isValidId(string $id): bool
     {
         return $id !== '' && strlen($id) <= 64 && (bool)preg_match('/^[A-Za-z0-9_-]+$/', $id);
     }
 
-    /** @return array<int, array<string, mixed>> newest first */
-    public function all(string $slug): array
+    /** @return array<int, array<string, mixed>> newest first; the archived ones instead with $archived */
+    public function all(string $slug, bool $archived = false): array
     {
         $entries = [];
-        foreach ($this->paths($slug) as $path) {
-            $entry = $this->read($path, $slug);
+        foreach ($this->paths($slug, $archived) as $path) {
+            $entry = $this->read($path, $slug, $archived);
             if ($entry !== null) {
                 $entries[] = $entry;
             }
@@ -54,15 +62,15 @@ final class FormSubmissionRepository
      *
      * @return array{entries: array<int, array<string, mixed>>, total: int}|null
      */
-    public function newest(string $slug, int $offset, int $limit): ?array
+    public function newest(string $slug, int $offset, int $limit, bool $archived = false): ?array
     {
-        $paths = $this->datedPaths($slug);
+        $paths = $this->datedPaths($slug, $archived);
         if ($paths === null) {
             return null;
         }
         $entries = [];
         foreach (array_slice($paths, max(0, $offset), max(0, $limit)) as $path) {
-            $entry = $this->read($path, $slug);
+            $entry = $this->read($path, $slug, $archived);
             if ($entry !== null) {
                 $entries[] = $entry;
             }
@@ -71,9 +79,9 @@ final class FormSubmissionRepository
     }
 
     /** @return array<int, string> */
-    private function paths(string $slug): array
+    private function paths(string $slug, bool $archived = false): array
     {
-        $dir = $this->directory($slug);
+        $dir = $archived ? $this->archiveDirectory($slug) : $this->directory($slug);
         if ($slug === '' || !is_dir($dir)) {
             return [];
         }
@@ -81,9 +89,9 @@ final class FormSubmissionRepository
     }
 
     /** The files of a form's submissions, newest name first; null when a name does not begin with its time. @return array<int, string>|null */
-    private function datedPaths(string $slug): ?array
+    private function datedPaths(string $slug, bool $archived = false): ?array
     {
-        $paths = $this->paths($slug);
+        $paths = $this->paths($slug, $archived);
         foreach ($paths as $path) {
             if (preg_match('/^\d{8}-\d{6}-/', basename($path)) !== 1) {
                 return null;
@@ -94,7 +102,7 @@ final class FormSubmissionRepository
     }
 
     /** @return array<string, mixed>|null */
-    private function read(string $path, string $slug): ?array
+    private function read(string $path, string $slug, bool $archived = false): ?array
     {
         $data = json_decode((string)@file_get_contents($path), true);
         if (!is_array($data)) {
@@ -110,7 +118,14 @@ final class FormSubmissionRepository
             'user_agent' => (string)($data['user_agent'] ?? ''),
             'fields' => is_array($data['fields'] ?? null) ? $data['fields'] : [],
             'files' => is_array($data['files'] ?? null) ? $data['files'] : [],
+            'archived' => $archived,
         ];
+    }
+
+    /** How many submissions of a form are archived (nothing is opened). */
+    public function archivedCount(string $slug): int
+    {
+        return count($this->paths($slug, true));
     }
 
     /** How many submissions of every form arrived in the last days, counted by the time of their files (nothing is opened). */
@@ -206,17 +221,37 @@ final class FormSubmissionRepository
         return $count;
     }
 
+    /** One submission, archived or not. */
     public function find(string $slug, string $id): ?array
     {
-        if (!self::isValidId($id)) {
+        if ($slug === '' || !self::isValidId($id)) {
             return null;
         }
-        $path = $this->directory($slug) . '/' . $id . '.json';
-        if ($slug === '' || !is_file($path)) {
-            return null;
+        foreach ([false, true] as $archived) {
+            $path = ($archived ? $this->archiveDirectory($slug) : $this->directory($slug)) . '/' . $id . '.json';
+            if (is_file($path)) {
+                $entry = $this->read($path, $slug, $archived);
+                return $entry !== null && $entry['id'] === $id ? $entry : null;
+            }
         }
-        $entry = $this->read($path, $slug);
-        return $entry !== null && $entry['id'] === $id ? $entry : null;
+        return null;
+    }
+
+    /** Moves a submission into the archive (true), or back out of it (false). True when it was moved. */
+    public function archive(string $slug, string $id, bool $archive = true): bool
+    {
+        if ($slug === '' || !self::isValidId($id)) {
+            return false;
+        }
+        $from = ($archive ? $this->directory($slug) : $this->archiveDirectory($slug)) . '/' . $id . '.json';
+        $toDir = $archive ? $this->archiveDirectory($slug) : $this->directory($slug);
+        if (!is_file($from) || is_file($toDir . '/' . $id . '.json')) {
+            return false;
+        }
+        if (!is_dir($toDir) && !@mkdir($toDir, 0775, true) && !is_dir($toDir)) {
+            return false;
+        }
+        return @rename($from, $toDir . '/' . $id . '.json');
     }
 
     /** A new submission's id (the files of a submission are kept under it, so it is decided before they are). */
@@ -244,6 +279,9 @@ final class FormSubmissionRepository
             return false;
         }
         $path = $this->directory($slug) . '/' . $id . '.json';
+        if (!is_file($path)) {
+            $path = $this->archiveDirectory($slug) . '/' . $id . '.json';
+        }
         $deleted = is_file($path) && @unlink($path);
         // A submission's files go with it, and only with it.
         if ($deleted) {
