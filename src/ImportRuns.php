@@ -55,6 +55,8 @@ final class ImportRuns
             'meta' => $meta,
             'status' => 'running',
             'started_at' => gmdate('c'),
+            // Two runs can start in the same second (a stop and a new start); this keeps them in order.
+            'started_us' => (int)(microtime(true) * 1000000),
             'finished_at' => '',
             'resumed' => 0,
             'summary' => [],
@@ -100,7 +102,7 @@ final class ImportRuns
             unset($data['rows']);
             $out[] = $data + ['counts' => $counts];
         }
-        usort($out, static fn(array $a, array $b): int => strcmp($b['started_at'] . $b['id'], $a['started_at'] . $a['id']));
+        usort($out, static fn(array $a, array $b): int => [(int)($b['started_us'] ?? 0), $b['started_at'], $b['id']] <=> [(int)($a['started_us'] ?? 0), $a['started_at'], $a['id']]);
         return $out;
     }
 
