@@ -1,0 +1,109 @@
+{% extends '@admin/base.twig' %}
+{% set page_heading = 'Imports' %}
+
+{% block content %}
+  {% set secondary_btn = 'inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm no-underline hover:bg-slate-50' %}
+  {% set small_btn = 'rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50' %}
+  {% set state_chip = {
+    'done': ['As imported', 'bg-emerald-50 text-emerald-700 ring-emerald-200'],
+    'changed': ['Edited since', 'bg-amber-50 text-amber-800 ring-amber-200'],
+    'gone': ['Removed since', 'bg-slate-100 text-slate-600 ring-slate-200'],
+    'undone': ['Undone', 'bg-slate-100 text-slate-600 ring-slate-200'],
+    'pending': ['Not finished', 'bg-blue-50 text-blue-700 ring-blue-200'],
+  } %}
+  {% set status_label = {'running': 'Not finished', 'done': 'Finished', 'failed': 'Failed', 'stopped': 'Stopped'} %}
+
+  {% if message_ok %}<template data-flash data-type="success">{{ message_ok }}</template>{% endif %}
+  {% if message_fail %}<template data-flash data-type="error">{{ message_fail }}</template>{% endif %}
+
+  {% if run %}
+    <header class="mb-4 flex flex-wrap items-start justify-between gap-3">
+      <div class="min-w-0">
+        <p class="m-0 text-sm text-slate-500">{{ importers[run.importer]|default(run.importer) }} · {{ run.source }} · {{ run.started_at|date('Y-m-d H:i') }} · {{ status_label[run.status]|default(run.status) }}{% if run.resumed %} (resumed {{ run.resumed }}×){% endif %}</p>
+        {% if run.status == 'running' %}
+          <p class="m-0 mt-1 text-xs text-slate-500">This import did not finish.{% if run.importer == 'wordpress' %} Run the same command with <code>--resume</code> to go on from here.{% elseif run.importer == 'woocommerce' %} Go on with it in Shop settings › Import.{% endif %}</p>
+        {% endif %}
+      </div>
+      <a class="{{ secondary_btn }}" href="{{ url('admin/imports') }}">All imports</a>
+    </header>
+    <section class="rounded-lg border border-slate-200 bg-white">
+      <div class="border-b border-slate-200 px-4 py-3">
+        <h2 class="text-sm font-semibold text-slate-900">What it wrote</h2>
+        <p class="mt-0.5 text-xs text-slate-400">Undo puts one file back as it was before the import, or removes it when the import made it. Pictures and terms it brought stay.</p>
+      </div>
+      {% if run.rows is empty %}
+        <p class="px-4 py-6 text-sm text-slate-500">This import wrote nothing.</p>
+      {% else %}
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-slate-100 bg-slate-50/50 text-left text-xs font-medium text-slate-400">
+                <th class="px-4 py-2 font-medium">Entry</th>
+                <th class="px-4 py-2 font-medium">Import</th>
+                <th class="px-4 py-2 font-medium">Now</th>
+                <th class="px-4 py-2 font-medium"><span class="sr-only">Undo</span></th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-50">
+              {% for row in run.rows %}
+                {% set chip = state_chip[row.state]|default([row.state, 'bg-slate-100 text-slate-600 ring-slate-200']) %}
+                <tr>
+                  <td class="px-4 py-2.5 align-top text-slate-900"><span class="block">{{ row.label }}</span><code class="text-xs text-slate-500">{{ row.path }}</code></td>
+                  <td class="px-4 py-2.5 align-top text-slate-600">{{ row.action == 'created' ? 'Made' : 'Replaced' }}</td>
+                  <td class="px-4 py-2.5 align-top"><span class="rounded px-1.5 py-0.5 text-xs font-medium ring-1 {{ chip[1] }}">{{ chip[0] }}</span></td>
+                  <td class="px-4 py-2.5 text-right align-top">
+                    {% if row.state != 'undone' %}
+                      <form method="post" action="{{ url('admin/imports') }}" class="inline">
+                        {{ csrf_field() }}
+                        <input type="hidden" name="run" value="{{ run.id }}">
+                        <input type="hidden" name="key" value="{{ row.key }}">
+                        {% if row.state == 'changed' %}<input type="hidden" name="force" value="1">{% endif %}
+                        <button type="submit" class="{{ small_btn }}" data-confirm="{{ row.state == 'changed' ? 'This entry was edited after the import. Undoing it loses that edit. Undo anyway?' : (row.action == 'created' ? 'Remove ' ~ row.label ~ '?' : 'Put back ' ~ row.label ~ ' as it was before the import?') }}" data-confirm-button="Undo">Undo</button>
+                      </form>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endif %}
+    </section>
+  {% else %}
+    <header class="mb-4">
+      <p class="m-0 text-sm text-slate-500">Every import of WordPress, WooCommerce or a CSV file, and what it wrote. Open one to undo an entry on its own.</p>
+    </header>
+    <section class="rounded-lg border border-slate-200 bg-white">
+      {% if runs is empty %}
+        <p class="px-4 py-6 text-sm text-slate-500">No imports yet.</p>
+      {% else %}
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-slate-100 bg-slate-50/50 text-left text-xs font-medium text-slate-400">
+                <th class="px-4 py-2 font-medium">When</th>
+                <th class="px-4 py-2 font-medium">From</th>
+                <th class="px-4 py-2 font-medium">Made</th>
+                <th class="px-4 py-2 font-medium">Replaced</th>
+                <th class="px-4 py-2 font-medium">Undone</th>
+                <th class="px-4 py-2 font-medium">Status</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-50">
+              {% for r in runs %}
+                <tr class="hover:bg-slate-50">
+                  <td class="px-4 py-2.5"><a class="font-medium text-blue-700 hover:underline" href="{{ url('admin/imports?run=' ~ r.id) }}">{{ r.started_at|date('Y-m-d H:i') }}</a></td>
+                  <td class="px-4 py-2.5 text-slate-700">{{ importers[r.importer]|default(r.importer) }} · <span class="break-all">{{ r.source }}</span></td>
+                  <td class="px-4 py-2.5 text-slate-600">{{ r.counts.created }}</td>
+                  <td class="px-4 py-2.5 text-slate-600">{{ r.counts.updated }}</td>
+                  <td class="px-4 py-2.5 text-slate-600">{{ r.counts.undone }}</td>
+                  <td class="px-4 py-2.5 text-slate-600">{{ status_label[r.status]|default(r.status) }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endif %}
+    </section>
+  {% endif %}
+{% endblock %}

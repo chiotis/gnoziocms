@@ -238,6 +238,14 @@ final class WordPressImporter
             }
             $file = $this->contentDir . '/' . $entry['type'] . '/' . (new ContentPaths(['languages' => ['default' => $this->defaultLang()]]))->filename($entry['new_slug'], (string)($entry['lang'] ?? $this->lang()));
             [$state, $reason] = $this->stateOf($file, $entry['link']);
+            // The dry run's preview: for a file that is there, what the import would change in it.
+            $changes = null;
+            $diff = [];
+            if ($state !== 'new' && is_file($file)) {
+                $lines = LineDiff::compare((string)file_get_contents($file), self::fileText($made));
+                $changes = LineDiff::summary($lines);
+                $diff = array_slice(LineDiff::withContext($lines, 1), 0, 60);
+            }
             $items[] = [
                 'id' => $entry['id'],
                 'type' => $entry['type'],
@@ -250,6 +258,8 @@ final class WordPressImporter
                 'from' => $entry['link'],
                 'path' => $entry['new_path'],
                 'words' => (int)preg_match_all('/\S+/u', $made['body']),
+                'changes' => $changes,
+                'diff' => $diff,
             ];
             if (($entry['old'] ?? $entry['link']) !== '') {
                 $this->addRedirect($redirects, $entry['old'] ?? $entry['link'], '/' . $entry['new_path']);
@@ -335,16 +345,19 @@ final class WordPressImporter
     /**
      * Does what plan() described: terms, then files, then the pages and posts.
      *
+     * With a run (ImportRuns), each page and post is a row of the import's history, which can be undone on its own, and a row a
+     * resumed run already wrote is skipped.
+     *
      * @param array<string, mixed> $plan the result of plan()
-     * @return array{written: int, updated: int, skipped: int, media_new: int, media_failed: string[], terms_added: int, redirects: array<int, array{0: string, 1: string}>, notes: string[], menus: string[], content_types: string[], logo: string}
+     * @return array{written: int, updated: int, skipped: int, resumed: int, media_new: int, media_failed: string[], terms_added: int, redirects: array<int, array{0: string, 1: string}>, notes: string[], menus: string[], content_types: string[], logo: string}
      */
-    public function apply(array $plan): array
+    public function apply(array $plan, ?ImportRun $run = null): array
     {
         if (!$this->planned) {
             throw new \LogicException('apply() needs the same importer that made the plan.');
         }
         $this->final = true;
-        $result = ['written' => 0, 'updated' => 0, 'skipped' => 0, 'media_new' => 0, 'media_failed' => [], 'route_files_failed' => [], 'terms_added' => 0, 'terms_updated' => 0, 'redirects' => [], 'notes' => [], 'menus' => [], 'content_types' => [], 'logo' => ''];
+        $result = ['written' => 0, 'updated' => 0, 'skipped' => 0, 'resumed' => 0, 'media_new' => 0, 'media_failed' => [], 'route_files_failed' => [], 'terms_added' => 0, 'terms_updated' => 0, 'redirects' => [], 'notes' => [], 'menus' => [], 'content_types' => [], 'logo' => ''];
 
         foreach ($plan['terms'] as $name => $list) {
             [$added, $updated] = $this->saveTerms((string)$name, $list, (string)($plan['taxonomy_titles'][$name] ?? ''));
@@ -444,21 +457,63 @@ final class WordPressImporter
                 $result['skipped']++;
                 continue;
             }
+            $key = $entry['type'] . '/' . $entry['id'] . '/' . ($entry['lang'] ?? $this->lang());
+            if ($run !== null && $run->isDone($key)) {
+                $result['resumed']++;
+                continue;
+            }
             $made = $this->render($entry, $plan['terms']);
             foreach ($made['notes'] as $note) {
                 $notes[$entry['type'] . '/' . $entry['new_slug'] . ': ' . $note] = 1;
             }
-            $dir = dirname($item['file']);
-            if (!is_dir($dir)) {
-                mkdir($dir, 0775, true);
+            if ($run !== null) {
+                $run->write($key, $item['file'], self::fileText($made), $entry['type'] . '/' . $entry['new_slug'] . ($item['lang'] !== $this->defaultLang() ? " ({$item['lang']})" : '') . ': ' . $item['title']);
+            } else {
+                $dir = dirname($item['file']);
+                if (!is_dir($dir)) {
+                    mkdir($dir, 0775, true);
+                }
+                file_put_contents($item['file'], self::fileText($made));
             }
-            file_put_contents($item['file'], "---\n" . Yaml::dump($made['front'], 4, 2) . "---\n\n" . $made['body']);
             $item['state'] === 'update' ? $result['updated']++ : $result['written']++;
         }
         $result['redirects'] = $redirects;
         $result['notes'] = array_keys($notes);
         $this->taxonomies->forget();
         return $result;
+    }
+
+    /** The file an entry is written as. @param array{front: array<string, mixed>, body: string} $made */
+    private static function fileText(array $made): string
+    {
+        return "---\n" . Yaml::dump($made['front'], 4, 2) . "---\n\n" . $made['body'];
+    }
+
+    /**
+     * The dry run's preview, row by row: what would be made, changed (with the lines that change), left as it is, or left alone.
+     *
+     * @param array<string, mixed> $plan
+     */
+    public static function preview(array $plan): string
+    {
+        $out = ['Preview of the import of ' . (string)($plan['site']['url'] ?? '') . ' on ' . date('Y-m-d H:i'), ''];
+        $marks = ['new' => 'new      ', 'update' => 'change   ', 'same' => 'same     ', 'skip' => 'left     '];
+        foreach ($plan['items'] as $item) {
+            $state = $item['state'] === 'update' && ($item['changes'] ?? null) !== null && $item['changes']['added'] + $item['changes']['removed'] === 0 ? 'same' : $item['state'];
+            $line = $marks[$state] . $item['type'] . '/' . $item['slug'] . ($item['lang'] !== '' ? " [{$item['lang']}]" : '') . '  ' . $item['title'];
+            if ($state === 'update') {
+                $line .= sprintf('  (+%d -%d lines)', $item['changes']['added'], $item['changes']['removed']);
+            } elseif ($state === 'skip') {
+                $line .= '  (' . $item['reason'] . ')';
+            }
+            $out[] = $line;
+            if ($state === 'update') {
+                foreach ($item['diff'] ?? [] as $row) {
+                    $out[] = '           ' . ($row['op'] === '~' ? '…' : ($row['op'] === '=' ? ' ' : $row['op']) . ' ' . mb_substr((string)$row['text'], 0, 160));
+                }
+            }
+        }
+        return implode("\n", $out) . "\n";
     }
 
     /**

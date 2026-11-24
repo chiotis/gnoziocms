@@ -25,6 +25,7 @@ use GnozioCMS\SecretBox;
 use GnozioCMS\SystemDatabase;
 use GnozioCMS\SystemMetaRepository;
 use GnozioCMS\Taxonomies;
+use GnozioCMS\ImportRuns;
 use GnozioCMS\WooCommerceImporter;
 use GnozioCMS\WooCommerceReader;
 use GnozioCMS\WordPressHttp;
@@ -483,7 +484,8 @@ final class ShopController
                 ($this->contentChanged)();
                 return $result;
             },
-            fn(string $action, string $level, string $message) => $this->logActivity($action, $level, 'shop', null, $message, [])
+            fn(string $action, string $level, string $message) => $this->logActivity($action, $level, 'shop', null, $message, []),
+            new ImportRuns($this->basePath . '/storage/import/runs', $this->contentDir)
         );
     }
 
@@ -530,6 +532,7 @@ final class ShopController
                 'start' => $import->start($_POST, is_array($_FILES['customers'] ?? null) ? $_FILES['customers'] : null, $this->importLanguages()),
                 'confirm' => $import->confirm($_POST),
                 'reset' => $import->reset(),
+                'resume' => $import->resume(),
                 default => ['ok' => false, 'message' => 'Unknown action.'],
             };
             $this->redirect('/admin/shop-settings?' . http_build_query(['tab' => 'import'] + ($result['ok'] ? [] : ['done' => 'fail', 'msg' => $result['message']])));

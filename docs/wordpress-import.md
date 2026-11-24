@@ -7,7 +7,7 @@ php scripts/import-wordpress.php https://example.com            # what would hap
 php scripts/import-wordpress.php https://example.com --apply    # do it
 ```
 
-Options: `--redirects=apply` and `--storage=PATH` (see *Old addresses*), `--fetch-external` (see *Pictures on other sites*), `--profile=FILE`, `--menus`, `--custom=PATH`, `--lang=en` (language of the content), `--default-lang=en` (the site's default language; when it differs, the content lives under `/en/`), `--home=index` (file name of the home page), `--kinds=pages,posts,types` (`types` are the profile's custom types of the REST API, below), `--only-used-media`, `--overwrite`, `--content=PATH`, `--uploads=PATH`, `--out=PATH`. Run it against a copy first and look through the result in the admin.
+Options: `--redirects=apply` and `--storage=PATH` (see *Old addresses*), `--fetch-external` (see *Pictures on other sites*), `--resume` (see *Preview, undo and resume*), `--profile=FILE`, `--menus`, `--custom=PATH`, `--lang=en` (language of the content), `--default-lang=en` (the site's default language; when it differs, the content lives under `/en/`), `--home=index` (file name of the home page), `--kinds=pages,posts,types` (`types` are the profile's custom types of the REST API, below), `--only-used-media`, `--overwrite`, `--content=PATH`, `--uploads=PATH`, `--out=PATH`. Run it against a copy first and look through the result in the admin.
 
 ## What comes over
 
@@ -46,6 +46,14 @@ php src/Cli/check-redirects.php https://new.example --list=storage/import/redire
 ```
 
 The old addresses come from the sitemap (`/wp-sitemap.xml`, Yoast's `/sitemap_index.xml` or `/sitemap.xml`, with the sitemaps an index lists) or from a list (`old new` lines, or one address a line); several sources can be given together. Each is asked one step at a time, following no redirect on its own: a page that is the same here answers **200**, one that moved answers **301** (or 308) and the address it points at answers 200. Everything else is printed as it is found and counted at the end: a chain of several redirects (it works, but the first should point at the last), a temporary redirect (302, 307), a redirect to another site, a list line that leads to another page than it says, an address that leads nowhere (404, 410), a loop, an error. The whole result is written to `storage/import/redirect-check.csv` (`--out=FILE`). `--limit=N` checks the first N, `--delay=MS` waits between addresses (100 ms by default). The exit code is 0 when every address leads to a page.
+
+## Preview, undo and resume
+
+These work the same for every import: WordPress, WooCommerce (the command and Shop settings › Import) and a CSV of a content type.
+
+- **The dry run's preview.** The dry run writes `storage/import/preview.txt`: every page and post, marked new, change, same (an update that would leave the file as it is) or left alone (and why), and for a change the lines it would change. The counts say how many updates are the same as now. The WooCommerce dry run marks the same on each product (*No change*, or the lines added and removed), and the CSV import has always shown its rows before applying them.
+- **Undo for one row.** Every file an import writes in the content folder is a row of its run in **Admin › Imports** (`storage/import/runs/`, the last 30 runs), with a copy of what was there before. *Undo* puts that one entry back as it was before the import, or removes it when the import made it; an entry that was edited after the import is said so and is undone only when that is confirmed. Pictures brought into the library and terms are kept. An entry the CSV import moved to another address is two rows (the new file, and the one it replaced). Undoing a product needs the shop's permission. Opening Imports needs *Import content* (`imports.manage`).
+- **Resume.** A run that stopped before it finished (the command was stopped, the connection or the server ended it) stays *Not finished*. `--resume` on the same command (WordPress, WooCommerce) goes on with it: the pages, posts or products it wrote are skipped and the pictures already in the library are not fetched again. On Shop settings › Import, an import that stopped while writing has *Go on with the import*. The CSV import writes all of its rows or none, so it has nothing to resume.
 
 ## Running it again
 
