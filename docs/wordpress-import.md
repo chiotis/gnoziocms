@@ -7,7 +7,7 @@ php scripts/import-wordpress.php https://example.com            # what would hap
 php scripts/import-wordpress.php https://example.com --apply    # do it
 ```
 
-Options: `--redirects=apply` and `--storage=PATH` (see *Old addresses*), `--profile=FILE`, `--menus`, `--custom=PATH`, `--lang=en` (language of the content), `--default-lang=en` (the site's default language; when it differs, the content lives under `/en/`), `--home=index` (file name of the home page), `--kinds=pages,posts,types` (`types` are the profile's custom types of the REST API, below), `--only-used-media`, `--overwrite`, `--content=PATH`, `--uploads=PATH`, `--out=PATH`. Run it against a copy first and look through the result in the admin.
+Options: `--redirects=apply` and `--storage=PATH` (see *Old addresses*), `--fetch-external` (see *Pictures on other sites*), `--profile=FILE`, `--menus`, `--custom=PATH`, `--lang=en` (language of the content), `--default-lang=en` (the site's default language; when it differs, the content lives under `/en/`), `--home=index` (file name of the home page), `--kinds=pages,posts,types` (`types` are the profile's custom types of the REST API, below), `--only-used-media`, `--overwrite`, `--content=PATH`, `--uploads=PATH`, `--out=PATH`. Run it against a copy first and look through the result in the admin.
 
 ## What comes over
 
@@ -31,6 +31,22 @@ Two ways to put them on the site:
 
 For the terms of a profile with `language_prefixes`, each old address leads to the term's page in its language: the main language's (`/activity/bird-watchin` to `/activity/paratirisi-ptinon`), the same path under the prefix (`/en/activity/bird-watchin`), and the old English address with its own slug, as the old site's English pages give it (`/en/activity/bird-watching`, and those of the terms merged into it), to `/en/activity/paratirisi-ptinon`.
 
+## Pictures on other sites
+
+A picture the text shows from another site (a CDN, an old blog, Flickr) stays where it is unless `--fetch-external` is given; the dry run lists the hosts and how many pictures each has. With `--fetch-external` they come into the library like the old site's own, and the text points at the library; `--fetch-external=cdn.example,flickr.com` brings only those hosts' (a subdomain counts). They are read through the same safe fetcher as the rest (public addresses only, 20 MB at most). An address with no extension (a picture service's, `…/photo?id=9&w=800`) is kept as the kind of picture the file turns out to be, and one that is not a picture is left out and listed. A picture that could not be fetched stays pointing where it was. No redirect is made for a path of another site.
+
+## Checking the old addresses
+
+After the move (or before it, against a copy with `--allow-local`), `src/Cli/check-redirects.php` asks the new site for every address the old one had and says which do not lead to a page:
+
+```bash
+php src/Cli/check-redirects.php https://new.example --old=https://old.example          # the old site's sitemap, while it is up
+php src/Cli/check-redirects.php https://new.example --sitemap=old-sitemap.xml          # a sitemap saved before the move
+php src/Cli/check-redirects.php https://new.example --list=storage/import/redirects.txt   # the import's list: where each should lead is checked too
+```
+
+The old addresses come from the sitemap (`/wp-sitemap.xml`, Yoast's `/sitemap_index.xml` or `/sitemap.xml`, with the sitemaps an index lists) or from a list (`old new` lines, or one address a line); several sources can be given together. Each is asked one step at a time, following no redirect on its own: a page that is the same here answers **200**, one that moved answers **301** (or 308) and the address it points at answers 200. Everything else is printed as it is found and counted at the end: a chain of several redirects (it works, but the first should point at the last), a temporary redirect (302, 307), a redirect to another site, a list line that leads to another page than it says, an address that leads nowhere (404, 410), a loop, an error. The whole result is written to `storage/import/redirect-check.csv` (`--out=FILE`). `--limit=N` checks the first N, `--delay=MS` waits between addresses (100 ms by default). The exit code is 0 when every address leads to a page.
+
 ## Running it again
 
 Every id is made from the address it came from, and every file it writes has `imported_from` in its front matter. Running it again updates those files and fetches only the pictures that are not in the library yet. A file of the site that an import did not write (you made it, or edited and removed the line) is left alone unless `--overwrite` is given.
@@ -43,12 +59,46 @@ A theme's custom post types ("books", "events", "slides" are often kept out of t
 |---|---|
 | `types` | A custom post type: its pages are found in the site's sitemap (`/wp-sitemap-posts-<type>-1.xml`); XPath for the `title`, the cover `image`, the `summary` and the `tabs` (`labels`, `panels`); `content_type` is where they go here, `front` is front matter added to each. A page becomes a Text and image block (cover beside the description) and a Tabs block; a tab with nothing in it is dropped. |
 | `types.<name>.summary_in` | `excerpt` puts the description in the page's excerpt (the Books type shows it under the title, beside the cover) instead of a Text and image block. |
+| `types.<name>.fields` | The content type's own fields, read from the page (the Books type's author, publisher, year, ISBN and buy links), instead of only being in its text; see below. A field named `date` is the entry's date. |
+| `types.<name>.tabs.skip` | Labels of tabs left out of the Tabs block (any case), for a tab whose facts `fields` now reads (`skip: [Details, Buy]`). |
+| `category_taxonomies` | A category, with the categories under it, goes to a taxonomy of its own; see below. |
 | `content_types` | Definitions written to `custom/content-types/` when the site has none for that type. |
 | `categories_of_custom_types` | `true` to find which categories each page of those types is in, by reading the archive page of every category (the API does not say). Each page is also put in the categories above its own. |
 | `archives` | The old address of a list and the content type that lists it now (`book: books`): links and redirects follow. |
 | `slides` | The slides of the home page: where each is, how its picture (a CSS background) and title, text and buttons are found. |
 | `menus` | A menu read from the home page (`list` is the XPath of its `<ul>`); written to `content/menus/<key>.yaml` only with `--menus`, because it replaces a menu of that name. |
 | `home` | The home page as blocks, with `@slides`, `@image` (the picture its text begins with) and `@body` filled in. Without it the home page is its text. |
+
+### The fields of a type, read from its pages
+
+```yaml
+types:
+  book:
+    content_type: books
+    # ... title, image, summary, tabs as above
+    tabs: { labels: "//dl[contains(@class,'tabs')]//a", panels: "//ul[contains(@class,'tabs-content')]/li", skip: [Details] }
+    fields:
+      author: "//p[@class='author']"                                       # the text of the first node
+      publisher: { xpath: "//li[contains(.,'Publisher')]", match: 'Publisher:\s*(.+)' }
+      year: { xpath: "//li[contains(.,'Year')]", type: number }
+      isbn: { xpath: "//li[contains(.,'ISBN')]", match: 'ISBN[:\s]*([0-9Xx-]+)' }
+      date: "//time"                                                       # the entry's date (any form strtotime reads)
+      buy_links: { xpath: "//div[@class='buy']//a", rows: { label: text, url: href } }
+```
+
+A string is the XPath of the field's node, and the value is its text. `match` keeps what the regular expression's first group catches (or all it matches); `type: number` takes the number out of the text; `type: link` and `type: image` point an address at the new site (an image is brought into the library); `list: true` takes every node, as a list. `rows` fills a repeater: a row for each node, and each column is the node's `text`, one of its attributes (`href`, `@title`), or an XPath from the node (`.//span`). Addresses in the rows that are of the old site are pointed at the new one. A field that finds nothing is left out. The values go into the entry's `custom_fields`, which is where the fields of a type live, so they show on the page and in the admin like the ones typed there.
+
+### Categories as a taxonomy of their own
+
+Old sites often use one category tree for several things (Books, Places, News). `category_taxonomies` sends a category and everything under it to a taxonomy of its own:
+
+```yaml
+category_taxonomies:
+  books: genres                                           # by slug (or id): "Books" stays a term at the top of Genres
+  places: { to: regions, title: Regions, root: drop, root_to: /places }
+```
+
+The terms keep their names, tree and ids; their addresses start at the moved category (`/category/books/novels` becomes `/genres/books/novels`), and the old addresses lead there in `redirects.txt`. With `root: drop` the category itself is the taxonomy: what was under it is at the top (`/regions/crete`), the entries filed only under it are filed under none, and its old address leads to `root_to` (or, without it, nowhere, which the report says). A new taxonomy takes the category's name (or `title`), keeps a tree, and its pages list the types whose entries were filed under it. Posts, pages of custom types and REST types that have the old categories are filed under the new taxonomy's terms.
 
 ## Custom types in the REST API
 
@@ -63,7 +113,7 @@ php scripts/import-wordpress.php https://ruralgreece.gr --lang=el --default-lang
 |---|---|
 | `rest_types.<name>.endpoint` | The REST base of the type (`route`); the name itself when left out. |
 | `rest_types.<name>.content_type` | The content type here (`routes`). Switch it on in **Admin > Content types** before importing. |
-| `rest_types.<name>.fields` | ACF key → where its value goes, with the key spelled exactly as the API returns it (`υπότιτλος_eν`, with a Greek ν, stays so). `title`, `excerpt` and `body` are the entry's own; any other name is a field of the type. `@el`, `@en` says which language's entry it belongs to (`title_en: title@en`); without it the value goes to every language. `{to: distance_km, type: number}` takes the number out of a text (`12,5 χλμ.` gives 12.5). A text loses its markup but keeps its line breaks; a field that takes several values comes as one text with commas. |
+| `rest_types.<name>.fields` | ACF key → where its value goes, with the key spelled exactly as the API returns it (`υπότιτλος_eν`, with a Greek ν, stays so). `title`, `excerpt` and `body` are the entry's own; any other name is a field of the type. `@el`, `@en` says which language's entry it belongs to (`title_en: title@en`); without it the value goes to every language. `{to: distance_km, type: number}` takes the number out of a text (`12,5 χλμ.` gives 12.5). A text loses its markup but keeps its line breaks; a field that takes several values comes as one text with commas. `{to: buy_links, rows: {label: store, url: link}}` brings an ACF repeater into a repeater field: a row for each of its rows, each column taking the value of an ACF sub-key (an empty row is left out; a value that is not a list of rows is listed). |
 | `rest_types.<name>.coordinates` | `{lat: latitude, lng: longitude, to: location}`: the two values become the field `location` (`37.4501, 22.3712`). When only one of them is filled in, or the pair is not a place, the field stays empty and the entry is listed in the report. |
 | `rest_types.<name>.media` | ACF keys that point at files (an id of the old library, an address, or a list of them). `main_image` is the entry's main image (instead of WordPress's featured image); `video` is a Video block in the entry (a YouTube or Vimeo address, also out of the embed code an oEmbed field gives); any other name is a field: a library path, or a list of library paths when the old field held a list (`gallery: ["/uploads/media/…", …]`). A route file (GPX, KML, GeoJSON) is fetched into the library and kept only when it reads as a route; one that cannot be read is left out of the entry and listed. `{to: track, length: distance_km}` also puts the file's own length in `distance_km` when the old site left that empty. |
 | `rest_types.<name>.taxonomies` | REST base of the old taxonomy → taxonomy here (`activity: activity`, `categories: categories`). A taxonomy shared by several types is one taxonomy here; it is made when the site has none of that name, with the old site's name for it, a tree only when its terms have parents, and its pages listing the types the profile files under it (so a taxonomy of places opens as a map, see [Pages of terms](places-and-routes.md#pages-of-terms)). |
@@ -98,8 +148,8 @@ The dry run prints, and `--apply` also writes to `report.txt` beside `redirects.
 - Widgets, forms, comments and theme settings: the API does not give them without a sign-in.
 - Page-builder content (Elementor, WPBakery, Divi): shortcodes and builder markup come over as text or are dropped; look at the report.
 - Embedded frames from sites other than the few known video and audio hosts are left out and listed.
-- Pictures hosted on other sites stay where they are.
+- Pictures hosted on other sites stay where they are unless `--fetch-external` is given.
 - Hierarchical pages (a page under a page): every page is a page of its own at the top.
-- Dates, authors and categories of custom types read from the pages (`types`) are not read; a theme that shows them needs `types` rules for them (not built yet). Custom types of the REST API (`rest_types`) bring their dates and terms.
+- Custom types read from the pages (`types`) bring their dates and fields only through `types.<name>.fields`, and their categories only with `categories_of_custom_types`. Custom types of the REST API (`rest_types`) bring their dates and terms.
 - Relationships between entries (an ACF relationship or post object field) are not resolved: such a key is listed in the report as one the profile does not name.
-- ACF repeaters and groups are not brought into repeater fields; a field that holds one is left out and listed.
+- ACF groups are not brought over, and a repeater only with `rows`; a field that holds one without it is left out and listed.

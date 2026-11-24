@@ -17,6 +17,8 @@
  *                        docs/wordpress-profiles/
  *   --menus              also write the menus the profile reads (replaces menus of the same name)
  *   --custom=PATH        the custom folder, for content type definitions (default ./custom)
+ *   --fetch-external     also bring the pictures the text shows from other sites into the library (--fetch-external=a.com,b.org
+ *                        for only those hosts); without it they stay where they are and the dry run lists their hosts
  *   --allow-local        also read a site at a local or private address (one being moved on this same server)
  *   --content=PATH       the content folder (default ./content)
  *   --uploads=PATH       the uploads folder (default ./public/uploads)
@@ -35,7 +37,7 @@ use Symfony\Component\Yaml\Yaml;
 
 $root = dirname(__DIR__, 2);
 $site = '';
-$opt = ['apply' => false, 'lang' => 'en', 'default-lang' => '', 'home' => 'index', 'kinds' => 'pages,posts,types', 'only-used-media' => false, 'overwrite' => false, 'profile' => '', 'menus' => false, 'custom' => $root . '/custom', 'content' => $root . '/content', 'uploads' => $root . '/public/uploads', 'out' => $root . '/storage/import', 'redirects' => '', 'storage' => '', 'allow-local' => false];
+$opt = ['apply' => false, 'lang' => 'en', 'default-lang' => '', 'home' => 'index', 'kinds' => 'pages,posts,types', 'only-used-media' => false, 'overwrite' => false, 'profile' => '', 'menus' => false, 'custom' => $root . '/custom', 'content' => $root . '/content', 'uploads' => $root . '/public/uploads', 'out' => $root . '/storage/import', 'redirects' => '', 'storage' => '', 'allow-local' => false, 'fetch-external' => false];
 foreach (array_slice($argv, 1) as $arg) {
     if (str_starts_with($arg, '--')) {
         [$key, $value] = array_pad(explode('=', substr($arg, 2), 2), 2, null);
@@ -43,7 +45,7 @@ foreach (array_slice($argv, 1) as $arg) {
             fwrite(STDERR, "Unknown option --$key\n");
             exit(2);
         }
-        $opt[$key] = is_bool($opt[$key]) ? true : (string)$value;
+        $opt[$key] = $key === 'fetch-external' && $value !== null ? (string)$value : (is_bool($opt[$key]) ? true : (string)$value);
     } elseif ($site === '') {
         $site = $arg;
     }
@@ -96,6 +98,11 @@ if ($opt['profile'] !== '') {
     $profile = is_array($profile) ? $profile : [];
 }
 $rest = WordPressRestTypes::parse($profile);
+try {
+    WordPressImporter::categoryTaxonomies($profile);
+} catch (InvalidArgumentException $e) {
+    $rest['errors'][] = $e->getMessage();
+}
 if ($rest['errors'] !== []) {
     fwrite(STDERR, "The profile has mistakes:\n  - " . implode("\n  - ", $rest['errors']) . "\n");
     exit(2);
@@ -110,7 +117,7 @@ $importer = new WordPressImporter(
     $media,
     new Taxonomies($opt['content'], $languages),
     static fn(string $url, string $to): int => WordPressHttp::download($url, $to),
-    ['lang' => $lang, 'default_lang' => $defaultLang, 'home_slug' => $opt['home'], 'overwrite' => $opt['overwrite'], 'only_used_media' => $opt['only-used-media'], 'kinds' => array_values(array_filter(explode(',', (string)$opt['kinds']))), 'custom_dir' => $opt['custom'], 'menus' => $opt['menus']],
+    ['lang' => $lang, 'default_lang' => $defaultLang, 'home_slug' => $opt['home'], 'overwrite' => $opt['overwrite'], 'only_used_media' => $opt['only-used-media'], 'kinds' => array_values(array_filter(explode(',', (string)$opt['kinds']))), 'custom_dir' => $opt['custom'], 'menus' => $opt['menus'], 'fetch_external' => is_string($opt['fetch-external']) ? array_values(array_filter(array_map('trim', explode(',', $opt['fetch-external'])))) : $opt['fetch-external']],
     $profile !== [] ? new WordPressScraper($reader, $profile) : null,
     $profile,
     static fn(string $key, array $menu) => $menus->write($key, $menu)
@@ -165,7 +172,9 @@ if ($plan['notes'] !== []) {
 }
 if ($plan['external_images'] !== []) {
     arsort($plan['external_images']);
-    echo "\nPictures that live on other sites (left where they are; they may already be gone):\n";
+    echo $plan['external_fetch'] > 0
+        ? "\nPictures that live on other sites ({$plan['external_fetch']} brought into the library with --fetch-external, from these hosts):\n"
+        : "\nPictures that live on other sites (left where they are; they may already be gone; --fetch-external brings them):\n";
     foreach (array_slice($plan['external_images'], 0, 10, true) as $host => $count) {
         echo "  - $host ($count)\n";
     }
