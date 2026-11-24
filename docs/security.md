@@ -28,14 +28,16 @@ Roles are defined in `PermissionService` (the super admin can adjust them, see b
 | Media, categories and tags | yes | yes | yes | no |
 | Raw HTML in content | yes | yes | no | no |
 | Forms and their submissions, menus | yes | yes | no | no |
+| Theme (`theme.manage`; Settings includes it) | yes | yes | no | no |
 | Settings, content types, translations, system | yes | yes | no | no |
+| The shop's products and looks, coupons, files, Shop settings (`shop.manage`, also Shop manager) | yes | yes | no | no |
 | Activity and email logs, notifications | yes | yes | no | no |
-| Backups, updates, import, export | yes | yes | no | no |
+| Backups, updates (each with its own settings), import, export | yes | yes | no | no |
 | Users and roles | yes | no | no | no |
 | Omni (what the site reports to it) | yes | no | no | no |
 | Own profile and password | yes | yes | yes | yes |
 
-An editor's dashboard shows only content: the user count, backups, system checks, storage, logs, and notifications are not sent to them. Forms are out of their reach entirely (they hold visitors' personal data and decide where notifications go), including by address, bulk actions, and search. Every refused request is written to the activity log.
+An editor's dashboard shows only content: the user count, backups, system checks, storage, logs, and notifications are not sent to them. Forms are out of their reach entirely (they hold visitors' personal data and decide where notifications go), including by address, bulk actions, and search. The shop's products and looks are the same for whoever lacks `shop.manage`: an editor cannot change a price or the stock, in the admin or through MCP. The admin menu shows a group (Overview, Content, Shop, Site, System) only when its reader may open something in it. Every refused request is written to the activity log.
 
 **Changing what a role can do.** The table shows the built-in permissions. The super admin can change them for Admin, Editor, and Basic user at **Admin > Roles**; nobody else can open that screen, and it cannot be delegated. The super admin's own permissions are fixed, so nobody can be locked out, and three are never switchable: managing users, managing roles, and restoring backups (each would let its holder gain everything else). Signing in and editing one's own profile stay on for every role.
 
@@ -64,7 +66,7 @@ The super admin sets how much space the site may use (Settings > Limits, `limits
 
 ### Links and deleting
 
-Updating the links that still use an old address needs `content.manage` (it edits content) and only offers permanent redirects that are on. It changes nothing but the address in the text, files of types the person cannot edit (forms without `forms.manage`) are skipped, and every changed file gets a history entry ("Links updated") holding the earlier text. When a public entry is deleted, choosing where visitors go needs `redirects.manage`; without it the choice is ignored, so a permission that lets someone send visitors to another website cannot be used through the delete form. The target is checked like any redirect (no scripts, no loops), and an address on this site must exist. Deleting keeps the text in the history for 180 days, for bulk deletes too.
+Updating the links that still use an old address needs `content.manage` (it edits content) and only offers permanent redirects that are on. It changes nothing but the address in the text, files of types the person cannot edit (forms without `forms.manage`, the shop's products and looks without `shop.manage`) are skipped, and every changed file gets a history entry ("Links updated") holding the earlier text. When a public entry is deleted, choosing where visitors go needs `redirects.manage`; without it the choice is ignored, so a permission that lets someone send visitors to another website cannot be used through the delete form. The target is checked like any redirect (no scripts, no loops), and an address on this site must exist. Deleting keeps the text in the history for 180 days, for bulk deletes too.
 
 ### Redirects
 
@@ -72,7 +74,7 @@ Redirects are managed with `redirects.manage` (Sensitive: a redirect can send vi
 
 ### History
 
-Admin > History and the editor's History tab need `content.manage`. Restoring or bringing back an item is a `POST` with the CSRF token, is written to the activity log, and goes through the raw HTML rule: someone without `content.raw_html` gets HTML that is not already in the current file shown as text, so an old version cannot be used to put script back. Forms are excluded from lists and refused by address unless the person may manage forms, because a form's history includes where its notifications go. The history holds the full text of content, so it is protected like the content itself and travels in database backups; it keeps the latest 50 versions of an item and deleted items for 180 days.
+Admin > History and the editor's History tab need `content.manage`. Restoring or bringing back an item is a `POST` with the CSRF token, is written to the activity log, and goes through the raw HTML rule: someone without `content.raw_html` gets HTML that is not already in the current file shown as text, so an old version cannot be used to put script back. Forms are excluded from lists and refused by address unless the person may manage forms, because a form's history includes where its notifications go; the shop's products and looks likewise unless the person has `shop.manage`, since their prices and stock are the shop's. The history holds the full text of content, so it is protected like the content itself and travels in database backups; it keeps the latest 50 versions of an item and deleted items for 180 days.
 
 ### CSRF
 
@@ -180,7 +182,7 @@ set, and says why. Pages themselves are still built with the request's host when
 - **Keep `storage/key`.** Restoring a backup on the same server works as before. On another server (or after `storage/key` was
   lost) the secrets cannot be opened: they read as empty, nothing fails, and each screen shows them as *to be entered again*.
   To move a site with its secrets, copy `storage/key` to the new server yourself, over a safe channel.
-- The rest of a backup (content, customer data, orders) is plain unless **Settings > Backups > Backup passphrase** is set: then
+- The rest of a backup (content, customer data, orders) is plain unless **Backups > Settings > Backup passphrase** is set: then
   each archive is encrypted with AES-256 (`docs/backups.md`, *Encryption*). Without one, treat archives as sensitive.
 
 ### Uploads

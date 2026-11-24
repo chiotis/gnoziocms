@@ -1,0 +1,89 @@
+{% extends '@admin/base.twig' %}
+{% set page_heading = 'Update source' %}
+
+{#
+  Updates > Source: where new versions are looked for and installed from, for whoever may install updates (updates.manage).
+  Saved with SettingsAdmin::saveSection(), which writes this part of the settings only.
+#}
+{% block content %}
+  {% set section_class = 'rounded-lg border border-slate-200 bg-white p-4' %}
+  {% set section_header_class = 'mb-3 border-b border-slate-100 pb-3' %}
+  {% set secondary_button_class = 'inline-flex shrink-0 items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50' %}
+  {% set primary_button_class = 'inline-flex shrink-0 items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700' %}
+  {% import '@admin/partials/secret-input.twig' as local %}
+  {% import '@admin/partials/ui.twig' as ui %}
+
+  {% if saved and backup_status == '' %}
+    {{ ui.flash('Saved.', 'success') }}
+  {% endif %}
+  {% if backup_status == 'ok' %}
+    {{ ui.flash(backup_message ?: 'Backup action completed.', 'success') }}
+  {% elseif backup_status == 'warn' %}
+    {{ ui.flash(backup_message ?: 'Backup saved locally, but the remote upload failed.', 'warning') }}
+  {% elseif backup_status == 'fail' %}
+    {{ ui.flash(backup_message ?: 'Backup action failed.', 'error') }}
+  {% endif %}
+  {% if settings_error %}
+    {{ ui.flash(settings_error, 'error') }}
+  {% endif %}
+
+  <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <p class="text-sm text-slate-500">Where the Updates screen looks for new versions and installs them from.</p>
+    <a href="{{ url('admin/updates') }}" class="{{ secondary_button_class }}">Back to updates</a>
+  </div>
+
+  <form method="post" action="{{ url('admin/updates') }}" class="max-w-4xl space-y-4">
+    {{ csrf_field() }}
+    <input type="hidden" name="settings_section" value="updates">
+      <div class="{{ section_class }}">
+        <div class="{{ section_header_class }}">
+          <h2 class="text-sm font-semibold text-slate-900">Update Source</h2>
+          <p class="mt-0.5 text-xs text-slate-400">GitHub repository the Updates screen looks at, and installs new versions from.</p>
+        </div>
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <label class="block">
+            <span class="mb-1 block text-sm font-medium text-slate-700">Repository</span>
+            <input type="text" name="update_repository" value="{{ settings_form.update_repository }}" placeholder="chiotis/gnoziocms" class="{{ input_class }}">
+          </label>
+          <label class="block">
+            <span class="mb-1 block text-sm font-medium text-slate-700">Branch</span>
+            <input type="text" name="update_branch" value="{{ settings_form.update_branch }}" placeholder="main" class="{{ input_class }}">
+          </label>
+          <label class="block sm:col-span-2">
+            <span class="mb-1 block text-sm font-medium text-slate-700">VERSION URL</span>
+            <input type="url" name="update_version_url" value="{{ settings_form.update_version_url }}" placeholder="https://raw.githubusercontent.com/chiotis/gnoziocms/main/VERSION" class="{{ input_class }}">
+          </label>
+          <label class="block sm:col-span-2">
+            <span class="mb-1 block text-sm font-medium text-slate-700">CHANGELOG URL</span>
+            <input type="url" name="update_changelog_url" value="{{ settings_form.update_changelog_url }}" placeholder="https://raw.githubusercontent.com/chiotis/gnoziocms/main/CHANGELOG.md" class="{{ input_class }}">
+          </label>
+          <label class="block sm:col-span-2">
+            <span class="mb-1 block text-sm font-medium text-slate-700">Package URL</span>
+            <input type="url" name="update_package_url" value="{{ settings_form.update_package_url }}" placeholder="https://github.com/chiotis/gnoziocms/archive/refs/heads/main.zip" class="{{ input_class }}">
+          </label>
+          <label class="block sm:col-span-2">
+            <span class="mb-1 block text-sm font-medium text-slate-700">Release manifest URL</span>
+            <input type="url" name="update_release_url" value="{{ settings_form.update_release_url }}" placeholder="https://github.com/chiotis/gnoziocms/releases/latest/download/release.json" class="{{ input_class }}">
+            <span class="mt-1 block text-xs text-slate-400">Where the package to install is described (its version, size and checksum). Leave blank to use the latest release of the repository above.</span>
+          </label>
+          <label class="block sm:col-span-2">
+            <span class="mb-1 block text-sm font-medium text-slate-700">GitHub token</span>
+            {{ local.secret_input('update_github_token', settings_form.update_github_token_set, input_class, 'Required only for private repositories', settings_form.update_github_token_lost) }}
+            <span class="mt-1 block text-xs text-slate-400">Needed when the repository is private. Leave blank to keep the existing token.</span>
+          </label>
+        </div>
+      </div>
+
+    {% embed '@admin/partials/action-bar.twig' %}
+      {% block leading %}
+        <a href="{{ url('admin/updates?view=settings') }}" class="{{ secondary_button_class }}">Discard</a>
+      {% endblock %}
+      {% block actions %}
+        <button type="submit" class="{{ primary_button_class }}">
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+          Save changes
+        </button>
+      {% endblock %}
+    {% endembed %}
+  </form>
+{% endblock %}

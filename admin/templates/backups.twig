@@ -74,7 +74,7 @@
         <span class="text-xs text-slate-400">{{ backup_total }} files</span>
       </div>
       {% if not backup_encrypted %}
-        <p class="border-b border-slate-200 bg-amber-50 px-4 py-2 text-xs text-amber-900">New backups are plain archives: whoever has a copy (a download, the remote bucket) can read the database, customers and orders. Set a backup passphrase in <a class="underline" href="{{ url('admin/settings?tab=backup') }}">Settings &gt; Backups</a> to encrypt them.</p>
+        <p class="border-b border-slate-200 bg-amber-50 px-4 py-2 text-xs text-amber-900">New backups are plain archives: whoever has a copy (a download, the remote bucket) can read the database, customers and orders. Set a backup passphrase in <a class="underline" href="{{ url('admin/backups?view=settings') }}">Backups &gt; Settings</a> to encrypt them.</p>
       {% endif %}
       {% if backup_snapshots is empty %}
         <div class="px-4 py-12 text-center text-sm text-slate-400">No local backups yet.</div>
@@ -217,7 +217,7 @@
       <div class="rounded-lg border border-slate-200 bg-white p-4">
         <div class="flex items-center justify-between">
           <h2 class="text-sm font-semibold text-slate-900">Policy</h2>
-          <a href="{{ url('admin/settings?tab=backup') }}" class="text-xs font-medium text-blue-600 hover:text-blue-700">Edit</a>
+          <a href="{{ url('admin/backups?view=settings') }}" class="text-xs font-medium text-blue-600 hover:text-blue-700">Edit</a>
         </div>
         <dl class="mt-3 space-y-2 text-sm">
           <div class="flex justify-between gap-3"><dt class="text-slate-500">Automatic</dt><dd class="font-medium text-slate-900">{{ backup_schedule.enabled ? 'Enabled' : 'Disabled' }}</dd></div>

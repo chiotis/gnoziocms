@@ -552,7 +552,15 @@ final class SiteSettings
         return true;
     }
 
-    public function save(string $raw, array $form): bool
+    /**
+     * Writes the settings a form sent. `$only` limits the write to those top-level parts (a screen that holds one part,
+     * such as Backups' or Updates' own settings); `$leave` keeps those parts as they are stored (a form without them).
+     *
+     * @param array<string, mixed> $form
+     * @param string[]|null $only
+     * @param string[] $leave
+     */
+    public function save(string $raw, array $form, ?array $only = null, array $leave = []): bool
     {
         if (!$this->meta->isAvailable()) {
             return false;
@@ -772,6 +780,26 @@ final class SiteSettings
                 'attribution' => $valid ? GeoView::cleanAttribution((string)($form['maps_attribution'] ?? '')) : '',
                 'load' => ($form['maps_load'] ?? '') === 'auto' ? 'auto' : 'click',
             ];
+        }
+
+        if ($only !== null || $leave !== []) {
+            $stored = $this->parse($raw);
+            if ($only !== null) {
+                $written = $stored;
+                foreach ($only as $part) {
+                    if (array_key_exists($part, $data)) {
+                        $written[$part] = $data[$part];
+                    }
+                }
+                $data = $written;
+            }
+            foreach ($leave as $part) {
+                if (array_key_exists($part, $stored)) {
+                    $data[$part] = $stored[$part];
+                } else {
+                    unset($data[$part]);
+                }
+            }
         }
 
         $data = $this->secrets($data, true);

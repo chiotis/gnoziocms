@@ -43,34 +43,47 @@
       </div>
 
       <nav class="scroll-thin flex-1 overflow-y-auto px-3 py-3">
-        {% if can('dashboard.view') %}
-          <p class="px-2 pb-1.5 pt-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">Overview</p>
-          <a href="{{ url('admin') }}" class="{{ nav_base }} {{ section == 'dashboard' ? nav_active : nav_idle }}"{% if section == 'dashboard' %} aria-current="page"{% endif %}>
-            <svg class="h-4 w-4 {{ section == 'dashboard' ? 'text-white/80' : 'text-slate-400 group-hover:text-slate-600' }}" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l9-9 9 9M5 10v10a1 1 0 001 1h4v-6h4v6h4a1 1 0 001-1V10"/></svg>
-            Dashboard
-          </a>
-        {% endif %}
-        {% if can('content.manage') %}
-          {% if not can('dashboard.view') %}<p class="px-2 pb-1.5 pt-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">Overview</p>{% endif %}
-          <a href="{{ url('admin/publishing-calendar') }}" class="{{ nav_base }} {{ section == 'publishing-calendar' ? nav_active : nav_idle }}"{% if section == 'publishing-calendar' %} aria-current="page"{% endif %}>
-            <svg class="h-4 w-4 {{ section == 'publishing-calendar' ? 'text-white/80' : 'text-slate-400 group-hover:text-slate-600' }}" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 7a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V7zM4 10h16M9 3v4M15 3v4M8 14h2M12 14h2M8 17h2"/></svg>
-            Publishing calendar
-          </a>
-        {% endif %}
-
-        {% if can('content.manage') or can('media.manage') %}
-          <p class="px-2 pb-1.5 pt-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400">Content</p>
-        {% endif %}
-        {% if can('content.manage') %}
-          {% set type_icons = {
+        {#
+          Five groups, as on the Roles screen: Overview, Content (what an editor works on), Shop (while the shop is on),
+          Site (how the site looks and is found: admin) and System (who signs in, logs, backups, updates, settings: admin).
+          A group's heading shows only when its reader may open at least one item in it. The shop's products and looks
+          are under Shop, as they need shop.manage (PermissionService::SHOP_TYPES).
+        #}
+        {% set shop_types = ['products', 'looks'] %}
+        {% set type_icons = {
             'pages': '<path stroke-linecap="round" stroke-linejoin="round" d="M7 3h7l5 5v12a1 1 0 01-1 1H7a1 1 0 01-1-1V4a1 1 0 011-1zM14 3v5h5M9 13h6M9 17h6"/>',
             'posts': '<path stroke-linecap="round" stroke-linejoin="round" d="M4 5h12a1 1 0 011 1v12a2 2 0 002 2H6a2 2 0 01-2-2V5zM17 9h3v9a2 2 0 01-2 2M8 9h5M8 13h5M8 17h3"/>',
             'projects': '<path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>',
             'products': '<path stroke-linecap="round" stroke-linejoin="round" d="M4 4h7.2a2 2 0 011.4.6l7.3 7.3a2 2 0 010 2.8l-5.2 5.2a2 2 0 01-2.8 0l-7.3-7.3a2 2 0 01-.6-1.4V4z"/><circle cx="8.5" cy="8.5" r="1.25"/>',
             'looks': '<path stroke-linecap="round" stroke-linejoin="round" d="M9.8 6.2a2.2 2.2 0 112.2 2.2v1.2m0 0l8.2 5.8c1 .7.5 2.1-.7 2.1H4.5c-1.2 0-1.7-1.4-.7-2.1L12 9.6z"/>'
           } %}
+        {% if can('dashboard.view') or can('analytics.manage') %}
+          <p class="px-2 pb-1.5 pt-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">Overview</p>
+        {% endif %}
+        {% if can('dashboard.view') %}
+          <a href="{{ url('admin') }}" class="{{ nav_base }} {{ section == 'dashboard' ? nav_active : nav_idle }}"{% if section == 'dashboard' %} aria-current="page"{% endif %}>
+            <svg class="h-4 w-4 {{ section == 'dashboard' ? 'text-white/80' : 'text-slate-400 group-hover:text-slate-600' }}" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l9-9 9 9M5 10v10a1 1 0 001 1h4v-6h4v6h4a1 1 0 001-1V10"/></svg>
+            Dashboard
+          </a>
+        {% endif %}
+        {% if can('analytics.manage') %}
+          <a href="{{ url('admin/analytics') }}" class="{{ nav_base }} {{ section == 'analytics' ? nav_active : nav_idle }}"{% if section == 'analytics' %} aria-current="page"{% endif %}>
+            <svg class="h-4 w-4 {{ section == 'analytics' ? 'text-white/80' : 'text-slate-400 group-hover:text-slate-600' }}" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
+            Analytics
+          </a>
+        {% endif %}
+        {% if can('content.manage') or can('media.manage') or can('taxonomies.manage') %}
+          <p class="px-2 pb-1.5 pt-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400">Content</p>
+        {% endif %}
+        {% if can('content.manage') %}
+          <a href="{{ url('admin/publishing-calendar') }}" class="{{ nav_base }} {{ section == 'publishing-calendar' ? nav_active : nav_idle }}"{% if section == 'publishing-calendar' %} aria-current="page"{% endif %}>
+            <svg class="h-4 w-4 {{ section == 'publishing-calendar' ? 'text-white/80' : 'text-slate-400 group-hover:text-slate-600' }}" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 7a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V7zM4 10h16M9 3v4M15 3v4M8 14h2M12 14h2M8 17h2"/></svg>
+            Publishing calendar
+          </a>
+        {% endif %}
+        {% if can('content.manage') %}
           {% for t in types %}
-            {% if t != 'forms' %}
+            {% if t != 'forms' and t not in shop_types %}
               {% set type_active = is_content_section and t == current_type %}
               <a href="{{ url('admin/content?type=' ~ t) }}" class="{{ nav_base }} {{ type_active ? nav_active : nav_idle }}"{% if type_active %} aria-current="page"{% endif %}>
                 <svg class="h-4 w-4 {{ type_active ? 'text-white/80' : 'text-slate-400 group-hover:text-slate-600' }}" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true">{{ (type_icons[t] ?? '<path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h10"/>')|raw }}</svg>
@@ -85,10 +98,32 @@
             Media
           </a>
         {% endif %}
-
+        {% if can('taxonomies.manage') %}
+          <a href="{{ url('admin/taxonomies') }}" class="{{ nav_base }} {{ section == 'taxonomies' ? nav_active : nav_idle }}"{% if section == 'taxonomies' %} aria-current="page"{% endif %}>
+            <svg class="h-4 w-4 {{ section == 'taxonomies' ? 'text-white/80' : 'text-slate-400 group-hover:text-slate-600' }}" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 3H5a2 2 0 00-2 2v6l9 9a2 2 0 002.8 0l4.6-4.6a2 2 0 000-2.8L11 3zM7 7h.01"/></svg>
+            Taxonomies
+          </a>
+        {% endif %}
+        {% if can('content.manage') %}
+          <a href="{{ url('admin/revisions') }}" class="{{ nav_base }} {{ section == 'history' ? nav_active : nav_idle }}"{% if section == 'history' %} aria-current="page"{% endif %}>
+            <svg class="h-4 w-4 {{ section == 'history' ? 'text-white/80' : 'text-slate-400 group-hover:text-slate-600' }}" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12a9 9 0 109-9 9 9 0 00-6.7 3M3 4v4h4M12 7v5l3 2"/></svg>
+            History
+          </a>
+        {% endif %}
         {# The shop's group (docs/plans/shop-plan.md, section 8): only while the shop is on. #}
         {% if shop_enabled and (can('shop.orders') or can('shop.manage')) %}
           <p class="px-2 pb-1.5 pt-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400">Shop</p>
+        {% endif %}
+        {% if shop_enabled and (can('shop.orders') or can('shop.manage')) %}
+          {% for t in types|filter(t => t in shop_types) %}
+            {% if can('shop.manage') %}
+              {% set type_active = is_content_section and t == current_type %}
+              <a href="{{ url('admin/content?type=' ~ t) }}" class="{{ nav_base }} {{ type_active ? nav_active : nav_idle }}"{% if type_active %} aria-current="page"{% endif %}>
+                <svg class="h-4 w-4 {{ type_active ? 'text-white/80' : 'text-slate-400 group-hover:text-slate-600' }}" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true">{{ type_icons[t]|raw }}</svg>
+                {{ t|title }}
+              </a>
+            {% endif %}
+          {% endfor %}
           {% for key, item in {
             'shop-orders': {cap: 'shop.orders', label: 'Orders', icon: '<path stroke-linecap="round" stroke-linejoin="round" d="M6 7h12l-1 13H7L6 7zM9 7a3 3 0 016 0"/>'},
             'shop-customers': {cap: 'shop.orders', label: 'Customers', icon: '<circle cx="12" cy="8.5" r="3.5"/><path stroke-linecap="round" d="M5 20c.8-3.4 3.6-5.5 7-5.5s6.2 2.1 7 5.5"/>'},
@@ -104,12 +139,19 @@
             {% endif %}
           {% endfor %}
         {% endif %}
-
-        <p class="px-2 pb-1.5 pt-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400">Manage</p>
-        {% if can('forms.manage') %}
-          <a href="{{ url('admin/forms') }}" class="{{ nav_base }} {{ section == 'forms' ? nav_active : nav_idle }}"{% if section == 'forms' %} aria-current="page"{% endif %}>
-            <svg class="h-4 w-4 {{ section == 'forms' ? 'text-white/80' : 'text-slate-400 group-hover:text-slate-600' }}" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-            Forms
+        {% if shop_enabled and can('shop.manage') %}
+          <a href="{{ url('admin/shop-settings') }}" class="{{ nav_base }} {{ section == 'shop-settings' ? nav_active : nav_idle }}"{% if section == 'shop-settings' %} aria-current="page"{% endif %}>
+            <svg class="h-4 w-4 {{ section == 'shop-settings' ? 'text-white/80' : 'text-slate-400 group-hover:text-slate-600' }}" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 7h12l-1 13H7L6 7zM9 7a3 3 0 016 0"/></svg>
+            Shop settings
+          </a>
+        {% endif %}
+        {% if can('theme.manage') or can('menus.manage') or can('forms.manage') or can('seo.manage') or can('redirects.manage') or can('translations.manage') or can('ai.manage') %}
+          <p class="px-2 pb-1.5 pt-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400">Site</p>
+        {% endif %}
+        {% if can('theme.manage') %}
+          <a href="{{ url('admin/theme') }}" class="{{ nav_base }} {{ section == 'theme' ? nav_active : nav_idle }}"{% if section == 'theme' %} aria-current="page"{% endif %}>
+            <svg class="h-4 w-4 {{ section == 'theme' ? 'text-white/80' : 'text-slate-400 group-hover:text-slate-600' }}" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3a9 9 0 100 18 2 2 0 002-2 2 2 0 012-2h1.5A2.5 2.5 0 0020 14.5 9 9 0 0012 3zM7.5 11.5h.01M10 7.5h.01M14.5 7.5h.01M17 11.5h.01"/></svg>
+            Theme
           </a>
         {% endif %}
         {% if can('menus.manage') %}
@@ -118,29 +160,10 @@
             Menus
           </a>
         {% endif %}
-        {% if can('settings.manage') %}
-          <a href="{{ url('admin/theme') }}" class="{{ nav_base }} {{ section == 'theme' ? nav_active : nav_idle }}"{% if section == 'theme' %} aria-current="page"{% endif %}>
-            <svg class="h-4 w-4 {{ section == 'theme' ? 'text-white/80' : 'text-slate-400 group-hover:text-slate-600' }}" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3a9 9 0 100 18 2 2 0 002-2 2 2 0 012-2h1.5A2.5 2.5 0 0020 14.5 9 9 0 0012 3zM7.5 11.5h.01M10 7.5h.01M14.5 7.5h.01M17 11.5h.01"/></svg>
-            Theme
-          </a>
-        {% endif %}
-        {% if can('taxonomies.manage') %}
-          <a href="{{ url('admin/taxonomies') }}" class="{{ nav_base }} {{ section == 'taxonomies' ? nav_active : nav_idle }}"{% if section == 'taxonomies' %} aria-current="page"{% endif %}>
-            <svg class="h-4 w-4 {{ section == 'taxonomies' ? 'text-white/80' : 'text-slate-400 group-hover:text-slate-600' }}" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 3H5a2 2 0 00-2 2v6l9 9a2 2 0 002.8 0l4.6-4.6a2 2 0 000-2.8L11 3zM7 7h.01"/></svg>
-            Taxonomies
-          </a>
-        {% endif %}
-
-        {% if can('ai.manage') %}
-          <a href="{{ url('admin/ai-publishing') }}" class="{{ nav_base }} {{ section == 'ai-publishing' ? nav_active : nav_idle }}"{% if section == 'ai-publishing' %} aria-current="page"{% endif %}>
-            <svg class="h-4 w-4 {{ section == 'ai-publishing' ? 'text-white/80' : 'text-slate-400 group-hover:text-slate-600' }}" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8L12 3zM18 15l.9 2.1L21 18l-2.1.9L18 21l-.9-2.1L15 18l2.1-.9L18 15z"/></svg>
-            AI publishing
-          </a>
-        {% endif %}
-        {% if can('settings.manage') %}
-          <a href="{{ url('admin/content-types') }}" class="{{ nav_base }} {{ section == 'content-types' ? nav_active : nav_idle }}"{% if section == 'content-types' %} aria-current="page"{% endif %}>
-            <svg class="h-4 w-4 {{ section == 'content-types' ? 'text-white/80' : 'text-slate-400 group-hover:text-slate-600' }}" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3 3 8l9 5 9-5-9-5zM3 13l9 5 9-5M3 17.5l9 5 9-5"/></svg>
-            Content types
+        {% if can('forms.manage') %}
+          <a href="{{ url('admin/forms') }}" class="{{ nav_base }} {{ section == 'forms' ? nav_active : nav_idle }}"{% if section == 'forms' %} aria-current="page"{% endif %}>
+            <svg class="h-4 w-4 {{ section == 'forms' ? 'text-white/80' : 'text-slate-400 group-hover:text-slate-600' }}" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+            Forms
           </a>
         {% endif %}
         {% if can('seo.manage') %}
@@ -161,27 +184,27 @@
             Translations
           </a>
         {% endif %}
-
-        {% if can('content.manage') %}
-          <a href="{{ url('admin/revisions') }}" class="{{ nav_base }} {{ section == 'history' ? nav_active : nav_idle }}"{% if section == 'history' %} aria-current="page"{% endif %}>
-            <svg class="h-4 w-4 {{ section == 'history' ? 'text-white/80' : 'text-slate-400 group-hover:text-slate-600' }}" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12a9 9 0 109-9 9 9 0 00-6.7 3M3 4v4h4M12 7v5l3 2"/></svg>
-            History
+        {% if can('ai.manage') %}
+          <a href="{{ url('admin/ai-publishing') }}" class="{{ nav_base }} {{ section == 'ai-publishing' ? nav_active : nav_idle }}"{% if section == 'ai-publishing' %} aria-current="page"{% endif %}>
+            <svg class="h-4 w-4 {{ section == 'ai-publishing' ? 'text-white/80' : 'text-slate-400 group-hover:text-slate-600' }}" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8L12 3zM18 15l.9 2.1L21 18l-2.1.9L18 21l-.9-2.1L15 18l2.1-.9L18 15z"/></svg>
+            AI publishing
           </a>
         {% endif %}
-
-        <p class="px-2 pb-1.5 pt-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400">System</p>
+        {% if can('settings.manage') or can('users.manage') or can('roles.manage') or can('activity.manage') or can('email_logs.manage') or can('backups.manage') or can('updates.manage') or can('mcp.manage') or can('omni.manage') %}
+          <p class="px-2 pb-1.5 pt-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400">System</p>
+        {% endif %}
+        {% if can('settings.manage') %}
+          <a href="{{ url('admin/content-types') }}" class="{{ nav_base }} {{ section == 'content-types' ? nav_active : nav_idle }}"{% if section == 'content-types' %} aria-current="page"{% endif %}>
+            <svg class="h-4 w-4 {{ section == 'content-types' ? 'text-white/80' : 'text-slate-400 group-hover:text-slate-600' }}" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3 3 8l9 5 9-5-9-5zM3 13l9 5 9-5M3 17.5l9 5 9-5"/></svg>
+            Content types
+          </a>
+        {% endif %}
         {% if can('users.manage') or can('roles.manage') %}
           {# One entry for users and roles; the tabs inside pick which. #}
           {% set in_people = section in ['users', 'roles'] %}
           <a href="{{ url(can('users.manage') ? 'admin/users' : 'admin/roles') }}" class="{{ nav_base }} {{ in_people ? nav_active : nav_idle }}"{% if in_people %} aria-current="page"{% endif %}>
             <svg class="h-4 w-4 {{ in_people ? 'text-white/80' : 'text-slate-400 group-hover:text-slate-600' }}" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 14a4 4 0 10-8 0M12 7a3 3 0 110 0M3 20a6 6 0 0118 0"/></svg>
             Users &amp; Roles
-          </a>
-        {% endif %}
-        {% if can('analytics.manage') %}
-          <a href="{{ url('admin/analytics') }}" class="{{ nav_base }} {{ section == 'analytics' ? nav_active : nav_idle }}"{% if section == 'analytics' %} aria-current="page"{% endif %}>
-            <svg class="h-4 w-4 {{ section == 'analytics' ? 'text-white/80' : 'text-slate-400 group-hover:text-slate-600' }}" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
-            Analytics
           </a>
         {% endif %}
         {% if can('activity.manage') or can('email_logs.manage') %}
@@ -204,10 +227,10 @@
             Updates
           </a>
         {% endif %}
-        {% if shop_enabled and can('shop.manage') %}
-          <a href="{{ url('admin/shop-settings') }}" class="{{ nav_base }} {{ section == 'shop-settings' ? nav_active : nav_idle }}"{% if section == 'shop-settings' %} aria-current="page"{% endif %}>
-            <svg class="h-4 w-4 {{ section == 'shop-settings' ? 'text-white/80' : 'text-slate-400 group-hover:text-slate-600' }}" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 7h12l-1 13H7L6 7zM9 7a3 3 0 016 0"/></svg>
-            Shop settings
+        {% if can('settings.manage') %}
+          <a href="{{ url('admin/system') }}" class="{{ nav_base }} {{ section == 'system' ? nav_active : nav_idle }}"{% if section == 'system' %} aria-current="page"{% endif %}>
+            <svg class="h-4 w-4 {{ section == 'system' ? 'text-white/80' : 'text-slate-400 group-hover:text-slate-600' }}" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12h4l3-8 4 16 3-8h4"/></svg>
+            System status
           </a>
         {% endif %}
         {# Settings holds MCP and Omni too (partials/settings-sidebar.twig): one entry for all three. #}

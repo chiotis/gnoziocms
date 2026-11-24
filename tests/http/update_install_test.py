@@ -87,9 +87,9 @@ def publish(outdir, version, tamper=False):
     return manifest
 
 root = Client(); root.login()
-check('the release manifest address can be set on the settings screen',
-      root.submit('/admin/settings', has_field('title'), {'update_release_url': base + '/release.json'})[0] in (302, 303))
-st, _, html = root.get('/admin/settings?tab=updates')
+check('the release manifest address can be set on Updates > Source',
+      root.submit('/admin/updates?view=settings', has_field('update_release_url'), {'update_release_url': base + '/release.json'})[0] in (302, 303))
+st, _, html = root.get('/admin/updates?view=settings')
 check('and it is shown again', base + '/release.json' in html)
 
 def updates_page(): return root.get('/admin/updates')[2]
@@ -141,7 +141,7 @@ untouched('after the install')
 check('the page of the site still has its text', 'This page is mine.' in Client().get('/survives')[2])
 check('the signed-in session still works on the new code, and shows the new version', NEW in updates_page())
 st, _, html = root.get('/admin/settings')
-check('the settings are still there', 'name="title"' in html and base + '/release.json' in root.get('/admin/settings?tab=updates')[2])
+check('the settings are still there', 'name="title"' in html and base + '/release.json' in root.get('/admin/updates?view=settings')[2])
 check('the old code was kept to go back to', read('storage/updates/%s/previous/VERSION' % NEW).strip() == old_version and exists('storage/updates/%s/database/app.sqlite' % NEW))
 check('the screen says what happened last, and offers to put the old version back', has_rollback_form())
 check('the activity log has it', any(w in root.get('/admin/activity-logs')[2] for w in ['updates.install_installed']))

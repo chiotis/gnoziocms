@@ -91,7 +91,7 @@ check('saving stores the title, the site runs with it, the theme form is told it
 $themeSaves = [];
 $admin->save(['title' => 'T', 'theme_settings' => ['header' => ['x' => '1']]], ['storage_limit_mb' => null, 'upload_limit_mb' => null, 'upload_types' => null], 'basics');
 check('the theme settings the form carries are passed on', $themeSaves, [['header' => ['x' => '1']]]);
-check('the tab comes from the form first, then from the address', [str_ends_with($admin->save(['title' => 'T', 'active_tab' => 'smtp'], [], 'basics'), 'tab=smtp'), str_ends_with($admin->save(['title' => 'T'], [], 'backup'), 'tab=backup'), str_ends_with($admin->save(['title' => 'T', 'active_tab' => 'nonsense'], [], 'backup'), 'tab=basics')], [true, true, true]);
+check('the tab comes from the form first, then from the address', [str_ends_with($admin->save(['title' => 'T', 'active_tab' => 'smtp'], [], 'basics'), 'tab=smtp'), str_ends_with($admin->save(['title' => 'T'], [], 'auth'), 'tab=auth'), str_ends_with($admin->save(['title' => 'T', 'active_tab' => 'nonsense'], [], 'auth'), 'tab=basics')], [true, true, true]);
 $log = [];
 $admin->save(['title' => 'T'], ['storage_limit_mb' => 2048, 'upload_limit_mb' => null, 'upload_types' => null], 'limits');
 check('a changed storage limit is logged as a warning', [$running['limits']['storage_mb'], array_column($log, 0)], [2048, ['limits.storage', 'settings.update']]);
@@ -119,11 +119,17 @@ check('without an address it says so', $admin->save(['title' => 'T', 'send_test'
 $log = [];
 check('and one that fails says so, and is logged as an error', [$admin->save(['title' => 'T', 'send_test' => '1', 'test_email_to' => 'fail@x.test'], [], 'smtp'), end($log)], ['/admin/settings?saved=1&tab=smtp&test=fail', ['email.test_failure', 'error']]);
 $log = [];
-$loc = $admin->save(['title' => 'T', 'test_remote_backup' => '1'], [], 'backup');
+check('Backups and Updates are not tabs of Settings any more', [SettingsAdmin::tab('backup'), SettingsAdmin::tab('updates')], ['basics', 'basics']);
+$loc = $admin->saveSection(['backup_schedule' => 'weekly', 'backup_keep_local' => '5', 'test_remote_backup' => '1'], 'backup');
 parse_str((string)parse_url($loc, PHP_URL_QUERY), $q);
-check('the remote backup is tested and the result shown', [$q['tab'], $q['backup'], $q['backup_msg'] !== '', end($log)[1]], ['backup', 'fail', true, 'error']);
+check('the remote backup is tested on Backups > Settings and the result shown there', [parse_url($loc, PHP_URL_PATH), $q['view'], $q['backup'], $q['backup_msg'] !== '', end($log)[1]], ['/admin/backups', 'settings', 'fail', true, 'error']);
+check('saving Backups > Settings writes the backup settings and leaves the rest', [$store->load()['backup']['auto']['schedule'], $store->load()['backup']['local']['keep'], $store->load()['title']], ['weekly', 5, 'T']);
+$admin->save(['title' => 'T', 'tagline' => 'Other'], [], 'basics');
+check('and saving Settings leaves the backup settings as they are', [$store->load()['backup']['auto']['schedule'], $store->load()['tagline']], ['weekly', 'Other']);
+check('Updates > Source saves only the update source', [$admin->saveSection(['update_repository' => 'someone/fork'], 'updates'), $store->load()['updates']['repository'], $store->load()['backup']['auto']['schedule'], $store->load()['tagline']], ['/admin/updates?view=settings&saved=1', 'someone/fork', 'weekly', 'Other']);
+check('the section screen gives the form and what happened', [($ss = $admin->sectionScreen(['saved' => '1', 'backup' => 'ok']))['saved'], $ss['backup_status'], $ss['settings_form']['backup_schedule']], [true, 'ok', 'weekly']);
 $log = [];
-$loc = $admin->save(['title' => 'T', 'create_backup' => '1'], [], 'backup');
+$loc = $admin->saveSection(['create_backup' => '1'], 'backup');
 parse_str((string)parse_url($loc, PHP_URL_QUERY), $q);
 check('a backup is made now: its time kept, the run recorded, logged, and the screen says so', [$q['backup'], count($marked), $runs->recent(1)[0]['status'], end($log)[0], count($service->list())], ['ok', 1, 'success', 'backup.create_success', 1]);
 

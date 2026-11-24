@@ -1,7 +1,8 @@
 {#
   The section list of the Settings screens: Settings' own sections (panels of one form at admin/settings?tab=…) and the
   screens that live under Settings with their own page (MCP at admin/mcp, Omni at admin/omni). Each is listed only for
-  whoever may open it. `current` is the section shown; on admin/settings the list switches its panels in the page and
+  whoever may open it. The settings of backups and updates are on those screens (admin/backups?view=settings,
+  admin/updates?view=settings), under their own permissions. `current` is the section shown; on admin/settings the list switches its panels in the page and
   the others stay links (admin.js, enhanceSectionNav).
 
     {% import '@admin/partials/settings-sidebar.twig' as settings_sidebar %}
@@ -18,10 +19,7 @@
     {label: 'Integrations', items: (own ? [{key: 'apis', label: 'APIs', href: tab ~ 'apis', icon: section_nav.icon('plug')}] : [])
       |merge(can('mcp.manage') ? [{key: 'mcp', label: 'MCP', href: url('admin/mcp'), icon: section_nav.icon('chip')}] : [])
       |merge(can('omni.manage') ? [{key: 'omni', label: 'Omni', href: url('admin/omni'), icon: section_nav.icon('radar')}] : [])},
-    {label: 'System', items: own ? [
-      {key: 'backup', label: 'Backups', href: tab ~ 'backup', icon: section_nav.icon('archive')},
-      {key: 'updates', label: 'Updates', href: tab ~ 'updates', icon: section_nav.icon('refresh')}
-    ]|merge(can('limits.manage') ? [{key: 'limits', label: 'Limits', href: tab ~ 'limits', icon: section_nav.icon('gauge')}] : []) : []}
+    {label: 'System', items: own and can('limits.manage') ? [{key: 'limits', label: 'Limits', href: tab ~ 'limits', icon: section_nav.icon('gauge')}] : []}
   ] %}
   {{ section_nav.nav(groups|filter(g => g.items|length > 0), current, 'Settings', switch) }}
 {% endmacro %}

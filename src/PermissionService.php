@@ -12,6 +12,15 @@ final class PermissionService
     /** On for every role, and not switchable: without them a signed-in person could not reach the admin or their own profile. */
     private const LOCKED_ON = ['admin.access', 'users.self'];
 
+    /**
+     * A capability that brings others with it: whoever may change the settings may change the theme too (Settings is the
+     * wider of the two), so a role saved before Theme had its own switch keeps it.
+     */
+    private const INCLUDES = ['settings.manage' => ['theme.manage']];
+
+    /** The content types that belong to the shop: written and changed with shop.manage, not with content.manage. */
+    public const SHOP_TYPES = [Shop\Shop::TYPE, Shop\Shop::LOOKS];
+
     /** @var array<string, array<int, string>> Chosen by the super admin, only for roles that differ from the built-in set. */
     private array $overrides = [];
 
@@ -36,6 +45,7 @@ final class PermissionService
             'analytics.manage',
             'taxonomies.manage',
             'settings.manage',
+            'theme.manage',
             'translations.manage',
             'users.manage',
             'roles.manage',
@@ -68,6 +78,7 @@ final class PermissionService
             'analytics.manage',
             'taxonomies.manage',
             'settings.manage',
+            'theme.manage',
             'translations.manage',
             'users.self',
             'activity.manage',
@@ -227,7 +238,7 @@ final class PermissionService
             'admin.access' => $c('Basics', 'Sign in to the admin', 'Always on for every role.'),
             'users.self' => $c('Basics', 'Edit own profile and password', 'Always on for every role.'),
             'dashboard.view' => $c('Content', 'Dashboard', 'Sees the overview with content figures.'),
-            'content.manage' => $c('Content', 'Pages, posts, and projects', 'Writes, edits, publishes, and deletes content of every type except forms.'),
+            'content.manage' => $c('Content', 'Pages, posts, and projects', 'Writes, edits, publishes, and deletes content of every type except forms and the shop\'s products and looks.'),
             'content.raw_html' => $c('Content', 'Raw HTML in content', 'Can add HTML to text and blocks. HTML can carry scripts, so this lets the person change what runs on the public site.', 'critical'),
             'media.manage' => $c('Content', 'Media library', 'Uploads, renames, and deletes files.'),
             'taxonomies.manage' => $c('Content', 'Categories and tags', 'Creates, edits, and deletes them.'),
@@ -237,7 +248,8 @@ final class PermissionService
             'analytics.manage' => $c('Site', 'Analytics', 'Chooses how visits are counted, reads the reports, and (with the raw HTML permission) adds tracking code to every page.', 'sensitive'),
             'translations.manage' => $c('Site', 'Translations', 'Edits the site\'s interface texts.'),
             'forms.manage' => $c('Site', 'Forms and submissions', 'Reads what visitors sent (personal data) and decides where notifications go.', 'sensitive'),
-            'settings.manage' => $c('Site', 'Settings, system, content types', 'Includes email sending and who can sign in (Google), so it can be used to take over the site.', 'critical'),
+            'theme.manage' => $c('Site', 'Theme', 'Changes how the site looks: colours, fonts, header and footer, custom CSS and the layouts of pages and lists. Templates built with blocks still need the raw HTML permission for HTML.', 'sensitive'),
+            'settings.manage' => $c('System', 'Settings, system, content types', 'Includes email sending and who can sign in (Google), so it can be used to take over the site. Includes Theme.', 'critical'),
             'imports.manage' => $c('Data', 'Import content', 'Bulk-creates and overwrites content from CSV files.', 'sensitive'),
             'exports.manage' => $c('Data', 'Export content and forms', 'Downloads content and visitors\' form data in bulk.', 'sensitive'),
             'activity.manage' => $c('Data', 'Activity log', 'Sees who did what, including IP addresses.', 'sensitive'),
@@ -251,7 +263,7 @@ final class PermissionService
             'limits.manage' => $c('System', 'Site limits', 'Sets how much storage the site may use. Super admin only.', 'critical', false),
             'ai.manage' => $c('Site', 'AI publishing', 'Sets the instructions for pictures (and later posts) made by AI, makes test pictures, pauses and resumes, and sees what AI costs. The provider key and prices also need Settings.', 'sensitive'),
             'shop.orders' => $c('Shop', 'Orders and customers', 'Sees and handles the shop\'s orders, customers and subscriptions, which hold shoppers\' personal data. Only while the shop is on.', 'sensitive'),
-            'shop.manage' => $c('Shop', 'Shop settings', 'Changes the shop\'s settings, payment providers and their keys. Only while the shop is on.', 'critical'),
+            'shop.manage' => $c('Shop', 'Products and shop settings', 'Writes the products and looks (prices and stock too), coupons and downloads, and changes the shop\'s settings, payment providers and their keys. Only while the shop is on.', 'critical'),
             'mcp.manage' => $c('System', 'MCP (AI assistants)', 'Lets AI assistants such as Claude or ChatGPT read and write content as an account of the site, and removes those connections. Super admin only.', 'critical', false),
             'omni.manage' => $c('System', 'Omni', 'Connects the site to an Omni, which then sees its health, storage, backups and updates. Super admin only.', 'critical', false),
         ];
@@ -322,6 +334,11 @@ final class PermissionService
     {
         $known = self::grantable();
         $keep = array_merge(self::LOCKED_ON, array_filter($list, static fn($v): bool => is_string($v) && in_array($v, $known, true)));
+        foreach (self::INCLUDES as $wider => $included) {
+            if (in_array($wider, $keep, true)) {
+                $keep = array_merge($keep, $included);
+            }
+        }
         return array_values(array_intersect($known, array_unique($keep)));
     }
 
@@ -361,7 +378,7 @@ final class PermissionService
     {
         // The image picker is used from the content editor, the media screen, and screens with an image setting.
         if ($action === 'media-picker') {
-            return $this->can($user, 'content.manage') || $this->can($user, 'media.manage') || $this->can($user, 'settings.manage');
+            return $this->can($user, 'content.manage') || $this->can($user, 'media.manage') || $this->can($user, 'theme.manage') || $this->can($user, 'settings.manage');
         }
         // AI pictures: made from the editor (content and media) or as a test on Manage > AI publishing.
         if ($action === 'ai-picture') {
@@ -369,7 +386,8 @@ final class PermissionService
         }
 
         $capability = match ($action) {
-            'settings', 'theme', 'system', 'content-types' => 'settings.manage',
+            'theme' => 'theme.manage',
+            'settings', 'system', 'content-types' => 'settings.manage',
             'dashboard', 'index' => 'dashboard.view',
             'content', 'publishing-calendar' => 'content.manage',
             'menus', 'menus-new', 'menus-edit' => 'menus.manage',
@@ -405,6 +423,15 @@ final class PermissionService
         }
 
         return $this->can($user, $capability);
+    }
+
+    /**
+     * Whether someone may list, write or delete entries of a type: the shop's products and looks need shop.manage (their
+     * prices and stock are the shop's), every other type content.manage.
+     */
+    public function canManageType(?array $user, string $type): bool
+    {
+        return in_array($type, self::SHOP_TYPES, true) ? $this->can($user, 'shop.manage') : $this->can($user, 'content.manage');
     }
 
     public function canEditUser(?array $actor, int $targetId): bool

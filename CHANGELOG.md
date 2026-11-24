@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.340 — 2026-11-24 — The admin menu by role, and a clean permission for every screen
+- The admin menu has five groups, as on the Roles screen: Overview (Dashboard, Analytics), Content (Publishing calendar, the content types, Media, Taxonomies, History), Shop (Products, Looks, Orders, Customers, Subscriptions, Files, Coupons, Shop settings), Site (Theme, Menus, Forms, SEO, Redirects, Translations, AI publishing) and System (Content types, Users & Roles, Logs, Backups, Updates, System status, Settings). A group's heading shows only when its reader may open something in it, so an editor or a basic user no longer sees empty Manage or System headings.
+- The shop's products and looks need `shop.manage` (Admin, Shop manager), in the admin (list, new, edit, save, delete, bulk, import, export, history, search) and over MCP (the shop tools and the entry tools for those types). An editor can no longer change a price or the stock.
+- Theme has a permission of its own, `theme.manage`, so the look of the site can be given without Settings (email sending, Google sign-in). Settings includes it, so every role that had Settings keeps Theme. MCP's Theme settings tools use it too.
+- Backups' settings (schedule, passphrase, remote storage) are on Backups > Settings and the update source on Updates > Source, each under the screen's own permission. Saving Settings leaves them as they are; saving one of them writes only its own part. The old Settings addresses lead there.
+- Tests: `settings-and-front` (unit); `sidebar`, `sidebar_brand`, `settings_nav`, `shop`, `custom_roles`, `backup_remote`, `backup_schedule`, `update_install`, `omni_update` (HTTP).
+
 ## 0.1.339 — 2026-11-23 — Lighter: two polyfills and 4.5 MB of starter media out, plans in docs/plans
 - Two unused polyfills (mbstring, php80) are gone from `vendor/` and no longer loaded on every request; `public/index.php` no longer loads Nette's `SmartObject` by hand (the autoload has it). The ctype polyfill stays: ctype is not a required extension and Twig, Yaml and Nette call it.
 - The starter's media is 1.5 MB instead of 6.0 MB: a picture nobody used and a second copy of the proposal DOCX are gone, a photo saved as PNG is a JPEG, the largest photos are at most 1,440 px wide, and the DOCX has no embedded fonts. Every release package is 4.5 MB smaller.

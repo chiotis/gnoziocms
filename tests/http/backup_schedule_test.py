@@ -23,7 +23,7 @@ check('the script does nothing while there is no schedule', cron()[:2] == ('off'
 st, _, html = root.get('/admin/backups')
 check('and the Backups screen has no cron note then', 'src/cron-backup.php' not in html)
 
-root.submit('/admin/settings', has_field('backup_schedule'), {'backup_auto_enabled': '1', 'backup_schedule': 'daily', 'backup_remote_enabled': None}, drop=('backup_remote_enabled',))
+root.submit('/admin/backups?view=settings', has_field('backup_schedule'), {'backup_auto_enabled': '1', 'backup_schedule': 'daily', 'backup_remote_enabled': None}, drop=('backup_remote_enabled',))
 before = len(archives())
 out, code, err = cron()
 check('with a daily schedule that has never run, the script takes the backup', out == 'ok' and code == 0 and len(archives()) == before + 1, (out, code, err, before, len(archives())))
