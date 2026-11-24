@@ -69,13 +69,12 @@
     <form method="post" action="{{ url('admin/ai-publishing?tab=instructions') }}" class="{{ card }} mb-4" data-ai-writing>
       {{ csrf_field() }}
       <div class="{{ card_head }}"><h2 class="text-sm font-semibold text-slate-900">Writing</h2><span class="text-xs text-slate-400">Sent first with every post a schedule writes</span></div>
-      <div class="grid gap-4 px-4 py-4 lg:grid-cols-2">
+      <div class="set-rows px-4 py-4">
         <div>
           <label class="{{ label }}" for="ai-writing">Writing instructions</label>
           <textarea id="ai-writing" name="writing_instructions" rows="7" class="{{ input }}" maxlength="6000">{{ ai.writing_instructions }}</textarea>
           <p class="{{ note }}">Who reads the site, the voice and tone, typical length and structure, SEO habits. A schedule adds only what is particular to it.</p>
         </div>
-        <div class="space-y-4">
           <div>
             <label class="{{ label }}" for="ai-text-avoid">Avoid in the text</label>
             <textarea id="ai-text-avoid" name="text_avoid" rows="4" class="{{ input }}" placeholder="One per line">{{ ai.text_avoid|join("\n") }}</textarea>
@@ -89,7 +88,6 @@
             <label class="{{ label }}" for="ai-byline">Byline</label>
             <input id="ai-byline" name="byline" value="{{ ai.byline }}" class="{{ input }}" maxlength="80" placeholder="The author shown on the posts, for example the site's name">
           </div>
-        </div>
       </div>
       <div class="flex justify-end border-t border-slate-100 px-4 py-3">
         <button type="submit" name="ai_action" value="save_writing" class="{{ primary }}">Save writing instructions</button>
@@ -100,7 +98,7 @@
       <form method="post" action="{{ url('admin/ai-publishing?tab=instructions') }}" class="{{ card }} lg:col-span-2" data-ai-instructions>
         {{ csrf_field() }}
         <div class="{{ card_head }}"><h2 class="text-sm font-semibold text-slate-900">Pictures</h2><span class="text-xs text-slate-400">Used by every picture the site makes</span></div>
-        <div class="space-y-4 px-4 py-4">
+        <div class="set-rows px-4 py-4">
           <div>
             <label class="{{ label }}" for="ai-house-style">House style</label>
             <textarea id="ai-house-style" name="house_style" rows="4" class="{{ input }}" maxlength="4000">{{ ai.house_style }}</textarea>
@@ -121,7 +119,6 @@
             <textarea id="ai-references" name="references" rows="3" class="{{ input }} font-mono text-xs" placeholder="/uploads/media/…">{{ ai.references|join("\n") }}</textarea>
             <p class="{{ note }}">Addresses of pictures in the Media library, one per line. They are sent with every request so the new pictures follow their style (not their subjects). They keep a look far better than words do.</p>
           </div>
-          <div class="grid gap-3 sm:grid-cols-4">
             <div>
               <label class="{{ label }}" for="ai-aspect">Shape</label>
               <select id="ai-aspect" name="aspect" class="{{ input }}">{% for a in aspects %}<option value="{{ a }}"{{ ai.aspect == a ? ' selected' }}>{{ a }}</option>{% endfor %}</select>
@@ -138,8 +135,7 @@
               <label class="{{ label }}" for="ai-variants">Variants in the editor</label>
               <select id="ai-variants" name="variants" class="{{ input }}">{% for n in 1..4 %}<option value="{{ n }}"{{ ai.variants == n ? ' selected' }}>{{ n }}</option>{% endfor %}</select>
             </div>
-          </div>
-          <p class="text-xs text-slate-500">Quality is the main cost: a draft picture costs a small fraction of a high one. Each variant is a picture paid for.</p>
+          <p class="set-indent text-xs text-slate-500">Quality is the main cost: a draft picture costs a small fraction of a high one. Each variant is a picture paid for.</p>
           {% if content_types %}
             <div data-ai-auto>
               <span class="{{ label }}">Make a main picture automatically</span>
@@ -207,8 +203,8 @@
         </div>
         <div class="{{ card }}">
           <div class="{{ card_head }}"><h2 class="text-sm font-semibold text-slate-900">{{ e.id ? e.name : 'New schedule' }}</h2><span class="text-xs text-slate-400">One post each time it runs</span></div>
-          <div class="grid gap-4 px-4 py-4 sm:grid-cols-2">
-            <div class="sm:col-span-2">
+          <div class="set-rows px-4 py-4">
+            <div>
               <label class="{{ label }}" for="sc-name">Name</label>
               <input id="sc-name" name="name" value="{{ e.name }}" class="{{ input }}" maxlength="120" placeholder="Tip of the day" required>
             </div>
@@ -217,8 +213,8 @@
 
         <div class="{{ card }}">
           <div class="{{ card_head }}"><h2 class="text-sm font-semibold text-slate-900">When</h2><span class="text-xs text-slate-400">Time zone {{ sc.zone }}</span></div>
-          <div class="grid gap-4 px-4 py-4 sm:grid-cols-4">
-            <div class="sm:col-span-4">
+          <div class="set-rows px-4 py-4">
+            <div role="group" aria-label="Days of the week">
               <span class="{{ label }}">Days of the week</span>
               <div class="flex flex-wrap gap-1.5">
                 {% for n, d in day_names %}
@@ -234,7 +230,7 @@
             </div>
             <div>
               <label class="{{ label }}" for="sc-prepare">Write it ahead (minutes)</label>
-              <input id="sc-prepare" name="prepare" inputmode="numeric" value="{{ c.prepare }}" class="{{ input }}">
+              <input id="sc-prepare" name="prepare" inputmode="numeric" value="{{ c.prepare }}" class="{{ input }} set-short">
             </div>
             <div>
               <label class="{{ label }}" for="sc-start">From <span class="font-normal text-slate-400">(optional)</span></label>
@@ -244,13 +240,13 @@
               <label class="{{ label }}" for="sc-end">Until <span class="font-normal text-slate-400">(optional)</span></label>
               <input id="sc-end" type="date" name="end_date" value="{{ c.end_date }}" class="{{ input }}">
             </div>
-            <p class="text-xs text-slate-500 sm:col-span-4">The post is written ahead and goes live on the minute. A second post a day is another schedule (Duplicate makes it quick). A run missed by more than {{ sc.missed_window }} minutes (the site or cron was down) is skipped, not made up later.</p>
+            <p class="set-indent text-xs text-slate-500">The post is written ahead and goes live on the minute. A second post a day is another schedule (Duplicate makes it quick). A run missed by more than {{ sc.missed_window }} minutes (the site or cron was down) is skipped, not made up later.</p>
           </div>
         </div>
 
         <div class="{{ card }}">
           <div class="{{ card_head }}"><h2 class="text-sm font-semibold text-slate-900">What</h2></div>
-          <div class="grid gap-4 px-4 py-4 sm:grid-cols-2">
+          <div class="set-rows px-4 py-4">
             <div>
               <label class="{{ label }}" for="sc-type">Content type</label>
               <select id="sc-type" name="type" class="{{ input }}">{% for t in sc.types %}<option value="{{ t }}"{{ c.type == t ? ' selected' }}>{{ t|title }}</option>{% endfor %}</select>
@@ -259,12 +255,12 @@
               <label class="{{ label }}" for="sc-lang">Language</label>
               <select id="sc-lang" name="lang" class="{{ input }}">{% for l in sc.languages %}<option value="{{ l.code }}"{{ c.lang == l.code ? ' selected' }}>{{ l.name }}</option>{% endfor %}</select>
             </div>
-            <div class="sm:col-span-2">
+            <div>
               <label class="{{ label }}" for="sc-content">What the posts are about</label>
               <textarea id="sc-content" name="content" rows="4" class="{{ input }}" maxlength="4000" placeholder="One practical tip for small-business owners about online marketing, 300–400 words." required>{{ c.content }}</textarea>
               <p class="{{ note }}">The topic, the angle, and length or structure if they differ from the writing instructions. Each run is told the titles this schedule wrote before, so it does not repeat them.</p>
             </div>
-            <div class="sm:col-span-2">
+            <div>
               <label class="{{ label }}" for="sc-title-pattern">Title pattern <span class="font-normal text-slate-400">(optional)</span></label>
               <input id="sc-title-pattern" name="title_pattern" value="{{ c.title_pattern }}" class="{{ input }}" maxlength="200" placeholder="Weekly news: {title} – {date}">
               <p class="{{ note }}">Empty, the model writes the title. Tags: {% for tag in sc.title_tags %}<code class="rounded bg-slate-100 px-1 text-[11px] text-slate-700">{{ tag }}</code>{{ not loop.last ? ' ' }}{% endfor %}. <code class="rounded bg-slate-100 px-1 text-[11px]">{title}</code> is the model's title, <code class="rounded bg-slate-100 px-1 text-[11px]">{term}</code> the first term's name (<code class="rounded bg-slate-100 px-1 text-[11px]">{term:category}</code> of one taxonomy), the dates are the post's, in its language. Without <code class="rounded bg-slate-100 px-1 text-[11px]">{title}</code> every post gets the same fixed words.</p>
@@ -279,7 +275,9 @@
               <datalist id="sc-models">{% for m in ai.models.writing %}<option value="{{ m }}">{% endfor %}</datalist>
             </div>
             {% if sc.taxonomies %}
-              <div class="sm:col-span-2 space-y-3" data-sc-terms>
+              <div role="group" aria-label="Terms" data-sc-terms>
+                <span class="{{ label }}">Terms</span>
+                <div class="space-y-3">
                 {% for tax, terms in sc.taxonomies %}
                   {% if terms %}
                     <div>
@@ -298,6 +296,7 @@
                   {% endif %}
                 {% endfor %}
                 <p class="text-xs text-slate-500">Ticked terms are always given; with "let the model choose", it adds one to three that fit, never a new one. Changed the type? Save first to see its terms.</p>
+                </div>
               </div>
             {% endif %}
           </div>
@@ -305,12 +304,11 @@
 
         <div class="{{ card }}" data-sc-material>
           <div class="{{ card_head }}"><h2 class="text-sm font-semibold text-slate-900">Material</h2><span class="text-xs text-slate-400">Where the facts come from</span></div>
-          <div class="grid gap-4 px-4 py-4 sm:grid-cols-2">
-            <div class="sm:col-span-2">
-              <label class="inline-flex items-center gap-2 text-sm font-medium text-slate-800"><input type="hidden" name="web_search" value="0"><input type="checkbox" name="web_search" value="1"{{ c.web_search ? ' checked' }}> Search the web while writing</label>
-              <p class="{{ note }}">For anything current: news, dates, announcements. The model searches, reads and gives the addresses it used. Each search is billed by OpenAI (counted on the Usage tab). Off, it writes from what it knows, which stops well before today.</p>
-            </div>
-            <div class="sm:col-span-2">
+          <div class="set-rows px-4 py-4">
+            <input type="hidden" name="web_search" value="0">
+            <label class="flex"><input type="checkbox" name="web_search" value="1"{{ c.web_search ? ' checked' }}><span><span class="font-medium">Search the web while writing</span>
+              <span class="block">For anything current: news, dates, announcements. The model searches, reads and gives the addresses it used. Each search is billed by OpenAI (counted on the Usage tab). Off, it writes from what it knows, which stops well before today.</span></span></label>
+            <div>
               <label class="{{ label }}" for="sc-focus">What to search for <span class="font-normal text-slate-400">(optional)</span></label>
               <input id="sc-focus" name="search_focus" value="{{ c.search_focus }}" class="{{ input }}" maxlength="500" placeholder="Official announcements on spatial planning and regional funding in Greece, last week">
             </div>
@@ -324,24 +322,23 @@
               <textarea id="sc-pages" name="pages" rows="3" class="{{ input }} font-mono text-xs" placeholder="https://www.example.gr/announcements">{{ c.pages|join("\n") }}</textarea>
               <p class="{{ note }}">An announcements page, a list of events or offers.</p>
             </div>
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <label class="{{ label }}" for="sc-items">Feed items per post</label>
-                <input id="sc-items" name="items_per_run" inputmode="numeric" value="{{ c.items_per_run }}" class="{{ input }}">
-              </div>
-              <div>
-                <label class="{{ label }}" for="sc-age">No older than (days)</label>
-                <input id="sc-age" name="max_age_days" inputmode="numeric" value="{{ c.max_age_days }}" class="{{ input }}">
-              </div>
+            <div>
+              <label class="{{ label }}" for="sc-items">Feed items per post</label>
+              <input id="sc-items" name="items_per_run" inputmode="numeric" value="{{ c.items_per_run }}" class="{{ input }} set-short">
             </div>
-            <label class="inline-flex items-center gap-2 self-end text-sm"><input type="hidden" name="list_sources" value="0"><input type="checkbox" name="list_sources" value="1"{{ c.list_sources ? ' checked' }}> List the sources at the end of the post</label>
-            <p class="text-xs text-slate-500 sm:col-span-2">Material from other sites is passed to the model as quoted information, never as instructions. When it cannot write a real post from what it knows, finds and is given, nothing is saved and the run says why.</p>
+            <div>
+              <label class="{{ label }}" for="sc-age">No older than (days)</label>
+              <input id="sc-age" name="max_age_days" inputmode="numeric" value="{{ c.max_age_days }}" class="{{ input }} set-short">
+            </div>
+            <input type="hidden" name="list_sources" value="0">
+            <label class="flex"><input type="checkbox" name="list_sources" value="1"{{ c.list_sources ? ' checked' }}><span>List the sources at the end of the post</span></label>
+            <p class="set-indent text-xs text-slate-500">Material from other sites is passed to the model as quoted information, never as instructions. When it cannot write a real post from what it knows, finds and is given, nothing is saved and the run says why.</p>
           </div>
         </div>
 
         <div class="{{ card }}">
           <div class="{{ card_head }}"><h2 class="text-sm font-semibold text-slate-900">Picture</h2><span class="text-xs text-slate-400">In the house style of the Instructions tab</span></div>
-          <div class="grid gap-4 px-4 py-4 sm:grid-cols-2">
+          <div class="set-rows px-4 py-4">
             <div>
               <label class="{{ label }}" for="sc-image">What the pictures show</label>
               <textarea id="sc-image" name="image" rows="2" class="{{ input }}" maxlength="1000" placeholder="A single everyday object that stands for the tip.">{{ c.image }}</textarea>
@@ -350,18 +347,23 @@
               <label class="{{ label }}" for="sc-picture-avoid">Avoid in the picture <span class="font-normal text-slate-400">(added to the site's list)</span></label>
               <textarea id="sc-picture-avoid" name="picture_avoid" rows="2" class="{{ input }}" placeholder="One per line">{{ c.picture_avoid|join("\n") }}</textarea>
             </div>
-            <label class="inline-flex items-center gap-2 text-sm"><input type="hidden" name="no_picture" value="0"><input type="checkbox" name="no_picture" value="1"{{ c.no_picture ? ' checked' }}> No picture for these posts</label>
-            <label class="inline-flex items-center gap-2 text-sm"><input type="hidden" name="picture_required" value="0"><input type="checkbox" name="picture_required" value="1"{{ c.picture_required ? ' checked' }}> Publish only with a picture <span class="text-xs text-slate-400">(if it fails, the post stays a draft)</span></label>
+            <input type="hidden" name="no_picture" value="0">
+            <label class="flex"><input type="checkbox" name="no_picture" value="1"{{ c.no_picture ? ' checked' }}><span>No picture for these posts</span></label>
+            <input type="hidden" name="picture_required" value="0">
+            <label class="flex"><input type="checkbox" name="picture_required" value="1"{{ c.picture_required ? ' checked' }}><span>Publish only with a picture<span class="block">If it fails, the post stays a draft.</span></span></label>
           </div>
         </div>
 
         <div class="{{ card }}">
           <div class="{{ card_head }}"><h2 class="text-sm font-semibold text-slate-900">Result</h2></div>
-          <div class="grid gap-4 px-4 py-4 sm:grid-cols-2">
-            <div class="space-y-1.5">
+          <div class="set-rows px-4 py-4">
+            <div role="radiogroup" aria-label="Status of the post">
+              <span class="{{ label }}">Status</span>
+              <span class="grid gap-1.5 pt-1">
               {% for value, name in status_modes %}
-                <label class="flex items-center gap-2 text-sm"><input type="radio" name="status" value="{{ value }}"{{ c.status == value ? ' checked' }}> {{ name }}</label>
+                <label class="flex items-center gap-2 text-xs text-slate-700"><input type="radio" name="status" value="{{ value }}"{{ c.status == value ? ' checked' }}> {{ name }}</label>
               {% endfor %}
+              </span>
             </div>
             <div>
               <label class="{{ label }}" for="sc-byline">Byline <span class="font-normal text-slate-400">(optional)</span></label>
@@ -495,13 +497,12 @@
             <h2 class="text-sm font-semibold text-slate-900">OpenAI</h2>
             {{ ai.has_key ? ui.badge('Key ' ~ ai.key_hint, 'green') : ui.badge('No key', 'slate') }}
           </div>
-          <div class="space-y-4 px-4 py-4">
+          <div class="set-rows px-4 py-4">
             <div>
               <label class="{{ label }}" for="ai-key">API key</label>
               <input id="ai-key" type="password" name="openai_key" class="{{ input }} font-mono" placeholder="{{ ai.has_key ? 'Kept. Paste a new key to replace it.' : 'sk-…' }}" autocomplete="new-password" spellcheck="false">
               <p class="{{ note }}">Kept on this server only: never shown again, exported or logged. {% if ai.has_key %}<label class="ml-2 inline-flex items-center gap-1"><input type="checkbox" name="clear_key" value="1"> Remove the key</label>{% endif %}</p>
             </div>
-            <div class="grid gap-3 sm:grid-cols-2">
               <div>
                 <label class="{{ label }}" for="ai-image-model">Picture model</label>
                 {% if ai.models.pictures %}
@@ -524,8 +525,7 @@
                   <input id="ai-text-model" name="text_model" value="{{ ai.text_model }}" class="{{ input }} font-mono">
                 {% endif %}
               </div>
-            </div>
-            <p class="text-xs text-slate-500">{% if ai.models.checked_at %}The lists are the models this key can use, read {{ ai.models.checked_at|date('j M Y, H:i') }}. {% endif %}<em>Check key</em> reads them again; model names change often.</p>
+            <p class="set-indent text-xs text-slate-500">{% if ai.models.checked_at %}The lists are the models this key can use, read {{ ai.models.checked_at|date('j M Y, H:i') }}. {% endif %}<em>Check key</em> reads them again; model names change often.</p>
           </div>
           <div class="flex flex-wrap justify-end gap-2 border-t border-slate-100 px-4 py-3">
             {% if ai.has_key %}<button type="submit" name="ai_action" value="check_key" class="{{ secondary }}">Check key</button>{% endif %}
@@ -548,23 +548,25 @@
 
       <div class="{{ card }}">
         <div class="{{ card_head }}"><h2 class="text-sm font-semibold text-slate-900">Limits</h2></div>
-        <div class="grid gap-3 px-4 py-4 sm:grid-cols-4">
+        <div class="set-rows px-4 py-4">
           <div>
             <label class="{{ label }}" for="ai-cost-cap">Monthly cap, estimated (US $)</label>
-            <input id="ai-cost-cap" name="monthly_cost_cap" inputmode="decimal" value="{{ ai.monthly_cost_cap }}" class="{{ input }}" placeholder="No cap">
+            <input id="ai-cost-cap" name="monthly_cost_cap" inputmode="decimal" value="{{ ai.monthly_cost_cap }}" class="{{ input }} set-short" placeholder="No cap">
           </div>
           <div>
             <label class="{{ label }}" for="ai-picture-cap">Monthly cap, pictures</label>
-            <input id="ai-picture-cap" name="monthly_picture_cap" inputmode="numeric" value="{{ ai.monthly_picture_cap }}" class="{{ input }}" placeholder="No cap">
+            <input id="ai-picture-cap" name="monthly_picture_cap" inputmode="numeric" value="{{ ai.monthly_picture_cap }}" class="{{ input }} set-short" placeholder="No cap">
           </div>
-          <div>
+          <div role="radiogroup" aria-label="At the cap">
             <span class="{{ label }}">At the cap</span>
-            <label class="mr-3 inline-flex items-center gap-1 text-sm"><input type="radio" name="cap_action" value="pause"{{ ai.cap_action == 'pause' ? ' checked' }}> Stop</label>
-            <label class="inline-flex items-center gap-1 text-sm"><input type="radio" name="cap_action" value="warn"{{ ai.cap_action == 'warn' ? ' checked' }}> Warn only</label>
+            <span class="flex flex-wrap gap-x-4 gap-y-1 pt-1">
+              <label class="inline-flex items-center gap-1 text-xs text-slate-700"><input type="radio" name="cap_action" value="pause"{{ ai.cap_action == 'pause' ? ' checked' }}> Stop</label>
+              <label class="inline-flex items-center gap-1 text-xs text-slate-700"><input type="radio" name="cap_action" value="warn"{{ ai.cap_action == 'warn' ? ' checked' }}> Warn only</label>
+            </span>
           </div>
           <div>
             <label class="{{ label }}" for="ai-keep">Keep run logs (days)</label>
-            <input id="ai-keep" name="keep_logs_days" inputmode="numeric" value="{{ ai.keep_logs_days }}" class="{{ input }}">
+            <input id="ai-keep" name="keep_logs_days" inputmode="numeric" value="{{ ai.keep_logs_days }}" class="{{ input }} set-short">
           </div>
         </div>
       </div>
