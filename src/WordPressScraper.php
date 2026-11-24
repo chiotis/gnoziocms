@@ -29,7 +29,7 @@ final class WordPressScraper
     /**
      * Every page of the custom types the profile describes.
      *
-     * @return array<int, array{type: string, post_type: string, id: string, slug: string, link: string, title: string, image: string, summary: string, tabs: array<int, array{label: string, html: string}>, notes: string[]}>
+     * @return array<int, array{type: string, post_type: string, id: string, slug: string, link: string, title: string, image: string, summary: string, tabs: array<int, array{label: string, html: string}>, fields: array<string, mixed>, notes: string[]}>
      */
     public function entries(): array
     {
@@ -59,6 +59,7 @@ final class WordPressScraper
                     'image' => $this->attribute($xpath, (string)($rules['image'] ?? '')),
                     'summary' => $this->html($xpath, (string)($rules['summary'] ?? '')),
                     'tabs' => $this->tabs($xpath, is_array($rules['tabs'] ?? null) ? $rules['tabs'] : []),
+                    'fields' => $this->fields($xpath, is_array($rules['fields'] ?? null) ? $rules['fields'] : []),
                     'notes' => [],
                 ];
             }
@@ -221,16 +222,100 @@ final class WordPressScraper
             return [];
         }
         $labels = array_map(fn(\DOMNode $n): string => $this->clean($n->textContent), $this->nodes($xpath, (string)$rules['labels']));
+        // Tabs whose facts the profile's `fields` read (the book's details) are left out of the text, so they are not there twice.
+        $skip = array_map(static fn($label): string => mb_strtolower(trim((string)$label)), is_array($rules['skip'] ?? null) ? $rules['skip'] : []);
         $tabs = [];
         foreach ($this->nodes($xpath, (string)$rules['panels']) as $index => $panel) {
             $html = $this->inner($panel);
             // A panel with next to nothing in it (an empty list of editions) is not a tab.
-            if (mb_strlen(trim(strip_tags($html))) < 3 || ($labels[$index] ?? '') === '') {
+            if (mb_strlen(trim(strip_tags($html))) < 3 || ($labels[$index] ?? '') === '' || in_array(mb_strtolower($labels[$index]), $skip, true)) {
                 continue;
             }
             $tabs[] = ['label' => $labels[$index], 'html' => $html];
         }
         return $tabs;
+    }
+
+    /**
+     * The values of the content type's own fields, read from the page (the profile's `types.<name>.fields`):
+     *
+     *   author: "//p[@class='author']"                         the text of the first node
+     *   year: { xpath: "//li[contains(.,'Year')]", match: '(\d{4})', type: number }
+     *   isbn: { xpath: "//li[contains(.,'ISBN')]", match: 'ISBN[:\s]*([0-9Xx-]+)' }
+     *   cover: { xpath: "//img[@class='cover']/@src", type: image }   a picture, brought into the library
+     *   site: { xpath: "//a[@class='site']/@href", type: link }      an address, pointed at the new site when it is the old one
+     *   formats: { xpath: "//ul[@class='formats']/li", list: true }  every node, as a list
+     *   buy_links: { xpath: "//div[@class='buy']//a", rows: { label: text, url: href } }   a repeater: a row for each node
+     *
+     * `match` keeps the part of the text its first group catches (or all it matches). A row's column is `text`, an attribute
+     * (`href`, `@title`), or an XPath from the node (`.//span`). Links and pictures are left as the old site has them; the importer
+     * points them at the new site. Values that are empty are left out.
+     *
+     * @param array<string, mixed> $rules
+     * @return array<string, mixed>
+     */
+    private function fields(\DOMXPath $xpath, array $rules): array
+    {
+        $out = [];
+        foreach ($rules as $key => $rule) {
+            $rule = is_array($rule) ? $rule : ['xpath' => (string)$rule];
+            $nodes = $this->nodes($xpath, (string)($rule['xpath'] ?? ''));
+            if (is_array($rule['rows'] ?? null)) {
+                $rows = [];
+                foreach ($nodes as $node) {
+                    $row = [];
+                    foreach ($rule['rows'] as $column => $what) {
+                        $value = $this->part($xpath, $node, (string)$what);
+                        if ($value !== '') {
+                            $row[(string)$column] = $value;
+                        }
+                    }
+                    if ($row !== []) {
+                        $rows[] = $row;
+                    }
+                }
+                if ($rows !== []) {
+                    $out[(string)$key] = $rows;
+                }
+                continue;
+            }
+            $values = [];
+            foreach ($nodes as $node) {
+                $text = $this->clean($node->nodeValue ?? '');
+                if (($rule['match'] ?? '') !== '') {
+                    $text = @preg_match('~' . str_replace('~', '\~', (string)$rule['match']) . '~u', $text, $m) ? trim($m[1] ?? $m[0]) : '';
+                }
+                if (($rule['type'] ?? '') === 'number') {
+                    $text = preg_match('/-?\d+(?:[.,]\d+)?/', $text, $m) ? $m[0] : '';
+                }
+                if ($text !== '') {
+                    $values[] = $text;
+                }
+            }
+            if ($values === []) {
+                continue;
+            }
+            $value = !empty($rule['list']) ? $values : $values[0];
+            if (($rule['type'] ?? '') === 'number') {
+                $value = is_array($value) ? $value : (ctype_digit(ltrim($value, '-')) ? (int)$value : (float)str_replace(',', '.', $value));
+            }
+            $out[(string)$key] = $value;
+        }
+        return $out;
+    }
+
+    /** A column of a row: the node's text, an attribute of it, or the text of an XPath from it. */
+    private function part(\DOMXPath $xpath, \DOMNode $node, string $what): string
+    {
+        $what = trim($what);
+        if ($what === '' || $what === 'text') {
+            return $this->clean($node->textContent);
+        }
+        if (preg_match('/^@?([A-Za-z_:][A-Za-z0-9_:.-]*)$/', $what, $m)) {
+            return $node instanceof \DOMElement ? trim($node->getAttribute($m[1])) : '';
+        }
+        $found = $this->nodes($xpath, $what, $node)[0] ?? null;
+        return $found === null ? '' : $this->clean($found->nodeValue ?? '');
     }
 
     private function xpath(string $html): \DOMXPath

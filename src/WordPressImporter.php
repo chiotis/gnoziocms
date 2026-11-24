@@ -75,9 +75,16 @@ final class WordPressImporter
     /** @var array<string, float> canonical address of a route file => its length in km, once it is in the library */
     private array $trackKm = [];
 
+    /** @var array<string, array{to: string, title: string, root: string, root_to: string}> the profile's category_taxonomies, checked */
+    private array $categoryTaxonomies = [];
+
+    /** @var array<string, array<string, bool>> taxonomy here => the content types whose entries were filed under it */
+    private array $filedTypes = [];
+
     /**
      * @param \Closure(string, string): int $download fetches an address into a file and returns the answer's status, 0 when the site could not be reached
-     * @param array{lang?: string, default_lang?: string, home_slug?: string, overwrite?: bool, only_used_media?: bool, kinds?: string[], custom_dir?: string, menus?: bool} $options
+     * @param array{lang?: string, default_lang?: string, home_slug?: string, overwrite?: bool, only_used_media?: bool, kinds?: string[], custom_dir?: string, menus?: bool, fetch_external?: bool|string[]} $options
+     *   fetch_external: pictures the text shows from other sites are brought into the library too (true for every host, or a list of hosts)
      * @param array<string, mixed> $profile what to read from the pages of the site, and how to lay out the home page (see docs/wordpress-import.md)
      */
     public function __construct(
@@ -130,6 +137,12 @@ final class WordPressImporter
         $tags = (in_array('posts', $kinds, true) || isset($restTaxonomies['tags'])) && in_array('tags', $info['taxonomies'], true) ? $this->reader->terms('tags') : [];
         $terms = ['categories' => $this->termsOf('categories', 'categories', $categories, true), 'tags' => $this->termsOf('tags', 'tags', $tags, false)];
         $titles = [];
+        $this->categoryTaxonomies = self::categoryTaxonomies($this->profile);
+        foreach ($this->splitCategories($terms['categories']) as $here => $moved) {
+            $terms['categories'] = $moved['rest'];
+            $terms[$here] = array_merge($terms[$here] ?? [], $moved['terms']);
+            $titles[$here] = $moved['title'];
+        }
         foreach ($restTaxonomies as $base => $here) {
             if ($base === 'categories' || $base === 'tags') {
                 continue;
@@ -260,6 +273,11 @@ final class WordPressImporter
                 }
             }
         }
+        foreach ($this->categoryTaxonomies as $rule) {
+            if ($rule['dropped_link'] !== '' && $rule['root_to'] !== '') {
+                $this->addRedirect($redirects, $rule['dropped_link'], '/' . ltrim($rule['root_to'], '/'));
+            }
+        }
         foreach ((array)($this->profile['archives'] ?? []) as $oldPath => $newType) {
             $this->addRedirect($redirects, '/' . trim((string)$oldPath, '/'), '/' . ContentPaths::archive((string)$newType, $this->lang(), $this->defaultLang()));
             foreach ($this->rest['language_prefixes'] as $lang => $prefix) {
@@ -303,6 +321,7 @@ final class WordPressImporter
             'notes' => array_keys($notes),
             'unresolved' => $this->unresolved,
             'external_images' => $this->external,
+            'external_fetch' => count(array_filter($media, static fn(array $f): bool => !empty($f['external']))),
             'counts' => [
                 'new' => count(array_filter($items, static fn(array $i): bool => $i['state'] === 'new')),
                 'update' => count(array_filter($items, static fn(array $i): bool => $i['state'] === 'update')),
@@ -334,8 +353,13 @@ final class WordPressImporter
         }
 
         foreach ($plan['media'] as $canonical => $file) {
-            if ($this->media->find($file['id']) !== null) {
+            $known = $this->media->find($file['id']);
+            if ($known !== null) {
                 $this->mediaReady[$canonical] = true;
+                // A picture of another site whose address had no extension is in the library under the kind it turned out to be.
+                if ($file['ext'] === '' && isset($this->mediaFiles[$canonical])) {
+                    $this->mediaFiles[$canonical]['ext'] = strtolower(pathinfo((string)($known['path'] ?? ''), PATHINFO_EXTENSION));
+                }
                 $this->measureTrack($canonical, $file);
                 continue;
             }
@@ -350,8 +374,18 @@ final class WordPressImporter
             }
             try {
                 if ($status !== 200) {
-                    $this->mediaGone[$canonical] = $status === 404 || $status === 410;
-                    throw new \RuntimeException($status === 404 || $status === 410 ? 'missing on the old site too, so the references to it are dropped' : 'the site answered ' . $status);
+                    $this->mediaGone[$canonical] = ($status === 404 || $status === 410) && empty($file['external']);
+                    throw new \RuntimeException($status === 404 || $status === 410 ? 'missing on the old site too, so the references to it are dropped' : ($status === 0 ? 'the site could not be reached' : 'the site answered ' . $status));
+                }
+                if ($file['ext'] === '') {
+                    // An address with no extension (a picture service's): the file says what it is, and only a picture is kept.
+                    $kind = SafeHttp::imageKind($tmp);
+                    if ($kind === '') {
+                        throw new \RuntimeException('not a picture');
+                    }
+                    $file['ext'] = $kind;
+                    $file['name'] = ($file['name'] !== '' ? $file['name'] : 'picture') . '.' . $kind;
+                    $this->mediaFiles[$canonical]['ext'] = $kind;
                 }
                 $this->media->import($tmp, $file['name'], $file['id'], $file['alt'], 'wordpress-import');
                 $this->mediaReady[$canonical] = true;
@@ -396,7 +430,7 @@ final class WordPressImporter
         foreach ($plan['media'] as $canonical => $file) {
             if (!empty($this->mediaReady[$canonical])) {
                 foreach ($file['seen'] ?? [] as $oldPath) {
-                    $this->addRedirect($redirects, $oldPath, $this->mediaPath($file));
+                    $this->addRedirect($redirects, $oldPath, $this->mediaPath($this->mediaFiles[$canonical] ?? $file));
                 }
             }
         }
@@ -459,6 +493,8 @@ final class WordPressImporter
         $this->logoMedia = '';
         $this->report = [];
         $this->trackKm = [];
+        $this->categoryTaxonomies = [];
+        $this->filedTypes = [];
         $this->planned = false;
         $this->final = false;
     }
@@ -582,10 +618,7 @@ final class WordPressImporter
             $front['main_image'] = $this->resolve($canonical, 'image');
         }
         if ($entry['type'] === 'posts') {
-            $categories = $this->termIds($entry['categories'], $terms['categories']);
-            if ($categories !== []) {
-                $front['categories'] = $categories;
-            }
+            $this->fileCategories($front, $entry['categories'], $terms, 'posts');
             $tagSlugs = [];
             foreach ($entry['tags'] as $id) {
                 foreach ($terms['tags'] as $term) {
@@ -630,12 +663,22 @@ final class WordPressImporter
         foreach ((array)($this->profile['types'][$entry['post_type']]['front'] ?? []) as $key => $value) {
             $front[(string)$key] = $value;
         }
-        $categories = $this->termIds($entry['category_ids'] ?? [], $terms['categories'] ?? []);
-        if ($categories !== []) {
-            $front['categories'] = $categories;
-        }
+        $this->fileCategories($front, $entry['category_ids'] ?? [], $terms, (string)$entry['type']);
         $blocks = [];
         $rules = (array)($this->profile['types'][$entry['post_type']] ?? []);
+        // The type's own fields (author, publisher, ISBN, buy links) read from the page, instead of only being in its text.
+        $fields = $this->scrapedFields(is_array($entry['fields'] ?? null) ? $entry['fields'] : [], is_array($rules['fields'] ?? null) ? $rules['fields'] : []);
+        if (isset($fields['date'])) {
+            $time = strtotime((string)$fields['date']);
+            if ($time !== false) {
+                $front['date'] = date('Y-m-d', $time);
+            }
+            unset($fields['date']);
+        }
+        if ($fields !== []) {
+            ksort($fields);
+            $front['custom_fields'] = $fields;
+        }
         if (($rules['summary_in'] ?? '') === 'excerpt') {
             // The page of the content type shows the summary under the title and the cover beside it (the Books type does).
             $plain = WordPressReader::text((string)$entry['summary']);
@@ -988,7 +1031,7 @@ final class WordPressImporter
             $tree = $isNew ? array_filter($list, static fn(array $t): bool => $t['parent_term'] !== '') !== [] : null;
             // A new taxonomy's pages list the types the profile files under it (the routes, businesses and points of an activity),
             // so a taxonomy of places opens as a map. One the site already has keeps its own choice.
-            $types = [];
+            $types = $isNew ? array_keys($this->filedTypes[$name] ?? []) : [];
             foreach ($isNew ? $this->rest['types'] : [] as $rules) {
                 if (in_array($name, $rules['taxonomies'], true)) {
                     $types[] = $rules['content_type'];
@@ -998,6 +1041,189 @@ final class WordPressImporter
             $this->taxonomies->save($name, $isNew && $title !== '' ? $title : $current['title'], $terms, $types !== [] ? ['types' => $types] + $current['archive'] : null, $tree);
         }
         return [$added, $updated];
+    }
+
+    /**
+     * The profile's `category_taxonomies`: a category of the old site, with the categories under it, goes to a taxonomy of its
+     * own here (the category "Books" and its children "Novels", "Essays" become the taxonomy Genres).
+     *
+     *   category_taxonomies:
+     *     books: genres                                 by the category's slug (or its id); the category stays a term at the top
+     *     places: { to: regions, title: Regions, root: drop, root_to: /places }   the category itself is the taxonomy: its
+     *                                                   children are at the top, and its old address leads to root_to
+     *
+     * @param array<string, mixed> $profile
+     * @return array<string, array{to: string, title: string, root: string, root_to: string, dropped_link: string}> category slug or id => rule
+     */
+    public static function categoryTaxonomies(array $profile): array
+    {
+        $out = [];
+        foreach (is_array($profile['category_taxonomies'] ?? null) ? $profile['category_taxonomies'] : [] as $category => $rule) {
+            $rule = is_array($rule) ? $rule : ['to' => (string)$rule];
+            $to = Slug::plain((string)($rule['to'] ?? ''));
+            if ($to === '' || !Taxonomies::isCustom($to) || $to !== (string)($rule['to'] ?? '')) {
+                throw new \InvalidArgumentException("category_taxonomies.$category: '" . (string)($rule['to'] ?? '') . "' is not a taxonomy of its own (lower case, not categories or tags)");
+            }
+            $root = (string)($rule['root'] ?? 'keep');
+            if (!in_array($root, ['keep', 'drop'], true)) {
+                throw new \InvalidArgumentException("category_taxonomies.$category.root: keep or drop");
+            }
+            $out[(string)$category] = ['to' => $to, 'title' => trim((string)($rule['title'] ?? '')), 'root' => $root, 'root_to' => trim((string)($rule['root_to'] ?? '')), 'dropped_link' => ''];
+        }
+        return $out;
+    }
+
+    /**
+     * Takes out of the categories each one the profile sends to a taxonomy of its own, with every category under it. Their tree,
+     * names and ids stay; their paths start at the moved category (or under it, when it is dropped).
+     *
+     * @param array<int, array<string, mixed>> $categories as termsOf() made them
+     * @return array<string, array{terms: array<int, array<string, mixed>>, rest: array<int, array<string, mixed>>, title: string}>
+     */
+    private function splitCategories(array $categories): array
+    {
+        $out = [];
+        foreach ($this->categoryTaxonomies as $key => $rule) {
+            $root = null;
+            foreach ($categories as $term) {
+                if ($term['slug'] === $key || (ctype_digit($key) && $term['id'] === (int)$key)) {
+                    $root = $term;
+                    break;
+                }
+            }
+            if ($root === null) {
+                $this->report['notes'][] = "category_taxonomies.$key: the old site has no such category";
+                continue;
+            }
+            // The category and everything under it.
+            $ids = [$root['id'] => true];
+            do {
+                $grew = false;
+                foreach ($categories as $term) {
+                    if (!isset($ids[$term['id']]) && isset($ids[$term['parent']])) {
+                        $ids[$term['id']] = true;
+                        $grew = true;
+                    }
+                }
+            } while ($grew);
+            $drop = $rule['root'] === 'drop';
+            $prefix = $root['path'];
+            $base = $drop ? $prefix . '/' : (str_contains($prefix, '/') ? substr($prefix, 0, (int)strrpos($prefix, '/') + 1) : '');
+            $moved = [];
+            $rest = [];
+            foreach ($categories as $term) {
+                if (!isset($ids[$term['id']])) {
+                    $rest[] = $term;
+                    continue;
+                }
+                if ($drop && $term['id'] === $root['id']) {
+                    $this->categoryTaxonomies[$key]['dropped_link'] = (string)$term['link'];
+                    if ($rule['root_to'] === '') {
+                        $this->report['notes'][] = "category_taxonomies.$key: the category itself is not a term now and its old address leads nowhere; root_to names where it should";
+                    }
+                    continue;
+                }
+                $term['path'] = substr($term['path'], strlen($base));
+                if ($term['id'] === $root['id'] || ($drop && $term['parent'] === $root['id'])) {
+                    $term['parent'] = 0;
+                    $term['parent_term'] = '';
+                }
+                $moved[] = $term;
+            }
+            $categories = $rest;
+            $out[$rule['to']] = ['terms' => array_merge($out[$rule['to']]['terms'] ?? [], $moved), 'rest' => $rest, 'title' => $rule['title'] !== '' ? $rule['title'] : (string)$root['label']];
+            $this->report['notes'][] = "category '{$root['label']}' and the " . (count($moved) - ($drop ? 0 : 1)) . " under it go to the taxonomy '{$rule['to']}'" . ($drop ? ' (the category itself is not a term there)' : '');
+        }
+        if ($out !== []) {
+            $last = array_key_last($out);
+            foreach ($out as $to => $moved) {
+                $out[$to]['rest'] = $out[$last]['rest'];
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * Files an entry under the categories it has: those that stayed categories, and those that went to a taxonomy of their own.
+     *
+     * @param array<string, mixed> $front
+     * @param int[] $ids WordPress's category ids
+     * @param array<string, array<int, array<string, mixed>>> $terms
+     */
+    private function fileCategories(array &$front, array $ids, array $terms, string $type): void
+    {
+        $taxonomies = array_values(array_unique(array_merge(['categories'], array_column($this->categoryTaxonomies, 'to'))));
+        foreach ($taxonomies as $taxonomy) {
+            $filed = $this->termIds($ids, $terms[$taxonomy] ?? []);
+            if ($filed !== []) {
+                $front[$taxonomy] = $filed;
+                $this->filedTypes[$taxonomy][$type] = true;
+            }
+        }
+    }
+
+    /**
+     * The fields read from a page of a custom type, ready for its front matter: a picture brought into the library, a link and the
+     * links in a repeater's rows pointed at the new site.
+     *
+     * @param array<string, mixed> $values what WordPressScraper read
+     * @param array<string, mixed> $rules the profile's `fields`
+     * @return array<string, mixed>
+     */
+    private function scrapedFields(array $values, array $rules): array
+    {
+        foreach ($values as $key => $value) {
+            $type = is_array($rules[$key] ?? null) ? (string)($rules[$key]['type'] ?? '') : '';
+            if ($type === 'image' || $type === 'link') {
+                $values[$key] = is_array($value)
+                    ? array_values(array_filter(array_map(fn($v): string => $this->resolve((string)$v, $type), $value), static fn(string $v): bool => $v !== ''))
+                    : $this->resolve((string)$value, $type);
+                if ($values[$key] === '' || $values[$key] === []) {
+                    unset($values[$key]);
+                }
+            } elseif (is_array($value) && $value !== [] && is_array($value[array_key_first($value)])) {
+                $values[$key] = $this->rowLinks($value);
+            }
+        }
+        return $values;
+    }
+
+    /**
+     * The addresses in a repeater's rows (a buy link, a page of the old site) pointed at where they lead now.
+     *
+     * @param array<int, array<string, mixed>> $rows
+     * @return array<int, array<string, mixed>>
+     */
+    private function rowLinks(array $rows): array
+    {
+        foreach ($rows as $i => $row) {
+            foreach ($row as $column => $cell) {
+                if (is_string($cell) && preg_match('#^(https?://|/)#i', $cell)) {
+                    $rows[$i][$column] = $this->resolve($cell, 'link');
+                }
+            }
+        }
+        return $rows;
+    }
+
+    /** Whether --fetch-external brings the pictures of this host. */
+    private function fetchesFrom(string $host): bool
+    {
+        $fetch = $this->options['fetch_external'] ?? false;
+        if ($fetch === true) {
+            return $host !== '';
+        }
+        if (!is_array($fetch) || $host === '') {
+            return false;
+        }
+        $bare = preg_replace('/^www\./', '', $host);
+        foreach ($fetch as $allowed) {
+            $allowed = strtolower(trim((string)$allowed));
+            if ($allowed !== '' && ($bare === preg_replace('/^www\./', '', $allowed) || str_ends_with($host, '.' . $allowed))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // ------------------------------------------------------------------ custom types of the REST API
@@ -1155,9 +1381,18 @@ final class WordPressImporter
         }
 
         foreach ($mapped['terms'] as $taxonomy => $ids) {
+            if ($taxonomy === 'categories') {
+                $this->fileCategories($front, $ids, $terms, (string)$entry['type']);
+                continue;
+            }
             $filed = $this->termIds($ids, $terms[$taxonomy] ?? []);
             if ($filed !== []) {
                 $front[$taxonomy] = $filed;
+            }
+        }
+        foreach ($fields as $key => $value) {
+            if (is_array($value) && $value !== [] && is_array($value[array_key_first($value)])) {
+                $fields[$key] = $this->rowLinks($value);
             }
         }
         foreach ($rules['front'] as $key => $value) {
@@ -1233,11 +1468,20 @@ final class WordPressImporter
             return $address; // mailto:, tel: and the like
         }
         if (!$this->sameSite($absolute)) {
-            if ($kind === 'image' && !$this->final) {
-                $host = strtolower((string)parse_url($absolute, PHP_URL_HOST));
+            if ($kind !== 'image') {
+                return $address;
+            }
+            $host = strtolower((string)parse_url($absolute, PHP_URL_HOST));
+            if (!$this->final) {
                 $this->external[$host] = ($this->external[$host] ?? 0) + 1;
             }
-            return $address;
+            if (!$this->fetchesFrom($host)) {
+                return $address;
+            }
+            // --fetch-external: the picture comes into the library like one of the old site's own; one that could not be fetched
+            // stays where it is.
+            $canonical = $this->registerMedia($absolute, '', '', false, true);
+            return $this->final && empty($this->mediaReady[$canonical]) ? $address : $this->mediaPath($this->mediaFiles[$canonical]);
         }
         $parts = parse_url($absolute) ?: [];
         $path = (string)($parts['path'] ?? '/');
@@ -1288,11 +1532,17 @@ final class WordPressImporter
     {
         // A picture with no alternative text is described by its title, when the title says something (not a camera's name).
         $alt = $alt !== '' ? $alt : (HtmlToMarkdown::describes($title) ? trim($title) : '');
+        $external = !$this->sameSite($url);
         $original = strtok($url, '?#') ?: $url;
-        $canonical = (string)preg_replace('/-(?:\d{2,5}x\d{2,5}|scaled)(\.[A-Za-z0-9]+)$/', '$1', $original);
+        $ext = strtolower((string)preg_replace('/[^a-z0-9]/i', '', pathinfo((string)parse_url($original, PHP_URL_PATH), PATHINFO_EXTENSION)));
+        if ($external && !in_array($ext, self::MEDIA_EXTENSIONS, true)) {
+            // A picture service's address (no extension, the size in the query) is fetched as it is; what it is shows when it arrives.
+            $original = strtok($url, '#') ?: $url;
+            $ext = '';
+        }
+        $canonical = $ext === '' && $external ? $original : (string)preg_replace('/-(?:\d{2,5}x\d{2,5}|scaled)(\.[A-Za-z0-9]+)$/', '$1', $original);
         $path = (string)parse_url($canonical, PHP_URL_PATH);
         if (!isset($this->mediaFiles[$canonical])) {
-            $ext = strtolower((string)preg_replace('/[^a-z0-9]/i', '', pathinfo($path, PATHINFO_EXTENSION)));
             $this->mediaFiles[$canonical] = [
                 'id' => substr(sha1($canonical), 0, 16),
                 'ext' => $ext,
@@ -1302,7 +1552,10 @@ final class WordPressImporter
                 'attachment' => $attachment,
                 'original' => $original,
                 'seen' => [],
-            ];
+            ] + ($external ? ['external' => true] : []);
+            if ($external && $ext === '') {
+                $this->mediaFiles[$canonical]['name'] = Slug::plain((string)pathinfo($path, PATHINFO_FILENAME)) ?: 'picture';
+            }
         }
         $file = &$this->mediaFiles[$canonical];
         if ($file['alt'] === '' && $alt !== '') {
@@ -1314,7 +1567,8 @@ final class WordPressImporter
         if ($used) {
             $file['uses']++;
         }
-        $seenPath = rawurldecode((string)parse_url($original, PHP_URL_PATH));
+        // The old address of a file of the old site leads to it in the library; a path on another site is not this site's to redirect.
+        $seenPath = $external ? '' : rawurldecode((string)parse_url($original, PHP_URL_PATH));
         if ($seenPath !== '' && !in_array($seenPath, $file['seen'], true)) {
             $file['seen'][] = $seenPath;
         }

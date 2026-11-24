@@ -42,7 +42,7 @@ $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42m
 // Pages the API does not give: a custom type's sitemap and pages, and the home page with its slides and menu.
 $raw = [
     '/wp-sitemap-posts-book-1.xml' => '<?xml version="1.0"?><urlset><url><loc>' . $SITE . '/book/the-novel/</loc></url><url><loc>' . $SITE . '/book/no-tabs/</loc></url></urlset>',
-    '/book/the-novel/' => '<html><body><h1 class="term-title">The Novel</h1><p class="book-cover"><img src="' . $SITE . '/wp-content/uploads/2013/cover-207x300.png"></p><div class="panel"><p><strong>The Novel</strong> is about <a href="/about/">the author</a>.</p></div><dl class="tabs"><dd><a href="#f">Features</a></dd><dd><a href="#l">Links</a></dd><dd><a href="#e">Editions</a></dd></dl><ul class="tabs-content"><li id="f"><p>Praise for it.</p></li><li id="l"><p><a href="https://shop.example/x">Buy</a></p></li><li id="e"> </li></ul></body></html>',
+    '/book/the-novel/' => '<html><body><h1 class="term-title">The Novel</h1><p class="meta">by <span class="author">A. Writer</span>, <span class="year">Year: 2004</span>, published <span class="when">March 3, 2004</span> <span class="isbn">ISBN: 978-0-00-000000-1</span> <a class="site" href="' . $SITE . '/about/">site</a> <img class="photo" src="https://img.service.test/photo?id=9&w=800"></p><p class="book-cover"><img src="' . $SITE . '/wp-content/uploads/2013/cover-207x300.png"></p><div class="panel"><p><strong>The Novel</strong> is about <a href="/about/">the author</a>.</p></div><dl class="tabs"><dd><a href="#f">Features</a></dd><dd><a href="#l">Links</a></dd><dd><a href="#e">Editions</a></dd></dl><ul class="tabs-content"><li id="f"><p>Praise for it.</p></li><li id="l"><p><a href="https://shop.example/x">Buy</a></p></li><li id="e"> </li></ul></body></html>',
     '/category/news/c3-logicomix/' => '<html><body><a href="' . $SITE . '/book/the-novel/">The Novel</a><a href="/page/2/">older</a><a href="' . $SITE . '/page/2">x</a></body></html>',
     '/category/reviews/' => '<html><body><a href="' . $SITE . '/book/the-novel/">The Novel</a></body></html>',
     '/book/no-tabs/' => '<html><body><h1 class="term-title">No Tabs</h1><div class="panel"><p>Short.</p></div></body></html>',
@@ -65,6 +65,8 @@ $download = function (string $url, string $to) use (&$downloads, $png): int {
     $downloads[] = $url;
     if (str_ends_with($url, 'cover.png') || str_ends_with($url, 'logo.png')) { file_put_contents($to, $png); return 200; }
     if (str_ends_with($url, 'paper.pdf')) { file_put_contents($to, "%PDF-1.4\n%%EOF\n"); return 200; }
+    if (str_starts_with($url, 'http://pics.elsewhere.test/a.jpg') || str_starts_with($url, 'https://img.service.test/photo')) { file_put_contents($to, $png); return 200; }
+    if (str_starts_with($url, 'https://img.service.test/')) { file_put_contents($to, '<html>not a picture</html>'); return 200; }
     return str_contains($url, 'flaky') ? 503 : 404;
 };
 
@@ -273,6 +275,78 @@ $asked = [];
 $pages = [1 => 2, 2 => 0];
 check('an empty page ends the list', [count($paged->media()), $asked], [2, [1, 2]]);
 
-foreach (['', '2', '3', '4', '5'] as $suffix) { exec('rm -rf ' . escapeshellarg(sys_get_temp_dir() . '/wpimp' . $suffix . getmypid())); }
+// ---- the second version: the type's own fields, categories to a taxonomy of their own, pictures of other sites
+$root = sys_get_temp_dir() . '/wpimp6' . getmypid();
+$downloads = [];
+$profile2 = [
+    'types' => ['book' => [
+        'content_type' => 'books',
+        'title' => "//h1[contains(@class,'term-title')]", 'image' => "//p[contains(@class,'book-cover')]//img/@src", 'summary' => "//div[contains(@class,'panel')]",
+        'tabs' => ['labels' => "//dl[contains(@class,'tabs')]//a", 'panels' => "//ul[contains(@class,'tabs-content')]/li", 'skip' => ['links']],
+        'fields' => [
+            'author' => "//span[@class='author']",
+            'year' => ['xpath' => "//span[@class='year']", 'type' => 'number'],
+            'isbn' => ['xpath' => "//span[@class='isbn']", 'match' => 'ISBN:\s*([0-9Xx-]+)'],
+            'date' => "//span[@class='when']",
+            'site' => ['xpath' => "//a[@class='site']/@href", 'type' => 'link'],
+            'photo' => ['xpath' => "//img[@class='photo']/@src", 'type' => 'image'],
+            'buy_links' => ['xpath' => "//li[@id='l']//a", 'rows' => ['label' => 'text', 'url' => 'href']],
+            'nothing' => "//span[@class='none']",
+        ],
+    ]],
+    'categories_of_custom_types' => true,
+    'category_taxonomies' => ['news' => 'topics', 'reviews' => ['to' => 'genres', 'root' => 'drop', 'root_to' => '/books']],
+];
+$v2 = $make(['fetch_external' => true], $profile2);
+$planV2 = $v2->plan();
+check('the dry run counts the pictures of other sites it would fetch, and fetches nothing', [$planV2['external_fetch'], $downloads], [3, []]);
+check('a category and those under it go to their own taxonomy, the kept one at the top', array_map(fn($t) => [$t['term_id'], $t['parent_term'], $t['path']], $planV2['terms']['topics']), [['news', '', 'news'], ['c3-logicomix', 'news', 'news/c3-logicomix']]);
+check('a dropped category is the taxonomy itself: what was under it is at the top', array_map(fn($t) => [$t['term_id'], $t['parent_term'], $t['path']], $planV2['terms']['genres']), [['c3-logicomix-2', '', 'c3-logicomix']]);
+check('the categories keep the rest', array_column($planV2['terms']['categories'], 'term_id'), []);
+$listV2 = array_map(fn($r) => $r[0] . ' ' . $r[1], $planV2['redirects']);
+check('their old addresses lead to the new taxonomy, the dropped one to root_to', [in_array('/category/news/c3-logicomix /topics/news/c3-logicomix', $listV2, true), in_array('/category/reviews/c3-logicomix /genres/c3-logicomix', $listV2, true), in_array('/category/reviews /books', $listV2, true)], [true, true, true]);
+check('and the report says what moved', array_values(array_filter($planV2['report']['notes'], fn($n) => str_starts_with($n, 'category '))), ["category 'News' and the 1 under it go to the taxonomy 'topics'", "category 'Reviews' and the 1 under it go to the taxonomy 'genres' (the category itself is not a term there)"]);
+$resultV2 = $v2->apply($planV2);
+$helloV2 = $front("$root/content/posts/hello.md");
+check('a post is filed under the taxonomy its category went to', [$helloV2['topics'] ?? null, array_key_exists('categories', $helloV2)], [['c3-logicomix'], false]);
+$taxV2 = new Taxonomies("$root/content", ['en']);
+check('the new taxonomy takes the category\'s name, a tree, and the types filed under it', [$taxV2->load('topics')['title'], $taxV2->load('topics')['hierarchical'], $taxV2->load('topics')['archive']['types'] ?? null, $taxV2->load('genres')['title']], ['News', true, ['posts', 'books'], 'Reviews']);
+$extId = substr(sha1('http://pics.elsewhere.test/a.jpg'), 0, 16);
+$helloBody = $bodyOf("$root/content/posts/hello.md");
+check('a picture of another site is in the library and the text points at it', [str_contains($helloBody, "/uploads/media/$extId.jpg"), is_file("$root/uploads/media/$extId.jpg")], [true, true]);
+check('one that could not be fetched stays where it was', str_contains($helloBody, 'http://pics.elsewhere.test/b.jpg'), true);
+check('no redirect is made for a path of another site', array_values(array_filter(array_map(fn($r) => $r[0], $resultV2['redirects']), fn($p) => $p === '/a.jpg' || $p === '/photo')), []);
+$bookV2 = $front("$root/content/books/the-novel.md");
+$photoId = substr(sha1('https://img.service.test/photo?id=9&w=800'), 0, 16);
+check('the type\'s own fields are read from the page', $bookV2['custom_fields'], [
+    'author' => 'A. Writer',
+    'buy_links' => [['label' => 'Buy', 'url' => 'https://shop.example/x']],
+    'isbn' => '978-0-00-000000-1',
+    'photo' => "/uploads/media/$photoId.png",
+    'site' => '/about',
+    'year' => 2004,
+]);
+check('a date field is the entry\'s date', $bookV2['date'], '2004-03-03');
+check('a picture service\'s address with no extension is kept as the kind of picture it is', is_file("$root/uploads/media/$photoId.png"), true);
+check('the tab whose facts went to the fields is left out of the text', array_map(fn($t) => $t['label'], $bookV2['blocks'][1]['items']), ['Features']);
+check('a book whose categories moved is filed under the new taxonomy', [$bookV2['topics'] ?? null, array_key_exists('categories', $bookV2)], [['c3-logicomix'], false]);
+$downloads = [];
+$v2b = $make(['fetch_external' => ['elsewhere.test']], $profile2);
+$planV2b = $v2b->plan();
+check('--fetch-external with hosts brings only theirs (a subdomain counts)', $planV2b['external_fetch'], 2);
+$v2b->apply($planV2b);
+check('and a second run fetches nothing already in the library', array_values(array_filter($downloads, fn($u) => str_contains($u, 'a.jpg') || str_contains($u, 'img.service'))), []);
+check('a host not named stays where it is', str_contains((string)file_get_contents("$root/content/books/the-novel.md"), 'https://img.service.test/photo?id=9&w=800'), true);
+$v2c = $make(['fetch_external' => true], $profile2);
+$downloads = [];
+$v2c->apply($v2c->plan());
+check('the picture service\'s file is found again by its kind, not fetched again', [str_contains((string)file_get_contents("$root/content/books/the-novel.md"), "/uploads/media/$photoId.png"), array_values(array_filter($downloads, fn($u) => str_contains($u, 'img.service.test/photo')))], [true, []]);
+$notPicture = $make(['fetch_external' => true], ['types' => ['book' => $profile2['types']['book']]]);
+$web['/wp-json/wp/v2/posts'][0]['content']['rendered'] .= '<p><img src="https://img.service.test/page?x=1"></p>';
+$resultNP = $notPicture->apply($notPicture->plan());
+check('an address with no extension that is not a picture is not kept', array_values(array_filter($resultNP['media_failed'], fn($m) => str_contains($m, 'img.service.test/page'))), ['https://img.service.test/page?x=1 (not a picture)']);
+check('a mistake in category_taxonomies is named', (function () { try { WordPressImporter::categoryTaxonomies(['category_taxonomies' => ['news' => 'tags']]); } catch (InvalidArgumentException $e) { return $e->getMessage(); } return ''; })(), "category_taxonomies.news: 'tags' is not a taxonomy of its own (lower case, not categories or tags)");
+
+foreach (['', '2', '3', '4', '5', '6'] as $suffix) { exec('rm -rf ' . escapeshellarg(sys_get_temp_dir() . '/wpimp' . $suffix . getmypid())); }
 echo $fail === 0 ? "ALL PASSED\n" : "$fail FAILED\n";
 exit($fail === 0 ? 0 : 1);
