@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.341 — 2026-11-24 — WordPress importer v2: a type's own fields, categories as their own taxonomy, pictures of other sites, a redirect check
+- A profile fills a custom type's own fields from its pages (`types.<name>.fields`: text, a part of it with `match`, a number, a link, a picture, a list, or a repeater's `rows` such as a book's buy links); `tabs.skip` leaves a tab whose facts went to the fields out of the text, and a field named `date` is the entry's date. `rest_types` fields take `{to, rows}` to bring an ACF repeater into a repeater field.
+- `category_taxonomies` sends a category and the categories under it to a taxonomy of its own (the category kept as a term, or dropped with `root_to`); the old addresses lead to the new terms, and posts and custom types are filed under them.
+- `--fetch-external` (or `--fetch-external=host,host`) brings pictures hosted on other sites into the library through SafeHttp; an address with no extension is kept as the kind of picture it is. Paths of other sites no longer get redirects.
+- `src/Cli/check-redirects.php` reads the old sitemap (or a saved one, or `redirects.txt`) and asks the new site for each old address one step at a time: 301 then 200, or the same address; chains, temporary redirects, other sites, wrong targets, 404s and loops are listed, and the whole result is written as CSV.
+- Tests: `wordpress-import`, `wordpress-rest-types`, `redirect-check` (new).
+
 ## 0.1.340 — 2026-11-24 — The admin menu by role, and a clean permission for every screen
 - The admin menu has five groups, as on the Roles screen: Overview (Dashboard, Analytics), Content (Publishing calendar, the content types, Media, Taxonomies, History), Shop (Products, Looks, Orders, Customers, Subscriptions, Files, Coupons, Shop settings), Site (Theme, Menus, Forms, SEO, Redirects, Translations, AI publishing) and System (Content types, Users & Roles, Logs, Backups, Updates, System status, Settings). A group's heading shows only when its reader may open something in it, so an editor or a basic user no longer sees empty Manage or System headings.
 - The shop's products and looks need `shop.manage` (Admin, Shop manager), in the admin (list, new, edit, save, delete, bulk, import, export, history, search) and over MCP (the shop tools and the entry tools for those types). An editor can no longer change a price or the stock.

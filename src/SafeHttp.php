@@ -49,7 +49,7 @@ final class SafeHttp
      * @param list<string> $headers
      * @return array{status: int, error: string, url: string}
      */
-    public function fetch(string $url, string $to, int $maxBytes, int $timeout = 15, string $accept = 'image/*', array $headers = [], bool $allowLocal = false, int $maxRedirects = self::MAX_REDIRECTS): array
+    public function fetch(string $url, string $to, int $maxBytes, int $timeout = 15, string $accept = 'image/*', array $headers = [], bool $allowLocal = false, int $maxRedirects = self::MAX_REDIRECTS, bool $stop = false): array
     {
         $fail = static fn(string $error, string $at): array => ['status' => 0, 'error' => $error, 'url' => $at];
         $firstHost = strtolower(trim((string)(parse_url($url, PHP_URL_HOST) ?? ''), '[]'));
@@ -82,12 +82,35 @@ final class SafeHttp
                 return $fail($answer['error'], $url);
             }
             if (in_array($answer['status'], [301, 302, 303, 307, 308], true) && $answer['location'] !== '') {
+                if ($stop) {
+                    return ['status' => (int)$answer['status'], 'error' => '', 'url' => $url, 'location' => self::absolute($answer['location'], $url)];
+                }
                 $url = self::absolute($answer['location'], $url);
                 continue;
             }
             return ['status' => (int)$answer['status'], 'error' => '', 'url' => $url];
         }
         return $fail('Too many redirects.', $url);
+    }
+
+    /**
+     * One request, with no redirect followed: the answer's status and, for a redirect, where it points (made absolute). The same
+     * checks as fetch() for the address asked. For the redirect check, which looks at each step an old address takes.
+     *
+     * @return array{status: int, location: string, error: string}
+     */
+    public function step(string $url, int $timeout = 15, bool $allowLocal = false): array
+    {
+        $to = tempnam(sys_get_temp_dir(), 'step');
+        if ($to === false) {
+            return ['status' => 0, 'location' => '', 'error' => 'A temporary file could not be written.'];
+        }
+        try {
+            $answer = $this->fetch($url, $to, 256 * 1024, $timeout, 'text/html,*/*', [], $allowLocal, 0, true);
+        } finally {
+            @unlink($to);
+        }
+        return ['status' => $answer['status'], 'location' => $answer['location'] ?? '', 'error' => $answer['error']];
     }
 
     public static function isPublic(string $ip): bool
