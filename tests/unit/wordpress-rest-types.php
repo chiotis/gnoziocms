@@ -37,6 +37,14 @@ check('a missing content type is one of them', in_array('rest_types.a.content_ty
 check('so is a taxonomy sent to two places', (bool)array_filter($bad['errors'], fn($e) => str_contains($e, "another type sends it to 'activity'")), true);
 check('and a term_map line that is not two ids', (bool)array_filter($bad['errors'], fn($e) => str_starts_with($e, 'term_map.activity.767:')), true);
 
+// ---- an ACF repeater into a repeater field
+$stores = WordPressRestTypes::parse(['rest_types' => ['book' => ['content_type' => 'books', 'fields' => ['stores' => ['to' => 'buy_links', 'rows' => ['label' => 'store', 'url' => 'link']], 'bad' => ['to' => 'title', 'rows' => ['a' => 'b']], 'empty' => ['to' => 'x', 'rows' => []]]]]]);
+check('a repeater target names its columns; one for the title or with no columns is a mistake', [$stores['types']['book']['fields']['stores'] ?? null, count($stores['errors'])], [['to' => 'buy_links', 'lang' => '', 'type' => 'rows', 'rows' => ['label' => 'store', 'url' => 'link']], 2]);
+$storesType = WordPressRestTypes::parse(['rest_types' => ['book' => ['content_type' => 'books', 'fields' => ['stores' => ['to' => 'buy_links', 'rows' => ['label' => 'store', 'url' => 'link']], 'isbn' => 'isbn']]]])['types']['book'];
+$mappedRows = WordPressRestTypes::map(['id' => 1, 'title' => ['rendered' => 'A book'], 'acf' => ['isbn' => '978-1', 'stores' => [['store' => 'Shop <b>A</b>', 'link' => ['url' => 'https://shop.example/a', 'title' => 'x']], ['store' => '', 'link' => ''], ['store' => 'Shop B', 'link' => 'https://shop.example/b', 'extra' => 'left out']]]], $storesType, 'en');
+check('each row of the ACF repeater is a row: its sub-keys in the columns, empty rows left out', $mappedRows['fields'], ['buy_links' => [['label' => 'Shop A', 'url' => 'https://shop.example/a'], ['label' => 'Shop B', 'url' => 'https://shop.example/b']], 'isbn' => '978-1']);
+check('a value that is not a list of rows is reported, not guessed', WordPressRestTypes::map(['id' => 1, 'acf' => ['stores' => 'just text']], $storesType, 'en')['notes'], ['stores: not a list of rows (an ACF repeater), left out']);
+
 // ---- the terms
 $t = fn(int $id, string $name, int $count, int $parent = 0, string $slug = '') => ['id' => $id, 'slug' => $slug !== '' ? $slug : 's' . $id, 'name' => $name, 'link' => "https://old.example/activity/s$id/", 'parent' => $parent, 'count' => $count, 'description' => ''];
 $activity = [

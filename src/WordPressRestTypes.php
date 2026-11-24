@@ -18,6 +18,7 @@ namespace GnozioCMS;
  *         title_en: title@en            title, excerpt and body are the entry's own; @<lang> says which language's entry
  *         υπότιτλος_el: subtitle@el     any other name is a field of the type (custom_fields); without @ it goes to every language
  *         μήκος: { to: distance_km, type: number }
+ *         stores: { to: buy_links, rows: { label: store, url: link } }   an ACF repeater into a repeater field: column => ACF sub-key
  *       coordinates: { lat: latitude, lng: longitude, to: location }
  *       media:                        ACF keys that hold files of the library (an id, an address, or a list of them)
  *         banner_image: main_image      the main image
@@ -78,7 +79,7 @@ final class WordPressRestTypes
             foreach (self::mapOf($rules['fields'] ?? [], "$at.fields", $errors) as $acf => $target) {
                 $parsed = self::target($target);
                 if ($parsed === null) {
-                    $errors[] = "$at.fields.$acf: '" . self::show($target) . "' is not a target (field, field@lang, or {to, lang, type})";
+                    $errors[] = "$at.fields.$acf: '" . self::show($target) . "' is not a target (field, field@lang, {to, lang, type}, or {to, rows: {column: sub-key}})";
                     continue;
                 }
                 $fields[(string)$acf] = $parsed;
@@ -257,9 +258,17 @@ final class WordPressRestTypes
                 }
                 continue;
             }
-            $value = $target['type'] === 'number' ? self::number($raw) : self::value($raw);
+            $value = match ($target['type']) {
+                'number' => self::number($raw),
+                'rows' => self::rows($raw, $target['rows'] ?? []),
+                default => self::value($raw),
+            };
             if ($value === null) {
-                $notes[] = $target['type'] === 'number' ? "$key: '" . self::show($raw) . "' is not a number, left empty" : "$key: a value that is not text, left out";
+                $notes[] = match ($target['type']) {
+                    'number' => "$key: '" . self::show($raw) . "' is not a number, left empty",
+                    'rows' => "$key: not a list of rows (an ACF repeater), left out",
+                    default => "$key: a value that is not text, left out",
+                };
                 continue;
             }
             if ($lang === '') {
@@ -399,11 +408,24 @@ final class WordPressRestTypes
         return $out;
     }
 
-    /** @return array{to: string, lang: string, type: string}|null */
+    /** @return array{to: string, lang: string, type: string, rows?: array<string, string>}|null */
     private static function target(mixed $target): ?array
     {
         $type = 'text';
+        $rows = null;
         if (is_array($target)) {
+            if (array_key_exists('rows', $target)) {
+                $rows = [];
+                foreach (is_array($target['rows']) ? $target['rows'] : [] as $column => $sub) {
+                    if (!self::isFieldKey((string)$column) || !is_string($sub) || trim($sub) === '') {
+                        return null;
+                    }
+                    $rows[(string)$column] = trim($sub);
+                }
+                if ($rows === []) {
+                    return null;
+                }
+            }
             $to = (string)($target['to'] ?? '');
             $lang = (string)($target['lang'] ?? '');
             $type = (string)($target['type'] ?? 'text');
@@ -417,6 +439,9 @@ final class WordPressRestTypes
         }
         if (!self::isFieldKey($to) || ($lang !== '' && !self::isLang($lang)) || !in_array($type, ['text', 'number'], true)) {
             return null;
+        }
+        if ($rows !== null) {
+            return in_array($to, self::OWN, true) ? null : ['to' => $to, 'lang' => $lang, 'type' => 'rows', 'rows' => $rows];
         }
         return ['to' => $to, 'lang' => $lang, 'type' => $type];
     }
@@ -499,6 +524,37 @@ final class WordPressRestTypes
         $text = preg_replace("/[ \t]+/u", ' ', $text) ?? $text;
         $text = trim(preg_replace("/ *\n */u", "\n", preg_replace("/\n{3,}/", "\n\n", $text) ?? $text) ?? $text);
         return $text !== '' ? $text : null;
+    }
+
+    /**
+     * The rows of an ACF repeater as rows of a repeater field: each column takes the value of its ACF sub-key (text, the address of
+     * a link field, a number as text). A row with nothing in it is left out; null when the value is not a list of rows.
+     *
+     * @param array<string, string> $columns column here => ACF sub-key
+     * @return list<array<string, string>>|null
+     */
+    private static function rows(mixed $value, array $columns): ?array
+    {
+        if (!is_array($value) || !array_is_list($value)) {
+            return null;
+        }
+        $rows = [];
+        foreach ($value as $item) {
+            if (!is_array($item)) {
+                return null;
+            }
+            $row = [];
+            foreach ($columns as $column => $sub) {
+                $cell = array_key_exists($sub, $item) ? self::value($item[$sub]) : null;
+                if (is_string($cell) && $cell !== '') {
+                    $row[$column] = $cell;
+                }
+            }
+            if ($row !== []) {
+                $rows[] = $row;
+            }
+        }
+        return $rows === [] ? null : $rows;
     }
 
     /** A number from a value like 12, "12.5", "12,5" or "12,5 χλμ."; null when there is none. */
