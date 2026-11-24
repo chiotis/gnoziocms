@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.342 — 2026-11-24 — Import tools for every importer: a dry-run preview, one row undone, a stopped import resumed
+- The dry run of the WordPress, WooCommerce and CSV imports says of each row whether it is new, would change (with the lines added and removed), would stay the same or is left out; `import-wordpress` writes it to `out/preview.txt` with the changed lines, and the WooCommerce screen shows it per product.
+- Every import is kept as a run in `storage/import/runs/` (the 30 newest): each file it wrote, and a copy of the file it replaced. Admin › Imports lists the runs and undoes one row: the old file comes back, or the new one goes. A file edited since the import is undone only when asked again; a product needs `shop.manage`.
+- An import that stopped goes on where it was: `--resume` on `import-wordpress` and `import-woocommerce`, and *Go on with the import* on the WooCommerce screen. Rows already written are skipped.
+- Tests: `import-runs` (new), `wordpress-import`, `woocommerce-import`, `content-csv` (unit); `import` (HTTP).
+
 ## 0.1.341 — 2026-11-24 — WordPress importer v2: a type's own fields, categories as their own taxonomy, pictures of other sites, a redirect check
 - A profile fills a custom type's own fields from its pages (`types.<name>.fields`: text, a part of it with `match`, a number, a link, a picture, a list, or a repeater's `rows` such as a book's buy links); `tabs.skip` leaves a tab whose facts went to the fields out of the text, and a field named `date` is the entry's date. `rest_types` fields take `{to, rows}` to bring an ACF repeater into a repeater field.
 - `category_taxonomies` sends a category and the categories under it to a taxonomy of its own (the category kept as a term, or dropped with `root_to`); the old addresses lead to the new terms, and posts and custom types are filed under them.
