@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.342 — 2026-11-24 — Forms: show only when, steps, a rating, archived submissions and two looks
+- A field, heading, paragraph or step can carry `condition: {field, op, value}` (is, not, filled, empty): it is shown only while that field's answer meets the test. The builder has "Show only when…" on each card, renames follow into conditions, and removing a field clears them. The server decides again from what was sent (`FormConditions`): hidden fields are not checked, kept or emailed.
+- A `step` field splits a form into steps with progress, Back and Next (`form-logic.js`, loaded only where needed). Next checks the step's required fields, a step hidden by its condition is skipped, and after a server error the step with it is opened. Without JavaScript every step is shown.
+- A `rating` field of 2 to 10 stars (default 5), shown as "4 / 5" on the Submissions screen and in emails. The Feedback template uses it.
+- Submissions can be archived and restored, one or several at a time, with Inbox and Archived views, a CSV export of the archive and an archived count on the Forms list.
+- A form's Settings offer the compact or stacked look (`style`). MCP `save_form`/`get_form` take and return `style`, `condition`, `step` and `rating`.
+- Tests: `form-logic` (unit, HTTP and JS, new), `form-fields`.
+
 ## 0.1.341 — 2026-11-24 — WordPress importer v2: a type's own fields, categories as their own taxonomy, pictures of other sites, a redirect check
 - A profile fills a custom type's own fields from its pages (`types.<name>.fields`: text, a part of it with `match`, a number, a link, a picture, a list, or a repeater's `rows` such as a book's buy links); `tabs.skip` leaves a tab whose facts went to the fields out of the text, and a field named `date` is the entry's date. `rest_types` fields take `{to, rows}` to bring an ACF repeater into a repeater field.
 - `category_taxonomies` sends a category and the categories under it to a taxonomy of its own (the category kept as a term, or dropped with `root_to`); the old addresses lead to the new terms, and posts and custom types are filed under them.
