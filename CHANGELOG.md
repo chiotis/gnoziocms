@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.342 — 2026-11-24 — Settings, Shop settings, SEO and AI publishing in the Theme's field rows
+- **Settings**, **Shop settings**, **SEO** and **AI publishing** lay out their fields as the Theme sections do: the label in a column on the left, the control on the right with its help under it, checkboxes under the controls, compact boxes (numbers short, lists at most 20rem, texts at most 32rem). On a phone the rows stack.
+- Settings: the storage limit and its unit are one row and Used now another; picture quality and the kinds of file allowed are small cards beside their label; Google Sign-In is a checkbox like the Theme's. The card headings lose the line under them, as on Theme.
+- Shop settings: General, Payments, Accounts, Emails and Marketing. The shipping zones, Product details sections and the email texts stay as they were (they are editors, not rows).
+- AI publishing: Instructions, every card of a schedule, and Settings (OpenAI, Limits). The prices stay a table.
+- SEO: its rows take the Theme's measures (also on Analytics, Omni, Redirects and the content type screen, which share them); a checkbox in a card with rows sits under the controls; Crawling, Identity and Verification are one column of cards. Search and Social keep their preview beside them.
+- One class does it for every screen: `.set-rows` in `public/assets/css/app.css`. No field names or saved values changed.
+
 ## 0.1.341 — 2026-11-24 — WordPress importer v2: a type's own fields, categories as their own taxonomy, pictures of other sites, a redirect check
 - A profile fills a custom type's own fields from its pages (`types.<name>.fields`: text, a part of it with `match`, a number, a link, a picture, a list, or a repeater's `rows` such as a book's buy links); `tabs.skip` leaves a tab whose facts went to the fields out of the text, and a field named `date` is the entry's date. `rest_types` fields take `{to, rows}` to bring an ACF repeater into a repeater field.
 - `category_taxonomies` sends a category and the categories under it to a taxonomy of its own (the category kept as a term, or dropped with `root_to`); the old addresses lead to the new terms, and posts and custom types are filed under them.
