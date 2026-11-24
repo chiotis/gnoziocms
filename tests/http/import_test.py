@@ -43,7 +43,7 @@ status, _, listing = ed.get('/admin/imports')
 check('Imports lists the CSV imports', status == 200 and 'pages: x.csv' in listing and 'CSV' in listing, status)
 run_id = (re.findall(r'/admin/imports\?run=([0-9]{8}-[0-9]{6}-[0-9a-f]{6})', listing) or [''])[-1]
 status, _, detail = ed.get('/admin/imports?run=' + run_id)
-check('a run shows the entry it made, as imported', status == 200 and 'pages/imp-ed.md' in detail and 'As imported' in detail, status)
+check('a run shows the entry it made, as imported', status == 200 and re.search(r'pages/imp-ed(\.[a-z]{2})?\.md', detail) is not None and 'As imported' in detail, (status, re.findall(r'<code[^>]*>([^<]*imp-ed[^<]*)</code>', detail), re.findall(r'ring-1 [^"]*">([^<]+)<', detail)))
 undo = next((f for f in ed.forms(html=detail) if any(x[0] == 'key' for x in f['fields'])), None)
 res = ed.request('/admin/imports', data=[tuple(x) for x in undo['fields']]) if undo else None
 check('undo answers with the run again', res is not None and res[0] in (302, 303), res and res[0])

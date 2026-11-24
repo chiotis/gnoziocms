@@ -246,7 +246,7 @@
         </div>
 
       {% elseif tab == 'crawling' %}
-        <div class="grid items-start gap-3 lg:grid-cols-2">
+        <div class="seo-stack">
           <div class="space-y-3">
             <section class="{{ card }} pb-3" aria-labelledby="seo-h-vis">
               <h2 id="seo-h-vis" class="{{ card_title }}">Visibility</h2>
@@ -293,7 +293,7 @@
         </div>
 
       {% elseif tab == 'identity' %}
-        <div class="grid items-start gap-3 lg:grid-cols-2" data-seo-identity>
+        <div class="seo-stack" data-seo-identity>
           <div class="space-y-3">
             <section class="{{ card }} pb-3" aria-labelledby="seo-h-who">
               <h2 id="seo-h-who" class="{{ card_title }}">Who the site is</h2>
@@ -334,7 +334,7 @@
         </div>
 
       {% elseif tab == 'verification' %}
-        <div class="grid items-start gap-3 lg:grid-cols-2">
+        <div class="seo-stack">
           <section class="{{ card }} pb-3" aria-labelledby="seo-h-ver">
             <h2 id="seo-h-ver" class="{{ card_title }}">Prove you own the site</h2>
             <p class="{{ card_note }}">Each service gives a code, or a whole meta tag: paste either. It is added to the head of every page.</p>

@@ -574,6 +574,50 @@ html.dark .lc-input::placeholder { color: #94a3b8; }
 .lc-fields > label.flex .text-sm { font-size: .75rem; color: #334155; }
 .lc-fields > label.flex .text-xs { font-size: .6875rem; color: #64748b; }
 .lc-fields > .col-span-full { grid-column: auto; }
+/*
+ * The same rows on the other settings screens (Settings, Shop settings, AI publishing): put .set-rows on the box that holds the
+ * fields. Each child that is a field (a div or label.block whose first child is its label) becomes a row: the label in the
+ * 8.5rem column, the control, its help and anything else on the right. label.flex (a checkbox and its words) sits under the
+ * controls. .set-indent starts under the controls too (buttons, a note, a list of addresses); .set-wide spans the whole card;
+ * .set-inline keeps two or three controls on one line.
+ * The doubled class outweighs the grid utilities (sm:grid-cols-2, sm:col-span-2) the markup may still carry.
+ */
+.set-rows.set-rows { display: grid; grid-template-columns: minmax(0, 1fr); gap: .75rem; }
+.set-rows.set-rows > * { grid-column: auto; }
+.set-rows > :is(div, label.block):not(.set-wide):not(.set-indent) { display: grid; grid-template-columns: 8.5rem minmax(0, 1fr); grid-auto-flow: dense; grid-auto-rows: min-content; align-items: start; gap: 0 .75rem; }
+.set-rows > :is(div, label.block):not(.set-wide):not(.set-indent) > :first-child { grid-column: 1; grid-row: 1 / span 6; margin: 0; padding-top: .3rem; color: #4d5d73; font-size: .75rem; font-weight: 500; line-height: 1.125rem; }
+.set-rows > :is(div, label.block):not(.set-wide):not(.set-indent) > :not(:first-child) { grid-column: 2; min-width: 0; }
+.set-rows > :is(div, label.block) > :is(p, span.block, small):not(:first-child) { margin-top: .25rem; color: #64748b; font-size: .6875rem; line-height: 1rem; }
+.set-rows :where(input:not([type="checkbox"], [type="radio"], [type="color"], [type="hidden"]), select, textarea) { width: 100%; max-width: 32rem; padding: .25rem .5rem; border: 1px solid #cbd5e1; border-radius: .375rem; box-shadow: none; font-size: .75rem; line-height: 1.25rem; }
+.set-rows.set-rows select { max-width: 20rem; }
+.set-rows.set-rows input[type="number"], .set-rows.set-rows .set-short { max-width: 10rem; }
+.set-rows .set-inline { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.set-rows .set-inline > :is(input, select) { width: auto; min-width: 0; flex: 0 1 10rem; }
+.set-rows > label.flex { display: flex; flex-direction: row; justify-content: flex-start; align-items: flex-start; gap: .5rem; margin: 0; padding: 0 0 0 9.25rem; border: 0; color: #334155; font-size: .75rem; line-height: 1.125rem; }
+.set-rows > label.flex > input[type="checkbox"] { order: -1; flex: none; width: 1rem; height: 1rem; margin-top: .05rem; }
+.set-rows > label.flex :is(.text-sm, .font-medium) { font-size: .75rem; }
+.set-rows > label.flex :is(.text-xs, .block) { color: #64748b; font-size: .6875rem; font-weight: 400; line-height: 1rem; }
+.set-rows > .set-wide { grid-column: 1 / -1; }
+.set-rows > .set-indent { margin-left: 9.25rem; }
+/* Choices drawn as small cards (picture quality, kinds of file), in the control column. */
+.set-options { display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); gap: .5rem; max-width: 40rem; }
+.set-options > label { display: flex; align-items: flex-start; gap: .5rem; padding: .4rem .6rem; border: 1px solid #e2e8f0; border-radius: .5rem; cursor: pointer; }
+.set-options > label:has(:checked) { border-color: #93c5fd; background: #eff6ff; }
+.set-options > label > input { flex: none; margin-top: .15rem; }
+.set-options strong { display: block; color: #0f172a; font-size: .75rem; font-weight: 500; line-height: 1.125rem; }
+.set-options small { display: block; color: #64748b; font-size: .6875rem; line-height: 1rem; }
+@media (max-width: 480px) {
+  .set-rows > :is(div, label.block):not(.set-wide):not(.set-indent) { grid-template-columns: minmax(0, 1fr); gap: .25rem; }
+  .set-rows > :is(div, label.block):not(.set-wide):not(.set-indent) > :first-child { grid-row: auto; padding-top: 0; }
+  .set-rows > :is(div, label.block):not(.set-wide):not(.set-indent) > :not(:first-child) { grid-column: 1; }
+  .set-rows > label.flex { padding-left: 0; }
+  .set-rows > .set-indent { margin-left: 0; }
+}
+html.dark .set-rows > :is(div, label.block):not(.set-wide):not(.set-indent) > :first-child, html.dark .set-rows > label.flex :is(.text-xs, .block), html.dark .set-rows > :is(div, label.block) > :is(p, span.block, small):not(:first-child), html.dark .set-options small { color: #94a3b8; }
+html.dark .set-rows > label.flex, html.dark .set-options strong { color: #e2e8f0; }
+html.dark .set-rows :where(input:not([type="checkbox"], [type="radio"], [type="color"], [type="hidden"]), select, textarea) { border-color: #334155; }
+html.dark .set-options > label { border-color: #334155; }
+html.dark .set-options > label:has(:checked) { border-color: #2563eb; background: #172554; }
 .lc-unit { position: relative; display: block; }
 .lc-unit .lc-input { padding-right: 1.75rem; }
 .lc-unit em { position: absolute; top: 50%; right: .5rem; transform: translateY(-50%); color: #5f6f85; font-size: .6875rem; font-style: normal; pointer-events: none; }
@@ -674,8 +718,10 @@ html.dark .ep-panel { border-color: #334155; background: #0b1220; }
 @media (min-width: 1200px) { html.dark .ep-panel { background: none; } html.dark .ep-grip::after { background: #475569; } }
 
 /* Admin > SEO (admin/templates/seo.twig, admin-seo.js). */
-.seo-row { display: grid; grid-template-columns: 7.5rem minmax(0, 1fr); align-items: start; gap: .5rem; }
-.seo-label { padding-top: .3rem; font-size: .75rem; font-weight: 500; line-height: 1.25rem; color: #4d5d73; }
+.seo-row { display: grid; grid-template-columns: 8.5rem minmax(0, 1fr); align-items: start; gap: .25rem .75rem; }
+.seo-row .lc-input { max-width: 32rem; }
+.seo-row > .lc-seg { justify-self: start; }
+.seo-label { padding-top: .3rem; font-size: .75rem; font-weight: 500; line-height: 1.125rem; color: #4d5d73; }
 .seo-help { margin: .25rem 0 0; font-size: .6875rem; line-height: 1rem; color: #5f6f85; }
 /* The character count under a search or sharing text: green for a good length, amber for a little short or long, red for too long. */
 .seo-count { margin: .25rem 0 0; font-size: .6875rem; font-weight: 500; line-height: 1rem; font-variant-numeric: tabular-nums; color: #5f6f85; }
@@ -690,6 +736,11 @@ html.dark .seo-count.is-over { color: #fca5a5; }
 .seo-flag input { flex: none; width: 1rem; height: 1rem; margin-top: .15rem; accent-color: #2563eb; }
 .seo-flag strong { display: block; font-size: .8125rem; font-weight: 500; line-height: 1.25rem; color: #0f172a; }
 .seo-flag small { display: block; font-size: .6875rem; line-height: 1rem; color: #5f6f85; }
+/* Beside rows, a checkbox sits under the controls, as in the Theme cards; in a card of checkboxes only it keeps the whole width. */
+:has(> .seo-row) > .seo-flag, section:has(.seo-row) .seo-flag { margin-left: 8.75rem; }
+/* The settings tabs of SEO: one column of cards, as on the Theme screen (Search and Social keep their preview beside). */
+.seo-stack { display: grid; gap: .75rem; align-items: start; }
+.seo-flag strong { font-size: .75rem; line-height: 1.125rem; }
 .seo-var { padding: .0625rem .5rem; border: 1px solid #cbd5e1; border-radius: 999px; background: #fff; color: #334155; font: 500 .6875rem/1.25rem ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; cursor: pointer; }
 .seo-var:hover { border-color: #2563eb; color: #1d4ed8; }
 .seo-types { width: 100%; margin-top: .5rem; border-collapse: collapse; font-size: .75rem; }
@@ -745,7 +796,7 @@ html.dark .seo-count.is-over { color: #fca5a5; }
 .seo-share.is-x.is-small .seo-share-img { aspect-ratio: 1; height: 100%; }
 .seo-share.is-x .seo-share-body { background: #fff; }
 [data-when-type][hidden] { display: none; }
-@media (max-width: 420px) { .seo-row { grid-template-columns: minmax(0, 1fr); gap: .25rem; } .seo-label { padding-top: 0; } }
+@media (max-width: 480px) { .seo-row { grid-template-columns: minmax(0, 1fr); gap: .25rem; } .seo-label { padding-top: 0; } :has(> .seo-row) > .seo-flag, section:has(.seo-row) .seo-flag { margin-left: 0; } }
 html.dark .seo-label { color: #94a3b8; }
 html.dark .seo-help, html.dark .seo-flag small, html.dark .seo-health small, html.dark .seo-stat span, html.dark .seo-check li small, html.dark .seo-sample { color: #94a3b8; }
 html.dark .seo-flag:hover, html.dark .seo-check > summary:hover { background: #1e293b; }

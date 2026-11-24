@@ -46,7 +46,7 @@ Saved working drafts for published pages are not a current priority.
 ## Later
 
 - **Forms**: showing a field only when another has an answer (conditional logic), forms in several steps, and a rating field. The builder, the site's form template and `FormProcessor` would all need to know about a condition, so it is a feature of its own. Submissions: archive actions. Optional: frontend form theme variants (compact/stacked) without changing the form schema.
-- **Import UX**: done in 0.1.342: the dry run's preview of what each row would change, one row undone in Admin › Imports, and an import that stopped resumed (`docs/wordpress-import.md`, *Preview, undo and resume*).
+- **Import UX**: done in 0.1.343: the dry run's preview of what each row would change, one row undone in Admin › Imports, and an import that stopped resumed (`docs/wordpress-import.md`, *Preview, undo and resume*).
 - **Theme**: a switcher in settings with a preview mode; draft preview links; admin-level user management with limits; updates for private repositories. Style references from the owner can refine the design system at any point (tokens and block CSS).
 - **Backups**: a one-click restore-to-staging drill with a periodic restore report; Google Drive as a remote target.
 - **Settings > APIs**: credentials for services the site may use for generated excerpts and content (nothing uses them yet); other map providers' presets.
