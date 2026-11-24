@@ -3434,7 +3434,7 @@ final class App
             return;
         }
 
-        $export = $this->formsAdmin()->export($form, (string)($this->settings['title'] ?? ''));
+        $export = $this->formsAdmin()->export($form, (string)($this->settings['title'] ?? ''), (string)($_GET['view'] ?? '') === 'archived');
         $this->logActivity('forms.export', 'info', 'forms', $slug . ':' . $lang, 'Form submissions exported.', [
             'slug' => $slug,
             'lang' => $lang,
@@ -4656,12 +4656,17 @@ final class App
         $form = $versions[$defaultLang] ?? reset($versions);
 
         if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
-            $result = $this->formsAdmin()->deleteSubmissions($slug, $_POST);
-            $deleted = $result['deleted'];
-            if ($deleted > 0) {
-                $this->logActivity('forms.submission_delete', 'warning', 'forms', $slug, $deleted === 1 ? 'Form submission deleted.' : 'Form submissions deleted.', [
+            $result = $this->formsAdmin()->changeSubmissions($slug, $_POST);
+            $count = $result['count'];
+            if ($count > 0) {
+                $messages = [
+                    'delete' => ['forms.submission_delete', 'warning', $count === 1 ? 'Form submission deleted.' : 'Form submissions deleted.'],
+                    'archive' => ['forms.submission_archive', 'info', $count === 1 ? 'Form submission archived.' : 'Form submissions archived.'],
+                    'restore' => ['forms.submission_restore', 'info', $count === 1 ? 'Form submission restored.' : 'Form submissions restored.'],
+                ][$result['action']];
+                $this->logActivity($messages[0], $messages[1], 'forms', $slug, $messages[2], [
                     'slug' => $slug,
-                    'count' => $deleted,
+                    'count' => $count,
                     'files' => $result['files'],
                     'ids' => array_slice($result['ids'], 0, 50),
                 ]);
@@ -4671,9 +4676,11 @@ final class App
             if (!str_starts_with($return, '/admin/form-submissions')) {
                 $query = [];
             }
-            unset($query['deleted'], $query['error']);
-            unset($query['files']);
-            $query = ['slug' => $slug] + $query + ($deleted > 0 ? ['deleted' => $deleted] + ($result['files'] > 0 ? ['files' => $result['files']] : []) : ['error' => 'Nothing was deleted.']);
+            unset($query['deleted'], $query['archived'], $query['restored'], $query['error'], $query['files']);
+            $done = ['delete' => 'deleted', 'archive' => 'archived', 'restore' => 'restored'][$result['action']] ?? '';
+            $query = ['slug' => $slug] + $query + ($count > 0 && $done !== ''
+                ? [$done => $count] + ($result['files'] > 0 ? ['files' => $result['files']] : [])
+                : ['error' => $result['action'] === 'delete' || $result['action'] === '' ? 'Nothing was deleted.' : 'Nothing was ' . ($result['action'] === 'archive' ? 'archived.' : 'restored.')]);
             $this->redirect('/admin/form-submissions?' . http_build_query($query));
             return;
         }
@@ -4698,6 +4705,11 @@ final class App
             'per_page_options' => FormsAdmin::PER_PAGE_OPTIONS,
             'deleted_count' => (int)($_GET['deleted'] ?? 0),
             'deleted_files' => (int)($_GET['files'] ?? 0),
+            'archived_count' => (int)($_GET['archived'] ?? 0),
+            'restored_count' => (int)($_GET['restored'] ?? 0),
+            'view' => $page['archived'] ? 'archived' : '',
+            'inbox_total' => $page['inbox_total'],
+            'archived_total' => $page['archived_total'],
             'has_file_field' => $page['has_file_field'],
             'error' => trim((string)($_GET['error'] ?? '')),
             'current_url' => $this->currentRequestPath(),

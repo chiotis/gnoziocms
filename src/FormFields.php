@@ -7,8 +7,12 @@ namespace GnozioCMS;
 /** The form editor's field definitions: which types exist, how submitted field rows are cleaned before they are stored, and how stored ones are read back for the form on the site and for the editor. */
 final class FormFields
 {
-    /** Parts of a form that show something and take no answer: they have no value, are not checked, and are not in the emails. */
-    public const DISPLAY = ['heading', 'paragraph'];
+    /** Parts of a form that show something and take no answer: they have no value, are not checked, and are not in the emails. A `step` begins the next step of a form in several steps (FormConditions::steps). */
+    public const DISPLAY = ['heading', 'paragraph', 'step'];
+    /** How many stars a rating has when nothing says, and the fewest and most it may have. */
+    public const RATING_DEFAULT = 5;
+    public const RATING_MIN = 2;
+    public const RATING_MAX = 10;
     /** How wide a field is in the row of the form; a field with none takes the whole row. */
     public const WIDTHS = ['half', 'third', 'two-thirds'];
 
@@ -37,6 +41,13 @@ final class FormFields
         return $clean;
     }
 
+    /** How many stars a rating field has: what it says, kept between RATING_MIN and RATING_MAX. */
+    public static function ratingMax(mixed $value): int
+    {
+        $max = (int)$value;
+        return $max < 1 ? self::RATING_DEFAULT : max(self::RATING_MIN, min(self::RATING_MAX, $max));
+    }
+
     public static function isDisplay(string $type): bool
     {
         return in_array($type, self::DISPLAY, true);
@@ -63,8 +74,10 @@ final class FormFields
             'color',
             'range',
             'file',
+            'rating',
             'heading',
             'paragraph',
+            'step',
         ];
     }
 
@@ -144,8 +157,12 @@ final class FormFields
                 'label' => $label,
             ];
             $width = strtolower(trim((string)($row['width'] ?? '')));
-            if (in_array($width, self::WIDTHS, true) && $type !== 'hidden') {
+            if (in_array($width, self::WIDTHS, true) && $type !== 'hidden' && $type !== 'step') {
                 $field['width'] = $width;
+            }
+            $condition = FormConditions::clean($row['condition'] ?? null);
+            if ($condition !== null) {
+                $field['condition'] = $condition;
             }
             if (self::isDisplay($type)) {
                 $translations = FormTranslations::cleanField($row['translations'] ?? [], [], $languages);
@@ -157,6 +174,19 @@ final class FormFields
             }
             if (Format::isTruthy($row['required'] ?? false)) {
                 $field['required'] = true;
+            }
+            if ($type === 'rating') {
+                $help = trim((string)($row['help'] ?? ''));
+                if ($help !== '') {
+                    $field['help'] = $help;
+                }
+                $field['max'] = (string)self::ratingMax($row['max'] ?? '');
+                $translations = FormTranslations::cleanField($row['translations'] ?? [], [], $languages);
+                if ($translations !== []) {
+                    $field['translations'] = $translations;
+                }
+                $fields[] = $field;
+                continue;
             }
             if ($type === 'file') {
                 $help = trim((string)($row['help'] ?? ''));
@@ -215,7 +245,7 @@ final class FormFields
             }
             $fields[] = $field;
         }
-        return $fields;
+        return FormConditions::prune($fields);
     }
 
     /**
@@ -304,6 +334,16 @@ final class FormFields
                 foreach (self::FILE_TEXTS as $key) {
                     $field[$key] = trim((string)($row[$key] ?? ''));
                 }
+            }
+            if ($type === 'rating') {
+                $field['max'] = (string)self::ratingMax($row['max'] ?? '');
+            }
+            if ($type === 'step') {
+                $field['width'] = '';
+            }
+            $condition = FormConditions::clean($row['condition'] ?? null);
+            if ($condition !== null) {
+                $field['condition'] = $condition;
             }
             $normalized[] = $field;
         }

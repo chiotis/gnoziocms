@@ -1,16 +1,24 @@
 {#
   Frontend form. Every control has a label; help text and errors are tied to the control with
   aria-describedby, invalid controls carry aria-invalid, and the status message is announced.
+  Each part is drawn by components/form-field.twig. A form with `step` parts is shown one step at a time by form-logic.js.
 #}
 {% set form_id = 'form-' ~ form.slug %}
 {% set autocomplete_by_type = {'email': 'email', 'tel': 'tel', 'url': 'url'} %}
 {% set autocomplete_by_name = {'name': 'name', 'full_name': 'name', 'first_name': 'given-name', 'last_name': 'family-name', 'company': 'organization', 'phone': 'tel', 'email': 'email', 'address': 'street-address', 'city': 'address-level2', 'zip': 'postal-code', 'postcode': 'postal-code', 'country': 'country-name'} %}
 {% set has_file_field = form_fields|filter(f => f.type == 'file')|length > 0 %}
+{# Showing a part only for some answers, and steps, need form-logic.js; a form without either loads nothing more. #}
+{% set has_logic = form_fields|filter(f => f.type == 'step' or (f.condition is defined and f.condition))|length > 0 %}
+{# How the form is drawn (Admin > Forms > Settings): as the theme draws it, compact, or stacked (one field to a row). #}
+{% set form_style = form.meta.style|default('') in ['compact', 'stacked'] ? form.meta.style : '' %}
 <div class="form-section">
   {# The styles and the script of the file picker are only loaded by a form that has one. #}
   {% if has_file_field %}
     <link rel="stylesheet" href="{{ theme_asset('css/form-upload.css') }}">
     <script src="{{ theme_asset('js/form-upload.js') }}" defer></script>
+  {% endif %}
+  {% if has_logic %}
+    <script src="{{ theme_asset('js/form-logic.js') }}" defer></script>
   {% endif %}
   {% if form_success %}
     <p class="form-success" role="status">{{ form_message }}</p>
@@ -21,7 +29,7 @@
     <p class="form-error" role="alert">{{ t('form.fix_errors', 'Please check the highlighted fields.') }}</p>
   {% endif %}
 
-  <form method="post" action="{{ url(form_action) }}" class="form-grid" id="{{ form_id }}" novalidate{% if has_file_field %} enctype="multipart/form-data"{% endif %}>
+  <form method="post" action="{{ url(form_action) }}" class="form-grid{% if form_style %} form-style-{{ form_style }}{% endif %}" id="{{ form_id }}" novalidate{% if has_logic %} data-form-logic data-msg-required="{{ t('form.error.required', 'This field is required.') }}"{% endif %}{% if has_file_field %} enctype="multipart/form-data"{% endif %}>
     <input type="hidden" name="form_slug" value="{{ form.slug }}">
     <input type="hidden" name="form_lang" value="{{ form.lang }}">
     {% if form_redirect is defined and form_redirect %}
@@ -33,125 +41,45 @@
       </div>
     {% endif %}
 
-    {% for field in form_fields %}
-      {% set value = form_values[field.name]|default(field.default) %}
-      {% set field_id = form_id ~ '-' ~ field.name %}
-      {% set has_error = form_errors[field.name] is defined %}
-      {% set described = [] %}
-      {% if field.help %}{% set described = described|merge([field_id ~ '-help']) %}{% endif %}
-      {% if has_error %}{% set described = described|merge([field_id ~ '-error']) %}{% endif %}
-      {% set describedby = described|join(' ') %}
-      {% set required_mark %}{% if field.required %} <span class="form-required" aria-hidden="true">*</span>{% endif %}{% endset %}
-      {% set messages %}
-        {% if field.help %}<small id="{{ field_id }}-help">{{ field.help }}</small>{% endif %}
-        {% if has_error %}<small class="form-error" id="{{ field_id }}-error">{{ form_errors[field.name] }}</small>{% endif %}
-      {% endset %}
-
-      {% set width_class = field.width ? ' form-w-' ~ field.width : '' %}
-      {% if field.type == 'hidden' %}
-        <input type="hidden" name="{{ field.name }}" value="{{ value }}">
-      {% elseif field.type == 'heading' %}
-        <h3 class="form-heading{{ width_class }}">{{ field.label }}</h3>
-      {% elseif field.type == 'paragraph' %}
-        <p class="form-text{{ width_class }}">{{ field.label }}</p>
-      {% elseif field.type == 'file' %}
-        {% set lim = field.upload_limits %}
-        {% set many = lim.multiple %}
-        {% set tokens = {'{max}': lim.per_file_text, '{count}': lim.max, '{types}': lim.types_text, '{total}': lim.total_text} %}
-        {% set hint = (many ? t('form.file.hint_many', 'Up to {count} files, {max} each. Allowed: {types}.') : t('form.file.hint_one', 'Up to {max}. Allowed: {types}.'))|replace(tokens) %}
-        {% if many and lim.total %}{% set hint = hint ~ ' ' ~ t('form.file.hint_total', 'Together at most {total}.')|replace(tokens) %}{% endif %}
-        {% set described = described|merge([field_id ~ '-limits']) %}
-        {% set describedby = described|join(' ') %}
-        {% set choose_text = field.button ?: (many ? t('form.file.choose', 'Choose files') : t('form.file.choose_one', 'Choose a file')) %}
-        <div class="form-field form-file{{ width_class }}" data-file-field
-          data-multiple="{{ many ? '1' : '0' }}" data-min="{{ field.required and lim.min < 1 ? 1 : lim.min }}" data-max="{{ lim.max }}"
-          data-max-size="{{ lim.per_file }}" data-max-total="{{ lim.total }}" data-extensions="{{ lim.extensions|join(',') }}"
-          data-size-text="{{ lim.per_file_text }}" data-types-text="{{ lim.types_text }}" data-total-text="{{ lim.total_text }}"
-          data-msg-size="{{ field.error_size ?: t('form.error.file_size', '"{name}" is larger than {max}.') }}"
-          data-msg-total="{{ t('form.error.file_total', 'The files together are larger than {max}.') }}"
-          data-msg-type="{{ field.error_type ?: t('form.error.file_type', '"{name}" is not an accepted kind of file. Allowed: {types}.') }}"
-          data-msg-max="{{ field.error_max ?: t('form.error.file_max', 'You can add at most {count} files.') }}"
-          data-msg-min="{{ field.error_min ?: t('form.error.file_min', 'Please add at least {count} files.') }}"
-          data-msg-required="{{ t('form.file.required', 'Please choose a file.') }}"
-          data-msg-remove="{{ t('form.file.remove', 'Remove {name}') }}" data-msg-removed="{{ t('form.file.removed', '{name} removed.') }}"
-          data-msg-added="{{ t('form.file.added', '{count} added. {total} chosen.') }}">
-          <label for="{{ field_id }}" id="{{ field_id }}-label"><span>{{ field.label }}{{ required_mark }}</span></label>
-          <div class="form-file-zone" data-file-zone>
-            <span class="form-file-drop" data-file-drop hidden>
-              <svg class="form-file-icon" viewBox="0 0 24 24" width="28" height="28" aria-hidden="true" focusable="false"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
-              <span>{{ many ? t('form.file.drop', 'Drag files here, or') : t('form.file.drop_one', 'Drag a file here, or') }}</span>
-            </span>
-            <input type="file" id="{{ field_id }}" name="{{ field.name }}{{ many ? '[]' : '' }}"{% if many %} multiple{% endif %} accept="{{ lim.accept }}"
-              {%- if has_error %} aria-invalid="true"{% endif %} aria-describedby="{{ describedby }}"{% if field.required %} aria-required="true"{% endif %}>
-            <button type="button" class="form-file-button" data-file-choose id="{{ field_id }}-choose" aria-labelledby="{{ field_id }}-choose {{ field_id }}-label" hidden>{{ choose_text }}</button>
-          </div>
-          <ul class="form-file-list" data-file-list aria-label="{{ t('form.file.list', 'Chosen files') }}" hidden></ul>
-          <small id="{{ field_id }}-limits">{{ hint }}</small>
-          {% if field.help %}<small id="{{ field_id }}-help">{{ field.help }}</small>{% endif %}
-          {% if has_error %}<small class="form-error" id="{{ field_id }}-error">{{ form_errors[field.name] }}</small>{% endif %}
-          {% if form_errors is not empty %}<small>{{ t('form.file.reselect', 'Your files were not kept. Please choose them again.') }}</small>{% endif %}
-          <small class="form-error" data-file-error role="alert" hidden></small>
-          <span class="visually-hidden" role="status" aria-live="polite" data-file-status></span>
-        </div>
-      {% elseif field.type == 'textarea' %}
-        <div class="form-field{{ width_class }}">
-          <label for="{{ field_id }}"><span>{{ field.label }}{{ required_mark }}</span></label>
-          <textarea id="{{ field_id }}" name="{{ field.name }}" rows="{{ field.rows|default(5) }}" placeholder="{{ field.placeholder }}"{% if field.required %} required aria-required="true"{% endif %}{% if has_error %} aria-invalid="true"{% endif %}{% if describedby %} aria-describedby="{{ describedby }}"{% endif %}>{{ value }}</textarea>
-          {{ messages }}
-        </div>
-      {% elseif field.type == 'select' %}
-        <div class="form-field{{ width_class }}">
-          <label for="{{ field_id }}"><span>{{ field.label }}{{ required_mark }}</span></label>
-          <select id="{{ field_id }}" name="{{ field.name }}"{% if field.required %} required aria-required="true"{% endif %}{% if has_error %} aria-invalid="true"{% endif %}{% if describedby %} aria-describedby="{{ describedby }}"{% endif %}>
-            <option value="">{{ t('form.select', 'Select') }}</option>
-            {% for option in field.options %}
-              <option value="{{ option.value }}" {% if option.value == value %}selected{% endif %}>{{ option.label }}</option>
-            {% endfor %}
-          </select>
-          {{ messages }}
-        </div>
-      {% elseif field.type == 'radio' or field.type == 'checkboxes' %}
-        {% set selected = value is iterable ? value : [value] %}
-        <fieldset{% if width_class %} class="{{ width_class|trim }}"{% endif %}{% if describedby %} aria-describedby="{{ describedby }}"{% endif %}{% if field.required and field.type == 'radio' %} aria-required="true"{% endif %}>
-          <legend>{{ field.label }}{{ required_mark }}</legend>
-          {% for option in field.options %}
-            <label class="inline">
-              {% if field.type == 'radio' %}
-                <input type="radio" name="{{ field.name }}" value="{{ option.value }}" {% if option.value == value %}checked{% endif %}{% if field.required %} required{% endif %}>
-              {% else %}
-                <input type="checkbox" name="{{ field.name }}[]" value="{{ option.value }}" {% if option.value in selected %}checked{% endif %}>
-              {% endif %}
-              <span>{{ option.label }}</span>
-            </label>
+    {% set has_steps = form_fields|filter(f => f.type == 'step')|length > 0 %}
+    {% if has_steps %}
+      {# A form in several steps: each `step` part begins the next one. Without JavaScript every step is shown, one under the other. #}
+      {%- set steps = [] -%}
+      {%- set current = [] -%}
+      {%- set current_step = null -%}
+      {%- for field in form_fields -%}
+        {%- if field.type == 'step' -%}
+          {%- if current is not empty %}{% set steps = steps|merge([{step: current_step, fields: current}]) %}{% endif -%}
+          {%- set current = [] -%}
+          {%- set current_step = field -%}
+        {%- else -%}
+          {%- set current = current|merge([field]) -%}
+        {%- endif -%}
+      {%- endfor -%}
+      {%- if current is not empty %}{% set steps = steps|merge([{step: current_step, fields: current}]) %}{% endif %}
+      <div class="form-progress" data-form-progress data-text="{{ t('form.step.progress', 'Step {n} of {count}') }}" hidden>
+        <p class="form-progress-text" aria-live="polite" data-form-progress-text></p>
+        <span class="form-progress-bar" aria-hidden="true"><span data-form-progress-bar></span></span>
+      </div>
+      {% for s in steps %}
+        {% set step_id = form_id ~ '-step-' ~ loop.index %}
+        <div class="form-step" role="group" data-form-step{% if s.step %} aria-labelledby="{{ step_id }}"{% if s.step.condition is defined and s.step.condition %} data-condition="{{ s.step.condition|json_encode }}"{% endif %}{% else %} aria-label="{{ t('form.step.progress', 'Step {n} of {count}')|replace({'{n}': loop.index, '{count}': steps|length}) }}"{% endif %}>
+          {% if s.step %}<h3 class="form-step-title" id="{{ step_id }}" tabindex="-1">{{ s.step.label }}</h3>{% endif %}
+          {% for field in s.fields %}
+            {% include 'components/form-field.twig' %}
           {% endfor %}
-          {{ messages }}
-        </fieldset>
-      {% elseif field.type == 'checkbox' %}
-        {% set checked = value == '1' or value == true %}
-        <div class="form-field{{ width_class }}">
-          <label class="inline" for="{{ field_id }}">
-            <input type="checkbox" id="{{ field_id }}" name="{{ field.name }}" value="1" {% if checked %}checked{% endif %}{% if field.required %} required aria-required="true"{% endif %}{% if has_error %} aria-invalid="true"{% endif %}{% if describedby %} aria-describedby="{{ describedby }}"{% endif %}>
-            <span>{{ field.label }}{{ required_mark }}</span>
-          </label>
-          {{ messages }}
+          <div class="form-step-nav" data-form-step-nav hidden>
+            <button type="button" class="form-step-back" data-form-back>{{ t('form.step.back', 'Back') }}</button>
+            <button type="button" class="form-step-next" data-form-next>{{ t('form.step.next', 'Next') }}</button>
+          </div>
         </div>
-      {% else %}
-        {% set autocomplete = autocomplete_by_name[field.name] ?? autocomplete_by_type[field.type] ?? '' %}
-        <div class="form-field{{ width_class }}">
-          <label for="{{ field_id }}"><span>{{ field.label }}{{ required_mark }}</span></label>
-          <input type="{{ field.type }}" id="{{ field_id }}" name="{{ field.name }}" value="{{ value }}" placeholder="{{ field.placeholder }}"
-            {%- if autocomplete %} autocomplete="{{ autocomplete }}"{% endif %}
-            {%- if field.required %} required aria-required="true"{% endif %}
-            {%- if has_error %} aria-invalid="true"{% endif %}
-            {%- if describedby %} aria-describedby="{{ describedby }}"{% endif %}
-            {%- if field.min %} min="{{ field.min }}"{% endif %}
-            {%- if field.max %} max="{{ field.max }}"{% endif %}
-            {%- if field.step %} step="{{ field.step }}"{% endif %}>
-          {{ messages }}
-        </div>
-      {% endif %}
-    {% endfor %}
+      {% endfor %}
+    {% else %}
+      {% for field in form_fields %}
+        {% include 'components/form-field.twig' %}
+      {% endfor %}
+    {% endif %}
 
-    <button type="submit">{{ form.meta.submit_label is defined and form.meta.submit_label ? form.meta.submit_label : t('form.submit', 'Submit') }}</button>
+    <button type="submit" data-form-submit>{{ form.meta.submit_label is defined and form.meta.submit_label ? form.meta.submit_label : t('form.submit', 'Submit') }}</button>
   </form>
 </div>

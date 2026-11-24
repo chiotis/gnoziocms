@@ -107,6 +107,7 @@ final class EntryForm
             'submit_label' => '',
             'success_message' => '',
             'redirect_url' => '',
+            'style' => '',
             'honeypot' => (string)($settings['forms']['antispam']['honeypot'] ?? 'website'),
             'rate_limit_seconds' => (string)($settings['forms']['antispam']['rate_limit_seconds'] ?? 20),
         ];
@@ -208,6 +209,7 @@ final class EntryForm
                 $formSettings['submit_label'] = (string)($meta['submit_label'] ?? '');
                 $formSettings['success_message'] = (string)($meta['success_message'] ?? '');
                 $formSettings['redirect_url'] = (string)($meta['redirect_url'] ?? '');
+                $formSettings['style'] = in_array((string)($meta['style'] ?? ''), ContentEditor::FORM_STYLES, true) ? (string)$meta['style'] : '';
                 $antispam = $meta['antispam'] ?? [];
                 if (is_array($antispam)) {
                     $formSettings['honeypot'] = (string)($antispam['honeypot'] ?? $formSettings['honeypot']);

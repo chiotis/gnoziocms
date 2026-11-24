@@ -8,9 +8,14 @@
   {% set btn_danger = 'inline-flex items-center gap-1.5 rounded-md border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-600 shadow-sm hover:bg-red-50' %}
   {% set icon_button = 'rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700' %}
   {% set icon_danger = 'rounded-md p-1.5 text-red-500 hover:bg-red-50 hover:text-red-600' %}
-  {% set base_query = {'slug': form.slug}|merge(filters|filter(v => v != ''))|merge(per_page != 25 ? {'per_page': per_page} : {}) %}
+  {% set icon_plain = 'rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700' %}
+  {% set archived_view = view == 'archived' %}
+  {% set base_query = {'slug': form.slug}|merge(archived_view ? {'view': 'archived'} : {})|merge(filters|filter(v => v != ''))|merge(per_page != 25 ? {'per_page': per_page} : {}) %}
+  {% set view_tab = 'inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium no-underline' %}
 
   {{ ui.flash(deleted_count > 0 ? ((deleted_count == 1 ? 'Submission deleted.' : deleted_count ~ ' submissions deleted.') ~ (deleted_files > 0 ? ' ' ~ (deleted_files == 1 ? '1 file' : deleted_files ~ ' files') ~ ' deleted with ' ~ (deleted_count == 1 ? 'it.' : 'them.') : '')) : '', 'success') }}
+  {{ ui.flash(archived_count > 0 ? (archived_count == 1 ? 'Submission archived. It is under Archived, with its files.' : archived_count ~ ' submissions archived. They are under Archived, with their files.') : '', 'success') }}
+  {{ ui.flash(restored_count > 0 ? (restored_count == 1 ? 'Submission restored.' : restored_count ~ ' submissions restored.') : '', 'success') }}
   {{ ui.flash(error, 'error') }}
 
   <div class="mb-2 flex items-center gap-2 text-sm text-slate-400">
@@ -23,12 +28,12 @@
 
   <header class="mb-4 flex flex-col gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:items-center sm:justify-between">
     <div class="min-w-0">
-      <p class="truncate text-xs text-slate-400">{{ total_all|number_format }} stored · {{ recent }} in the last 7 days</p>
+      <p class="truncate text-xs text-slate-400">{{ inbox_total|number_format }} stored · {{ recent }} in the last 7 days{% if archived_total %} · {{ archived_total|number_format }} archived{% endif %}</p>
     </div>
     <div class="flex flex-wrap items-center gap-2">
       {{ ui.filter_button('submissionFilter', filters_active) }}
       {% if can('exports.manage') %}
-        <a class="{{ btn_secondary }}" href="{{ url('admin/forms-export?slug=' ~ form.slug ~ '&lang=' ~ form.lang) }}">
+        <a class="{{ btn_secondary }}" href="{{ url('admin/forms-export?slug=' ~ form.slug ~ '&lang=' ~ form.lang ~ (archived_view ? '&view=archived' : '')) }}"{% if archived_view %} title="Exports the archived submissions"{% endif %}>
           <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0l-4-4m4 4l4-4M4 19h16"/></svg>
           Export CSV
         </a>
@@ -37,9 +42,16 @@
     </div>
   </header>
 
+  {# The new submissions, and the ones put aside: archiving takes a submission out of the list and the counts, and keeps it with its files. #}
+  <nav class="mb-4 flex gap-1 border-b border-slate-200" aria-label="Which submissions">
+    <a href="{{ url('admin/form-submissions?slug=' ~ form.slug) }}" class="{{ view_tab }} {{ archived_view ? 'border-transparent text-slate-500 hover:text-slate-800' : 'border-blue-600 text-slate-900' }}"{% if not archived_view %} aria-current="page"{% endif %}>Inbox <span class="rounded-full bg-slate-100 px-1.5 text-xs text-slate-600">{{ inbox_total|number_format }}</span></a>
+    <a href="{{ url('admin/form-submissions?slug=' ~ form.slug ~ '&view=archived') }}" class="{{ view_tab }} {{ archived_view ? 'border-blue-600 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-800' }}"{% if archived_view %} aria-current="page"{% endif %}>Archived <span class="rounded-full bg-slate-100 px-1.5 text-xs text-slate-600">{{ archived_total|number_format }}</span></a>
+  </nav>
+
   <div id="submissionFilter" class="mb-4 rounded-lg border border-slate-200 bg-white p-4 {{ filters_active ? '' : 'hidden' }}">
     <form method="get" action="{{ url('admin/form-submissions') }}" class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <input type="hidden" name="slug" value="{{ form.slug }}">
+      {% if archived_view %}<input type="hidden" name="view" value="archived">{% endif %}
       <label class="block">
         <span class="mb-1 block text-sm font-medium text-slate-700">Search</span>
         <input type="text" name="q" value="{{ filters.q }}" placeholder="Name, email, message…" class="{{ input_class }}">
@@ -68,28 +80,36 @@
         </label>
       {% endif %}
       <div class="flex justify-end gap-2 sm:col-span-2 lg:col-span-4">
-        <a href="{{ url('admin/form-submissions?slug=' ~ form.slug) }}" class="rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100">Reset</a>
+        <a href="{{ url('admin/form-submissions?slug=' ~ form.slug ~ (archived_view ? '&view=archived' : '')) }}" class="rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100">Reset</a>
         <button type="submit" class="{{ btn_primary }}">Apply</button>
       </div>
     </form>
   </div>
 
-  <form method="post" action="{{ url('admin/form-submissions') }}" class="rounded-lg border border-slate-200 bg-white" data-confirm="Delete the selected submissions? This cannot be undone." data-confirm-button="Delete" data-bulk-delete>
+  <form method="post" action="{{ url('admin/form-submissions') }}" class="rounded-lg border border-slate-200 bg-white" data-bulk-form>
     {{ csrf_field() }}
     <input type="hidden" name="slug" value="{{ form.slug }}">
-    <input type="hidden" name="submission_action" value="bulk_delete">
     <input type="hidden" name="return_to" value="{{ current_url }}">
     <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-2.5">
-      <span class="text-sm font-medium text-slate-700">{{ total|number_format }} {{ filters_active ? 'matching' : '' }} submission{{ total == 1 ? '' : 's' }}</span>
+      <span class="text-sm font-medium text-slate-700">{{ total|number_format }} {{ filters_active ? 'matching' : '' }} {{ archived_view ? 'archived ' : '' }}submission{{ total == 1 ? '' : 's' }}</span>
       <div class="flex items-center gap-2">
         {% if rows is not empty %}
-          <button type="submit" class="{{ btn_danger }}">Delete selected</button>
+          {% if archived_view %}
+            <button type="submit" name="submission_action" value="bulk_restore" class="{{ btn_secondary }}">Restore selected</button>
+          {% else %}
+            <button type="submit" name="submission_action" value="bulk_archive" class="{{ btn_secondary }}">Archive selected</button>
+          {% endif %}
+          <button type="submit" name="submission_action" value="bulk_delete" class="{{ btn_danger }}" data-confirm="Delete the selected submissions? This cannot be undone." data-confirm-button="Delete" data-bulk-delete>Delete selected</button>
         {% endif %}
       </div>
     </div>
 
     {% if rows is empty %}
-      {{ ui.empty_state(filters_active ? 'No submissions match these filters' : 'No submissions yet', filters_active ? 'Try a wider date range or clear the search.' : 'Submissions appear here once visitors send this form.') }}
+      {% if archived_view %}
+        {{ ui.empty_state(filters_active ? 'No archived submissions match these filters' : 'Nothing is archived', filters_active ? 'Try a wider date range or clear the search.' : 'Archive a submission you have dealt with: it leaves the inbox and stays here, with its files, until you restore or delete it.') }}
+      {% else %}
+        {{ ui.empty_state(filters_active ? 'No submissions match these filters' : 'No submissions yet', filters_active ? 'Try a wider date range or clear the search.' : 'Submissions appear here once visitors send this form.') }}
+      {% endif %}
     {% else %}
       <div class="overflow-x-auto">
         <table class="w-full text-sm" data-sortable>
@@ -122,6 +142,15 @@
                     <button type="button" data-offcanvas-open="submission-{{ row.id }}" class="{{ icon_button }}" title="View" aria-label="View submission from {{ row.title }}">
                       <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M2.5 12S6 5 12 5s9.5 7 9.5 7-3.5 7-9.5 7-9.5-7-9.5-7z"/><circle cx="12" cy="12" r="3"/></svg>
                     </button>
+                    {% if archived_view %}
+                      <button type="submit" form="archive-submission-{{ row.id }}" class="{{ icon_plain }}" title="Restore" aria-label="Restore submission from {{ row.title }}">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 14L4 9l5-5M4 9h10a6 6 0 010 12h-3"/></svg>
+                      </button>
+                    {% else %}
+                      <button type="submit" form="archive-submission-{{ row.id }}" class="{{ icon_plain }}" title="Archive" aria-label="Archive submission from {{ row.title }}">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7h18v3H3zM5 10v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9M10 14h4"/></svg>
+                      </button>
+                    {% endif %}
                     <button type="submit" form="delete-submission-{{ row.id }}" class="{{ icon_danger }}" title="Delete" aria-label="Delete submission from {{ row.title }}">
                       <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V6"/></svg>
                     </button>
@@ -153,6 +182,13 @@
       {{ csrf_field() }}
       <input type="hidden" name="slug" value="{{ form.slug }}">
       <input type="hidden" name="submission_action" value="delete">
+      <input type="hidden" name="id" value="{{ row.id }}">
+      <input type="hidden" name="return_to" value="{{ current_url }}">
+    </form>
+    <form id="archive-submission-{{ row.id }}" method="post" action="{{ url('admin/form-submissions') }}" hidden>
+      {{ csrf_field() }}
+      <input type="hidden" name="slug" value="{{ form.slug }}">
+      <input type="hidden" name="submission_action" value="{{ archived_view ? 'restore' : 'archive' }}">
       <input type="hidden" name="id" value="{{ row.id }}">
       <input type="hidden" name="return_to" value="{{ current_url }}">
     </form>
@@ -209,7 +245,10 @@
           {% else %}
             <span></span>
           {% endif %}
-          <button type="submit" form="delete-submission-{{ row.id }}" class="{{ btn_danger }}">Delete</button>
+          <span class="flex gap-2">
+            <button type="submit" form="archive-submission-{{ row.id }}" class="{{ btn_secondary }}">{{ archived_view ? 'Restore' : 'Archive' }}</button>
+            <button type="submit" form="delete-submission-{{ row.id }}" class="{{ btn_danger }}">Delete</button>
+          </span>
         </div>
       </aside>
     </div>
@@ -217,14 +256,15 @@
   <script>
     // The confirmation for deleting several submissions says how many files go with them.
     (function () {
-      var form = document.querySelector('[data-bulk-delete]');
-      if (!form) return;
-      var base = form.getAttribute('data-confirm');
+      var form = document.querySelector('[data-bulk-form]');
+      var button = form && form.querySelector('[data-bulk-delete]');
+      if (!button) return;
+      var base = button.getAttribute('data-confirm');
       function update() {
         var boxes = form.querySelectorAll('input[name="selected_ids[]"]:checked');
         var files = 0;
         boxes.forEach(function (box) { files += parseInt(box.getAttribute('data-files'), 10) || 0; });
-        form.setAttribute('data-confirm', files > 0 ? 'Delete the ' + boxes.length + ' selected submission' + (boxes.length === 1 ? '' : 's') + ' and ' + (files === 1 ? 'its 1 attached file' : 'their ' + files + ' attached files') + '? This cannot be undone.' : base);
+        button.setAttribute('data-confirm', files > 0 ? 'Delete the ' + boxes.length + ' selected submission' + (boxes.length === 1 ? '' : 's') + ' and ' + (files === 1 ? 'its 1 attached file' : 'their ' + files + ' attached files') + '? This cannot be undone.' : base);
       }
       form.addEventListener('change', update);
       update();
