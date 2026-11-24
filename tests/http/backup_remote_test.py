@@ -56,7 +56,7 @@ def flash(path):
     return (m.group(1), m.group(2).strip()) if m else (None, '')
 
 # ---- turn remote storage on
-root.submit('/admin/settings', has_field('backup_schedule'), {
+root.submit('/admin/backups?view=settings', has_field('backup_schedule'), {
     'backup_remote_enabled': '1', 'backup_remote_provider': 'custom', 'backup_remote_endpoint': 'http://127.0.0.1:%d' % PORT, 'backup_remote_bucket': 'bk',
     'backup_remote_access_key': 'AK', 'backup_remote_secret_key': 'SK', 'backup_remote_prefix': 'site', 'backup_remote_keep': '20', 'backup_remote_path_style': '1'})
 

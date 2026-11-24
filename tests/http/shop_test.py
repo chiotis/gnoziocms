@@ -48,7 +48,7 @@ st, _, html = root.get('/admin/content-types')
 check('Looks comes on with it', re.search(r'name="type" value="looks">\s*<input type="hidden" name="enabled" value="0"', html) is not None)
 check('the Collections and Product categories taxonomies are written', os.path.isfile('app/content/taxonomies/collections.yaml') and os.path.isfile('app/content/taxonomies/product-categories.yaml'))
 st, _, html = root.get('/admin')
-check('System has Shop settings', 'admin/shop-settings' in html and 'Shop settings' in html)
+check('the Shop group has Products, Looks and Shop settings', 'admin/shop-settings' in html and 'Shop settings' in html and re.search(r'>Shop</p>.*?admin/content\?type=products.*?admin/content\?type=looks.*?admin/shop-settings', html, re.S) is not None)
 st, _, html = root.get('/admin/shop-settings')
 check('the screen opens on General', st == 200 and 'name="order_prefix"' in html and 'name="tax_rates[standard]"' in html, st)
 st, hdr, _ = root.submit('/admin/shop-settings?tab=general', has_field('order_prefix'), {'store_name': 'ALALEON', 'order_prefix': 'al', 'reserve_minutes': '45', 'tax_rates[reduced]': '13', 'store_email': 'orders@example.test'}, drop=['guest_checkout'])
@@ -82,6 +82,17 @@ st, hdr, body = root.get('/admin/shop-import?status=1')
 check('and the import answers how far it is, as JSON', st == 200 and 'application/json' in (hdr.get('Content-Type') or '') and isinstance(json.loads(body), dict), (st, body[:200]))
 check('a plain visit goes back to the tab', (lambda r: r[0] in (302, 303) and 'tab=import' in (r[1].get('Location') or ''))(root.get('/admin/shop-import')))
 check('nor open the screen', ed.get('/admin/shop-settings')[0] == 403)
+
+# ---- products and looks are the shop's: an editor (content.manage, no shop.manage) cannot list, open or save them
+st, _, html = ed.get('/admin')
+check('an editor has no Products or Looks in the menu', 'type=products' not in html and 'type=looks' not in html)
+check('nor can list them', ed.get('/admin/content?type=products')[0] == 403 and ed.get('/admin/content?type=looks')[0] == 403)
+check('nor start one', ed.get('/admin/new?type=products')[0] == 403)
+st, _, _ = ed.request('/admin/save', data=[('type', 'products'), ('slug', 'sneaky'), ('lang', 'el'), ('title', 'Sneaky'), ('_csrf', re.search(r'name="_csrf" value="([^"]+)"', ed.get('/admin/content?type=pages')[2]).group(1))])
+check('nor save one by address', st == 403 and not os.path.exists('app/content/products/sneaky.md'), st)
+check('nor export or import them', ed.get('/admin/export?type=products')[0] == 403 and ed.get('/admin/import?type=looks')[0] == 403)
+st, _, _ = ed.request('/admin/content-bulk', data=[('type', 'products'), ('lang', 'el'), ('bulk_action', 'draft'), ('slugs[]', 'x'), ('_csrf', re.search(r'name="_csrf" value="([^"]+)"', ed.get('/admin/content?type=pages')[2]).group(1))])
+check('nor change them in bulk', st == 403, st)
 
 # ---- a collection and products
 root.submit('/admin/taxonomies?taxonomy=collections', has_field('taxonomy_title'), {

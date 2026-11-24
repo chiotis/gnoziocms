@@ -30,7 +30,7 @@ A site that nobody visits, on a server without FPM and with no cron job, takes n
 
 ## Encryption
 
-**Settings > Backups > Backup passphrase** (none by default). With one, every entry of a new archive (the files, the database,
+**Backups > Settings > Backup passphrase** (none by default). With one, every entry of a new archive (the files, the database,
 the checksum manifest) is encrypted with AES-256 inside the zip, and the same file goes to remote storage. A small plain entry,
 `gnozio-backup-info.json`, holds only the type, reason, date and version, so the list can show what an archive is. ZIP encryption
 hides what the files hold, not their names and sizes. The passphrase is kept in Settings like the other secrets (sealed with
@@ -45,7 +45,7 @@ hides what the files hold, not their names and sizes. The passphrase is kept in 
 
 ## Retention and remote copies
 
-- `Settings > Backups > Backups to keep on this server` limits how many archives stay in `storage/backups/` (all types together). It is a number of backups, not days. Pre-restore safety snapshots never trigger pruning, so the archive being restored cannot be deleted by it.
+- `Backups > Settings > Backups to keep on this server` limits how many archives stay in `storage/backups/` (all types together). It is a number of backups, not days. Pre-restore safety snapshots never trigger pruning, so the archive being restored cannot be deleted by it.
 - With remote storage enabled, each new archive is uploaded (streamed) to the S3-compatible bucket. Remote pruning only deletes GnozioCMS archive names directly under the configured prefix; other objects in the bucket are never touched.
 - `Backups to keep in remote storage` (`backup.remote.keep`, 20 by default) is a separate number, also a count of backups. Right after each successful upload the newest that many stay in the bucket and the older GnozioCMS archives are deleted, so a lower number takes effect with the next backup, not when it is saved.
 - A failed remote upload marks the run as a **warning**. The local archive is kept and the schedule advances.

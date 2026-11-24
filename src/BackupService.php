@@ -50,7 +50,7 @@ final class BackupService
         'public/_custom/',
     ];
 
-    /** Settings > Backups > passphrase: when set, every entry of a new archive is encrypted with it (AES-256, audit S19). */
+    /** Backups > Settings > passphrase: when set, every entry of a new archive is encrypted with it (AES-256, audit S19). */
     private string $passphrase = '';
 
     public function __construct(

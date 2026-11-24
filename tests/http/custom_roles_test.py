@@ -97,6 +97,26 @@ check('a raw HTML permission is a separate one', 'content.raw_html' not in role_
 save_matrix(root, drop=['caps[fotografos][content.manage]'])
 check('and so does taking one away', phot.get('/admin/content?type=pages')[0] in (302, 403))
 
+# ---- Theme has a switch of its own: the look of the site without the site's settings
+save_matrix(root, add=[('fotografos', ['theme.manage'])])
+check('Theme can be given alone', phot.get('/admin/theme')[0] == 200 and phot.get('/admin/settings')[0] in (302, 403))
+st, _, html = phot.get('/admin/theme'); check('with Theme in the menu, under Site, and no Settings entry', '>Site</p>' in html and 'admin/theme"' in html and 'admin/settings"' not in html)
+save_matrix(root, drop=['caps[fotografos][theme.manage]'])
+check('and taken away', phot.get('/admin/theme')[0] in (302, 403))
+save_matrix(root, add=[('fotografos', ['settings.manage'])])
+check('Settings brings Theme with it', 'theme.manage' in role_row('fotografos')['capabilities'] and phot.get('/admin/theme')[0] == 200, role_row('fotografos'))
+save_matrix(root, drop=['caps[fotografos][settings.manage]', 'caps[fotografos][theme.manage]'])
+check('(both taken away again)', phot.get('/admin/theme')[0] in (302, 403) and 'settings.manage' not in role_row('fotografos')['capabilities'], role_row('fotografos'))
+
+# ---- Backups' settings go with Backups, not with Settings
+save_matrix(root, add=[('fotografos', ['backups.manage'])])
+st, _, html = phot.get('/admin/backups?view=settings')
+check('a role with Backups but not Settings opens Backups > Settings', st == 200 and 'name="backup_schedule"' in html, st)
+st, hdr, _ = phot.submit('/admin/backups?view=settings', lambda f: any(x[0] == 'backup_schedule' for x in f['fields']), {'backup_schedule': 'monthly'})
+check('and saves it', st in (302, 303) and 'saved=1' in loc(hdr) and 'monthly' in (db().execute("select value from system_meta where key='site_settings'").fetchone() or [''])[0], (st, loc(hdr)))
+check('but still not Settings or Updates > Source', phot.get('/admin/settings')[0] in (302, 403) and phot.get('/admin/updates?view=settings')[0] in (302, 403))
+save_matrix(root, drop=['caps[fotografos][backups.manage]'])
+
 # ---- a role that was not on the form is left alone
 post(root, action='create_role', label='Late arrival', **{'from': 'editor'})
 before = role_row('late-arrival')['capabilities']

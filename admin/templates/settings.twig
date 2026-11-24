@@ -9,18 +9,8 @@
   {% set primary_button_class = 'inline-flex shrink-0 items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700' %}
   {% set danger_button_class = 'inline-flex shrink-0 items-center gap-1.5 rounded-md border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-600 shadow-sm transition hover:bg-red-50' %}
 
-  {% macro secret_input(name, is_set, input_class, empty_placeholder, lost = false) %}
-    <input type="password" id="{{ name }}" name="{{ name }}" value="" autocomplete="new-password" placeholder="{{ is_set ? 'Saved. Leave blank to keep it.' : (lost ? 'To be entered again' : empty_placeholder) }}" class="{{ input_class }}">
-    {% if lost %}<span class="mt-1 block text-xs text-amber-700">Saved on another server: it cannot be opened here (the site's key is not in backups). Enter it again.</span>{% endif %}
-    {% if is_set %}
-      <span class="mt-1 flex items-center gap-1.5 text-xs text-slate-400">
-        <input type="checkbox" name="clear_secret[]" value="{{ name }}" class="h-3.5 w-3.5 rounded border-slate-300">
-        Remove the saved value
-      </span>
-    {% endif %}
-  {% endmacro %}
 
-  {% import _self as local %}
+  {% import '@admin/partials/secret-input.twig' as local %}
   {% import '@admin/partials/ui.twig' as ui %}
   {% import '@admin/partials/fields.twig' as fields %}
   {% import '@admin/partials/settings-sidebar.twig' as settings_sidebar %}
@@ -34,13 +24,6 @@
     {{ ui.flash('Test email failed. Check your SMTP/SES settings.', 'error') }}
   {% elseif test_status == 'missing' %}
     {{ ui.flash('Please enter a test recipient email.', 'error') }}
-  {% endif %}
-  {% if backup_status == 'ok' %}
-    {{ ui.flash(backup_message ?: 'Backup action completed.', 'success') }}
-  {% elseif backup_status == 'warn' %}
-    {{ ui.flash(backup_message ?: 'Backup saved locally, but the remote upload failed.', 'warning') }}
-  {% elseif backup_status == 'fail' %}
-    {{ ui.flash(backup_message ?: 'Backup action failed.', 'error') }}
   {% endif %}
   {% if settings_error %}
     {{ ui.flash(settings_error, 'error') }}
@@ -354,169 +337,6 @@
         </div>
       </div>
 
-      <div class="{{ panel_class }}{% if active_tab != 'backup' %} hidden{% else %} active{% endif %}" data-panel="backup">
-        <div class="{{ section_class }}">
-          <div class="{{ section_header_class }}">
-            <h2 class="text-sm font-semibold text-slate-900">Backup Schedule</h2>
-            <p class="mt-0.5 text-xs text-slate-400">Automated local snapshot policy.</p>
-          </div>
-          <label class="flex items-start justify-between gap-4 py-2.5">
-            <span>
-              <span class="block text-sm font-medium text-slate-800">Enable automatic backups</span>
-              <span class="block text-xs text-slate-400">Create local restore points on the selected schedule.</span>
-            </span>
-            <span class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center">
-              <input type="checkbox" name="backup_auto_enabled" value="1" {% if settings_form.backup_auto_enabled %}checked{% endif %} class="peer sr-only">
-              <span class="h-5 w-9 rounded-full bg-slate-200 transition peer-checked:bg-blue-600"></span>
-              <span class="absolute left-0.5 h-4 w-4 rounded-full bg-white shadow transition peer-checked:translate-x-4"></span>
-            </span>
-          </label>
-          <div class="mt-3 grid grid-cols-1 gap-3 border-t border-slate-100 pt-3 sm:grid-cols-2">
-            <label class="block">
-              <span class="mb-1 block text-sm font-medium text-slate-700">Frequency</span>
-              <select name="backup_schedule" data-backup-schedule class="{{ select_class }}">
-                <option value="daily" {% if settings_form.backup_schedule == 'daily' %}selected{% endif %}>Daily</option>
-                <option value="weekly" {% if settings_form.backup_schedule == 'weekly' %}selected{% endif %}>Weekly</option>
-                <option value="monthly" {% if settings_form.backup_schedule == 'monthly' %}selected{% endif %}>Monthly</option>
-              </select>
-            </label>
-            <label class="block">
-              <span class="mb-1 block text-sm font-medium text-slate-700">Backups to keep on this server</span>
-              <input type="number" min="1" name="backup_keep_local" value="{{ settings_form.backup_keep_local }}" class="{{ input_class }}" aria-describedby="backup-keep-local-help">
-              <span id="backup-keep-local-help" class="mt-1 block text-xs text-slate-400">The newest this many stay; older ones are deleted after each backup. A number of backups, not days. Remote storage has its own number.</span>
-            </label>
-            <label class="block sm:col-span-2">
-              <span class="mb-1 block text-sm font-medium text-slate-700">Backup passphrase</span>
-              {{ local.secret_input('backup_passphrase', settings_form.backup_passphrase_set, input_class, 'At least 12 characters; none means plain archives', settings_form.backup_passphrase_lost) }}
-              <span class="mt-1 block text-xs text-slate-500">New backups are encrypted with it (AES-256), here and in remote storage. Keep it somewhere safe outside the site: a backup restored on another server needs it, and without it the archive cannot be opened. Earlier backups stay as they were made.</span>
-            </label>
-          </div>
-          <div class="mt-3 flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
-            <p class="text-sm text-slate-500">Last automatic backup: {{ settings_form.backup_last_run ?: 'Never' }}</p>
-            <a href="{{ url('admin/backups') }}" class="{{ secondary_button_class }}">Manage backups</a>
-          </div>
-        </div>
-
-        <div class="{{ section_class }}">
-          <div class="{{ section_header_class }}">
-            <h2 class="text-sm font-semibold text-slate-900">Remote Storage</h2>
-            <p class="mt-0.5 text-xs text-slate-400">S3-compatible destination for offsite copies, including AWS S3, Backblaze B2, Cloudflare R2, Wasabi, DigitalOcean Spaces, and MinIO.</p>
-          </div>
-          <label class="flex items-start justify-between gap-4 py-2.5">
-            <span>
-              <span class="block text-sm font-medium text-slate-800">Enable remote storage</span>
-              <span class="block text-xs text-slate-400">Keep an offsite destination configured for backup uploads.</span>
-            </span>
-            <span class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center">
-              <input type="checkbox" name="backup_remote_enabled" value="1" {% if settings_form.backup_remote_enabled %}checked{% endif %} class="peer sr-only">
-              <span class="h-5 w-9 rounded-full bg-slate-200 transition peer-checked:bg-blue-600"></span>
-              <span class="absolute left-0.5 h-4 w-4 rounded-full bg-white shadow transition peer-checked:translate-x-4"></span>
-            </span>
-          </label>
-          <div class="mt-3 grid grid-cols-1 gap-3 border-t border-slate-100 pt-3 sm:grid-cols-2">
-            <label class="block">
-              <span class="mb-1 block text-sm font-medium text-slate-700">Provider</span>
-              <select name="backup_remote_provider" class="{{ select_class }}">
-                <option value="custom" {% if settings_form.backup_remote_provider == 'custom' %}selected{% endif %}>Custom S3-compatible</option>
-                <option value="aws_s3" {% if settings_form.backup_remote_provider == 'aws_s3' %}selected{% endif %}>AWS S3</option>
-                <option value="backblaze_b2" {% if settings_form.backup_remote_provider == 'backblaze_b2' %}selected{% endif %}>Backblaze B2</option>
-                <option value="cloudflare_r2" {% if settings_form.backup_remote_provider == 'cloudflare_r2' %}selected{% endif %}>Cloudflare R2</option>
-                <option value="wasabi" {% if settings_form.backup_remote_provider == 'wasabi' %}selected{% endif %}>Wasabi</option>
-                <option value="digitalocean_spaces" {% if settings_form.backup_remote_provider == 'digitalocean_spaces' %}selected{% endif %}>DigitalOcean Spaces</option>
-                <option value="minio" {% if settings_form.backup_remote_provider == 'minio' %}selected{% endif %}>MinIO</option>
-              </select>
-            </label>
-            <label class="block">
-              <span class="mb-1 block text-sm font-medium text-slate-700">Endpoint</span>
-              <input type="url" name="backup_remote_endpoint" value="{{ settings_form.backup_remote_endpoint }}" placeholder="https://s3.us-west-004.backblazeb2.com" class="{{ input_class }}">
-            </label>
-            <label class="block">
-              <span class="mb-1 block text-sm font-medium text-slate-700">Region</span>
-              <input type="text" name="backup_remote_region" value="{{ settings_form.backup_remote_region }}" placeholder="us-west-004" class="{{ input_class }}">
-            </label>
-            <label class="block">
-              <span class="mb-1 block text-sm font-medium text-slate-700">Bucket</span>
-              <input type="text" name="backup_remote_bucket" value="{{ settings_form.backup_remote_bucket }}" placeholder="gnoziocms-backups" class="{{ input_class }}">
-            </label>
-            <label class="block">
-              <span class="mb-1 block text-sm font-medium text-slate-700">Access key / key ID</span>
-              <input type="text" name="backup_remote_access_key" value="{{ settings_form.backup_remote_access_key }}" autocomplete="off" class="{{ input_class }}">
-            </label>
-            <label class="block">
-              <span class="mb-1 block text-sm font-medium text-slate-700">Secret key</span>
-              {{ local.secret_input('backup_remote_secret_key', settings_form.backup_remote_secret_key_set, input_class, '', settings_form.backup_remote_secret_key_lost) }}
-            </label>
-            <label class="block">
-              <span class="mb-1 block text-sm font-medium text-slate-700">Path prefix</span>
-              <input type="text" name="backup_remote_prefix" value="{{ settings_form.backup_remote_prefix }}" placeholder="sites/main" class="{{ input_class }}">
-            </label>
-            <label class="block">
-              <span class="mb-1 block text-sm font-medium text-slate-700">Backups to keep in remote storage</span>
-              <input type="number" min="1" name="backup_remote_keep" value="{{ settings_form.backup_remote_keep }}" class="{{ input_class }}" aria-describedby="backup-keep-remote-help">
-              <span id="backup-keep-remote-help" class="mt-1 block text-xs text-slate-400">The newest this many stay in the bucket; older ones are deleted right after each upload, so a lower number takes effect with the next backup. A number of backups, not days. Separate from the number on this server.</span>
-            </label>
-          </div>
-          <div class="mt-3 border-t border-slate-100 pt-3">
-            <label class="inline-flex items-center gap-2 text-sm text-slate-700">
-              <input type="checkbox" name="backup_remote_keep_local" value="1" {% if settings_form.backup_remote_keep_local %}checked{% endif %} class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500">
-              Also keep a copy on this server
-            </label>
-            <p class="mt-1 text-xs text-slate-500">Off by default: a scheduled or manual backup is removed from this server once it is safely in remote storage (if the upload fails, it stays). Backups made before an update or a restore always stay on the server. Backups kept only remotely are not listed under Local backups; on the Backups screen, superadmins can list what is in remote storage and fetch one to this server, then restore it from there.</p>
-          </div>
-          <div class="mt-3 flex flex-col gap-3 border-t border-slate-100 pt-3 sm:flex-row sm:items-center sm:justify-between">
-            <label class="inline-flex items-center gap-2 text-sm text-slate-700">
-              <input type="checkbox" name="backup_remote_path_style" value="1" {% if settings_form.backup_remote_path_style %}checked{% endif %} class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500">
-              Use path-style URLs
-            </label>
-            <button type="submit" name="test_remote_backup" value="1" class="{{ secondary_button_class }}">
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-              Test connection
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div class="{{ panel_class }}{% if active_tab != 'updates' %} hidden{% else %} active{% endif %}" data-panel="updates">
-        <div class="{{ section_class }}">
-          <div class="{{ section_header_class }}">
-            <h2 class="text-sm font-semibold text-slate-900">Update Source</h2>
-            <p class="mt-0.5 text-xs text-slate-400">GitHub repository the Updates screen looks at, and installs new versions from.</p>
-          </div>
-          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label class="block">
-              <span class="mb-1 block text-sm font-medium text-slate-700">Repository</span>
-              <input type="text" name="update_repository" value="{{ settings_form.update_repository }}" placeholder="chiotis/gnoziocms" class="{{ input_class }}">
-            </label>
-            <label class="block">
-              <span class="mb-1 block text-sm font-medium text-slate-700">Branch</span>
-              <input type="text" name="update_branch" value="{{ settings_form.update_branch }}" placeholder="main" class="{{ input_class }}">
-            </label>
-            <label class="block sm:col-span-2">
-              <span class="mb-1 block text-sm font-medium text-slate-700">VERSION URL</span>
-              <input type="url" name="update_version_url" value="{{ settings_form.update_version_url }}" placeholder="https://raw.githubusercontent.com/chiotis/gnoziocms/main/VERSION" class="{{ input_class }}">
-            </label>
-            <label class="block sm:col-span-2">
-              <span class="mb-1 block text-sm font-medium text-slate-700">CHANGELOG URL</span>
-              <input type="url" name="update_changelog_url" value="{{ settings_form.update_changelog_url }}" placeholder="https://raw.githubusercontent.com/chiotis/gnoziocms/main/CHANGELOG.md" class="{{ input_class }}">
-            </label>
-            <label class="block sm:col-span-2">
-              <span class="mb-1 block text-sm font-medium text-slate-700">Package URL</span>
-              <input type="url" name="update_package_url" value="{{ settings_form.update_package_url }}" placeholder="https://github.com/chiotis/gnoziocms/archive/refs/heads/main.zip" class="{{ input_class }}">
-            </label>
-            <label class="block sm:col-span-2">
-              <span class="mb-1 block text-sm font-medium text-slate-700">Release manifest URL</span>
-              <input type="url" name="update_release_url" value="{{ settings_form.update_release_url }}" placeholder="https://github.com/chiotis/gnoziocms/releases/latest/download/release.json" class="{{ input_class }}">
-              <span class="mt-1 block text-xs text-slate-400">Where the package to install is described (its version, size and checksum). Leave blank to use the latest release of the repository above.</span>
-            </label>
-            <label class="block sm:col-span-2">
-              <span class="mb-1 block text-sm font-medium text-slate-700">GitHub token</span>
-              {{ local.secret_input('update_github_token', settings_form.update_github_token_set, input_class, 'Required only for private repositories', settings_form.update_github_token_lost) }}
-              <span class="mt-1 block text-xs text-slate-400">Needed when the repository is private. Leave blank to keep the existing token.</span>
-            </label>
-          </div>
-        </div>
-      </div>
-
       <div class="{{ panel_class }}{% if active_tab != 'apis' %} hidden{% else %} active{% endif %}" data-panel="apis">
         {% if youtube_status == 'ok' %}
           {{ ui.flash(youtube_message ?: 'The key works.', 'success') }}
@@ -617,20 +437,4 @@
   </form>
   {% endif %}
 
-  <script>
-    (function () {
-      const backupToggle = document.querySelector('input[name="backup_auto_enabled"]');
-      const backupSchedule = document.querySelector('[data-backup-schedule]');
-
-      const syncBackupScheduleState = () => {
-        if (!backupToggle || !backupSchedule) return;
-        backupSchedule.disabled = !backupToggle.checked;
-      };
-
-      if (backupToggle && backupSchedule) {
-        backupToggle.addEventListener('change', syncBackupScheduleState);
-        syncBackupScheduleState();
-      }
-    })();
-  </script>
 {% endblock %}

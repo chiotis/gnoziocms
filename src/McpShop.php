@@ -53,14 +53,14 @@ final class McpShop
         $variant = $str('The variant, by its combination as list_products or get_product gives it (such as "Gold / M"). Leave it out for the product itself.');
         return [
             'shop_info' => [
-                'scopes' => $read, 'permission' => 'content.manage', 'shop' => true, 'title' => 'About the shop',
+                'scopes' => $read, 'permission' => 'shop.manage', 'shop' => true, 'title' => 'About the shop',
                 'description' => 'The shop\'s currency and VAT rates, the fields of a product, its categories and collections with their term ids, '
                     . 'and this connection\'s limits (how far a price may move in one change, shop changes left in 24 hours). Call it before working on the shop.',
                 'inputSchema' => ['type' => 'object', 'properties' => new \stdClass(), 'additionalProperties' => false],
                 'annotations' => $ro,
             ],
             'list_products' => [
-                'scopes' => $read, 'permission' => 'content.manage', 'shop' => true, 'title' => 'List products',
+                'scopes' => $read, 'permission' => 'shop.manage', 'shop' => true, 'title' => 'List products',
                 'description' => 'Products, newest first, drafts included: price, "was" price, whether on sale, variants and stock. Filters combine.',
                 'inputSchema' => $schema([
                     'category' => $str('Only products in this product category (term id, see shop_info).'),
@@ -76,13 +76,13 @@ final class McpShop
                 'annotations' => $ro,
             ],
             'get_product' => [
-                'scopes' => $read, 'permission' => 'content.manage', 'shop' => true, 'title' => 'Read a product',
+                'scopes' => $read, 'permission' => 'shop.manage', 'shop' => true, 'title' => 'Read a product',
                 'description' => 'One product in full: its entry (text, fields, terms, pictures, translations, updated_at) and, for each variant, its price, "was" price, SKU and stock.',
                 'inputSchema' => $schema(['product' => $product, 'lang' => $str('The language of the text; the default when left out. Prices and stock are the same in every language.')], ['product']),
                 'annotations' => $ro,
             ],
             'update_prices' => [
-                'scopes' => $write, 'permission' => 'content.manage', 'shop' => true, 'title' => 'Change prices and sales',
+                'scopes' => $write, 'permission' => 'shop.manage', 'shop' => true, 'title' => 'Change prices and sales',
                 'description' => 'Changes the prices of up to ' . self::MAX_BATCH . ' products or variants at once. Each change gives price and/or compare_at_price (the "was" price shown struck through), '
                     . 'or sale_price (starts a sale: the current price becomes the "was" price), or end_sale (the "was" price becomes the price again). '
                     . 'With dry_run (the default) nothing is saved: you get the table of what would change. Check it, then call again with dry_run false. '
@@ -100,7 +100,7 @@ final class McpShop
                 'annotations' => ['readOnlyHint' => false, 'destructiveHint' => true, 'idempotentHint' => false, 'openWorldHint' => false],
             ],
             'set_stock' => [
-                'scopes' => $write, 'permission' => 'content.manage', 'shop' => true, 'title' => 'Set stock',
+                'scopes' => $write, 'permission' => 'shop.manage', 'shop' => true, 'title' => 'Set stock',
                 'description' => 'Sets what is on hand of up to ' . self::MAX_BATCH . ' products or variants: on_hand (the count) or adjust (+5 when goods come in, -2 for breakage). '
                     . 'Pieces held for orders waiting to be paid are kept apart. Stock counts only for a product whose track_stock is on (update_entry sets it).',
                 'inputSchema' => $schema([
@@ -115,13 +115,13 @@ final class McpShop
             ],
         ] + [
             'archive_product' => [
-                'scopes' => $write, 'permission' => 'content.manage', 'shop' => true, 'title' => 'Take a product off sale',
+                'scopes' => $write, 'permission' => 'shop.manage', 'shop' => true, 'title' => 'Take a product off sale',
                 'description' => 'Makes the product a draft in every language: it leaves the shop and its page, and is kept with its history, prices and stock. update_entry with status published puts it back (that needs content:publish).',
                 'inputSchema' => $schema(['product' => $product], ['product']),
                 'annotations' => ['readOnlyHint' => false, 'destructiveHint' => true, 'idempotentHint' => true, 'openWorldHint' => false],
             ],
             'delete_product' => [
-                'scopes' => [McpOAuth::SCOPE_SHOP_DELETE], 'permission' => 'content.manage', 'shop' => true, 'title' => 'Delete a product',
+                'scopes' => [McpOAuth::SCOPE_SHOP_DELETE], 'permission' => 'shop.manage', 'shop' => true, 'title' => 'Delete a product',
                 'description' => 'Deletes the product in every language, as Delete in the admin does: its text stays in the history, from where a person can bring it back. '
                     . 'Prefer archive_product, which keeps it. Visitors of its address are sent to redirect_to.',
                 'inputSchema' => $schema([

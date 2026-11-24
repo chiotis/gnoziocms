@@ -27,13 +27,15 @@ def groups(side):
 
 st, _, html = root.get('/admin')
 side = sidebar(html); g = groups(side)
-check('the sidebar has Overview, Content, Manage and System sections in that order', list(g)[:4] == ['Overview', 'Content', 'Manage', 'System'], list(g))
+names = lambda label: [n.replace('&amp;', '&') for n, _ in g.get(label, [])]
+check('the sidebar has Overview, Content, Site and System, as the Roles screen groups them', [x for x in g if x != 'Shop'] == ['Overview', 'Content', 'Site', 'System'], list(g))
 check('Content is a heading, not a link to everything', not re.search(r'href="[^"]*admin/content"[^>]*>\s*<svg.*?</svg>\s*Content\s*</a>', side, re.S))
-names = [n for n, _ in g['Content']]
-check('under Content: Pages, Posts, Projects, then Media', names == ['Pages', 'Posts', 'Projects', 'Media'], g['Content'])
+check('under Overview: Dashboard and Analytics', names('Overview') == ['Dashboard', 'Analytics'], g.get('Overview'))
+check('under Content: Publishing calendar, the types, Media, Taxonomies and History', names('Content') == ['Publishing calendar', 'Pages', 'Posts', 'Projects', 'Media', 'Taxonomies', 'History'], g['Content'])
 check('each content type is a menu item with its icon', all(('?type=' + t) in dict((n, u) for n, u in g['Content'])[n.title()] for n, t in (('Pages', 'pages'), ('Posts', 'posts'), ('Projects', 'projects'))) and side.count('<svg') >= 10, g['Content'])
-check('Media moved out of Manage', 'Media' not in [n for n, _ in g['Manage']], g['Manage'])
-check('Manage keeps Forms, Menus, Taxonomies', all(x in [n for n, _ in g['Manage']] for x in ('Forms', 'Menus', 'Taxonomies')), g['Manage'])
+check('under Site: Theme, Menus, Forms, SEO, Redirects, Translations, AI publishing', names('Site') == ['Theme', 'Menus', 'Forms', 'SEO', 'Redirects', 'Translations', 'AI publishing'], g.get('Site'))
+check('under System: Content types, Users & Roles, Logs, Backups, Updates, System status, Settings', names('System') == ['Content types', 'Users & Roles', 'Logs', 'Backups', 'Updates', 'System status', 'Settings'], g.get('System'))
+check('there is no Manage group any more', 'Manage' not in g, list(g))
 check('the small indented list of types is gone', 'pl-6' not in side)
 
 for path, active in (('/admin/content?type=posts', 'Posts'), ('/admin/content?type=projects', 'Projects'), ('/admin/media', 'Media'), ('/admin/edit?type=pages&slug=about&lang=en', 'Pages')):
@@ -44,7 +46,15 @@ for path, active in (('/admin/content?type=posts', 'Posts'), ('/admin/content?ty
 
 st, _, html = ed.get('/admin')
 g = groups(sidebar(html))
-check('an editor sees Content with the types and Media, and no Forms or Menus', [n for n, _ in g.get('Content', [])] == ['Pages', 'Posts', 'Projects', 'Media'] and 'Forms' not in [n for n, _ in g.get('Manage', [])], g)
+check('an editor sees only Overview and Content: no empty Site or System heading', list(g) == ['Overview', 'Content'], list(g))
+check('with the content they work on', [n for n, _ in g.get('Content', [])] == ['Publishing calendar', 'Pages', 'Posts', 'Projects', 'Media', 'Taxonomies', 'History'], g)
+check('and no Forms, Menus or Theme', not {'Forms', 'Menus', 'Theme'} & {n for items in g.values() for n, _ in items}, g)
+
+# a basic user (sign-in and own profile only) gets no group headings at all
+root.submit('/admin/users-edit', has_field('username'), {'username': 'basic1', 'email': 'basic1@example.test', 'display_name': 'basic1', 'role': 'user', 'status': 'active', 'password': 'Sturdy-pass-99', 'password_confirm': 'Sturdy-pass-99'})
+basic = Client(); basic.login('basic1', 'Sturdy-pass-99')
+st, _, html = basic.get('/admin')  # refused, but drawn with the menu
+check('a basic user sees no empty headings', st == 403 and '<aside' in html and groups(sidebar(html)) == {}, (st, groups(sidebar(html))))
 
 print('\nALL PASSED' if not fails else '\n%d FAILED: %s' % (len(fails), fails))
 sys.exit(1 if fails else 0)

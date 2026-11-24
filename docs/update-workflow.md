@@ -57,7 +57,7 @@ The Install button on Admin > Updates installs a release package with every safe
 }
 ```
 
-The Release workflow runs the script on PHP 8.5 when `VERSION` changes and attaches both files, and `installer.php`, to the GitHub Release. Releases remain independent of the full test suite: pushes and packages do not wait for CI. The Tests workflow runs on PHP 8.5, cancels superseded runs, and publishes a result summary and diagnostic logs; see [tests/README.md](../tests/README.md) for investigating failures. The site reads `https://github.com/<repository>/releases/latest/download/release.json` (or the address in Settings > Updates), validates it (`UpdateService::validateManifest`: version, PHP, https address, SHA-256, size within 100 MB) and keeps it for as long as the update status.
+The Release workflow runs the script on PHP 8.5 when `VERSION` changes and attaches both files, and `installer.php`, to the GitHub Release. Releases remain independent of the full test suite: pushes and packages do not wait for CI. The Tests workflow runs on PHP 8.5, cancels superseded runs, and publishes a result summary and diagnostic logs; see [tests/README.md](../tests/README.md) for investigating failures. The site reads `https://github.com/<repository>/releases/latest/download/release.json` (or the address in Updates > Source), validates it (`UpdateService::validateManifest`: version, PHP, https address, SHA-256, size within 100 MB) and keeps it for as long as the update status.
 
 The workflow passes its current `GITHUB_REPOSITORY` to the builder. Outside GitHub Actions the builder defaults to `chiotis/gnoziocms`; `--repo=owner/name` still overrides it for a fork or a local test.
 

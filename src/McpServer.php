@@ -150,6 +150,10 @@ final class McpServer
             if (!$this->mayUse($tool, $connection)) {
                 throw new \InvalidArgumentException('This connection may not use ' . $name . '.');
             }
+            // The shop's products and looks are the shop's (their prices and stock): an account needs shop.manage for them.
+            if (in_array((string)($arguments['type'] ?? ''), PermissionService::SHOP_TYPES, true) && !($this->can)($connection, 'shop.manage')) {
+                throw new \InvalidArgumentException('This connection\'s account may not work on ' . (string)$arguments['type'] . ': that needs the shop permission.');
+            }
             $data = match (true) {
                 $name === 'site_info' => ($this->siteInfo)($connection),
                 !empty($tool['shop']) => ($this->shopTools() ?? throw new \InvalidArgumentException('The shop is off on this site.'))->call($name, $arguments, $connection),

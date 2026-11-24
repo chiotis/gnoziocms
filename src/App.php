@@ -1495,6 +1495,14 @@ final class App
             $this->renderForbidden();
             return;
         }
+        // Bulk changes, import and export name their type in the request: the shop's products and looks need shop.manage.
+        if (in_array($action, ['content-bulk', 'import', 'export'], true)) {
+            $askedType = Slug::plain((string)($_POST['type'] ?? $_GET['type'] ?? ''));
+            if ($askedType !== '' && $askedType !== 'forms' && !$this->canAccessContentType($askedType)) {
+                $this->denyContentType($askedType);
+                return;
+            }
+        }
 
         // The work that falls due runs after the screen is sent, where the response can be finished first (PHP-FPM,
         // LiteSpeed); elsewhere before it, as the only place it would run without the cron job.
@@ -2103,6 +2111,21 @@ final class App
             return;
         }
 
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (string)($_POST['settings_section'] ?? '') === 'backup') {
+            $this->redirect($this->settingsAdmin()->saveSection($_POST, 'backup'));
+            return;
+        }
+        if ((string)($_GET['view'] ?? '') === 'settings') {
+            $this->render('@admin/backup-settings.twig', $this->settingsAdmin()->sectionScreen($_GET) + [
+                'title' => 'Backup settings',
+                'types' => $this->content->getTypes(),
+                'user' => $this->auth->user(),
+                'admin_section' => 'backups',
+                'current_type' => 'pages',
+            ]);
+            return;
+        }
+
         if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             $action = trim((string)($_POST['backup_action'] ?? ''));
             if ($action === 'restore') {
@@ -2201,6 +2224,20 @@ final class App
 
     private function handleUpdates(): void
     {
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (string)($_POST['settings_section'] ?? '') === 'updates') {
+            $this->redirect($this->settingsAdmin()->saveSection($_POST, 'updates'));
+            return;
+        }
+        if ((string)($_GET['view'] ?? '') === 'settings') {
+            $this->render('@admin/update-settings.twig', $this->settingsAdmin()->sectionScreen($_GET) + [
+                'title' => 'Update source',
+                'types' => $this->content->getTypes(),
+                'user' => $this->auth->user(),
+                'admin_section' => 'updates',
+                'current_type' => 'pages',
+            ]);
+            return;
+        }
         $admin = $this->updateAdmin();
         if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             $action = trim((string)($_POST['updates_action'] ?? ''));
@@ -2321,6 +2358,11 @@ final class App
 
     private function handleAdminList(): void
     {
+        $askedType = Slug::plain((string)($_GET['type'] ?? 'pages')) ?: 'pages';
+        if ($askedType !== 'forms' && !$this->canAccessContentType($askedType)) {
+            $this->denyContentType($askedType);
+            return;
+        }
         $result = $this->contentAdmin()->listing($_GET, $this->permissions->can($this->auth->user(), 'redirects.manage'));
         if ($result['location'] !== '') {
             $this->redirect($result['location']);
@@ -2492,9 +2534,13 @@ final class App
      * Content of some types needs more than content.manage: forms hold visitors' personal data and decide
      * where notifications are sent, so only those who manage forms may open, change, or delete them.
      */
+    /** Forms need forms.manage (their submissions hold visitors' data); the shop's products and looks need shop.manage. */
     private function canAccessContentType(string $type): bool
     {
-        return $type !== 'forms' || $this->permissions->can($this->auth->user(), 'forms.manage');
+        if ($type === 'forms') {
+            return $this->permissions->can($this->auth->user(), 'forms.manage');
+        }
+        return $this->permissions->canManageType($this->auth->user(), $type);
     }
 
     private function denyContentType(string $type): void
@@ -2748,6 +2794,12 @@ final class App
         if (strtolower((string)($_GET['tab'] ?? '')) === 'theme' && !$post) {
             // The theme has its own page now.
             $this->redirect('/admin/theme');
+            return;
+        }
+        // Backups' and Updates' settings are on those screens now, under their own permissions.
+        $moved = SettingsAdmin::SECTIONS[strtolower((string)($_GET['tab'] ?? ''))] ?? null;
+        if ($moved !== null && !$post) {
+            $this->redirect($moved);
             return;
         }
         $downloadBackup = trim((string)($_GET['download_backup'] ?? ''));

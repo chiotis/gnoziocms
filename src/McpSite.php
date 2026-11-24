@@ -118,11 +118,11 @@ final class McpSite
                 'items' => ['type' => 'array', 'maxItems' => MenuAdmin::MAX_ITEMS, 'items' => $item],
                 'places' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'Places of the theme to show it in (list_menus gives them, such as "header"); left out: where it is now. Needs settings.manage.'],
             ], ['menu', 'items']), ['readOnlyHint' => false, 'destructiveHint' => true, 'idempotentHint' => true, 'openWorldHint' => false]),
-            'get_theme_settings' => $tool($read, 'settings.manage', 'Read the Theme settings', 'The settings of Admin > Theme, by section: each field\'s kind, label, choices, '
+            'get_theme_settings' => $tool($read, 'theme.manage', 'Read the Theme settings', 'The settings of Admin > Theme, by section: each field\'s kind, label, choices, '
                 . 'value now, and whether it can be changed here (lists, links and galleries are changed in the admin).', $schema([
                 'section' => $str('Only this section.'),
             ], []), $ro),
-            'update_theme_settings' => $tool($write, 'settings.manage', 'Change the Theme settings', 'Changes the Theme settings given, by section and field: {"header": {"sticky": true}, "colors": {"accent": "#0055aa"}}. '
+            'update_theme_settings' => $tool($write, 'theme.manage', 'Change the Theme settings', 'Changes the Theme settings given, by section and field: {"header": {"sticky": true}, "colors": {"accent": "#0055aa"}}. '
                 . 'What is left out stays as it is. Every value is checked; nothing is saved while one is wrong.', $schema([
                 'settings' => ['type' => 'object', 'description' => 'Section => field => value, as get_theme_settings names them.'],
             ], ['settings']), ['readOnlyHint' => false, 'destructiveHint' => false, 'idempotentHint' => true, 'openWorldHint' => false]),

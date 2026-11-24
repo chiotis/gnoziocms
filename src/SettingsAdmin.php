@@ -6,14 +6,19 @@ namespace GnozioCMS;
 
 /**
  * What the Settings screen does with a submitted form: saving the site settings, noting when the storage or upload
- * limits changed, saving the theme settings the form carries, and the three actions a button of the form asks for
- * (send a test email, test the remote backup, make a backup now). Where the screen goes next is returned. The
+ * limits changed, saving the theme settings the form carries, and the actions a button of the form asks for (send a
+ * test email, test the YouTube key). The settings of backups and of updates live on the Backups and Updates screens,
+ * under the permission of each (saveSection(): test the remote backup, make a backup now). Where the screen goes next
+ * is returned. The
  * things that live in the running site (the settings it holds, the theme settings, sending mail) are handed in as
  * closures, so the class does not know how they are kept.
  */
 final class SettingsAdmin
 {
-    public const TABS = ['basics', 'apis', 'smtp', 'auth', 'backup', 'updates', 'limits'];
+    public const TABS = ['basics', 'apis', 'smtp', 'auth', 'limits'];
+
+    /** The parts of the settings kept on a screen of their own (backups.manage, updates.manage), and where that is. */
+    public const SECTIONS = ['backup' => '/admin/backups?view=settings', 'updates' => '/admin/updates?view=settings'];
 
     /**
      * @param \Closure(): SiteLimits $limits
@@ -73,7 +78,7 @@ final class SettingsAdmin
         $limits = ($this->limits)();
         $limitBefore = (int)((($this->settings)())['limits']['storage_mb'] ?? 1024);
         $uploadBefore = [$limits->uploadLimitMb(), $this->media->allowedGroups()];
-        if (!$this->store->save($raw, $form)) {
+        if (!$this->store->save($raw, $form, null, array_keys(self::SECTIONS))) {
             return '/admin/settings?' . http_build_query([
                 'tab' => $activeTab,
                 'settings_error' => 'Settings could not be saved because the SQLite system database is unavailable.',
@@ -104,13 +109,49 @@ final class SettingsAdmin
             ($this->log)($result['ok'] ? 'apis.youtube_test_success' : 'apis.youtube_test_failure', $result['ok'] ? 'info' : 'warning', 'settings', 'youtube', 'YouTube key tested: ' . $result['message'], []);
             return '/admin/settings?' . http_build_query(['saved' => '1', 'tab' => 'apis', 'youtube' => $result['ok'] ? 'ok' : 'fail', 'youtube_msg' => $result['message']]);
         }
-        if (isset($post['test_remote_backup'])) {
+        return '/admin/settings?saved=1&tab=' . urlencode($activeTab);
+    }
+
+    /**
+     * Saves the settings of one screen of its own (`backup` on Backups, `updates` on Updates) and nothing else, then does
+     * what a button of it asks for.
+     *
+     * @param array<string, mixed> $post
+     */
+    public function saveSection(array $post, string $section): string
+    {
+        $back = self::SECTIONS[$section] ?? throw new \InvalidArgumentException('Unknown settings section: ' . $section);
+        $raw = $this->store->raw('site_settings', $this->store->defaults());
+        if (!$this->store->save($raw, SiteSettings::formFromPost($post), [$section])) {
+            return $back . '&' . http_build_query(['settings_error' => 'Settings could not be saved because the SQLite system database is unavailable.']);
+        }
+        $settings = $this->store->load();
+        ($this->applySettings)($settings);
+        ($this->log)('settings.update', 'info', 'settings', $section, 'Settings updated.', ['tab' => $section]);
+        if ($section === 'backup' && isset($post['test_remote_backup'])) {
             return $this->testRemoteBackup($settings);
         }
-        if (isset($post['create_backup'])) {
+        if ($section === 'backup' && isset($post['create_backup'])) {
             return $this->backupNow();
         }
-        return '/admin/settings?saved=1&tab=' . urlencode($activeTab);
+        return $back . '&saved=1';
+    }
+
+    /**
+     * What a screen of its own shows of its settings: the form's values and what just happened.
+     *
+     * @param array<string, mixed> $get
+     * @return array<string, mixed>
+     */
+    public function sectionScreen(array $get): array
+    {
+        return [
+            'saved' => isset($get['saved']),
+            'settings_form' => $this->store->formValues($this->store->parse($this->store->raw('site_settings', $this->store->defaults()))),
+            'settings_error' => trim((string)($get['settings_error'] ?? '')),
+            'backup_status' => (string)($get['backup'] ?? ''),
+            'backup_message' => trim((string)($get['backup_msg'] ?? '')),
+        ];
     }
 
     /**
@@ -174,9 +215,8 @@ final class SettingsAdmin
             'provider' => (string)($settings['backup']['remote']['provider'] ?? 'custom'),
             'bucket' => (string)($settings['backup']['remote']['bucket'] ?? ''),
         ]);
-        return '/admin/settings?' . http_build_query([
+        return self::SECTIONS['backup'] . '&' . http_build_query([
             'saved' => '1',
-            'tab' => 'backup',
             'backup' => $ok ? 'ok' : 'fail',
             'backup_msg' => (string)($result['message'] ?? ''),
         ]);
@@ -192,9 +232,8 @@ final class SettingsAdmin
         $manager->recordRun($result);
         ($this->log)(($result['ok'] ?? false) ? 'backup.create_success' : 'backup.create_failure', BackupManager::logLevel($result), 'backup', (string)($result['filename'] ?? ''), (string)($result['message'] ?? 'Backup action completed.'), ['result' => $result]);
         $manager->notify($result, false);
-        return '/admin/settings?' . http_build_query([
+        return self::SECTIONS['backup'] . '&' . http_build_query([
             'saved' => '1',
-            'tab' => 'backup',
             'backup' => BackupManager::queryStatus($result),
             'backup_msg' => (string)($result['message'] ?? ''),
         ]);

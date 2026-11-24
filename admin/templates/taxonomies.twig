@@ -322,7 +322,7 @@
             <h3 class="text-sm font-semibold text-slate-900">How its pages look</h3>
             <p class="mt-0.5 text-xs text-slate-500">{{ layouts[archive.layout] ?? archive.layout }} · {{ archive.columns }} columns · {{ archive.per_page == 0 ? 'all on one page' : archive.per_page ~ ' per page' }}. The page of every {{ taxonomy_kind }} in this taxonomy is set with the other layouts, in Theme.</p>
           </div>
-          {% if can('settings.manage') %}<a class="{{ secondary_btn|default('inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm no-underline hover:bg-slate-50') }}" href="{{ url('admin/theme?tab=archive_layouts') }}">Archive Layouts</a>{% endif %}
+          {% if can('theme.manage') %}<a class="{{ secondary_btn|default('inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm no-underline hover:bg-slate-50') }}" href="{{ url('admin/theme?tab=archive_layouts') }}">Archive Layouts</a>{% endif %}
         </div>
 
         <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-4 py-3">

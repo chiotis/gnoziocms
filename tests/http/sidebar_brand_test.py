@@ -34,7 +34,7 @@ check('the browser tab title ends with the site name', '- Acme Studio</title>' i
 st, _, html = Client().get('/admin/login')
 check('so does the sign-in page, and its heading', 'Sign in - Acme Studio</title>' in html and '>Acme Studio</div>' in html, html[:600])
 
-# ---- Content types, Redirects and Translations are in Manage
+# ---- Content types in System, Redirects and Translations in Site
 def groups(side):
     out, cur = {}, None
     for m in re.finditer(r'<p class="px-2 pb-1\.5[^>]*>([^<]+)</p>|<a href="([^"]*)"[^>]*>(.*?)</a>', side, re.S):
@@ -46,8 +46,8 @@ def groups(side):
     return out
 st, _, html = root.get('/admin')
 g = groups(re.search(r'<aside.*?</aside>', html, re.S).group(0))
-check('Manage lists Forms, Menus, Theme, Taxonomies, AI publishing, Content types, SEO, Redirects, Translations, History in that order', g.get('Manage') == ['Forms', 'Menus', 'Theme', 'Taxonomies', 'AI publishing', 'Content types', 'SEO', 'Redirects', 'Translations', 'History'], g.get('Manage'))
-check('and System no longer lists them', not {'Content types', 'Redirects', 'Translations'} & set(g.get('System', [])), g.get('System'))
+check('Site lists Theme, Menus, Forms, SEO, Redirects, Translations, AI publishing in that order', g.get('Site') == ['Theme', 'Menus', 'Forms', 'SEO', 'Redirects', 'Translations', 'AI publishing'], g.get('Site'))
+check('System starts with Content types; Translations and Redirects are in Site', (g.get('System') or [''])[0] == 'Content types' and not {'Redirects', 'Translations'} & set(g.get('System', [])), g.get('System'))
 for path, name in (('/admin/content-types', 'Content types'), ('/admin/redirects', 'Redirects'), ('/admin/translations', 'Translations')):
     st, _, html = root.get(path)
     cur = [re.sub(r'<[^>]+>', '', c).strip() for c in re.findall(r'<a href="[^"]*"[^>]*aria-current="page"[^>]*>(.*?)</a>', re.search(r'<aside.*?</aside>', html, re.S).group(0), re.S)]

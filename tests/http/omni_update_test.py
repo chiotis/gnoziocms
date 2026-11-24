@@ -67,7 +67,7 @@ threading.Thread(target=omni.serve_forever, daemon=True).start()
 OMNI = 'http://127.0.0.1:%d' % omni.server_port
 
 root = Client(); root.login()
-root.submit('/admin/settings', has_field('title'), {'update_release_url': FILES + '/release.json'})
+root.submit('/admin/updates?view=settings', has_field('update_release_url'), {'update_release_url': FILES + '/release.json'})
 root.submit('/admin/omni', lambda f: any(x[0] == 'omni_code' for x in f['fields']), {'omni_url': OMNI, 'omni_code': CODE}, button=('omni_action', 'connect'))
 check('the site is connected to the stand-in', (meta('omni') or {}).get('status') == 'connected', meta('omni'))
 page = root.get('/admin/omni')[2]

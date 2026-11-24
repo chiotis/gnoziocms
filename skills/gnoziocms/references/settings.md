@@ -47,7 +47,7 @@ Admin > **Settings** (System menu), tabs General, Email / SMTP, Auth, Backups, U
 | `languages.default`, `languages.available` | **risky**: they decide which files are the default language (`about.md`) and which have a suffix. Changing the default means renaming files. | General, or the script with `--risky` after planning the renames |
 | `menu_locations.header`, `.footer` (`.footer_legal`) | which `content/menus/<name>.yaml` shows where | script, or *Menus* (menu editor sets it) |
 | `forms.*` | mail driver, sender, SMTP/SES, anti-spam | *Settings > Email*; passwords by the person |
-| `backup.*` | schedule, local retention, S3-compatible remote storage | *Settings > Backups*; keys by the person |
+| `backup.*` | schedule, local retention, S3-compatible remote storage | *Backups > Settings*; keys by the person |
 | `apis.maps.*`, `apis.youtube.*` | tile server, when maps load, YouTube key and cache | script (not the key) or *Settings > APIs* |
 | `seo.*` | title format, social cards, robots rules, sitemap, structured data, ownership codes | *Admin > SEO* (tabs Overview, Search, Social, Crawling, Identity, Verification): has live previews and checks |
 | `content_types`, `content_types_off` | which content types are on | *Admin > Content types* |
