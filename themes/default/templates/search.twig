@@ -65,7 +65,7 @@
             <label class="search-place-filter"><span>{{ t('search.category') }}</span>
               <select name="category">
                 <option value="">{{ t('search.all_categories') }}</option>
-                {% for option in search.categories %}<option value="{{ option.value }}"{% if option.active %} selected{% endif %}>{{ '– '|repeat(option.depth) }}{{ option.label }} ({{ option.count }})</option>{% endfor %}
+                {% for option in search.categories %}<option value="{{ option.value }}"{% if option.active %} selected{% endif %}>{% if option.depth > 0 %}{% for i in 1..option.depth %}– {% endfor %}{% endif %}{{ option.label }} ({{ option.count }})</option>{% endfor %}
               </select>
             </label>
           {% elseif search.category|default('') != '' %}<input type="hidden" name="category" value="{{ search.category }}">{% endif %}
