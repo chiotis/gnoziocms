@@ -7,19 +7,25 @@ namespace GnozioCMS;
 /**
  * Searchable words from an entry, using the same field definitions as its editor. No templates or
  * dynamic block providers run here: URLs, layout settings and undeclared/private fields are omitted.
+ *
+ * With cacheIn() the documents are kept in the search index (SearchStore): an entry is extracted again only when its content or
+ * the definitions it was extracted with change, and a search reads only the documents that can match (matching()).
  */
 final class SearchDocument
 {
-    private const CACHE_BYTES = 16 * 1024 * 1024;
-    private const CACHE_ENTRIES = 5000;
     private const TEXT_KEYS = ['title', 'terms', 'fields', 'excerpt', 'body'];
-    /** Part of the schema hash: bump when the stored document shape changes so older cache files are rebuilt. */
-    private const FORMAT = 3;
-    private ?string $cacheDir = null;
+    /** Part of the schema hash: bump when the stored document shape changes so older documents are extracted again. */
+    private const FORMAT = 4;
+    private ?SearchStore $store = null;
     private string $cacheSalt = '';
     private ?string $blockFingerprint = null;
-    /** @var array<string, array<string, mixed>> Buckets are loaded once and keep only entries visited in the current scan. */
-    private array $cache = [];
+    /**
+     * The scopes (a content type in a language) this request opened: the schema, what the index keeps (slug => fingerprint), the
+     * entries this request saw with their fingerprints now, and documents extracted when the index could not keep them.
+     *
+     * @var array<string, array{schema: string, known: array<string, string>, seen: array<string, string>, loose: array<string, array<string, mixed>>}>
+     */
+    private array $scopes = [];
 
     public function __construct(
         private BlockRegistry $blocks,
@@ -29,54 +35,34 @@ final class SearchDocument
     ) {
     }
 
-    /** Optional disposable cache of extracted words; visibility and search results are always evaluated afresh. */
+    /** Keeps the documents in the search index in this folder (disposable); visibility and results are always evaluated afresh. */
     public function cacheIn(string $dir, string $salt): void
     {
-        $this->cacheDir = rtrim($dir, '/');
+        $this->store = new SearchStore(rtrim($dir, '/') . '/index.sqlite');
         $this->cacheSalt = $salt;
-        $this->cache = [];
+        $this->scopes = [];
     }
 
     /**
-     * Call after a search scan. Only a $complete scan (one that visited every entry, drafts and hidden ones included) may
-     * prune unvisited entries: a public scan skips drafts a signed-in scan cached, and pruning them would make alternating
-     * requests rewrite the file every time. Deleted entries are pruned on the next complete scan; the entry and byte limits
-     * in extract() keep the bucket bounded until then.
+     * Call after a search scan: writes what it extracted. Only a $complete scan (one that visited every entry, drafts and hidden
+     * ones included) may forget unvisited entries: a public scan skips drafts a signed-in scan kept, and forgetting them would make
+     * alternating requests write them again every time. Deleted entries are forgotten on the next complete scan.
      */
     public function flush(bool $complete = false): void
     {
-        if ($this->cacheDir === null) {
+        if ($this->store === null) {
             return;
         }
-        foreach ($this->cache as $key => &$bucket) {
-            if ($complete) {
-                $entries = array_intersect_key($bucket['entries'], $bucket['seen']);
-                $bucket['dirty'] = $bucket['dirty'] || count($entries) !== count($bucket['entries']);
-                $bucket['entries'] = $entries;
-                $bucket['sizes'] = array_intersect_key($bucket['sizes'], $bucket['seen']);
-                $bucket['bytes'] = array_sum($bucket['sizes']);
-            }
-            $entries = $bucket['entries'];
-            $bucket['seen'] = [];
-            if (!$bucket['dirty']) {
-                continue;
-            }
-            if (!is_dir($this->cacheDir) && !@mkdir($this->cacheDir, 0775, true) && !is_dir($this->cacheDir)) {
-                continue;
-            }
-            $data = serialize(['schema' => $bucket['schema'], 'entries' => $entries]);
-            if (strlen($data) > self::CACHE_BYTES) {
-                continue;
-            }
-            $file = $this->cacheDir . '/' . $key . '.ser';
-            $temp = $file . '.' . bin2hex(random_bytes(4)) . '.tmp';
-            if (@file_put_contents($temp, $data) === false || !@rename($temp, $file)) {
-                @unlink($temp);
-            } else {
-                $bucket['dirty'] = false;
+        if ($complete) {
+            foreach ($this->scopes as $scope => $state) {
+                $this->store->prune($scope, $state['seen']);
             }
         }
-        unset($bucket);
+        $this->store->commit();
+        foreach ($this->scopes as &$state) {
+            $state['seen'] = [];
+        }
+        unset($state);
     }
 
     /**
@@ -87,37 +73,200 @@ final class SearchDocument
      */
     public function extract(ContentItem $item): array
     {
-        if ($this->cacheDir === null) {
+        if ($this->store === null) {
             return $this->build($item);
         }
-        $key = hash('sha256', $item->type . '|' . $item->lang);
-        if (!isset($this->cache[$key])) {
-            $this->loadCache($key, $item);
+        $scope = $this->sync([$item])[0];
+        $state = $this->scopes[$scope];
+        if (isset($state['loose'][$item->slug])) {
+            return $state['loose'][$item->slug];
         }
-        $bucket = &$this->cache[$key];
-        $bucket['seen'][$item->slug] = true;
-        // Actual content, not timestamps: saves and draft previews cannot reuse an older document of the same size.
-        $fingerprint = hash('sha256', serialize([$item->slug, $item->meta, $item->html]));
-        $entry = $bucket['entries'][$item->slug] ?? null;
-        if ($entry !== null && $entry[0] === $fingerprint) {
-            return $entry[1];
+        $row = $this->store->get($scope, $item->slug);
+        $document = $row !== null && $row['fingerprint'] === $state['seen'][$item->slug] ? self::decode($row['doc'], $row['haystack']) : null;
+        return $document ?? $this->build($item);
+    }
+
+    /**
+     * Brings the index up to date with these entries: an entry whose content changed since it was kept (or that is new) is
+     * extracted and kept again. Nothing is read back.
+     *
+     * @param ContentItem[] $items
+     * @return string[] the scope of each entry, in order
+     */
+    public function sync(array $items): array
+    {
+        $scopes = [];
+        foreach ($items as $item) {
+            $scope = $item->type . '|' . $item->lang;
+            $scopes[] = $scope;
+            if ($this->store === null) {
+                continue;
+            }
+            if (!isset($this->scopes[$scope])) {
+                $schema = $this->schema($item);
+                $this->scopes[$scope] = ['schema' => $schema, 'known' => $this->store->open($scope, $schema) ?? [], 'seen' => [], 'loose' => []];
+            }
+            $state = &$this->scopes[$scope];
+            // Actual content, not timestamps: saves and draft previews cannot reuse an older document of the same size.
+            $fingerprint = hash('xxh128', serialize([$item->slug, $item->meta, $item->html]));
+            $state['seen'][$item->slug] = $fingerprint;
+            if (($state['known'][$item->slug] ?? null) !== $fingerprint) {
+                $document = $this->build($item);
+                $status = strtolower((string)($item->meta['status'] ?? 'published'));
+                $public = $status === 'published' && ($item->meta['visible'] ?? true) !== false;
+                if ($this->store->put($scope, $state['schema'], $item->slug, $fingerprint, $public, $document['relations'] !== [], self::haystack($document), $document)) {
+                    $state['known'][$item->slug] = $fingerprint;
+                    unset($state['loose'][$item->slug]);
+                } else {
+                    $state['loose'][$item->slug] = $document;
+                }
+            }
+            unset($state);
         }
-        $document = $this->build($item);
-        $entry = [$fingerprint, $document];
-        $size = strlen(serialize($entry));
-        $bucket['bytes'] -= $bucket['sizes'][$item->slug] ?? 0;
-        unset($bucket['entries'][$item->slug], $bucket['sizes'][$item->slug]);
-        // Bound memory and disk usage; an oversized entry is still searched normally.
-        if (count($bucket['entries']) < self::CACHE_ENTRIES && $bucket['bytes'] + $size < self::CACHE_BYTES - 65536) {
-            $bucket['entries'][$item->slug] = $entry;
-            $bucket['sizes'][$item->slug] = $size;
-            $bucket['bytes'] += $size;
+        return $scopes;
+    }
+
+    /**
+     * The documents of the entries that can match: every group (one for each word of the query that must match) has one of its
+     * strings in the entry's text. A superset of what matches (the scoring decides); entries that point at others are always
+     * included, because the titles they are found by are not in their text. Without the index, every entry's document.
+     *
+     * @param ContentItem[] $items entries of one type in one language
+     * @param list<list<string>> $groups
+     * @return array<int, array<string, mixed>> the position of the entry in $items => its document
+     */
+    public function matching(array $items, array $groups): array
+    {
+        if ($items === []) {
+            return [];
         }
-        $bucket['dirty'] = true;
+        if ($this->store === null) {
+            return array_map($this->build(...), $items);
+        }
+        $scopes = $this->sync($items);
+        $documents = [];
+        $rows = [];
+        foreach (array_unique($scopes) as $scope) {
+            $rows[$scope] = $this->store->matching($scope, $groups);
+        }
+        foreach ($items as $n => $item) {
+            $scope = $scopes[$n];
+            $state = $this->scopes[$scope] ?? null;
+            if ($state !== null && isset($state['loose'][$item->slug])) {
+                $documents[$n] = $state['loose'][$item->slug];
+                continue;
+            }
+            if ($rows[$scope] === null) {
+                // The index failed during this search: the entry is read the slow way.
+                $documents[$n] = $this->build($item);
+                continue;
+            }
+            $row = $rows[$scope][$item->slug] ?? null;
+            if ($row === null) {
+                continue;
+            }
+            // Another request may have kept another version meanwhile (a draft preview): this entry's own is extracted.
+            $document = $state !== null && $row['fingerprint'] === ($state['seen'][$item->slug] ?? '') ? self::decode($row['doc'], $row['haystack']) : null;
+            $documents[$n] = $document ?? $this->build($item);
+        }
+        return $documents;
+    }
+
+    /**
+     * Words of the entries this request synced that are close to the term (one letter different from a word of five to eight
+     * letters, two from a longer one; a swap of two letters side by side counts as one), closest first, at most `$limit`. Only when
+     * the term itself (or its other forms, SearchText::stem()) is in none of those entries a visitor may see: a word that is on the
+     * site is never corrected. Empty for short terms, terms with digits, and without the index.
+     *
+     * @return string[]
+     */
+    public function similar(string $term, bool $includeHidden, int $limit = 8): array
+    {
+        $length = mb_strlen($term, 'UTF-8');
+        $distance = $length >= 9 ? 2 : ($length >= 5 ? 1 : 0);
+        if ($this->store === null || $distance === 0 || preg_match('/^\p{L}+$/u', $term) !== 1 || $this->scopes === []) {
+            return [];
+        }
+        $scopes = array_keys($this->scopes);
+        // On the site as typed (also inside a longer word), or in another form of it («βιβλιο» where the text says «βιβλια»).
+        $known = $this->store->contains($scopes, [$term], $includeHidden);
+        if ($known !== false) {
+            return [];
+        }
+        $stem = SearchText::stem($term);
+        foreach ($stem === '' ? [] : $this->store->startingWith($scopes, $stem) as $word) {
+            if (SearchText::inflected($word, $term)) {
+                return [];
+            }
+        }
+        $close = [];
+        $target = self::bytes($term);
+        foreach ($this->store->words($scopes, max(SearchStore::WORD_MIN, $length - $distance), $length + $distance) as $word) {
+            $found = SearchText::distance($target, self::bytes($word));
+            if ($found <= $distance) {
+                $close[$word] = $found;
+            }
+        }
+        uksort($close, static fn(string $a, string $b): int => ($close[$a] <=> $close[$b]) ?: strcmp($a, $b));
+        return array_slice(array_map('strval', array_keys($close)), 0, $limit);
+    }
+
+    /** @var array<string, string> a letter => the one byte it is compared as */
+    private static array $letters = [];
+
+    /** A word as one byte per letter, so that levenshtein() counts letters, not the bytes of Greek letters. */
+    private static function bytes(string $word): string
+    {
+        $out = '';
+        foreach (mb_str_split($word, 1, 'UTF-8') as $letter) {
+            if (!isset(self::$letters[$letter])) {
+                // 255 different letters are more than any site's words have; the rest share the last byte.
+                self::$letters[$letter] = chr(min(255, count(self::$letters) + 1));
+            }
+            $out .= self::$letters[$letter];
+        }
+        return $out;
+    }
+
+    /** Between the normalized fields in the text the index matches; a field that holds it is not kept (decode() refuses it). */
+    private const SEPARATOR = "\x1F";
+
+    /** The text an entry is matched by in the index: its normalized fields. @param array<string, mixed> $document */
+    private static function haystack(array $document): string
+    {
+        return implode(self::SEPARATOR, array_map(static fn(string $key): string => (string)$document['normal'][$key], self::TEXT_KEYS));
+    }
+
+    /**
+     * A kept document from its row: the display text and relations, and the normalized fields from the text the index matches
+     * (they are kept once). Null when it is not one (an older shape, a corrupt row).
+     *
+     * @return array<string, mixed>|null
+     */
+    private static function decode(string $raw, string $haystack): ?array
+    {
+        try {
+            $document = @unserialize($raw, ['allowed_classes' => false]);
+        } catch (\Throwable) {
+            return null;
+        }
+        $normal = explode(self::SEPARATOR, $haystack);
+        if (!is_array($document) || count($normal) !== count(self::TEXT_KEYS) || array_key_exists('normal', $document)) {
+            return null;
+        }
+        $relations = $document['relations'] ?? null;
+        unset($document['relations']);
+        $document += ['normal' => array_combine(self::TEXT_KEYS, $normal), 'relations' => $relations];
+        if (!is_array($document) || array_keys($document) !== [...self::TEXT_KEYS, 'normal', 'relations'] || !is_array($document['normal'])
+            || !is_array($document['relations']) || count(array_filter($document['relations'], 'is_string')) !== count($document['relations'])
+            || !self::texts(array_diff_key($document, ['normal' => true, 'relations' => true])) || !self::texts($document['normal'])) {
+            return null;
+        }
         return $document;
     }
 
-    private function loadCache(string $key, ContentItem $item): void
+    /** What the documents of a type in a language are extracted with: the format, the release, the block and field definitions. */
+    private function schema(ContentItem $item): string
     {
         if ($this->blockFingerprint === null) {
             $definitions = [];
@@ -126,35 +275,10 @@ final class SearchDocument
             }
             $this->blockFingerprint = hash('sha256', serialize($definitions));
         }
-        $schema = hash('sha256', serialize([
+        return hash('sha256', serialize([
             self::FORMAT, $this->cacheSalt, $this->defaultLang, $item->type, $item->lang, $this->blockFingerprint,
             $this->types->definition($item->type, $item->lang, $this->defaultLang)['fields'],
         ]));
-        $bucket = ['schema' => $schema, 'entries' => [], 'seen' => [], 'sizes' => [], 'bytes' => 0, 'dirty' => false];
-        $raw = @file_get_contents($this->cacheDir . '/' . $key . '.ser', false, null, 0, self::CACHE_BYTES + 1);
-        $data = null;
-        if (is_string($raw) && strlen($raw) <= self::CACHE_BYTES) {
-            try {
-                $data = @unserialize($raw, ['allowed_classes' => false]);
-            } catch (\Throwable) {
-                // A corrupt cache only costs speed.
-            }
-        }
-        if (is_array($data) && ($data['schema'] ?? null) === $schema && is_array($data['entries'] ?? null)
-            && count($data['entries']) <= self::CACHE_ENTRIES) {
-            foreach ($data['entries'] as $slug => $entry) {
-                if (!is_array($entry) || !is_string($entry[0] ?? null) || !is_array($entry[1] ?? null)
-                    || array_keys($entry[1]) !== [...self::TEXT_KEYS, 'normal', 'relations'] || !is_array($entry[1]['normal'])
-                    || !is_array($entry[1]['relations']) || count(array_filter($entry[1]['relations'], 'is_string')) !== count($entry[1]['relations'])
-                    || !self::texts(array_diff_key($entry[1], ['normal' => true, 'relations' => true])) || !self::texts($entry[1]['normal'])) {
-                    continue;
-                }
-                $bucket['entries'][$slug] = $entry;
-                $bucket['sizes'][$slug] = strlen(serialize($entry));
-                $bucket['bytes'] += $bucket['sizes'][$slug];
-            }
-        }
-        $this->cache[$key] = $bucket;
     }
 
     /** @param array<mixed> $texts Exactly the five text fields, all strings. */

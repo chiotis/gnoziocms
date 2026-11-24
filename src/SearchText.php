@@ -194,14 +194,18 @@ final class SearchText
         return $at;
     }
 
-    /** @param string[] $terms @return array<int, array{text: string, match: bool}> Plain text only; Twig escapes every part. */
-    public static function parts(string $text, array $terms): array
+    /**
+     * @param string[] $terms
+     * @param string[] $words normalized words highlighted only where they are whole words (the words a misspelt term found)
+     * @return array<int, array{text: string, match: bool}> Plain text only; Twig escapes every part.
+     */
+    public static function parts(string $text, array $terms, array $words = []): array
     {
-        if ($text === '' || $terms === []) {
+        if ($text === '' || ($terms === [] && $words === [])) {
             return $text === '' ? [] : [['text' => $text, 'match' => false]];
         }
         $normal = self::normalize($text);
-        $ranges = [];
+        $ranges = self::wholeRanges($normal, $words);
         foreach ($terms as $term) {
             foreach (self::ranges($normal, $term) as $range) {
                 $ranges[] = $range;
@@ -236,17 +240,17 @@ final class SearchText
         return $parts;
     }
 
-    /** @param string[] $terms */
-    public static function snippet(string $text, array $terms, int $length = 220): string
+    /** @param string[] $terms @param string[] $words as for parts() */
+    public static function snippet(string $text, array $terms, int $length = 220, array $words = []): string
     {
         if (mb_strlen($text, 'UTF-8') <= $length) {
             return $text;
         }
         $normal = self::normalize($text);
         $first = null;
-        foreach ($terms as $term) {
+        foreach ([...$terms, ...$words] as $term) {
             $at = null;
-            foreach (self::ranges($normal, $term) as [$start]) {
+            foreach (in_array($term, $terms, true) ? self::ranges($normal, $term) : self::wholeRanges($normal, [$term]) as [$start]) {
                 $at = $at === null ? $start : min($at, $start);
             }
             if ($at !== null && ($first === null || $at < $first)) {
@@ -272,6 +276,44 @@ final class SearchText
             }
         }
         return ($start > 0 ? '… ' : '') . trim($snippet) . ($more ? ' …' : '');
+    }
+
+    /** @param string[] $words @return array<int, array{0: int, 1: int}> byte ranges of the words where they are whole words */
+    private static function wholeRanges(string $normal, array $words): array
+    {
+        $at = [];
+        foreach ($words as $word) {
+            if ($word === '' || !str_contains($normal, $word)) {
+                continue;
+            }
+            if (preg_match_all('/(?<![\p{L}\p{N}])' . preg_quote($word, '/') . '(?![\p{L}\p{N}])/u', $normal, $found, PREG_OFFSET_CAPTURE) > 0) {
+                foreach ($found[0] as [, $offset]) {
+                    $at[] = [$offset, $offset + strlen($word)];
+                }
+            }
+        }
+        return $at;
+    }
+
+    /**
+     * How many edits apart two words are (as SearchDocument writes them, one byte a letter): letters added, taken out or changed,
+     * and two letters side by side swapped counting as one edit («ξενοδοχειο» for «ξενοδχοειο»).
+     */
+    public static function distance(string $a, string $b): int
+    {
+        $distance = levenshtein($a, $b);
+        if ($distance === 2 && strlen($a) === strlen($b)) {
+            $differ = [];
+            for ($i = 0, $n = strlen($a); $i < $n && count($differ) <= 2; $i++) {
+                if ($a[$i] !== $b[$i]) {
+                    $differ[] = $i;
+                }
+            }
+            if (count($differ) === 2 && $differ[1] === $differ[0] + 1 && $a[$differ[0]] === $b[$differ[1]] && $a[$differ[1]] === $b[$differ[0]]) {
+                return 1;
+            }
+        }
+        return $distance;
     }
 
     /** Map normalized byte positions back to whole original graphemes, keeping accents attached to highlighted letters. */
