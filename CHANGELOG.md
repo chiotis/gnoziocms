@@ -1,12 +1,20 @@
 # Changelog
 
-## 0.1.342 — 2026-11-24 — Forms: show only when, steps, a rating, archived submissions and two looks
+## 0.1.343 — 2026-11-24 — Forms: show only when, steps, a rating, archived submissions and two looks
 - A field, heading, paragraph or step can carry `condition: {field, op, value}` (is, not, filled, empty): it is shown only while that field's answer meets the test. The builder has "Show only when…" on each card, renames follow into conditions, and removing a field clears them. The server decides again from what was sent (`FormConditions`): hidden fields are not checked, kept or emailed.
 - A `step` field splits a form into steps with progress, Back and Next (`form-logic.js`, loaded only where needed). Next checks the step's required fields, a step hidden by its condition is skipped, and after a server error the step with it is opened. Without JavaScript every step is shown.
 - A `rating` field of 2 to 10 stars (default 5), shown as "4 / 5" on the Submissions screen and in emails. The Feedback template uses it.
 - Submissions can be archived and restored, one or several at a time, with Inbox and Archived views, a CSV export of the archive and an archived count on the Forms list.
 - A form's Settings offer the compact or stacked look (`style`). MCP `save_form`/`get_form` take and return `style`, `condition`, `step` and `rating`.
 - Tests: `form-logic` (unit, HTTP and JS, new), `form-fields`.
+
+## 0.1.342 — 2026-11-24 — Settings, Shop settings, SEO and AI publishing in the Theme's field rows
+- **Settings**, **Shop settings**, **SEO** and **AI publishing** lay out their fields as the Theme sections do: the label in a column on the left, the control on the right with its help under it, checkboxes under the controls, compact boxes (numbers short, lists at most 20rem, texts at most 32rem). On a phone the rows stack.
+- Settings: the storage limit and its unit are one row and Used now another; picture quality and the kinds of file allowed are small cards beside their label; Google Sign-In is a checkbox like the Theme's. The card headings lose the line under them, as on Theme.
+- Shop settings: General, Payments, Accounts, Emails and Marketing. The shipping zones, Product details sections and the email texts stay as they were (they are editors, not rows).
+- AI publishing: Instructions, every card of a schedule, and Settings (OpenAI, Limits). The prices stay a table.
+- SEO: its rows take the Theme's measures (also on Analytics, Omni, Redirects and the content type screen, which share them); a checkbox in a card with rows sits under the controls; Crawling, Identity and Verification are one column of cards. Search and Social keep their preview beside them.
+- One class does it for every screen: `.set-rows` in `public/assets/css/app.css`. No field names or saved values changed.
 
 ## 0.1.341 — 2026-11-24 — WordPress importer v2: a type's own fields, categories as their own taxonomy, pictures of other sites, a redirect check
 - A profile fills a custom type's own fields from its pages (`types.<name>.fields`: text, a part of it with `match`, a number, a link, a picture, a list, or a repeater's `rows` such as a book's buy links); `tabs.skip` leaves a tab whose facts went to the fields out of the text, and a field named `date` is the entry's date. `rest_types` fields take `{to, rows}` to bring an ACF repeater into a repeater field.

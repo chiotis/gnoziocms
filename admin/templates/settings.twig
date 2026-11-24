@@ -4,7 +4,7 @@
 {% block content %}
   {% set panel_class = 'section-panel space-y-4' %}
   {% set section_class = 'rounded-lg border border-slate-200 bg-white p-4' %}
-  {% set section_header_class = 'mb-3 border-b border-slate-100 pb-3' %}
+  {% set section_header_class = 'mb-3' %}
   {% set secondary_button_class = 'inline-flex shrink-0 items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50' %}
   {% set primary_button_class = 'inline-flex shrink-0 items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700' %}
   {% set danger_button_class = 'inline-flex shrink-0 items-center gap-1.5 rounded-md border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-600 shadow-sm transition hover:bg-red-50' %}
@@ -55,28 +55,27 @@
           </div>
           {% set limit_mb = settings_form.storage_limit_mb %}
           {% set as_gb = limit_mb >= 1024 and limit_mb % 1024 == 0 %}
-          <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <label class="block">
-              <span class="mb-1 block text-sm font-medium text-slate-700">Storage limit</span>
-              <input type="number" name="storage_limit_value" value="{{ as_gb ? limit_mb // 1024 : limit_mb }}" min="0" step="any" class="{{ input_class }}" aria-describedby="storage-limit-help">
-            </label>
-            <label class="block">
-              <span class="mb-1 block text-sm font-medium text-slate-700">Unit</span>
-              <select name="storage_limit_unit" class="{{ select_class }}">
-                <option value="mb"{% if not as_gb %} selected{% endif %}>MB</option>
-                <option value="gb"{% if as_gb %} selected{% endif %}>GB</option>
-              </select>
-            </label>
-            <div class="text-sm">
-              <span class="mb-1 block font-medium text-slate-700">Used now</span>
-              <p class="rounded-md bg-slate-50 px-3 py-2 {{ storage.level == 'danger' ? 'text-red-700' : (storage.level == 'warn' ? 'text-orange-700' : 'text-slate-700') }}">{{ storage.used_human }}{% if storage.limit %} of {{ storage.limit_human }} ({{ storage.percent_of_limit }}%){% endif %}</p>
+          <div class="set-rows">
+            <div>
+              <label for="storage-limit">Storage limit</label>
+              <span class="set-inline">
+                <input id="storage-limit" type="number" name="storage_limit_value" value="{{ as_gb ? limit_mb // 1024 : limit_mb }}" min="0" step="any" class="{{ input_class }}" aria-describedby="storage-limit-help">
+                <select name="storage_limit_unit" class="{{ select_class }}" aria-label="Unit">
+                  <option value="mb"{% if not as_gb %} selected{% endif %}>MB</option>
+                  <option value="gb"{% if as_gb %} selected{% endif %}>GB</option>
+                </select>
+              </span>
+              <p id="storage-limit-help">The default is 1 GB. Enter 0 for no limit. What counts: uploads {{ storage.parts.uploads }}, content {{ storage.parts.content }}, files sent through forms {{ storage.parts.forms }}, and the system database and backups {{ storage.parts.system }}.</p>
+            </div>
+            <div>
+              <span>Used now</span>
+              <strong class="pt-1 text-xs font-medium {{ storage.level == 'danger' ? 'text-red-700' : (storage.level == 'warn' ? 'text-orange-700' : 'text-slate-800') }}">{{ storage.used_human }}{% if storage.limit %} of {{ storage.limit_human }} ({{ storage.percent_of_limit }}%){% endif %}</strong>
+              <p class="flex flex-wrap items-center gap-x-3 gap-y-1" id="storage-measured">
+                <span>Measured {{ storage.measured_at|date('Y-m-d H:i') }}. Measured again automatically every 12 hours; uploads and deletions in Media count at once.</span>
+                <button type="submit" form="storage-recalculate" class="font-medium text-slate-600 underline hover:text-slate-900">Recalculate now</button>
+              </p>
             </div>
           </div>
-          <p id="storage-limit-help" class="mt-2 text-xs text-slate-400">The default is 1 GB. Enter 0 for no limit. What counts: uploads {{ storage.parts.uploads }}, content {{ storage.parts.content }}, files sent through forms {{ storage.parts.forms }}, and the system database and backups {{ storage.parts.system }}.</p>
-          <p class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400" id="storage-measured">
-            <span>Measured {{ storage.measured_at|date('Y-m-d H:i') }}. Measured again automatically every 12 hours; uploads and deletions in Media count at once.</span>
-            <button type="submit" form="storage-recalculate" class="font-medium text-slate-600 underline hover:text-slate-900">Recalculate now</button>
-          </p>
         </div>
 
         <div class="{{ section_class }}">
@@ -84,29 +83,26 @@
             <h2 class="text-sm font-semibold text-slate-900">File uploads</h2>
             <p class="mt-0.5 text-xs text-slate-400">What can be added to the media library (and as a main image while editing). A file that is too big or of a kind that is not ticked is refused with the reason.</p>
           </div>
-          <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <label class="block">
-              <span class="mb-1 block text-sm font-medium text-slate-700">Largest file (MB)</span>
-              <input type="number" name="upload_limit_mb" value="{{ settings_form.upload_limit_mb }}" min="0" step="1" class="{{ input_class }}" aria-describedby="upload-limit-help">
-            </label>
-            <p id="upload-limit-help" class="text-xs text-slate-400 sm:col-span-2 sm:self-end">The default is 20 MB. Enter 0 to allow what the server allows.{% if server_upload_mb %} This server takes at most <strong class="font-semibold text-slate-600">{{ server_upload_mb }} MB</strong> in one upload (PHP <code class="rounded bg-slate-100 px-1 py-0.5">upload_max_filesize</code> and <code class="rounded bg-slate-100 px-1 py-0.5">post_max_size</code>), so a higher number here does not go beyond that.{% endif %}</p>
-          </div>
-          <fieldset class="mt-4">
-            <legend class="mb-2 text-sm font-medium text-slate-700">Kinds of file allowed</legend>
-            <input type="hidden" name="upload_types_present" value="1">
-            <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {% for key, group in upload_groups %}
-                <label class="flex items-start gap-2.5 rounded-md border border-slate-200 px-3 py-2.5">
-                  <input type="checkbox" name="upload_types[]" value="{{ key }}" {% if key in settings_form.upload_types %}checked{% endif %} class="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500">
-                  <span>
-                    <span class="block text-sm font-medium text-slate-800">{{ group.label }}</span>
-                    <span class="block text-xs text-slate-400">{{ group.help }}</span>
-                  </span>
-                </label>
-              {% endfor %}
+          <div class="set-rows">
+            <div>
+              <label for="upload-limit">Largest file (MB)</label>
+              <input id="upload-limit" type="number" name="upload_limit_mb" value="{{ settings_form.upload_limit_mb }}" min="0" step="1" class="{{ input_class }}" aria-describedby="upload-limit-help">
+            <p id="upload-limit-help">The default is 20 MB. Enter 0 to allow what the server allows.{% if server_upload_mb %} This server takes at most <strong class="font-semibold text-slate-600">{{ server_upload_mb }} MB</strong> in one upload (PHP <code class="rounded bg-slate-100 px-1 py-0.5">upload_max_filesize</code> and <code class="rounded bg-slate-100 px-1 py-0.5">post_max_size</code>), so a higher number here does not go beyond that.{% endif %}</p>
             </div>
-            <p class="mt-2 text-xs text-slate-400">Only harmless kinds of file can be allowed at all: programs, scripts, and web pages are never accepted, whatever is ticked. At least one kind stays ticked.</p>
-          </fieldset>
+            <div role="group" aria-labelledby="upload-types-label">
+              <span id="upload-types-label">Kinds of file allowed</span>
+              <input type="hidden" name="upload_types_present" value="1">
+              <div class="set-options">
+                {% for key, group in upload_groups %}
+                  <label>
+                    <input type="checkbox" name="upload_types[]" value="{{ key }}" {% if key in settings_form.upload_types %}checked{% endif %} class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+                    <span><strong>{{ group.label }}</strong><small>{{ group.help }}</small></span>
+                  </label>
+                {% endfor %}
+              </div>
+              <p>Only harmless kinds of file can be allowed at all: programs, scripts, and web pages are never accepted, whatever is ticked. At least one kind stays ticked.</p>
+            </div>
+          </div>
         </div>
       </div>
       {% endif %}
@@ -117,38 +113,38 @@
             <h2 class="text-sm font-semibold text-slate-900">Site Identity</h2>
             <p class="mt-0.5 text-xs text-slate-400">Basic information used across the public site and admin.</p>
           </div>
-          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div class="set-rows">
             <label class="block">
-              <span class="mb-1 block text-sm font-medium text-slate-700">Site name</span>
+              <span>Site name</span>
               <input type="text" name="title" value="{{ settings_form.title }}" class="{{ input_class }}">
             </label>
-            <label class="block sm:col-span-2">
-              <span class="mb-1 block text-sm font-medium text-slate-700">Tagline</span>
+            <label class="block">
+              <span>Tagline</span>
               <input type="text" name="tagline" value="{{ settings_form.tagline }}" class="{{ input_class }}">
             </label>
             <label class="block">
-              <span class="mb-1 block text-sm font-medium text-slate-700">Base URL</span>
+              <span>Base URL</span>
               <input type="text" name="base_url" value="{{ settings_form.base_url }}" placeholder="https://example.com" class="{{ input_class }}">
-              <span class="mt-1 block text-xs text-slate-500">Links in emails, payment returns and downloads are built from this address only. The shop's card payments and customer accounts need it.</span>
+              <span class="block">Links in emails, payment returns and downloads are built from this address only. The shop's card payments and customer accounts need it.</span>
             </label>
             <label class="block">
-              <span class="mb-1 block text-sm font-medium text-slate-700">Home page</span>
+              <span>Home page</span>
               <input type="text" name="home_page" value="{{ settings_form.home_page }}" class="{{ input_class }}">
             </label>
-            <label class="block sm:col-span-2">
-              <span class="mb-1 block text-sm font-medium text-slate-700">Trusted proxies</span>
+            <label class="block">
+              <span>Trusted proxies</span>
               <textarea name="trusted_proxies" rows="2" placeholder="127.0.0.1" class="{{ input_class }} font-mono text-sm">{{ settings_form.trusted_proxies }}</textarea>
-              <span class="mt-1 block text-xs text-slate-500">Addresses or ranges (10.0.0.0/8) of the proxies in front of the site, one per line: Varnish, nginx, cloudflared. Only requests from them may say who the visitor is (X-Forwarded-For) and whether the visit is on HTTPS. 127.0.0.1 and ::1 (this machine) are listed until the list is changed; empty it when nothing stands in front, so no header is believed.</span>
+              <span class="block">Addresses or ranges (10.0.0.0/8) of the proxies in front of the site, one per line: Varnish, nginx, cloudflared. Only requests from them may say who the visitor is (X-Forwarded-For) and whether the visit is on HTTPS. 127.0.0.1 and ::1 (this machine) are listed until the list is changed; empty it when nothing stands in front, so no header is believed.</span>
             </label>
             <label class="block">
-              <span class="mb-1 block text-sm font-medium text-slate-700">Sign out after (minutes without use)</span>
+              <span>Sign out after (minutes without use)</span>
               <input type="number" name="admin_idle_minutes" value="{{ settings_form.admin_idle_minutes }}" min="10" max="1440" step="1" class="{{ input_class }}">
-              <span class="mt-1 block text-xs text-slate-500">An admin session ends after this long without use (10 to 1440), and 24 hours after signing in in any case.</span>
+              <span class="block">An admin session ends after this long without use (10 to 1440), and 24 hours after signing in in any case.</span>
             </label>
-            <label class="flex items-start gap-2 sm:col-span-2">
-              <input type="hidden" name="hsts_shown" value="1">
-              <input type="checkbox" name="hsts" value="1" {% if settings_form.hsts %}checked{% endif %} class="mt-0.5">
-              <span class="text-sm text-slate-700"><span class="font-medium">Always use HTTPS (HSTS)</span>
+            <input type="hidden" name="hsts_shown" value="1">
+            <label class="flex">
+              <input type="checkbox" name="hsts" value="1" {% if settings_form.hsts %}checked{% endif %}>
+              <span><span class="font-medium">Always use HTTPS (HSTS)</span>
                 <span class="block text-xs text-slate-500">Browsers that have visited the site ask for it only over HTTPS for a year. Turn it on only when the whole site, and every address it answers on, works over HTTPS.</span></span>
             </label>
           </div>
@@ -159,21 +155,21 @@
             <h2 class="text-sm font-semibold text-slate-900">Localization</h2>
             <p class="mt-0.5 text-xs text-slate-400">Default language, available locales, date formatting and the time zone of publishing times.</p>
           </div>
-          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div class="set-rows">
             <label class="block">
-              <span class="mb-1 block text-sm font-medium text-slate-700">Default language</span>
+              <span>Default language</span>
               <input type="text" name="languages_default" value="{{ settings_form.languages_default }}" placeholder="el" class="{{ input_class }}">
             </label>
             <label class="block">
-              <span class="mb-1 block text-sm font-medium text-slate-700">Available languages</span>
+              <span>Available languages</span>
               <input type="text" name="languages_available" value="{{ settings_form.languages_available }}" placeholder="el, en" class="{{ input_class }}">
             </label>
             <label class="block">
-              <span class="mb-1 block text-sm font-medium text-slate-700">Date format</span>
+              <span>Date format</span>
               <input type="text" name="date_format" value="{{ settings_form.date_format }}" placeholder="d/m/Y" class="{{ input_class }}">
             </label>
             <label class="block">
-              <span class="mb-1 block text-sm font-medium text-slate-700">Time zone</span>
+              <span>Time zone</span>
               <select name="timezone" class="{{ input_class }}">
                 <option value="">The server's ({{ server_timezone }})</option>
                 {% for zone in timezones %}<option value="{{ zone }}" {% if settings_form.timezone == zone %}selected{% endif %}>{{ zone }}</option>{% endfor %}
@@ -184,7 +180,7 @@
 
         {% if can('seo.manage') %}
           <div class="{{ section_class }}">
-            <div class="{{ section_header_class }}">
+            <div>
               <h2 class="text-sm font-semibold text-slate-900">Search engines</h2>
               <p class="mt-0.5 text-xs text-slate-400">Titles, descriptions, the sitemap, robots.txt and the rest of how the site meets search engines are in <a href="{{ url('admin/seo') }}" class="font-medium text-blue-700 hover:underline">SEO</a>.</p>
             </div>
@@ -196,20 +192,22 @@
             <h2 class="text-sm font-semibold text-slate-900">Picture quality</h2>
             <p class="mt-0.5 text-xs text-slate-400">The site makes a lighter copy of each picture in the sizes a page needs. Higher quality keeps more detail, for example in product photos, and makes the copies larger. A change applies to every picture: the new copies are made as pages ask for them.</p>
           </div>
-          <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <div class="set-rows">
+          <div role="radiogroup" aria-labelledby="picture-quality-label">
+            <span id="picture-quality-label">Quality</span>
+            <div class="set-options">
             {% for key, option in {
               standard: {label: 'Standard', help: 'Light pages. Fine for most photos.'},
               high: {label: 'High', help: 'Sharper detail; copies about half as large again.'},
               best: {label: 'Best', help: 'Closest to the originals; copies about twice as large.'}
             } %}
-              <label class="flex items-start gap-2.5 rounded-md border border-slate-200 px-3 py-2.5 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50/40">
-                <input type="radio" name="picture_quality" value="{{ key }}" {% if settings_form.picture_quality|default('standard') == key %}checked{% endif %} class="mt-0.5 h-4 w-4 border-slate-300 text-blue-600 focus:ring-blue-500">
-                <span>
-                  <span class="block text-sm font-medium text-slate-800">{{ option.label }}</span>
-                  <span class="block text-xs text-slate-400">{{ option.help }}</span>
-                </span>
+              <label>
+                <input type="radio" name="picture_quality" value="{{ key }}" {% if settings_form.picture_quality|default('standard') == key %}checked{% endif %} class="h-4 w-4 border-slate-300 text-blue-600 focus:ring-blue-500">
+                <span><strong>{{ option.label }}</strong><small>{{ option.help }}</small></span>
               </label>
             {% endfor %}
+            </div>
+          </div>
           </div>
         </div>
       </div>
@@ -220,24 +218,24 @@
             <h2 class="text-sm font-semibold text-slate-900">Mailer</h2>
             <p class="mt-0.5 text-xs text-slate-400">Outgoing email identity and provider.</p>
           </div>
-          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div class="set-rows">
             <label class="block">
-              <span class="mb-1 block text-sm font-medium text-slate-700">Provider</span>
+              <span>Provider</span>
               <select name="mail_driver" class="{{ select_class }}">
                 <option value="smtp" {% if settings_form.mail_driver == 'smtp' %}selected{% endif %}>SMTP</option>
                 <option value="ses" {% if settings_form.mail_driver == 'ses' %}selected{% endif %}>AWS SES</option>
               </select>
             </label>
             <label class="block">
-              <span class="mb-1 block text-sm font-medium text-slate-700">Test recipient</span>
+              <span>Test recipient</span>
               <input type="text" name="test_email_to" placeholder="you@example.com" class="{{ input_class }}">
             </label>
             <label class="block">
-              <span class="mb-1 block text-sm font-medium text-slate-700">From email</span>
+              <span>From email</span>
               <input type="text" name="mail_from" value="{{ settings_form.mail_from }}" placeholder="no-reply@example.com" class="{{ input_class }}">
             </label>
             <label class="block">
-              <span class="mb-1 block text-sm font-medium text-slate-700">From name</span>
+              <span>From name</span>
               <input type="text" name="mail_from_name" value="{{ settings_form.mail_from_name }}" placeholder="GnozioCMS" class="{{ input_class }}">
             </label>
           </div>
@@ -252,25 +250,25 @@
             <h2 class="text-sm font-semibold text-slate-900">SMTP Configuration</h2>
             <p class="mt-0.5 text-xs text-slate-400">Server credentials used when SMTP is selected.</p>
           </div>
-          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div class="set-rows">
             <label class="block">
-              <span class="mb-1 block text-sm font-medium text-slate-700">Host</span>
+              <span>Host</span>
               <input type="text" name="smtp_host" value="{{ settings_form.smtp_host }}" placeholder="smtp.example.com" class="{{ input_class }}">
             </label>
             <label class="block">
-              <span class="mb-1 block text-sm font-medium text-slate-700">Port</span>
+              <span>Port</span>
               <input type="number" name="smtp_port" value="{{ settings_form.smtp_port }}" placeholder="587" class="{{ input_class }}">
             </label>
             <label class="block">
-              <span class="mb-1 block text-sm font-medium text-slate-700">Username</span>
+              <span>Username</span>
               <input type="text" name="smtp_user" value="{{ settings_form.smtp_user }}" class="{{ input_class }}">
             </label>
             <label class="block">
-              <span class="mb-1 block text-sm font-medium text-slate-700">Password</span>
+              <span>Password</span>
               {{ local.secret_input('smtp_pass', settings_form.smtp_pass_set, input_class, '', settings_form.smtp_pass_lost) }}
             </label>
             <label class="block">
-              <span class="mb-1 block text-sm font-medium text-slate-700">Encryption</span>
+              <span>Encryption</span>
               <select name="smtp_encryption" class="{{ select_class }}">
                 <option value="" {% if settings_form.smtp_encryption == '' %}selected{% endif %}>None</option>
                 <option value="tls" {% if settings_form.smtp_encryption == 'tls' %}selected{% endif %}>TLS</option>
@@ -285,17 +283,17 @@
             <h2 class="text-sm font-semibold text-slate-900">AWS SES</h2>
             <p class="mt-0.5 text-xs text-slate-400">Credentials used when AWS SES is selected.</p>
           </div>
-          <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div class="set-rows">
             <label class="block">
-              <span class="mb-1 block text-sm font-medium text-slate-700">Access key</span>
+              <span>Access key</span>
               <input type="text" name="ses_key" value="{{ settings_form.ses_key }}" class="{{ input_class }}">
             </label>
             <label class="block">
-              <span class="mb-1 block text-sm font-medium text-slate-700">Secret key</span>
+              <span>Secret key</span>
               {{ local.secret_input('ses_secret', settings_form.ses_secret_set, input_class, '', settings_form.ses_secret_lost) }}
             </label>
             <label class="block">
-              <span class="mb-1 block text-sm font-medium text-slate-700">Region</span>
+              <span>Region</span>
               <input type="text" name="ses_region" value="{{ settings_form.ses_region }}" placeholder="eu-central-1" class="{{ input_class }}">
             </label>
           </div>
@@ -308,30 +306,24 @@
             <h2 class="text-sm font-semibold text-slate-900">Google Sign-In</h2>
             <p class="mt-0.5 text-xs text-slate-400">Allow existing GnozioCMS users to sign in with matching Google accounts.</p>
           </div>
-          <label class="flex items-start justify-between gap-4 py-2.5">
-            <span>
-              <span class="block text-sm font-medium text-slate-800">Enable Google Sign-In</span>
-              <span class="block text-xs text-slate-400">Users must already exist in GnozioCMS with the same email address.</span>
-            </span>
-            <span class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center">
-              <input type="checkbox" name="google_enabled" value="1" {% if settings_form.google_enabled %}checked{% endif %} class="peer sr-only">
-              <span class="h-5 w-9 rounded-full bg-slate-200 transition peer-checked:bg-blue-600"></span>
-              <span class="absolute left-0.5 h-4 w-4 rounded-full bg-white shadow transition peer-checked:translate-x-4"></span>
-            </span>
-          </label>
-          <div class="mt-3 grid grid-cols-1 gap-3 border-t border-slate-100 pt-3 sm:grid-cols-2">
-            <label class="block sm:col-span-2">
-              <span class="mb-1 block text-sm font-medium text-slate-700">Google Client ID</span>
+          <div class="set-rows">
+            <label class="flex">
+              <input type="checkbox" name="google_enabled" value="1" {% if settings_form.google_enabled %}checked{% endif %}>
+              <span><span class="font-medium">Enable Google Sign-In</span>
+                <span class="block">Users must already exist in GnozioCMS with the same email address.</span></span>
+            </label>
+            <label class="block">
+              <span>Google Client ID</span>
               <input type="text" name="google_client_id" value="{{ settings_form.google_client_id }}" class="{{ input_class }}">
             </label>
-            <label class="block sm:col-span-2">
-              <span class="mb-1 block text-sm font-medium text-slate-700">Google Client Secret</span>
+            <label class="block">
+              <span>Google Client Secret</span>
               {{ local.secret_input('google_client_secret', settings_form.google_client_secret_set, input_class, '', settings_form.google_client_secret_lost) }}
             </label>
-            <label class="block sm:col-span-2">
-              <span class="mb-1 block text-sm font-medium text-slate-700">Allowed domain</span>
+            <label class="block">
+              <span>Allowed domain</span>
               <input type="text" name="google_allowed_domain" value="{{ settings_form.google_allowed_domain }}" placeholder="example.com" class="{{ input_class }}">
-              <span class="mt-1 block text-xs text-slate-400">Leave empty to allow any Google account that matches an active GnozioCMS user email.</span>
+              <span class="block">Leave empty to allow any Google account that matches an active GnozioCMS user email.</span>
             </label>
           </div>
         </div>
