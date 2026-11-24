@@ -150,14 +150,15 @@ final class FormTemplates
             case 'feedback':
                 return [
                     'id' => 'feedback', 'icon' => 'heart', 'name' => $t('Feedback', 'Σχόλια'),
-                    'description' => $t('A rating and a few words, with an optional name and email.', 'Βαθμολογία και λίγα λόγια, με προαιρετικό όνομα και email.'),
+                    'description' => $t('A rating in stars and a few words; name and email only if they want an answer.', 'Βαθμολογία με αστέρια και λίγα λόγια· όνομα και email μόνο αν θέλουν απάντηση.'),
                     'title' => $t('Feedback', 'Σχόλια'), 'submit_label' => $t('Send feedback', 'Αποστολή σχολίων'),
                     'success_message' => $t('Thank you for your feedback.', 'Ευχαριστούμε για τα σχόλιά σου.'),
                     'fields' => [
-                        $field('radio', 'rating', $t('How was your experience?', 'Πώς ήταν η εμπειρία σου;'), ['required' => true, 'options' => ['5|' . $t('Excellent', 'Εξαιρετική'), '4|' . $t('Good', 'Καλή'), '3|' . $t('Okay', 'Μέτρια'), '2|' . $t('Poor', 'Κακή'), '1|' . $t('Very poor', 'Πολύ κακή')]]),
+                        $field('rating', 'rating', $t('How was your experience?', 'Πώς ήταν η εμπειρία σου;'), ['required' => true, 'max' => '5']),
                         $field('textarea', 'comments', $t('What could we do better?', 'Τι θα μπορούσαμε να κάνουμε καλύτερα;'), ['rows' => 5]),
-                        $field('text', 'full-name', $t('Name (optional)', 'Όνομα (προαιρετικό)'), ['width' => 'half']),
-                        $field('email', 'email', $t('Email (optional)', 'Email (προαιρετικό)'), ['width' => 'half']),
+                        $field('checkbox', 'contact-me', $t('You may contact me about it', 'Μπορείτε να επικοινωνήσετε μαζί μου γι’ αυτό')),
+                        $field('text', 'full-name', $t('Name', 'Όνομα'), ['width' => 'half', 'condition' => ['field' => 'contact-me', 'op' => 'filled']]),
+                        $field('email', 'email', $t('Email', 'Email'), ['width' => 'half', 'required' => true, 'condition' => ['field' => 'contact-me', 'op' => 'filled']]),
                     ],
                     'notifications' => ['enabled' => true, 'to' => '', 'reply_to_field' => 'email', 'auto_reply' => false],
                 ];
