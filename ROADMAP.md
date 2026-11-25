@@ -45,7 +45,7 @@ Saved working drafts for published pages are not a current priority.
 
 ## Later
 
-- **Import UX**: dry-run preview, row-level undo, resumable imports.
+- **Import UX**: done in 0.1.344: the dry run's preview of what each row would change, one row undone in Admin › Imports, and an import that stopped resumed (`docs/wordpress-import.md`, *Preview, undo and resume*).
 - **Theme**: a switcher in settings with a preview mode; draft preview links; admin-level user management with limits; updates for private repositories. Style references from the owner can refine the design system at any point (tokens and block CSS).
 - **Backups**: a one-click restore-to-staging drill with a periodic restore report; Google Drive as a remote target.
 - **Settings > APIs**: credentials for services the site may use for generated excerpts and content (nothing uses them yet); other map providers' presets.

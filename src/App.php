@@ -636,8 +636,15 @@ final class App
             $this->contentCsv(),
             $this->content,
             fn(): array => $this->rebuildContentIndex(),
-            fn(string $action, string $level, ?string $type, ?string $id, string $message, array $context) => $this->logActivity($action, $level, $type, $id, $message, $context)
+            fn(string $action, string $level, ?string $type, ?string $id, string $message, array $context) => $this->logActivity($action, $level, $type, $id, $message, $context),
+            $this->importRuns()
         );
+    }
+
+    /** The history of the imports (Admin > Imports), where one row can be undone. */
+    private function importRuns(): ImportRuns
+    {
+        return new ImportRuns($this->basePath . '/storage/import/runs', $this->contentDir);
     }
 
     private function menuAdmin(): MenuAdmin
@@ -1371,6 +1378,7 @@ final class App
         'form-file' => 'handleFormFile',
         'form-files-zip' => 'handleFormFilesZip',
         'import' => 'handleContentImport',
+        'imports' => 'handleImports',
         'export' => 'handleContentExport',
         'translations' => 'handleTranslations',
         'content-types' => 'handleContentTypes',
@@ -1839,6 +1847,42 @@ final class App
             fn(): int => $this->redirects->isAvailable() ? $this->redirects->notFoundCount() : 0,
             fn(string $action, string $level, ?string $type, ?string $id, string $message, array $context) => $this->logActivity($action, $level, $type, $id, $message, $context)
         );
+    }
+
+    /**
+     * Admin > Imports: the history of the imports (WordPress, WooCommerce, CSV), and one row of one undone (ImportRuns). A row of
+     * the shop's products needs the shop's permission too.
+     */
+    private function handleImports(): void
+    {
+        $runs = $this->importRuns();
+        $id = (string)($_GET['run'] ?? ($_POST['run'] ?? ''));
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
+            $key = (string)($_POST['key'] ?? '');
+            $row = $runs->open($id)?->row($key);
+            $result = ['ok' => false, 'message' => 'That import or row is not there any more.'];
+            if ($row !== null && str_starts_with((string)$row['path'], 'products/') && !$this->permissions->can($this->auth->user(), 'shop.manage')) {
+                $result['message'] = 'Undoing a product needs the shop\'s permission.';
+            } elseif ($row !== null) {
+                $result = $runs->undo($id, $key, !empty($_POST['force']));
+            }
+            if ($result['ok']) {
+                $this->rebuildContentIndex();
+                $this->logActivity('import.undo', 'info', 'content', (string)($result['path'] ?? ''), $result['message'], ['run' => $id, 'row' => $key]);
+            }
+            $this->redirect('/admin/imports?' . http_build_query(['run' => $id, ($result['ok'] ? 'ok' : 'fail') => $result['message']]));
+            return;
+        }
+        $run = $id !== '' ? $runs->get($id) : null;
+        $this->render('@admin/imports.twig', [
+            'runs' => $run === null ? $runs->all() : [],
+            'run' => $run,
+            'importers' => ImportRuns::IMPORTERS,
+            'message_ok' => (string)($_GET['ok'] ?? ''),
+            'message_fail' => (string)($_GET['fail'] ?? ''),
+            'user' => $this->auth->user(),
+            'admin_section' => 'content',
+        ]);
     }
 
     private function handleRedirects(): void

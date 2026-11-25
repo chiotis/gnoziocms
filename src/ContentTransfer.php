@@ -22,7 +22,8 @@ final class ContentTransfer
         private ContentCsv $csv,
         private ContentRepository $content,
         private \Closure $rebuildIndex,
-        private \Closure $log
+        private \Closure $log,
+        private ?ImportRuns $runs = null
     ) {
     }
 
@@ -70,7 +71,11 @@ final class ContentTransfer
                 $error = 'Import preview expired. Run dry-run again.';
                 $token = '';
             } else {
-                $result = $this->csv->apply($type, is_array($kept['entries'] ?? null) ? $kept['entries'] : []);
+                $run = $this->runs?->start('csv', $type . ': ' . (string)($kept['filename'] ?? 'import.csv'), ['type' => $type]);
+                $result = $this->csv->apply($type, is_array($kept['entries'] ?? null) ? $kept['entries'] : [], $run);
+                if (($result['ok'] ?? false) !== true) {
+                    $run?->finish('failed');
+                }
                 $summary = is_array($kept['summary'] ?? null) ? $kept['summary'] : $summary;
                 $filename = (string)($kept['filename'] ?? '');
                 if (($result['ok'] ?? false) === true) {

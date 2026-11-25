@@ -10,16 +10,19 @@
     <div class="min-w-0">
       <p class="mt-1 text-sm text-slate-500">Upload a CSV and preview changes before writing content files.</p>
     </div>
+    <div class="flex flex-wrap gap-2">
+    <a class="{{ secondary_btn }}" href="{{ url('admin/imports') }}">Earlier imports</a>
     <a class="{{ secondary_btn }}" href="{{ url('admin/content?type=' ~ type) }}">
       <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true">
         <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
       </svg>
       Back to {{ type|title }}
     </a>
+    </div>
   </header>
 
   {% if saved %}
-    <template data-flash data-type="success">Import completed.</template>
+    <template data-flash data-type="success">Import completed. Each entry it wrote can be undone on its own in Earlier imports.</template>
   {% endif %}
   {% if error %}
     <template data-flash data-type="error">{{ error }}</template>

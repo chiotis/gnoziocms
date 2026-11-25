@@ -87,6 +87,8 @@ final class WooCommerceImporter
             $file = $this->contentDir . '/' . Shop::TYPE . '/' . $slug . '.md';
             $state = $this->stateOf($file, $product['link']);
             $render = $this->render($product, $byId);
+            // The dry run's preview: what an update would change in the file that is there.
+            $changes = $state !== 'new' && is_file($file) ? LineDiff::summary(LineDiff::compare((string)file_get_contents($file), $render['markdown'])) : null;
             foreach ($render['problems'] as $problem) {
                 $problems[] = $product['name'] . ': ' . $problem;
             }
@@ -102,6 +104,7 @@ final class WooCommerceImporter
                 'markdown' => $render['markdown'],
                 'stock' => $render['stock'],
                 'translation_id' => $render['translation_id'],
+                'changes' => $changes,
             ];
             if ($product['link'] !== '') {
                 $redirects[] = [self::pathOf($product['link']), '/' . ($lang === $this->defaultLang() ? '' : $lang . '/') . Shop::TYPE . '/' . $slug];
@@ -155,10 +158,10 @@ final class WooCommerceImporter
      * @param array<string, mixed> $plan
      * @return array{media: int, media_failed: list<string>, categories: int, written: int, skipped: int, stock: int, customers: int}
      */
-    public function apply(array $plan): array
+    public function apply(array $plan, ?ImportRun $run = null): array
     {
         $media = $this->applyMedia($plan, INF);
-        return ['media' => $media['done'], 'media_failed' => $media['failed']] + $this->applyContent($plan);
+        return ['media' => $media['done'], 'media_failed' => $media['failed']] + $this->applyContent($plan, $run);
     }
 
     /**
@@ -207,12 +210,15 @@ final class WooCommerceImporter
     /**
      * The rest of the plan, once the pictures are in: the categories, the products and their stock, the customers.
      *
+     * With a run (ImportRuns), each product is a row of the import's history, which can be undone on its own, and a product a
+     * resumed run already wrote is skipped.
+     *
      * @param array<string, mixed> $plan
-     * @return array{categories: int, written: int, skipped: int, stock: int, customers: int}
+     * @return array{categories: int, written: int, skipped: int, resumed: int, stock: int, customers: int}
      */
-    public function applyContent(array $plan): array
+    public function applyContent(array $plan, ?ImportRun $run = null): array
     {
-        $done = ['categories' => 0, 'written' => 0, 'skipped' => 0, 'stock' => 0, 'customers' => 0];
+        $done = ['categories' => 0, 'written' => 0, 'skipped' => 0, 'resumed' => 0, 'stock' => 0, 'customers' => 0];
 
         // Categories: the old ones joined with those already here, by id.
         $existing = $this->taxonomies->load(Shop::CATEGORIES);
@@ -241,7 +247,16 @@ final class WooCommerceImporter
                 $done['skipped']++;
                 continue;
             }
-            file_put_contents($product['file'], $product['markdown']);
+            $key = 'product/' . $product['woo_id'];
+            if ($run !== null && $run->isDone($key)) {
+                $done['resumed']++;
+                continue;
+            }
+            if ($run !== null) {
+                $run->write($key, $product['file'], $product['markdown'], Shop::TYPE . '/' . $product['slug'] . ': ' . $product['name']);
+            } else {
+                file_put_contents($product['file'], $product['markdown']);
+            }
             $done['written']++;
             if ($this->stock !== null && $product['stock'] !== null) {
                 $this->stock->setOnHand($product['translation_id'], $product['stock'], array_keys($product['stock']));

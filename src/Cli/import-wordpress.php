@@ -13,6 +13,7 @@
  *   --kinds=pages,posts,types  what to bring (default all three; types are the profile's rest_types)
  *   --only-used-media    leave out library files that no page or post uses
  *   --overwrite          also replace a file of the site that an import did not bring
+ *   --resume             go on with the last import of this site that stopped before it finished (the rows it wrote are skipped)
  *   --profile=FILE       what to read from the site's pages (custom types, slides, menus) and the home page layout; see
  *                        docs/wordpress-profiles/
  *   --menus              also write the menus the profile reads (replaces menus of the same name)
@@ -22,7 +23,8 @@
  *   --allow-local        also read a site at a local or private address (one being moved on this same server)
  *   --content=PATH       the content folder (default ./content)
  *   --uploads=PATH       the uploads folder (default ./public/uploads)
- *   --out=PATH           where the report and the redirects list are written (default ./storage/import)
+ *   --out=PATH           where the report, the dry run's preview.txt and the redirects list are written, and the history of the
+ *                        imports (runs/, for Admin > Imports, where one page can be undone) is kept (default ./storage/import)
  *   --redirects=apply    also put the redirects into the site's Redirects (with --apply; the dry run says what it would add)
  *   --storage=PATH       the site's storage folder, where its redirects are kept (default: beside --content)
  */
@@ -32,12 +34,12 @@ if (PHP_SAPI !== 'cli') {
 }
 require __DIR__ . '/../../vendor/autoload.php';
 
-use GnozioCMS\{ImportedRedirects, MediaLibrary, Menus, RedirectRepository, SystemDatabase, Taxonomies, WordPressHttp, WordPressImporter, WordPressReader, WordPressRestTypes, WordPressScraper};
+use GnozioCMS\{ImportRuns, ImportedRedirects, MediaLibrary, Menus, RedirectRepository, SystemDatabase, Taxonomies, WordPressHttp, WordPressImporter, WordPressReader, WordPressRestTypes, WordPressScraper};
 use Symfony\Component\Yaml\Yaml;
 
 $root = dirname(__DIR__, 2);
 $site = '';
-$opt = ['apply' => false, 'lang' => 'en', 'default-lang' => '', 'home' => 'index', 'kinds' => 'pages,posts,types', 'only-used-media' => false, 'overwrite' => false, 'profile' => '', 'menus' => false, 'custom' => $root . '/custom', 'content' => $root . '/content', 'uploads' => $root . '/public/uploads', 'out' => $root . '/storage/import', 'redirects' => '', 'storage' => '', 'allow-local' => false, 'fetch-external' => false];
+$opt = ['apply' => false, 'lang' => 'en', 'default-lang' => '', 'home' => 'index', 'kinds' => 'pages,posts,types', 'only-used-media' => false, 'overwrite' => false, 'profile' => '', 'menus' => false, 'custom' => $root . '/custom', 'content' => $root . '/content', 'uploads' => $root . '/public/uploads', 'out' => $root . '/storage/import', 'redirects' => '', 'storage' => '', 'allow-local' => false, 'fetch-external' => false, 'resume' => false];
 foreach (array_slice($argv, 1) as $arg) {
     if (str_starts_with($arg, '--')) {
         [$key, $value] = array_pad(explode('=', substr($arg, 2), 2), 2, null);
@@ -133,7 +135,8 @@ try {
 
 $c = $plan['counts'];
 echo "\n{$plan['site']['name']}\n";
-printf("  pages and posts: %d new, %d to update, %d left alone\n", $c['new'], $c['update'], $c['skip']);
+$same = count(array_filter($plan['items'], static fn(array $i): bool => $i['state'] === 'update' && is_array($i['changes']) && $i['changes']['added'] + $i['changes']['removed'] === 0));
+printf("  pages and posts: %d new, %d to update (%d of them the same as now), %d left alone\n", $c['new'], $c['update'], $same, $c['skip']);
 foreach ($plan['terms'] as $name => $list) {
     printf("  %s: %d\n", $name, count($list));
 }
@@ -223,6 +226,12 @@ foreach ($reportLines($plan['report'], 20) as $line) {
 }
 
 if (!$opt['apply']) {
+    if (!is_dir($opt['out'])) {
+        @mkdir($opt['out'], 0775, true);
+    }
+    if (@file_put_contents($opt['out'] . '/preview.txt', WordPressImporter::preview($plan)) !== false) {
+        echo "\nEvery page and post, with the lines an update would change: {$opt['out']}/preview.txt\n";
+    }
     if ($siteRedirects !== null) {
         echo "\n";
         $redirectReport($siteRedirects->apply($plan['redirects'], false), false);
@@ -231,14 +240,25 @@ if (!$opt['apply']) {
     exit(0);
 }
 
-echo "\nImporting ...\n";
+$runs = new ImportRuns($opt['out'] . '/runs', (string)$opt['content']);
+$run = $runs->start('wordpress', $site, ['options' => array_keys(array_filter($opt, static fn($v): bool => $v === true)), 'lang' => $lang], (bool)$opt['resume']);
+echo $run->isResumed() ? "\nGoing on with the import that stopped (" . $run->count() . " pages and posts were written then) ...\n" : "\nImporting ...\n";
 $media->ensureDirectories();
-$result = $importer->apply($plan);
+try {
+    $result = $importer->apply($plan, $run);
+} catch (Throwable $e) {
+    $run->flush();
+    fwrite(STDERR, "\nThe import stopped: " . $e->getMessage() . "\nWhat it wrote is kept; run the same command with --resume to go on from there.\n");
+    exit(1);
+}
 if (!is_dir($opt['out'])) {
     mkdir($opt['out'], 0775, true);
 }
 $redirectsFile = $opt['out'] . '/redirects.txt';
 file_put_contents($redirectsFile, WordPressImporter::redirectList($result['redirects']));
+if ($result['resumed'] > 0) {
+    printf("  %d written before it stopped, skipped now\n", $result['resumed']);
+}
 printf("  %d written, %d updated, %d left alone\n  %d terms added, %d given names they lacked\n  %d files brought into the library", $result['written'], $result['updated'], $result['skipped'], $result['terms_added'], $result['terms_updated'], $result['media_new']);
 echo count($result['media_failed']) > 0 ? ', ' . count($result['media_failed']) . " could not be fetched\n" : "\n";
 foreach (array_slice($result['media_failed'], 0, 20) as $failed) {
@@ -272,4 +292,6 @@ if ($siteRedirects !== null) {
 } else {
     printf("  redirects: %d, written to %s\n    Paste them in Admin > Redirects > Import on the site that will serve them, or run again with --redirects=apply.\n", count($result['redirects']), $redirectsFile);
 }
+$run->finish('done', ['written' => $result['written'], 'updated' => $result['updated'], 'skipped' => $result['skipped'], 'media' => $result['media_new'], 'redirects' => count($result['redirects'])]);
+echo "  every page and post written is in Admin > Imports, where one of them can be undone\n";
 echo "\nDone. Open the admin to look through what came in; every imported file has 'imported_from' in its front matter, so running this again updates them.\n";

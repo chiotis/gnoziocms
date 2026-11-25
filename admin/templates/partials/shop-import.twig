@@ -54,7 +54,15 @@
     {% if s == 'failed' %}
       <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">
         <p class="m-0 font-medium">{{ state.error|default('The import stopped.') }}</p>
-        <p class="m-0 mt-1 text-xs text-red-700">Check the address and the keys, and try again.</p>
+        {% if can_resume|default(false) %}
+          <p class="m-0 mt-1 text-xs text-red-700">The pictures and products it brought so far are kept. Go on from where it stopped, or start again below.</p>
+          <form method="post" action="{{ url('admin/shop-import') }}" class="mt-2">
+            {{ csrf_field() }}<input type="hidden" name="action" value="resume">
+            <button type="submit" class="{{ primary }}" data-import-resume>Go on with the import</button>
+          </form>
+        {% else %}
+          <p class="m-0 mt-1 text-xs text-red-700">Check the address and the keys, and try again.</p>
+        {% endif %}
       </div>
     {% endif %}
     <form method="post" action="{{ url('admin/shop-import') }}" enctype="multipart/form-data" class="grid gap-4" data-import-start>
@@ -201,7 +209,7 @@
               <tr>
                 <td class="max-w-[18rem] truncate px-3 py-1.5 font-medium text-slate-800" title="{{ p.name }}">{{ p.name }}</td>
                 <td class="max-w-[16rem] truncate px-3 py-1.5 font-mono text-xs text-slate-500">/products/{{ p.slug }}</td>
-                <td class="px-3 py-1.5">{% if p.state == 'new' %}<span class="rounded bg-green-50 px-1.5 py-0.5 text-xs text-green-800">New</span>{% elseif p.state == 'update' %}<span class="rounded bg-blue-50 px-1.5 py-0.5 text-xs text-blue-800">Updated</span>{% else %}<span class="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-600" title="A product of this site's own has this address">Left alone</span>{% endif %}</td>
+                <td class="px-3 py-1.5">{% if p.state == 'new' %}<span class="rounded bg-green-50 px-1.5 py-0.5 text-xs text-green-800">New</span>{% elseif p.state == 'update' and p.changes is not null and p.changes.added + p.changes.removed == 0 %}<span class="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-600" title="The product here is already what the import would write">No change</span>{% elseif p.state == 'update' %}<span class="rounded bg-blue-50 px-1.5 py-0.5 text-xs text-blue-800">Updated</span>{% if p.changes is not null %} <span class="text-xs text-slate-500">+{{ p.changes.added }} −{{ p.changes.removed }} lines</span>{% endif %}{% else %}<span class="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-600" title="A product of this site's own has this address">Left alone</span>{% endif %}</td>
                 <td class="px-3 py-1.5 text-right tabular-nums text-slate-600">{{ p.variants ?: '–' }}</td>
                 <td class="px-3 py-1.5 text-right tabular-nums {{ p.pictures ? 'text-slate-600' : 'text-amber-700' }}">{{ p.pictures }}</td>
                 <td class="px-3 py-1.5 text-right tabular-nums text-slate-600">{{ p.stock is null ? '–' : p.stock }}</td>
@@ -250,6 +258,7 @@
         <li>Set the <a class="text-blue-700 hover:underline" href="{{ url('admin/shop-settings?tab=payments') }}">payments</a> and <a class="text-blue-700 hover:underline" href="{{ url('admin/shop-settings?tab=shipping') }}">shipping</a>.</li>
         {% if state.options.redirects %}<li>The redirects are in <a class="text-blue-700 hover:underline" href="{{ url('admin/redirects') }}">Redirects</a>. They work once the shop's domain points at this site.</li>{% endif %}
         <li>Changed something in WooCommerce? Import again: it updates what it brought.</li>
+        <li>A product that should not have come over can be undone on its own in <a class="text-blue-700 hover:underline" href="{{ url('admin/imports') }}">Imports</a>.</li>
       </ul>
       <form method="post" action="{{ url('admin/shop-import') }}" class="mt-2">
         {{ csrf_field() }}<input type="hidden" name="action" value="reset">

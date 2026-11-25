@@ -38,4 +38,16 @@ check('import by editor: script neutralised', '<script>alert(7)' not in page and
 res, html = upload(root, HEAD + row('imp-admin', '<div class=""ok"">admin html</div>'))
 page = Client().get('/en/imp-admin')[2]
 check('import by admin-level user keeps HTML', '<div class="ok">admin html</div>' in page, res and res[0])
+# The history of the imports: the editor's import is a run, and its one entry can be undone on its own.
+status, _, listing = ed.get('/admin/imports')
+check('Imports lists the CSV imports', status == 200 and 'pages: x.csv' in listing and 'CSV' in listing, status)
+run_id = (re.findall(r'/admin/imports\?run=([0-9]{8}-[0-9]{6}-[0-9a-f]{6})', listing) or [''])[-1]
+status, _, detail = ed.get('/admin/imports?run=' + run_id)
+check('a run shows the entry it made, as imported', status == 200 and re.search(r'pages/imp-ed(\.[a-z]{2})?\.md', detail) is not None and 'As imported' in detail, (status, re.findall(r'<code[^>]*>([^<]*imp-ed[^<]*)</code>', detail), re.findall(r'ring-1 [^"]*">([^<]+)<', detail)))
+undo = next((f for f in ed.forms(html=detail) if any(x[0] == 'key' for x in f['fields'])), None)
+res = ed.request('/admin/imports', data=[tuple(x) for x in undo['fields']]) if undo else None
+check('undo answers with the run again', res is not None and res[0] in (302, 303), res and res[0])
+check('and the entry the import made is gone', Client().get('/en/imp-ed')[0] == 404)
+check('the row says it was undone', 'Undone' in ed.get('/admin/imports?run=' + run_id)[2])
+check('a visitor cannot open Imports', Client().get('/admin/imports')[0] in (302, 303, 403))
 print('\nALL PASSED' if not fails else '\n%d FAILED: %s' % (len(fails), fails))
