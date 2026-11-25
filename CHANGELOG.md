@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.345 — 2026-11-24 — Search: an index, tolerance for typos, filters for places
+- Search keeps its words in a SQLite index (`storage/cache/search/index.sqlite`, disposable, not in backups) and reads only the entries that can match. The old cache (a 16 MB file per type and language) was full at about 1,000 entries, after which every search extracted the rest again. Measured on entries of about 600 words: 3,000 entries 0.3 s a search (before 0.8 s), 10,000 entries 0.7 s (before 3 s). Visibility is still decided by the repository, so results are the same as before.
+- Tolerance for typos: a word of five or more letters that is nowhere on the site also finds the site's words one letter away (two from nine letters; two neighbours swapped count as one). «ξενοδοχιο» finds «Ξενοδοχείο». They rank below the word as typed and its other forms, and the page says which words it included. A word on the site is never corrected; numbers and short words are not either.
+- Filters for places: when the results include places, the search page offers Area (the `area` field) and Category (a parent includes its children), each with counts that follow the other filters, as `area=` and `category=`.
+- Tests: `search-typos` (new), `search`, `search-document` (unit); `geo` (HTTP).
+
 ## 0.1.344 — 2026-11-24 — Import tools for every importer: a dry-run preview, one row undone, a stopped import resumed
 - The dry run of the WordPress, WooCommerce and CSV imports says of each row whether it is new, would change (with the lines added and removed), would stay the same or is left out; `import-wordpress` writes it to `out/preview.txt` with the changed lines, and the WooCommerce screen shows it per product.
 - Every import is kept as a run in `storage/import/runs/` (the 30 newest): each file it wrote, and a copy of the file it replaced. Admin › Imports lists the runs and undoes one row: the old file comes back, or the new one goes. A file edited since the import is undone only when asked again; a product needs `shop.manage`.

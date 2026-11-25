@@ -311,5 +311,17 @@ root.submit('/admin/redirects', lambda f: ['do', 'import'] in f['fields'], {'lin
 st, hdr, _ = anon.get('/' + urllib.parse.quote('φύση/πηγές') + '/')
 check('a Greek old address leads to the term page', st == 301 and (hdr.get('Location') or '').endswith('/en/nature/water/springs'), (st, hdr.get('Location')))
 
+# ---- search: the filters for places (area, category) and a misspelt word
+st, _, html = anon.get('/en/search?q=spring')
+check('a search with places among its results offers the area and category filters', st == 200 and 'search-place-filters' in html
+      and '<option value="Sitia">Sitia (1)</option>' in html and '<option value="sights">' in html, html[html.find('search-place-filters'):][:600])
+found = lambda page: re.findall(r'class="search-result-title"><a href="[^"]*?(/en/[^"]+)"', page)
+st, _, html = anon.get('/en/search?q=spring&area=Sitia')
+check('an area keeps the places in it', st == 200 and found(html) == ['/en/points/spring'], found(html))
+st, _, html = anon.get('/en/search?q=spring&category=hiking')
+check('a category keeps the places filed under it', st == 200 and found(html) == ['/en/points/warm-spring'], found(html))
+st, _, html = anon.get('/en/search?q=sprnig')
+check('a misspelt word finds the word on the site and says so', st == 200 and 'search-similar' in html and '/en/points/spring' in ' '.join(found(html)), found(html))
+
 print('\nALL PASSED' if not fails else '\n%d FAILED: %s' % (len(fails), fails))
 sys.exit(1 if fails else 0)

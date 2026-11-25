@@ -22,6 +22,8 @@
       <label class="visually-hidden" for="search-q">{{ t('search.title') }}</label>
       <input type="search" id="search-q" name="q" value="{{ query }}" placeholder="{{ t('search.placeholder') }}">
       {% if search.type|default('') != '' %}<input type="hidden" name="type" value="{{ search.type }}">{% endif %}
+      {% if search.area|default('') != '' %}<input type="hidden" name="area" value="{{ search.area }}">{% endif %}
+      {% if search.category|default('') != '' %}<input type="hidden" name="category" value="{{ search.category }}">{% endif %}
       <button type="submit">{{ t('search.button') }}</button>
     </form>
   {% endset %}
@@ -32,6 +34,10 @@
       <div class="search-summary">
         <h2 id="search-heading">{{ t('search.results_for') }} “{{ query }}”</h2>
         <p class="search-count">{{ t(search.total == 1 ? 'search.result_count_one' : 'search.result_count')|replace({'{count}': search.total}) }}</p>
+        {# A word that is nowhere on the site: the results include the words close to it (search.similar: the word typed => the words found). #}
+        {% if search.similar|default({}) is not empty %}
+          <p class="search-similar">{{ t('search.similar_words') }} {% for typed, found in search.similar %}{% for word in found %}<em>{{ word }}</em>{% if not loop.last %}, {% endif %}{% endfor %}{% if not loop.last %}, {% endif %}{% endfor %}</p>
+        {% endif %}
       </div>
       {% if search.types|length > 1 %}
         <nav class="search-filters" aria-label="{{ t('search.filter_by_type') }}">
@@ -41,6 +47,30 @@
             {% endfor %}
           </ul>
         </nav>
+      {% endif %}
+      {# Filters for places, offered when the results include places: by area and by category (search.areas, search.categories). #}
+      {% if search.areas|default([]) is not empty or search.categories|default([]) is not empty %}
+        <form method="get" action="{{ url(prefix ~ 'search') }}" class="search-place-filters" aria-label="{{ t('search.filter_places') }}">
+          <input type="hidden" name="q" value="{{ query }}">
+          {% if search.type|default('') != '' %}<input type="hidden" name="type" value="{{ search.type }}">{% endif %}
+          {% if search.areas is not empty %}
+            <label class="search-place-filter"><span>{{ t('search.area') }}</span>
+              <select name="area">
+                <option value="">{{ t('search.all_areas') }}</option>
+                {% for option in search.areas %}<option value="{{ option.value }}"{% if option.active %} selected{% endif %}>{{ option.label }} ({{ option.count }})</option>{% endfor %}
+              </select>
+            </label>
+          {% elseif search.area|default('') != '' %}<input type="hidden" name="area" value="{{ search.area }}">{% endif %}
+          {% if search.categories is not empty %}
+            <label class="search-place-filter"><span>{{ t('search.category') }}</span>
+              <select name="category">
+                <option value="">{{ t('search.all_categories') }}</option>
+                {% for option in search.categories %}<option value="{{ option.value }}"{% if option.active %} selected{% endif %}>{% if option.depth > 0 %}{% for i in 1..option.depth %}– {% endfor %}{% endif %}{{ option.label }} ({{ option.count }})</option>{% endfor %}
+              </select>
+            </label>
+          {% elseif search.category|default('') != '' %}<input type="hidden" name="category" value="{{ search.category }}">{% endif %}
+          <button type="submit" class="btn btn-secondary">{{ t('search.apply_filters') }}</button>
+        </form>
       {% endif %}
       {% if search.hits is empty %}
         <div class="search-empty">

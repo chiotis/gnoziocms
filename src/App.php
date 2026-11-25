@@ -1243,15 +1243,14 @@ final class App
             $this->defaultLanguage()
         );
         $documents->cacheIn($this->basePath . '/storage/cache/search', trim((string)file_get_contents($this->basePath . '/VERSION')));
-        $search = (new ContentSearch($this->content, $documents, $this->relations()))->search(
-            $_GET['q'] ?? '', $lang, $includeHidden, $_GET['type'] ?? '', $_GET['page'] ?? 1
+        $search = (new ContentSearch($this->content, $documents, $this->relations(), $this->blockRuntime()->placeTypes(), $this->taxonomies()))->search(
+            $_GET['q'] ?? '', $lang, $includeHidden, $_GET['type'] ?? '', $_GET['page'] ?? 1, $_GET['area'] ?? '', $_GET['category'] ?? ''
         );
         $base = $this->buildAbsoluteUrl($route['lang_prefix'] . 'search');
-        $link = static function (string $type, int $page = 1) use ($base, $search): string {
-            $params = ['q' => $search['query']];
-            if ($type !== '') {
-                $params['type'] = $type;
-            }
+        // Every link keeps the query and the filters it does not change, and starts at page 1 unless it is a page link.
+        $link = static function (array $change = [], int $page = 1) use ($base, $search): string {
+            $params = ['q' => $search['query'], 'type' => $search['type'], 'area' => $search['area'], 'category' => $search['category']];
+            $params = array_filter(array_replace($params, $change), static fn(string $value): bool => $value !== '');
             if ($page > 1) {
                 $params['page'] = $page;
             }
@@ -1260,7 +1259,7 @@ final class App
         $search['types'] = [];
         if ($search['counts'] !== [] || $search['type'] !== '') {
             $search['types'][] = ['value' => '', 'label' => $this->translate('search.all_types', 'All types'),
-                'count' => array_sum($search['counts']), 'url' => $link(''), 'active' => $search['type'] === ''];
+                'count' => array_sum($search['counts']), 'url' => $link(['type' => '']), 'active' => $search['type'] === ''];
             $counts = $search['counts'];
             if ($search['type'] !== '') {
                 $counts[$search['type']] ??= 0;
@@ -1268,19 +1267,28 @@ final class App
             ksort($counts);
             foreach ($counts as $type => $count) {
                 $search['types'][] = ['value' => $type, 'label' => $this->searchTypeLabel($type, $lang), 'count' => $count,
-                    'url' => $link($type), 'active' => $type === $search['type']];
+                    'url' => $link(['type' => $type]), 'active' => $type === $search['type']];
             }
         }
+        // The filters for places: by area and by category, each with a link that clears it.
+        foreach (['areas' => 'area', 'categories' => 'category'] as $list => $param) {
+            foreach ($search[$list] as &$option) {
+                $option['url'] = $link([$param => $option['active'] ? '' : $option['value']]);
+            }
+            unset($option);
+        }
+        $search['clear_area'] = $link(['area' => '']);
+        $search['clear_category'] = $link(['category' => '']);
         foreach ($search['hits'] as &$hit) {
             $hit['type_label'] = $this->searchTypeLabel($hit['item']->type, $lang);
         }
         unset($hit);
         // The same page numbers as an archive's: all up to eight, then gaps (Pagination).
-        $links = array_map(static fn(array $n): array => ['page' => $n['number'], 'url' => $link($search['type'], $n['number']), 'current' => $n['current'], 'gap_before' => $n['gap_before']], Pagination::numbers((int)$search['page'], (int)$search['pages']));
+        $links = array_map(static fn(array $n): array => ['page' => $n['number'], 'url' => $link([], $n['number']), 'current' => $n['current'], 'gap_before' => $n['gap_before']], Pagination::numbers((int)$search['page'], (int)$search['pages']));
         $search['pagination'] = [
             'page' => $search['page'], 'pages' => $search['pages'],
-            'previous' => $search['page'] > 1 ? $link($search['type'], $search['page'] - 1) : '',
-            'next' => $search['page'] < $search['pages'] ? $link($search['type'], $search['page'] + 1) : '',
+            'previous' => $search['page'] > 1 ? $link([], $search['page'] - 1) : '',
+            'next' => $search['page'] < $search['pages'] ? $link([], $search['page'] + 1) : '',
             'links' => $links,
         ];
         $this->render('templates/search.twig', [

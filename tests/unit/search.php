@@ -140,21 +140,33 @@ $cachedSearch = function () use ($cacheDir, $dir, $markdown): ContentSearch {
     $repository->storeParsedIn("$dir/cache", 'search-test');
     return new ContentSearch($repository, $docs);
 };
-$bucketFile = $cacheDir . '/' . hash('sha256', 'pages|el') . '.ser';
+$indexFile = $cacheDir . '/index.sqlite';
+// What the search index keeps for a type in a language: slug => document, and a digest of the rows (to see whether a search wrote).
+// A kept row as the document it stands for: its display text and relations, and the normalized fields from the matched text.
+$whole = static function (array $doc, string $haystack): array {
+    $relations = $doc['relations'];
+    unset($doc['relations']);
+    return $doc + ['normal' => array_combine(['title', 'terms', 'fields', 'excerpt', 'body'], explode("\x1F", $haystack)), 'relations' => $relations];
+};
+$kept = static function (string $file, string $scope) use ($whole): array {
+    $pdo = new PDO('sqlite:' . $file);
+    $rows = $pdo->prepare('SELECT slug, doc, haystack FROM docs WHERE scope = ? ORDER BY slug');
+    $rows->execute([$scope]);
+    $out = [];
+    foreach ($rows->fetchAll(PDO::FETCH_NUM) as [$slug, $doc, $haystack]) { $out[$slug] = $whole(unserialize($doc, ['allowed_classes' => false]), $haystack); }
+    return $out;
+};
+$digest = static fn(string $file): string => md5(serialize((new PDO('sqlite:' . $file))->query('SELECT scope, slug, fingerprint, public FROM docs ORDER BY scope, slug')->fetchAll(PDO::FETCH_NUM)));
 $cachedSearch()->search('αθηνα', 'el', true);
-$stored = unserialize(file_get_contents($bucketFile), ['allowed_classes' => false]);
-check('cached drafts carry normalized text', [isset($stored['entries']['draft']), $stored['entries']['draft'][1]['normal']['title'] ?? null], [true, 'αθηνα κρυφη']);
-touch($bucketFile, time() - 100);
-clearstatcache();
-$before = [filemtime($bucketFile), md5_file($bucketFile)];
+$stored = $kept($indexFile, 'pages|el');
+check('cached drafts carry normalized text', [isset($stored['draft']), $stored['draft']['normal']['title'] ?? null], [true, 'αθηνα κρυφη']);
+$before = $digest($indexFile);
 $public = $slugs($cachedSearch()->search('αθηνα', 'el'));
-clearstatcache();
-check('a public search after a signed-in one leaves the cache file alone', [filemtime($bucketFile), md5_file($bucketFile)], $before);
+check('a public search after a signed-in one leaves the index alone', $digest($indexFile), $before);
 check('and does not expose cached drafts or hidden entries', in_array('draft', $public) || in_array('hidden', $public), false);
 unlink("$dir/content/pages/draft.md");
 $cachedSearch()->search('αθηνα', 'el', true);
-$stored = unserialize(file_get_contents($bucketFile), ['allowed_classes' => false]);
-check('a signed-in scan prunes entries that no longer exist', isset($stored['entries']['draft']), false);
+check('a signed-in scan prunes entries that no longer exist', isset($kept($indexFile, 'pages|el')['draft']), false);
 
 // ---- Related titles: an entry is found by the titles of the entries it points at (a book by its author).
 $rroot = sys_get_temp_dir() . '/faros-search-rel-' . bin2hex(random_bytes(5));
@@ -219,9 +231,8 @@ $put('authors/ada.md', "title: Ada Byron\nstatus: draft\ntranslation_id: aaaaaaa
 $rrepo->forget();
 $rindex->upsert($rrepo->parseFile('authors', "$rroot/content/authors/ada.md"));
 check('cached: unpublishing the author hides its title from visitors', [$rslugs($rmake($rcache)->search('byron', 'el')), $rslugs($rmake($rcache)->search('byron', 'el', true))], [[], ['authors/ada', 'works/engine']]);
-$cachedFiles = glob("$rcache/*.ser");
-$stored = unserialize(file_get_contents($rcache . '/' . hash('sha256', 'works|el') . '.ser'), ['allowed_classes' => false]);
-check('the cache holds ids but no title of the target', [$stored['entries']['engine'][1]['relations'], str_contains(serialize($stored), 'Byron')], [['aaaaaaaa00000001'], false]);
+$stored = $kept($rcache . '/index.sqlite', 'works|el');
+check('the cache holds ids but no title of the target', [$stored['engine']['relations'], str_contains(serialize($stored), 'Byron')], [['aaaaaaaa00000001'], false]);
 exec('rm -rf ' . escapeshellarg($rroot));
 
 $remove = function (string $path) use (&$remove): void {

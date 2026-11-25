@@ -2906,6 +2906,34 @@ body.has-transparent-header:not(.header-solid) .site-header.is-on-dark[data-stic
   white-space: nowrap;
 }
 
+.search-similar {
+  margin: var(--space-3xs) 0 0;
+  color: var(--color-muted);
+  font-size: var(--step--1);
+}
+
+.search-place-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-2xs) var(--space-xs);
+}
+
+.search-place-filter {
+  display: grid;
+  gap: var(--space-3xs);
+  min-width: min(100%, 14rem);
+  font-size: var(--step--1);
+  color: var(--color-muted);
+}
+
+.search-place-filter select {
+  width: 100%;
+  min-height: 2.75rem;
+  max-width: 100%;
+  color: var(--color-text);
+}
+
 .search-empty {
   display: grid;
   gap: var(--space-2xs);
