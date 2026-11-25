@@ -31,6 +31,7 @@
  *
  * Options:
  *   --apply              do it (otherwise only say what would be done)
+ *   --resume             go on with the last import of this shop that stopped before it finished (products it wrote are skipped)
  *   --lang=el            the language of the shop's texts (default el)
  *   --default-lang=el    this site's default language (default: the same as --lang)
  *   --customers=FILE     the users' CSV (above)
@@ -48,12 +49,12 @@ if (PHP_SAPI !== 'cli') {
 }
 require __DIR__ . '/../../vendor/autoload.php';
 
-use GnozioCMS\{ImportedRedirects, MediaLibrary, RedirectRepository, SystemDatabase, Taxonomies, WooCommerceImporter, WooCommerceReader, WordPressHttp};
+use GnozioCMS\{ImportRuns, ImportedRedirects, MediaLibrary, RedirectRepository, SystemDatabase, Taxonomies, WooCommerceImporter, WooCommerceReader, WordPressHttp};
 use GnozioCMS\Shop\{ShopCustomers, ShopStock};
 
 $root = dirname(__DIR__, 2);
 $site = '';
-$opt = ['apply' => false, 'lang' => 'el', 'default-lang' => '', 'customers' => '', 'overwrite' => false, 'content' => $root . '/content', 'uploads' => $root . '/public/uploads', 'storage' => '', 'out' => $root . '/storage/import', 'redirects' => '', 'allow-local' => false];
+$opt = ['apply' => false, 'lang' => 'el', 'default-lang' => '', 'customers' => '', 'overwrite' => false, 'content' => $root . '/content', 'uploads' => $root . '/public/uploads', 'storage' => '', 'out' => $root . '/storage/import', 'redirects' => '', 'allow-local' => false, 'resume' => false];
 foreach (array_slice($argv, 1) as $arg) {
     if (str_starts_with($arg, '--')) {
         [$key, $value] = array_pad(explode('=', substr($arg, 2), 2), 2, null);
@@ -123,7 +124,8 @@ $variable = count(array_filter($plan['products'], static fn(array $p): bool => $
 $stocked = count(array_filter($plan['products'], static fn(array $p): bool => $p['stock'] !== null));
 echo "\n";
 printf("  product categories: %d\n", count($plan['categories']));
-printf("  products: %d new, %d to update, %d left alone (files of this site's own)\n", $states['new'] ?? 0, $states['update'] ?? 0, $states['skip'] ?? 0);
+$same = count(array_filter($plan['products'], static fn(array $p): bool => $p['state'] === 'update' && is_array($p['changes'] ?? null) && $p['changes']['added'] + $p['changes']['removed'] === 0));
+printf("  products: %d new, %d to update (%d of them the same as now), %d left alone (files of this site's own)\n", $states['new'] ?? 0, $states['update'] ?? 0, $same, $states['skip'] ?? 0);
 printf("    %d physical, %d digital; %d with variants (%d variants in all); %d with stock quantities\n", $kinds['physical'] ?? 0, $kinds['digital'] ?? 0, $variable, array_sum(array_column($plan['products'], 'variants')), $stocked);
 printf("  pictures for the media library: %d\n", count($plan['media']));
 printf("  redirects from old addresses: %d\n", count($plan['redirects']));
@@ -161,7 +163,18 @@ if (!$opt['apply']) {
     echo "\nNothing was changed. Add --apply to import.\n";
     exit(0);
 }
-$done = $importer->apply($plan);
+$run = (new ImportRuns($out . '/runs', (string)$opt['content']))->start('woocommerce', $site, ['lang' => (string)$opt['lang']], (bool)$opt['resume']);
+if ($run->isResumed()) {
+    echo "\nGoing on with the import that stopped (" . $run->count() . " products were written then).\n";
+}
+try {
+    $done = $importer->apply($plan, $run);
+} catch (Throwable $e) {
+    $run->flush();
+    fwrite(STDERR, "\nThe import stopped: " . $e->getMessage() . "\nWhat it wrote is kept; run the same command with --resume to go on from there.\n");
+    exit(1);
+}
+$run->finish('done', ['written' => $done['written'], 'skipped' => $done['skipped'], 'media' => $done['media']]);
 printf("\nDone: %d pictures, %d categories, %d products written (%d left alone), stock of %d, %d customers.\n", $done['media'], $done['categories'], $done['written'], $done['skipped'], $done['stock'], $done['customers']);
 foreach (array_slice($done['media_failed'], 0, 10) as $url) {
     echo "  picture not fetched: $url\n";

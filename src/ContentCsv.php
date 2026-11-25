@@ -595,7 +595,7 @@ final class ContentCsv
     }
 
     /** @param array<int, array<string, mixed>> $entries */
-    public function apply(string $type, array $entries): array
+    public function apply(string $type, array $entries, ?ImportRun $run = null): array
     {
         $writable = array_values(array_filter($entries, function (array $entry): bool {
             return in_array((string)($entry['action'] ?? ''), ['create', 'update'], true);
@@ -698,9 +698,22 @@ final class ContentCsv
                 'tmp' => $tmpPath,
                 'new' => $newPath,
                 'old' => (string)($entry['old_path'] ?? ''),
+                'key' => 'line/' . (int)($entry['line'] ?? 0) . '/' . basename($newPath),
+                'title' => (string)($data['title'] ?? basename($newPath, '.md')),
             ];
         }
 
+        // The import's history (Admin > Imports): each entry is a row that can be undone on its own; an entry that moved to a new
+        // address is two rows, the new file and the old one it replaced.
+        if ($run !== null) {
+            foreach ($temps as $temp) {
+                $label = $type . '/' . basename($temp['new'], '.md') . ': ' . $temp['title'];
+                $run->before($temp['key'], $temp['new'], $label);
+                if ($temp['old'] !== '' && $temp['old'] !== $temp['new'] && file_exists($temp['old'])) {
+                    $run->before($temp['key'] . '/was', $temp['old'], $type . '/' . basename($temp['old'], '.md') . ' (the address before the import)');
+                }
+            }
+        }
         foreach ($temps as $temp) {
             if (!@rename($temp['tmp'], $temp['new'])) {
                 foreach ($temps as $cleanup) {
@@ -719,7 +732,9 @@ final class ContentCsv
             }
             [$identitySlug, $identityLang] = $this->contentIdentity($newPath);
             $this->revisions->capture($type, $identitySlug, $identityLang, (string)file_get_contents($newPath), 'import', ($this->currentUser)());
+            $run?->after($temp['key'], $newPath);
         }
+        $run?->finish('done', ['written' => count($temps)]);
 
         return ['ok' => true];
     }

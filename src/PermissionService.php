@@ -394,7 +394,7 @@ final class PermissionService
             'media', 'files' => 'media.manage',
             'forms', 'forms-new', 'form-submissions', 'form-file', 'form-files-zip' => 'forms.manage',
             'forms-export', 'export' => 'exports.manage',
-            'import' => 'imports.manage',
+            'import', 'imports' => 'imports.manage',
             'translations' => 'translations.manage',
             'taxonomies' => 'taxonomies.manage',
             'activity-logs' => 'activity.manage',

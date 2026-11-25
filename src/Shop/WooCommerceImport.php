@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace GnozioCMS\Shop;
 
+use GnozioCMS\ImportRun;
+use GnozioCMS\ImportRuns;
 use GnozioCMS\JobRunner;
 use GnozioCMS\WooCommerceImporter;
 
@@ -40,7 +42,8 @@ final class WooCommerceImport
         private ShopSecrets $secrets,
         private \Closure $makeImporter,
         private \Closure $finish,
-        private ?\Closure $log = null
+        private ?\Closure $log = null,
+        private ?ImportRuns $runs = null
     ) {
     }
 
@@ -153,6 +156,7 @@ final class WooCommerceImport
             return ['ok' => false, 'message' => 'Check the shop first.'];
         }
         $state['status'] = 'importing';
+        $state['run'] = '';
         $state['options'] = ['redirects' => !empty($post['redirects']), 'overwrite' => !empty($post['overwrite'])];
         $state['progress'] = ['media_next' => 0, 'media_total' => (int)($state['summary']['media'] ?? 0), 'media_done' => 0, 'media_failed' => [], 'step' => 'pictures'];
         $state['at'] = time();
@@ -165,6 +169,36 @@ final class WooCommerceImport
         return ['ok' => true, 'message' => 'Importing…'];
     }
 
+    /**
+     * An import that stopped while it was writing (the server ended it, an error): it goes on where it was. The pictures already
+     * in the library and the products already written are not done again.
+     *
+     * @return array{ok: bool, message: string}
+     */
+    public function resume(): array
+    {
+        $state = $this->state();
+        if (!$this->canResume($state)) {
+            return ['ok' => false, 'message' => 'There is no stopped import to go on with.'];
+        }
+        $state['status'] = 'importing';
+        $state['error'] = '';
+        $state['at'] = time();
+        $this->save($state);
+        if ($this->jobs->enqueue(self::APPLY, [], 5, null, 2) === 0) {
+            $this->save(['status' => 'failed', 'error' => 'The site database is not available.'] + $state);
+            return ['ok' => false, 'message' => 'The site database is not available.'];
+        }
+        $this->note('shop.import_resumed', 'info', 'WooCommerce import from ' . $state['site'] . ' goes on.');
+        return ['ok' => true, 'message' => 'Going on with the import…'];
+    }
+
+    /** @param array<string, mixed> $state */
+    private function canResume(array $state): bool
+    {
+        return $state['status'] === 'failed' && ($state['options'] ?? []) !== [] && is_file($this->dir . '/plan.json');
+    }
+
     /** Back to step 1: the dry run, the customers' CSV and the stored keys are forgotten; a running import is left to finish. */
     public function reset(): array
     {
@@ -172,6 +206,9 @@ final class WooCommerceImport
             return ['ok' => false, 'message' => 'Wait for the import to finish.'];
         }
         $site = $this->state()['site'];
+        if (($this->state()['run'] ?? '') !== '') {
+            $this->runs?->open((string)$this->state()['run'])?->finish('stopped');
+        }
         @unlink($this->dir . '/plan.json');
         @unlink($this->dir . '/customers.csv');
         $this->secrets->save(self::SECRETS, [], true);
@@ -186,7 +223,7 @@ final class WooCommerceImport
         $plan = in_array($state['status'], ['ready'], true) ? $this->plan() : null;
         $products = [];
         foreach (array_slice(is_array($plan['products'] ?? null) ? $plan['products'] : [], 0, 500) as $p) {
-            $products[] = ['name' => $p['name'], 'slug' => $p['slug'], 'state' => $p['state'], 'kind' => $p['kind'], 'variants' => $p['variants'], 'pictures' => $p['pictures'], 'stock' => is_array($p['stock']) ? array_sum($p['stock']) : null];
+            $products[] = ['name' => $p['name'], 'slug' => $p['slug'], 'state' => $p['state'], 'kind' => $p['kind'], 'variants' => $p['variants'], 'pictures' => $p['pictures'], 'stock' => is_array($p['stock']) ? array_sum($p['stock']) : null, 'changes' => $p['changes'] ?? null];
         }
         return [
             'state' => $state,
@@ -194,6 +231,7 @@ final class WooCommerceImport
             'problems' => is_array($plan['problems'] ?? null) ? $plan['problems'] : [],
             'keys' => $this->secrets->view(self::SECRETS),
             'has_csv' => is_file($this->dir . '/customers.csv'),
+            'can_resume' => $this->canResume($state),
             'reports' => ['report' => is_file($this->dir . '/woocommerce-report.json'), 'redirects' => is_file($this->dir . '/woocommerce-redirects.txt')],
         ];
     }
@@ -311,7 +349,8 @@ final class WooCommerceImport
         $state['progress'] = $progress;
         $this->save($state);
         try {
-            $done = $importer->applyContent($plan);
+            $run = $this->run($state);
+            $done = $importer->applyContent($plan, $run);
             $redirects = ($this->finish)($plan['redirects'], !empty($state['options']['redirects']));
         } catch (\Throwable $e) {
             $this->save(['status' => 'failed', 'error' => 'The import stopped while writing the products: ' . $e->getMessage()] + $state);
@@ -320,6 +359,7 @@ final class WooCommerceImport
         }
         $state['status'] = 'done';
         $state['result'] = $done + ['media' => (int)$progress['media_done'], 'media_failed' => $progress['media_failed'], 'redirects' => $redirects];
+        $run?->finish('done', ['written' => $done['written'], 'skipped' => $done['skipped'], 'media' => (int)$progress['media_done']]);
         $state['progress']['step'] = 'done';
         $state['at'] = time();
         $this->save($state);
@@ -329,6 +369,27 @@ final class WooCommerceImport
         $this->secrets->save(self::SECRETS, [], true);
         $this->note('shop.import_done', 'info', sprintf('WooCommerce import from %s: %d products, %d categories, %d pictures, %d customers.', $state['site'], $done['written'], $done['categories'], $progress['media_done'], $done['customers']));
         return ['ok' => true];
+    }
+
+    /**
+     * The history of this import (Admin > Imports): the run it started, taken up again after a stop, or a new one.
+     *
+     * @param array<string, mixed> $state saved with the run's id
+     */
+    private function run(array &$state): ?ImportRun
+    {
+        if ($this->runs === null) {
+            return null;
+        }
+        $run = ($state['run'] ?? '') !== '' ? $this->runs->open((string)$state['run']) : null;
+        if ($run !== null) {
+            $run->resumed();
+            return $run;
+        }
+        $run = $this->runs->start('woocommerce', (string)$state['site'], ['lang' => (string)$state['lang'], 'options' => array_keys(array_filter((array)$state['options']))]);
+        $state['run'] = $run->id();
+        $this->save($state);
+        return $run;
     }
 
     /** @param array<string, mixed> $state */
