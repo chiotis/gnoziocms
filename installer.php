@@ -926,7 +926,8 @@ final class GnozioInstaller
         }
         self::done($state, 'docroot');
         $mcp = self::mcpDiscoveryTyped($state);
-        return ['ok' => true, 'changed' => true, 'assets' => self::themeAssetsServed(), 'mcp' => $mcp, 'mcpNote' => $mcp !== true && !self::servesHtaccess()];
+        $svg = self::svgHeaderSent();
+        return ['ok' => true, 'changed' => true, 'assets' => self::themeAssetsServed(), 'mcp' => $mcp, 'mcpNote' => $mcp !== true && !self::servesHtaccess(), 'svg' => $svg, 'svgNote' => $svg !== true && self::isNginx()];
     }
 
     /**
@@ -998,6 +999,42 @@ final class GnozioInstaller
             @rmdir($dir);
         }
         return $status === 200 ? stripos($type, 'application/json') === 0 : null;
+    }
+
+    /**
+     * Whether nginx sends uploaded SVG files with a Content-Security-Policy that stops scripts (docs/security.md, *Uploads*;
+     * the site checks it again daily in System > Status). Apache has it from public/uploads/.htaccess; nginx only with the
+     * block the closing page shows. Asked with the site's own probe drawing and a query string no CDN has cached. Null on
+     * other web servers, or when the site cannot be asked at its own address; then nothing is claimed.
+     */
+    private static function svgHeaderSent()
+    {
+        $origin = self::selfOrigin();
+        if (!self::isNginx() || $origin === '' || !self::isAllowedUrl($origin) || !function_exists('curl_init')) {
+            return null;
+        }
+        $file = self::$base . '/public/uploads/_v/header-check.svg';
+        if (!is_file($file) && (!is_dir(dirname($file)) && !@mkdir(dirname($file), 0775, true) || @file_put_contents($file, '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>' . "\n") === false)) {
+            return null;
+        }
+        $policy = '';
+        $ch = curl_init($origin . '/uploads/_v/header-check.svg?check=' . time());
+        curl_setopt_array($ch, [CURLOPT_NOBODY => true, CURLOPT_RETURNTRANSFER => true, CURLOPT_CONNECTTIMEOUT => 5, CURLOPT_TIMEOUT => 10,
+            CURLOPT_HEADERFUNCTION => static function ($ch, $line) use (&$policy) {
+                $parts = explode(':', $line, 2);
+                if (count($parts) === 2 && strtolower(trim($parts[0])) === 'content-security-policy') {
+                    $policy = strtolower(trim($parts[1]));
+                }
+                return strlen($line);
+            }]);
+        curl_exec($ch);
+        $status = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        return $status === 200 ? strpos($policy, "default-src 'none'") !== false : null;
+    }
+
+    private static function isNginx()
+    {
+        return strpos(isset($_SERVER['SERVER_SOFTWARE']) ? strtolower((string)$_SERVER['SERVER_SOFTWARE']) : '', 'nginx') !== false;
     }
 
     // ---- 7. finish
@@ -1095,7 +1132,7 @@ final class GnozioInstaller
                 'mcp_untyped' => 'Optional, for MCP (docs/mcp.md), to let AI assistants such as ChatGPT write to the site: nginx serves the files in /.well-known/ itself and sends them without a JSON type, so ChatGPT cannot connect. In the site\'s nginx configuration (CloudPanel: Vhost) add this block before the `location ~ /.well-known` block, reload nginx and check again. Claude and Codex connect without it.',
                 'docroot_not_yet' => 'The site is still served from the old folder. Make sure the document root is the path above and saved, wait a moment for the web server to reload, then press the button again.', 'docroot_not_public' => 'This page is still coming from the old location. Change the document root, then press the button again.',
                 'finishing' => 'Removing the installer…', 'finish_ok' => 'Installer removed', 'finish_left' => 'These could not be deleted; please delete them by hand: {left}',
-                'last_title' => 'For ChatGPT: one nginx block', 'last_text' => 'To let ChatGPT connect to the site over MCP (docs/mcp.md), nginx must send the files in /.well-known/oauth- as JSON. In the site\'s nginx configuration (CloudPanel: Vhost, in the server block on port 443) add this block before the `location ~ /.well-known` block and reload nginx. Claude and Codex connect without it; you can also do it later.', 'last_cf' => 'Without access to the vhost, behind Cloudflare: Rules > Transform Rules > Modify Response Header, for paths starting with /.well-known/oauth-, set Content-Type to application/json.', 'last_open' => 'Open the admin',
+                'last_title' => 'For ChatGPT: one nginx block', 'last_text' => 'To let ChatGPT connect to the site over MCP (docs/mcp.md), nginx must send the files in /.well-known/oauth- as JSON. In the site\'s nginx configuration (CloudPanel: Vhost, in the server block on port 443) add this block before the `location ~ /.well-known` block and reload nginx. Claude and Codex connect without it; you can also do it later.', 'last_cf' => 'Without access to the vhost, behind Cloudflare: Rules > Transform Rules > Modify Response Header, for paths starting with /.well-known/oauth-, set Content-Type to application/json.', 'last_open' => 'Open the admin', 'svg_title' => 'For uploaded SVG files: one nginx block', 'svg_text' => 'nginx sends uploaded SVG files without the header that stops scripts in them (Apache has it from public/uploads/.htaccess). GnozioCMS cleans every SVG on upload; this is the second line of defence. In the site\'s nginx configuration (CloudPanel: Vhost, in the server block on port 443) add this block above the first `location ~*` block for static files (css, js, images), since nginx takes the first that matches, and reload nginx. System > Status › SVG uploads header checks it every day.', 'svg_cf' => 'Behind Cloudflare or another CDN, purge its cache of /uploads/ afterwards: it keeps files with the headers they had.',
                 'done_title' => 'GnozioCMS is installed: what is left to do', 'code_title' => 'Your setup code', 'code_text' => 'The first-administrator form asks for this code, so nobody else can make the account before you. Keep it until you have made your account; it is shown only here.', 'cron_title' => 'Add the cron job', 'cron_text' => 'One cron job does the timed work: it publishes scheduled entries, writes picture sizes and takes the automatic backups (once you switch them on in Settings > Backup). Add this line on the server, every 5 minutes. Running it often does no harm: it does nothing when nothing is due.', 'cron_where' => 'CloudPanel: Sites > the site > Cron Jobs. cPanel: Cron Jobs, as a Custom command. If `php` is not this site\'s PHP, give its full path (for example /usr/bin/php8.5). Admin > System shows when the cron job last ran.',
                 'e_auth' => 'Your session ended. Reload the page and enter the key again.', 'e_unknown' => 'Unknown step.', 'e_nostate' => 'The installation has not started. Reload the page.', 'e_existing' => 'A GnozioCMS site already exists in this folder; the installer stops here.', 'e_finished' => 'This installation has finished.', 'e_internal' => 'Something unexpected went wrong: {detail}', 'e_manifest' => 'The latest release could not be read from GitHub ({detail}). Try again in a minute.',
                 'e_download' => 'The download failed: {detail}. Try again.', 'e_size' => 'The downloaded file has the wrong size, so it was thrown away. Try again; if it repeats, GitHub or a proxy is altering the download.', 'e_sha' => 'The downloaded package is not the one that was published (its checksum differs), so it was refused and thrown away. Nothing was installed. Try again.',
@@ -1130,7 +1167,7 @@ final class GnozioInstaller
                 'mcp_untyped' => 'Προαιρετικό, για το MCP (docs/mcp.md), ώστε βοηθοί AI όπως το ChatGPT να γράφουν στο site: το nginx σερβίρει μόνο του τα αρχεία του /.well-known/ και τα στέλνει χωρίς τύπο JSON, οπότε το ChatGPT δεν μπορεί να συνδεθεί. Στη ρύθμιση nginx του site (CloudPanel: Vhost) πρόσθεσε αυτό το block πριν από το `location ~ /.well-known`, κάνε reload το nginx και έλεγξε ξανά. Το Claude και το Codex συνδέονται και χωρίς αυτό.',
                 'docroot_not_yet' => 'Το site σερβίρεται ακόμη από τον παλιό φάκελο. Βεβαιώσου ότι το document root είναι η διαδρομή παραπάνω και αποθηκεύτηκε, περίμενε λίγο να ξαναφορτώσει ο web server και πάτα ξανά το κουμπί.', 'docroot_not_public' => 'Αυτή η σελίδα έρχεται ακόμη από την παλιά θέση. Άλλαξε το document root και πάτα ξανά το κουμπί.',
                 'finishing' => 'Διαγραφή του installer…', 'finish_ok' => 'Ο installer διαγράφηκε', 'finish_left' => 'Αυτά δεν μπόρεσαν να διαγραφούν· σβήσε τα με το χέρι: {left}',
-                'last_title' => 'Για το ChatGPT: ένα block στο nginx', 'last_text' => 'Για να συνδέεται το ChatGPT στο site μέσω MCP (docs/mcp.md), το nginx πρέπει να στέλνει τα αρχεία του /.well-known/oauth- ως JSON. Στη ρύθμιση nginx του site (CloudPanel: Vhost, στο server block της θύρας 443) πρόσθεσε αυτό το block πριν από το `location ~ /.well-known` και κάνε reload το nginx. Το Claude και το Codex συνδέονται και χωρίς αυτό· μπορείς να το κάνεις και αργότερα.', 'last_cf' => 'Χωρίς πρόσβαση στο vhost, πίσω από Cloudflare: Rules > Transform Rules > Modify Response Header, για διαδρομές που αρχίζουν από /.well-known/oauth-, όρισε Content-Type σε application/json.', 'last_open' => 'Άνοιγμα του admin',
+                'last_title' => 'Για το ChatGPT: ένα block στο nginx', 'last_text' => 'Για να συνδέεται το ChatGPT στο site μέσω MCP (docs/mcp.md), το nginx πρέπει να στέλνει τα αρχεία του /.well-known/oauth- ως JSON. Στη ρύθμιση nginx του site (CloudPanel: Vhost, στο server block της θύρας 443) πρόσθεσε αυτό το block πριν από το `location ~ /.well-known` και κάνε reload το nginx. Το Claude και το Codex συνδέονται και χωρίς αυτό· μπορείς να το κάνεις και αργότερα.', 'last_cf' => 'Χωρίς πρόσβαση στο vhost, πίσω από Cloudflare: Rules > Transform Rules > Modify Response Header, για διαδρομές που αρχίζουν από /.well-known/oauth-, όρισε Content-Type σε application/json.', 'last_open' => 'Άνοιγμα του admin', 'svg_title' => 'Για τα αρχεία SVG που ανεβαίνουν: ένα block στο nginx', 'svg_text' => 'Το nginx στέλνει τα SVG που ανεβαίνουν χωρίς την κεφαλίδα που σταματά τα scripts μέσα τους (ο Apache την έχει από το public/uploads/.htaccess). Το GnozioCMS καθαρίζει κάθε SVG όταν ανεβαίνει· αυτή είναι η δεύτερη γραμμή άμυνας. Στη ρύθμιση nginx του site (CloudPanel: Vhost, στο server block της θύρας 443) πρόσθεσε αυτό το block πάνω από το πρώτο `location ~*` για τα στατικά αρχεία (css, js, εικόνες), γιατί το nginx παίρνει το πρώτο που ταιριάζει, και κάνε reload το nginx. Το Σύστημα > Κατάσταση › SVG uploads header το ελέγχει κάθε μέρα.', 'svg_cf' => 'Πίσω από Cloudflare ή άλλο CDN, άδειασε μετά την cache του για το /uploads/: κρατά τα αρχεία με τις κεφαλίδες που είχαν.',
                 'done_title' => 'Το GnozioCMS εγκαταστάθηκε: τι μένει να γίνει', 'code_title' => 'Ο κωδικός εγκατάστασης', 'code_text' => 'Η φόρμα του πρώτου διαχειριστή ζητά αυτόν τον κωδικό, ώστε κανείς άλλος να μη φτιάξει τον λογαριασμό πριν από σένα. Κράτησέ τον μέχρι να φτιάξεις τον λογαριασμό σου· εμφανίζεται μόνο εδώ.', 'cron_title' => 'Πρόσθεσε το cron job', 'cron_text' => 'Ένα cron job κάνει τις δουλειές που έχουν ώρα: δημοσιεύει τις προγραμματισμένες καταχωρήσεις, γράφει τα μεγέθη των εικόνων και παίρνει τα αυτόματα backups (όταν τα ενεργοποιήσεις στις Ρυθμίσεις > Backup). Πρόσθεσε αυτή τη γραμμή στον server, κάθε 5 λεπτά. Δεν πειράζει που τρέχει συχνά: δεν κάνει τίποτα όταν δεν υπάρχει κάτι να γίνει.', 'cron_where' => 'CloudPanel: Sites > το site > Cron Jobs. cPanel: Cron Jobs, ως Custom command. Αν η `php` δεν είναι η PHP αυτού του site, δώσε την πλήρη διαδρομή της (για παράδειγμα /usr/bin/php8.5). Το Admin > System δείχνει πότε έτρεξε τελευταία φορά το cron job.',
                 'e_auth' => 'Η συνεδρία έληξε. Φόρτωσε ξανά τη σελίδα και γράψε το κλειδί.', 'e_unknown' => 'Άγνωστο βήμα.', 'e_nostate' => 'Η εγκατάσταση δεν έχει ξεκινήσει. Φόρτωσε ξανά τη σελίδα.', 'e_existing' => 'Υπάρχει ήδη site GnozioCMS σε αυτόν τον φάκελο· ο installer σταματά εδώ.', 'e_finished' => 'Η εγκατάσταση έχει ολοκληρωθεί.', 'e_internal' => 'Κάτι δεν πήγε όπως έπρεπε: {detail}', 'e_manifest' => 'Δεν διαβάστηκε η τελευταία έκδοση από το GitHub ({detail}). Ξαναδοκίμασε σε ένα λεπτό.',
                 'e_download' => 'Η λήψη απέτυχε: {detail}. Ξαναδοκίμασε.', 'e_size' => 'Το αρχείο που κατέβηκε έχει λάθος μέγεθος και πετάχτηκε. Ξαναδοκίμασε· αν επαναληφθεί, το GitHub ή κάποιο proxy αλλοιώνει τη λήψη.', 'e_sha' => 'Το πακέτο που κατέβηκε δεν είναι αυτό που δημοσιεύτηκε (διαφέρει το checksum), οπότε απορρίφθηκε και πετάχτηκε. Δεν εγκαταστάθηκε τίποτα. Ξαναδοκίμασε.',
@@ -1345,7 +1382,7 @@ function waitDocroot(root){
   docCard.appendChild(el('p','note',t('docroot_cp')));docCard.appendChild(el('p','note',t('docroot_other')));docCard.appendChild(el('p','note',t('docroot_same')));
   var warn=el('div','notice hide'),btn=el('button','btn block',t('docroot_button'));btn.style.marginTop='14px';
   btn.onclick=function(){btn.disabled=true;btn.textContent=t('docroot_checking');warn.classList.add('hide');
-    call('docroot').then(function(j){if(j&&j.changed)mcpNote=!!j.mcpNote;
+    call('docroot').then(function(j){if(j&&j.changed){mcpNote=!!j.mcpNote;svgNote=!!j.svgNote;}
       if(!j.ok){warn.textContent=msg(j);warn.classList.remove('hide');btn.disabled=false;btn.textContent=t('docroot_button');return;}
       if(!j.changed){warn.textContent=t(j.servedFromPublic?'docroot_not_yet':'docroot_not_public');warn.classList.remove('hide');btn.disabled=false;btn.textContent=t('docroot_button');return;}
       if(j.assets===false){assetsMissing();return;}
@@ -1359,10 +1396,11 @@ function assetsMissing(){
   var box=el('div','path');box.appendChild(el('code',null,'try_files $uri /index.php?$query_string;'));docCard.appendChild(box);
   var again=el('button','btn block',t('assets_again')),skip=el('button','btn block ghost',t('assets_skip'));again.style.marginTop='14px';skip.style.marginTop='8px';
   again.onclick=function(){again.disabled=true;again.textContent=t('docroot_checking');
-    call('docroot').then(function(j){if(j&&j.changed)mcpNote=!!j.mcpNote;if(j.ok&&j.changed&&j.assets===false){again.disabled=false;again.textContent=t('assets_again');return;}if(j.ok&&j.changed&&j.mcp===false){mcpUntyped();return;}if(j.ok&&j.changed){skip.onclick();return;}waitDocroot();}).catch(function(e){again.disabled=false;again.textContent=t('assets_again');});};
+    call('docroot').then(function(j){if(j&&j.changed){mcpNote=!!j.mcpNote;svgNote=!!j.svgNote;}if(j.ok&&j.changed&&j.assets===false){again.disabled=false;again.textContent=t('assets_again');return;}if(j.ok&&j.changed&&j.mcp===false){mcpUntyped();return;}if(j.ok&&j.changed){skip.onclick();return;}waitDocroot();}).catch(function(e){again.disabled=false;again.textContent=t('assets_again');});};
   skip.onclick=function(){setStep('docroot','done','');docCard.classList.add('hide');finish();};
   docCard.appendChild(again);docCard.appendChild(skip);
 }
+var svgNote=false,SVG_BLOCK='location ~* ^/uploads/.*\\.(php\\d?|phtml|phar|pht|cgi|pl|py|sh|html?)$ { deny all; }\nlocation ~* ^/uploads/.*\\.svg$ {\n    add_header Content-Security-Policy "default-src \'none\'; style-src \'unsafe-inline\'; img-src data:";\n    add_header X-Content-Type-Options nosniff;\n    add_header Access-Control-Allow-Origin "*";\n    expires max;\n    try_files $uri =404;\n}';
 var mcpNote=false,MCP_BLOCK='location ^~ /.well-known/oauth- {\n    default_type application/json;\n    try_files $uri /index.php?$query_string;\n}';
 function copyBlock(text){
   var box=el('div','path'),code=el('code',null,text),cp=el('button','btn small ghost',t('copy'));code.style.whiteSpace='pre';cp.type='button';
@@ -1376,7 +1414,7 @@ function mcpUntyped(){
   docCard.appendChild(mcpBlock());
   var again=el('button','btn block',t('assets_again')),skip=el('button','btn block ghost',t('assets_skip'));again.style.marginTop='14px';skip.style.marginTop='8px';
   again.onclick=function(){again.disabled=true;again.textContent=t('docroot_checking');
-    call('docroot').then(function(j){if(j&&j.changed)mcpNote=!!j.mcpNote;if(j.ok&&j.changed&&j.mcp===false){again.disabled=false;again.textContent=t('assets_again');return;}if(j.ok&&j.changed){skip.onclick();return;}waitDocroot();}).catch(function(e){again.disabled=false;again.textContent=t('assets_again');});};
+    call('docroot').then(function(j){if(j&&j.changed){mcpNote=!!j.mcpNote;svgNote=!!j.svgNote;}if(j.ok&&j.changed&&j.mcp===false){again.disabled=false;again.textContent=t('assets_again');return;}if(j.ok&&j.changed){skip.onclick();return;}waitDocroot();}).catch(function(e){again.disabled=false;again.textContent=t('assets_again');});};
   skip.onclick=function(){setStep('docroot','done','');docCard.classList.add('hide');finish();};
   docCard.appendChild(again);docCard.appendChild(skip);
 }
@@ -1399,6 +1437,10 @@ function finish(){
     if(mcpNote){
       var h2=el('h3',null,t('last_title'));h2.style.marginTop='18px';m.appendChild(h2);
       m.appendChild(el('p',null,t('last_text')));m.appendChild(mcpBlock());m.appendChild(el('p','note',t('last_cf')));
+    }
+    if(svgNote){
+      var h3=el('h3',null,t('svg_title'));h3.style.marginTop='18px';m.appendChild(h3);
+      m.appendChild(el('p',null,t('svg_text')));m.appendChild(copyBlock(SVG_BLOCK));m.appendChild(el('p','note',t('svg_cf')));
     }
     if(j.left&&j.left.length){m.appendChild(el('div','notice',t('finish_left',{left:j.left.join(', ')})));}
     var open=el('button','btn block',t('last_open'));open.style.marginTop='14px';open.onclick=function(){location.href=j.redirect;};m.appendChild(open);

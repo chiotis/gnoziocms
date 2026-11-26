@@ -256,7 +256,7 @@ set, and says why. Pages themselves are still built with the request's host when
      }
      ```
 
-     Saving the Vhost in CloudPanel tests and reloads nginx; elsewhere `sudo nginx -t && sudo systemctl reload nginx`. **Behind a CDN** (Cloudflare and the like) purge its cache of `/uploads/` afterwards: it keeps SVG files with the headers they had, for hours. Check with `curl -sI "https://example.com/uploads/_v/header-check.svg?x=1" | grep -i content-security`. The status check asks past the CDN's cache and looks again ten minutes after a warning.
+     Saving the Vhost in CloudPanel tests and reloads nginx; elsewhere `sudo nginx -t && sudo systemctl reload nginx`. **Behind a CDN** (Cloudflare and the like) purge its cache of `/uploads/` afterwards: it keeps SVG files with the headers they had, for hours. Check with `curl -sI "https://example.com/uploads/_v/header-check.svg?x=1" | grep -i content-security`. The status check asks past the CDN's cache and looks again ten minutes after a warning. On nginx the installer asks the same when the document root is set and, if the header is missing, shows this block on its closing page.
 
      Theme and custom files are copied into `public/` and image variants not yet written have addresses with no file extension, so a static-file location (for example a `\.(css|js|webp)$` caching block, as CloudPanel has) needs no change while PHP can write to `public/`. Where it cannot, theme assets (`/_themes/…`, `/_custom/…`) are served by PHP, and such a location must end in `try_files $uri /index.php?$query_string;`.
 
