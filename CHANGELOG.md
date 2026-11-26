@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.346 — 2026-11-26 — Reading width for plain text too
+- **Theme > Layout and spacing > Reading width** now also holds the text of a post or page that has only the plain editor's text and no sidebar, centred as the blocks are. Before, it changed only pages with blocks. Left blank, the text still takes the container's whole width, as since 0.1.304. Block pages and pages with a sidebar are as before.
+
 ## 0.1.345 — 2026-11-24 — Search: an index, tolerance for typos, filters for places
 - Search keeps its words in a SQLite index (`storage/cache/search/index.sqlite`, disposable, not in backups) and reads only the entries that can match. The old cache (a 16 MB file per type and language) was full at about 1,000 entries, after which every search extracted the rest again. Measured on entries of about 600 words: 3,000 entries 0.3 s a search (before 0.8 s), 10,000 entries 0.7 s (before 3 s). Visibility is still decided by the repository, so results are the same as before.
 - Tolerance for typos: a word of five or more letters that is nowhere on the site also finds the site's words one letter away (two from nine letters; two neighbours swapped count as one). «ξενοδοχιο» finds «Ξενοδοχείο». They rank below the word as typed and its other forms, and the page says which words it included. A word on the site is never corrected; numbers and short words are not either.

@@ -110,8 +110,8 @@ check('a weight or word that is not on the list is ignored', Branding::css(['des
 // ---- layout, spacing, corners, buttons, logo
 $css = Branding::css(['design' => ['container' => 1400, 'reading_width' => 800, 'gutter' => 64, 'section_space' => 56, 'header_height' => 80, 'spacing' => 'airy']]);
 check('widths and the header\'s height in pixels become rem; a margin and the space between sections follow the window', [
-    has($css, '--container:87.5rem;'), has($css, '--container-narrow:50rem;'), has($css, '--gutter:clamp(1.25rem, calc('), has($css, '--section-scale:0.5;'), has($css, '--header-min:5rem;'), has($css, '--space-scale:1.2;'),
-], [true, true, true, true, true, true]);
+    has($css, '--container:87.5rem;'), has($css, '--container-narrow:50rem;'), has($css, '--reading-width:50rem;'), has($css, '--gutter:clamp(1.25rem, calc('), has($css, '--section-scale:0.5;'), has($css, '--header-min:5rem;'), has($css, '--space-scale:1.2;'),
+], [true, true, true, true, true, true, true]);
 check('a side margin under 20 pixels does not grow', has(Branding::css(['design' => ['gutter' => 16]]), '--gutter:1rem;'), true);
 $css = Branding::css(['design' => ['radius' => 16, 'button_radius' => 'square', 'shadows' => 'none']]);
 check('a corner radius sets the four sizes from one number; buttons and shadows have their own choice', [
