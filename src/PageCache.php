@@ -17,7 +17,7 @@ namespace GnozioCMS;
  *   that started under the old number is not kept. A copy also stops being used after TTL seconds, for what changes outside the admin
  *   (after Images::PENDING_PAGE_TTL when it names a picture that is not written yet).
  *
- * It is off until System > Page cache turns it on; with a cache in front it is not needed.
+ * It is off until Settings > Cache turns it on; with a cache in front it is not needed.
  *
  * A copy is sent before the application boots (serveEarly(), from public/index.php): for a GET with no query and no session
  * cookie, it needs only two small files the application writes next to the copies, `frontdoor.json` (the site's host and its

@@ -2,8 +2,8 @@
 
 Public pages that a visitor sees without a session say `Cache-Control: public, max-age=0, s-maxage=60`, so a cache in front of the
 site may keep them. Whatever is saved in the admin (content, settings, menus, media, redirects, an update) empties that cache, so
-the change shows at once, however long the cache keeps a page. **System > Page cache** shows what the site found and has a button
-that empties the cache by hand.
+the change shows at once, however long the cache keeps a page. **Settings > Cache** shows what the site found, explains how each cache works and how to set
+it up, and has a *Clear cache now* button.
 
 Not kept: what an editor sees (they have a session and may see drafts), the maintenance page during an update, the analytics
 beacon and a picture that could not be made. Nor the MCP server and its OAuth (`/mcp`, `/_mcp/token`, `/_mcp/register`,
@@ -20,7 +20,7 @@ the request ends. CloudPanel's own Cache Lifetime decides how long a page is kep
 
 ## Any other Varnish
 
-Write its address (`127.0.0.1:6081`) under System > Page cache. On every change the CMS sends `PURGE /` with the site's host;
+Write its address (`127.0.0.1:6081`) under Settings > Cache > Varnish address. On every change the CMS sends `PURGE /` with the site's host;
 the VCL turns that into a ban of everything of that host:
 
 ```vcl
@@ -37,7 +37,7 @@ sub vcl_recv {
 
 ## No cache in front: the site's own copy
 
-For a host with no Varnish or CDN, **System > Page cache > The site's own copy** (off until it is turned on) makes the site keep what
+For a host with no Varnish or CDN, **Settings > Cache > Built-in page cache** (off until it is turned on) makes the site keep what
 a cache in front would keep. A page seen without a session is the same for everyone, so its answer is written to
 `storage/cache/pages` and sent again: a visit then reads a file and does not run the site.
 

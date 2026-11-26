@@ -11,8 +11,12 @@ def is_settings(f): return any(x[0] == 'title' for x in f['fields']) and any(x[0
 def status(c, path):
     st, hdr, body = c.get(path)
     return st, hdr.get('X-Page-Cache'), hdr, body
+CACHE = '/admin/settings?tab=cache'
 def page_cache(c, on):
-    return c.submit('/admin/system', lambda f: any(x[0] == 'system_action' and x[1] == 'page_cache' for x in f['fields']), {'page_cache': '1' if on else '0'})
+    # The switch is a checkbox of the Settings form (Settings > Cache): left out when it is not ticked.
+    return c.submit(CACHE, is_settings, {'page_cache': '1' if on else None})
+def clear_cache(c):
+    return c.submit(CACHE, lambda f: any(x[0] == 'cache_action' and x[1] == 'clear' for x in f['fields']))
 
 root = Client(); root.login()
 anon = Client()
@@ -20,8 +24,23 @@ anon = Client()
 # ---- off by default: nothing is marked, nothing is kept
 st, mark, hdr, body = status(anon, '/')
 check('it is off until it is turned on: the page is made each time and says nothing', st == 200 and mark is None, (st, mark))
+st, _, html = root.get(CACHE)
+check('Settings has a Cache section that offers it, off, with its directions', st == 200 and 'data-panel="cache"' in html and 'Built-in page cache' in html and 'name="page_cache"' in html and 'Clear cache now' in html and 'How to set it up' in html, (st, html[:200]))
+check('the switch is not ticked', re.search(r'name="page_cache" value="1"\s+checked', html) is None)
 st, _, html = root.get('/admin/system')
-check('the System screen offers it, off', 'The site&#039;s own copy' in html or "The site's own copy" in html, html[:200])
+check('System points to Settings > Cache', 'admin/settings?tab=cache' in html and 'name="page_cache"' not in html, html[:200])
+
+# ---- the address of a Varnish: refused when it is not one, kept when it is, and Clear cache now says it did not answer
+st, hdr, _ = root.submit(CACHE, is_settings, {'cache_address': 'not an address://x'})
+check('a Varnish address that is not host:port is refused, back on the Cache section', 'tab=cache' in (hdr.get('Location') or '') and 'settings_error' in (hdr.get('Location') or ''), hdr.get('Location'))
+root.submit(CACHE, is_settings, {'cache_address': '127.0.0.1:9'})
+st, _, html = root.get(CACHE)
+check('a Varnish address is kept and shown', 'value="127.0.0.1:9"' in html and 'At 127.0.0.1:9' in html, html[:200])
+st, hdr, _ = clear_cache(root)
+check('Clear cache now says the Varnish did not answer', 'cache=purge_failed' in (hdr.get('Location') or ''), hdr.get('Location'))
+root.submit(CACHE, is_settings, {'cache_address': ''})
+st, _, html = root.get(CACHE)
+check('and the address can be removed', 'None set' in html, html[:200])
 
 # ---- it needs the address of the site (the host it answers on)
 page_cache(root, True)
@@ -48,8 +67,8 @@ st2, mark2, _, _ = status(anon, '/no-such-page-here')
 check('a page that is not found is not kept', st == 404 and st2 == 404 and mark2 != 'hit', (st, mark, st2, mark2))
 st, mark, _, _ = status(root, '/')
 check('someone signed in is never given a copy (they may see drafts)', st == 200 and mark is None, (st, mark))
-st, _, html = root.get('/admin/system')
-check('the System screen says how many pages are kept', re.search(r'\d+ pages? kept', html) is not None, html[:200])
+st, _, html = root.get(CACHE)
+check('the Cache section says how many pages are kept, and the switch is ticked', re.search(r'\d+ pages? kept', html) is not None and re.search(r'name="page_cache" value="1"\s+checked', html) is not None, html[:200])
 
 # ---- whatever is saved in the admin empties it
 root.submit('/admin/settings', is_settings, {'title': 'A new name for the cache test'})
@@ -80,9 +99,9 @@ check('and so does taking it back to a draft', status(anon, '/')[1] == 'miss')
 
 # ---- the button empties it by hand
 status(anon, '/'); 
-root.submit('/admin/system', lambda f: any(x[0] == 'system_action' and x[1] == 'purge_cache' for x in f['fields']))
+st, hdr, _ = clear_cache(root)
 st, mark, _, _ = status(anon, '/')
-check('the button empties it', mark == 'miss', mark)
+check('Clear cache now empties it', mark == 'miss' and 'cache=purged' in (hdr.get('Location') or ''), (mark, hdr.get('Location')))
 
 # ---- off again
 page_cache(root, False)

@@ -22,7 +22,7 @@ The aim is the same site on GnozioCMS with the CMS **as it is**: content, look a
 3. **When something has no place** (a widget, a layout the blocks cannot make, a plugin's feature), do not imitate it with raw HTML in the body or edit the CMS's code: note it with the page it is on and tell the person. It is a request for the CMS, not something to patch on the site.
 4. **Keep the addresses.** Prefer the old slug for every entry; pages and posts share one namespace. Write a redirect for every address that changes (a WordPress post at `/2024/05/title/` → `/title`, a page under a parent → its slug). The CMS already answers `/category/x/page/2/` (301 to `?page=2`), `/feed` and the feeds of lists, so those need no redirect.
 5. **Import** (the WordPress importer, or the steps below), pictures first, everything as `draft` unless the person said otherwise.
-6. **Check**: `validate_content.py` on all of `content/`, then open one entry of each kind and each list in each language next to the old one. On a site behind Varnish/CloudPanel empty the page cache first (*Admin > System > Page cache*), or you are looking at old pages.
+6. **Check**: `validate_content.py` on all of `content/`, then open one entry of each kind and each list in each language next to the old one. On a site behind Varnish/CloudPanel empty the page cache first (*Admin > Settings > Cache > Clear cache now*), or you are looking at old pages.
 7. **After launch**, watch *Admin > Redirects > Not found* for a few days: redirect the real old addresses, *Ignore all* the bot noise.
 8. **Report** against the list from step 1: carried over, carried over differently, not carried over (and why), what only the person can do (mail, users, the cron job for backups, DNS).
 

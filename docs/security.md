@@ -215,7 +215,7 @@ set, and says why. Pages themselves are still built with the request's host when
   nothing; no address collects the reports. Checked in a browser on the dashboard, the editor, the media library, Shop settings,
   the cart, the checkout with the Pixel running, and the account page: no report. Enforcing it (and dropping `'unsafe-inline'`
   for scripts, which needs nonces in the templates) is the next step. Ordinary pages get no policy: their blocks embed what the
-  editor chose (videos, maps, forms of other services). The site's own copy of a page (System > Page cache) is sent with the
+  editor chose (videos, maps, forms of other services). The site's own copy of a page (Settings > Cache) is sent with the
   headers it was kept with.
 
 ## Operator Checklist

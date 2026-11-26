@@ -407,6 +407,144 @@
         </section>
       </div>
 
+      <div class="{{ panel_class }}{% if active_tab != 'cache' %} hidden{% else %} active{% endif %}" data-panel="cache">
+        {% if cache.notice == 'purged' %}
+          {{ ui.flash('The cache was cleared' ~ (cache.mode == 'varnish' ? ' and the Varnish confirmed it (' ~ cache.status ~ ')' : '') ~ '. Visitors get the pages as they are now.', 'success') }}
+        {% elseif cache.notice == 'purge_failed' %}
+          {{ ui.flash('The built-in copies and the compiled templates were cleared, but the Varnish at ' ~ cache.address ~ (cache.status ? ' answered ' ~ cache.status : ' did not answer') ~ '. See "How to set it up" under Varnish.', 'error') }}
+        {% endif %}
+        {% set cache_front = cache.mode != 'none' %}
+
+        <div class="{{ section_class }}">
+          <div class="{{ section_header_class }}">
+            <h2 class="text-sm font-semibold text-slate-900">Cache status</h2>
+            <p class="mt-0.5 text-xs text-slate-400">A page cache keeps the public pages ready, so a visit does not make the page again: a few milliseconds instead of a few hundred. A site has one of two: the built-in cache, or a Varnish in front of it.</p>
+          </div>
+          <div class="set-rows">
+            <div>
+              <span>Built-in cache</span>
+              <strong class="pt-1 text-xs font-medium text-slate-800">{% if cache.pages.enabled %}On: {{ cache.pages.entries }} {{ cache.pages.entries == 1 ? 'page' : 'pages' }} kept ({{ cache.pages.size }}){% else %}Off{% endif %}</strong>
+            </div>
+            <div>
+              <span>Varnish</span>
+              <strong class="pt-1 text-xs font-medium text-slate-800">{% if cache.mode == 'cloudpanel' %}CloudPanel's, found by itself{% elseif cache.mode == 'varnish' %}At {{ cache.address }}{% else %}None set{% endif %}</strong>
+            </div>
+            <div>
+              <span>Visitors get</span>
+              <p class="pt-1">
+                {%- if cache_front -%}
+                  Public pages from the Varnish. It is emptied on every change saved in the admin.
+                {%- elseif cache.pages.enabled and not cache.base_url -%}
+                  <strong class="font-medium text-orange-700">A page made on every visit: the built-in cache is on but keeps nothing until the site has a Base URL (General).</strong>
+                {%- elseif cache.pages.enabled -%}
+                  Public pages from the built-in copies. They are made again on every change saved in the admin, and at least every {{ cache.pages.ttl_minutes }} minutes.
+                {%- else -%}
+                  A page made on every visit. Turn on the built-in cache below to make visits faster.
+                {%- endif -%}
+              </p>
+            </div>
+            <div>
+              <span>Clear by hand</span>
+              <div>
+                <button type="submit" form="cache-clear" class="{{ secondary_button_class }}">Clear cache now</button>
+                <p class="mt-1 text-[11px] leading-4 text-slate-500">Empties the built-in copies, asks the Varnish to drop this site's pages, and makes the compiled templates again. Every change saved in the admin already does this. You need it after files were changed on the server outside the admin (by hand, by a script, by an upload over FTP), and to test the Varnish address.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <section class="{{ section_class }}" aria-labelledby="cache-h-built-in">
+          <div class="flex items-start justify-between gap-3">
+            <h2 id="cache-h-built-in" class="text-sm font-semibold text-slate-900">Built-in page cache</h2>
+            {{ ui.badge(cache.pages.enabled ? 'On' : 'Off', cache.pages.enabled ? 'green' : 'slate') }}
+          </div>
+          <p class="mt-0.5 text-xs text-slate-400">For hosting with nothing in front of the site, which is most shared hosting. The site keeps a copy of each public page and sends it to the next visitor, so a visit reads one file instead of running the CMS. Nothing has to be installed.</p>
+          <div class="set-rows mt-3">
+            <input type="hidden" name="cache_shown" value="1">
+            <label class="flex">
+              <input type="checkbox" name="page_cache" value="1" {% if cache.pages.enabled %}checked{% endif %}>
+              <span><span class="font-medium">Keep a copy of public pages</span>
+                <span class="block text-xs text-slate-500">Takes effect when you save. Turning it off or on drops every copy kept so far.</span></span>
+            </label>
+            {% if cache_front %}
+              <p class="set-indent text-xs text-orange-700">A Varnish is already in front of this site and does the same job. Leave this off: it would add nothing.</p>
+            {% elseif not cache.base_url %}
+              <p class="set-indent text-xs text-orange-700">It needs the site's Base URL (<a href="{{ url('admin/settings?tab=basics') }}" class="font-medium underline">General</a>): only pages asked for on that address are kept. Until it is set nothing is kept.</p>
+            {% endif %}
+          </div>
+          <details class="en-details-note">
+            <summary>When to use it</summary>
+            <ul class="mt-1.5 list-disc space-y-1 pl-5">
+              <li><strong>Turn it on</strong> on shared hosting, or on any server with no Varnish or CDN cache in front of the site.</li>
+              <li><strong>Leave it off</strong> when a Varnish (for example CloudPanel's) or a CDN already keeps the pages, and while you are building the site by changing its files on the server, since such changes show only after up to {{ cache.pages.ttl_minutes }} minutes or after <em>Clear cache now</em>.</li>
+            </ul>
+          </details>
+          <details class="en-details-note">
+            <summary>What is kept, what is not, and how fresh it is</summary>
+            <ul class="mt-1.5 list-disc space-y-1 pl-5">
+              <li><strong>Kept:</strong> pages, the sitemap, feeds and robots.txt, opened by a visitor who is not signed in, on the site's own address (the Base URL), with nothing after a <code>?</code> in the address.</li>
+              <li><strong>Never kept:</strong> anything seen by someone signed in (editors may see drafts), searches, filters and sorts, the shop's cart, checkout and account, pages that are not found or that redirect, pictures and downloads, an answer over {{ cache.pages.max_mb }} MB, and the MCP server.</li>
+              <li><strong>Fresh:</strong> every change saved in the admin, and every scheduled entry going live, drops all the copies at once. A copy is never used for more than {{ cache.pages.ttl_minutes }} minutes either, so what changes outside the admin (a file edited on the server, a script) shows within {{ cache.pages.ttl_minutes }} minutes, or at once with <em>Clear cache now</em>.</li>
+              <li><strong>Room:</strong> at most {{ cache.pages.max_entries|number_format }} pages, in <code>storage/cache/pages</code>. They count in Limits like the rest of the site.</li>
+              <li><strong>To check it works:</strong> open a page in a private window twice and look at the response headers (the browser's developer tools, Network), or run <code>curl -sI {{ cache.base_url ?: 'https://example.com' }}/</code> twice. <code>X-Page-Cache: hit</code> means the copy was sent; <code>miss</code> means the page was made and kept.</li>
+            </ul>
+          </details>
+        </section>
+
+        <section class="{{ section_class }}" aria-labelledby="cache-h-varnish">
+          <div class="flex items-start justify-between gap-3">
+            <h2 id="cache-h-varnish" class="text-sm font-semibold text-slate-900">Varnish in front of the site</h2>
+            {{ ui.badge(cache.mode == 'cloudpanel' ? 'CloudPanel' : (cache.mode == 'varnish' ? 'Address set' : 'Not set'), cache_front ? 'green' : 'slate') }}
+          </div>
+          {% if cache.mode == 'cloudpanel' %}
+            <p class="mt-0.5 text-xs text-slate-400">CloudPanel's Varnish keeps the public pages (cache tag <span class="font-mono">{{ cache.tag ?: '—' }}</span>). There is nothing to set up: the site finds it by itself and empties it on every change saved in the admin, so visitors see a change at once.</p>
+            <details class="en-details-note">
+              <summary>How it works on CloudPanel</summary>
+              <ul class="mt-1.5 list-disc space-y-1 pl-5">
+                <li>How long a page is kept is CloudPanel's <em>Cache Lifetime</em> (the site's Varnish Cache settings in CloudPanel). Because every change empties it, it can stay long.</li>
+                <li>Pages seen by someone signed in, the shop's cart, checkout and account, and the MCP server are never kept.</li>
+                <li>If changes do not show: check that Varnish Cache is on for the site in CloudPanel, then press <em>Clear cache now</em>.</li>
+              </ul>
+            </details>
+          {% else %}
+            <p class="mt-0.5 text-xs text-slate-400">For a server where a Varnish stands in front of the site. With its address here, every change saved in the admin asks it to drop this site's pages (a <span class="font-mono">PURGE /</span> with the site's host), so a change shows at once however long Varnish keeps a page. Leave it empty when there is no Varnish. CloudPanel's Varnish is found by itself and needs no address.</p>
+            <div class="set-rows mt-3">
+              <label class="block">
+                <span>Varnish address</span>
+                <input type="text" name="cache_address" value="{{ cache.address }}" placeholder="127.0.0.1:6081" autocomplete="off" class="{{ input_class }} font-mono">
+                <span class="block">Where Varnish listens, as host:port, seen from this server. Usually <span class="font-mono">127.0.0.1:6081</span> when it runs on the same machine.</span>
+              </label>
+            </div>
+            <details class="en-details-note">
+              <summary>How to set it up</summary>
+              <ol>
+                <li>Put Varnish in front of the site: visitors reach Varnish, and Varnish asks the site's web server.</li>
+                <li>Let this server purge. Add this to the Varnish configuration (VCL), with the addresses this server connects from:
+{% verbatim %}<pre class="mt-1.5 overflow-x-auto rounded-md bg-slate-900 p-2.5 font-mono text-[11px] leading-4 text-slate-100">acl purgers { "127.0.0.1"; "::1"; }
+
+sub vcl_recv {
+    if (req.method == "PURGE") {
+        if (client.ip !~ purgers) { return (synth(405, "Not allowed")); }
+        ban("req.http.host == " + req.http.host);
+        return (synth(200, "Purged"));
+    }
+}</pre>{% endverbatim %}</li>
+                <li>Add Varnish's address to <em>Trusted proxies</em> in <a class="en-link" href="{{ url('admin/settings?tab=basics') }}">General</a> (127.0.0.1 is there until the list is changed), so the site sees each visitor's own address and whether the visit is on HTTPS.</li>
+                <li>Write the address above, save, then press <em>Clear cache now</em>. It says what Varnish answered: <strong>200</strong> is right; <strong>405</strong> means the VCL does not let this server purge; no answer means the address is wrong or Varnish does not listen there.</li>
+              </ol>
+            </details>
+            <details class="en-details-note">
+              <summary>How long Varnish keeps a page, and what it must not keep</summary>
+              <ul class="mt-1.5 list-disc space-y-1 pl-5">
+                <li>Public pages say <span class="font-mono">Cache-Control: public, max-age=0, s-maxage=60</span>: Varnish keeps them a minute, and browsers ask again every time. Since every change purges, the VCL may keep them much longer (<span class="font-mono">beresp.ttl</span>).</li>
+                <li>Pages for someone signed in say <span class="font-mono">private, no-store</span>, and the MCP server (<span class="font-mono">/mcp</span>, <span class="font-mono">/_mcp/</span>, <span class="font-mono">/.well-known/oauth-*</span>) says <span class="font-mono">no-store</span> and is sent with a POST or an <span class="font-mono">Authorization</span> header. Varnish's default VCL respects all of these. A VCL that removes cookies or keeps everything must let these through, and must pass the <span class="font-mono">Authorization</span> header to the site.</li>
+                <li>Do not turn the built-in cache on as well: with Varnish in front it adds nothing.</li>
+              </ul>
+            </details>
+          {% endif %}
+        </section>
+      </div>
+
       </div>
     </div>
 
@@ -421,6 +559,10 @@
         </button>
       {% endblock %}
     {% endembed %}
+  </form>
+  <form id="cache-clear" method="post" action="{{ url('admin/settings?tab=cache') }}" hidden>
+    {{ csrf_field() }}
+    <input type="hidden" name="cache_action" value="clear">
   </form>
   {% if can('limits.manage') %}
   <form id="storage-recalculate" method="post" action="/admin/settings?tab=limits" hidden>
