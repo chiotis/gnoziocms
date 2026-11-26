@@ -53,7 +53,7 @@ Admin > **Settings** (System menu), tabs General, Email / SMTP, Auth, Backups, U
 | `content_types`, `content_types_off` | which content types are on | *Admin > Content types* |
 | `limits.*` | storage and upload limits, allowed upload kinds | superadmin, *Settings > Limits* |
 | analytics choice | none / own code / the platform's cookieless analytics | *Admin > Analytics* |
-| page cache address | a Varnish in front of the site (CloudPanel's is found by itself); *Empty the page cache* button | *Admin > System > Page cache* |
+| built-in page cache, Varnish address | the site's own copy of public pages (for hosts with nothing in front); a Varnish in front of the site (CloudPanel's is found by itself); *Clear cache now* button | *Admin > Settings > Cache* |
 | Omni connection | reports the site's health to an Omni monitoring app | superadmin only, *Admin > Omni*; never connect or disconnect it yourself |
 
 `python3 scripts/site_settings.py set site title="Νέο όνομα"` accepts only the safe keys it lists in `--help`. For the others use the screens.
@@ -70,4 +70,4 @@ Admin > **Settings** (System menu), tabs General, Email / SMTP, Auth, Backups, U
 
 ## After a change
 
-Reload the page it should change. A site behind Varnish (CloudPanel) shows a change made outside the admin only after *System > Page cache > Empty the page cache*. If a theme setting seems ignored: it may have been replaced by the default (invalid value), it may be hidden by a `when` condition (a field only matters while another has a value), or the Theme tab was open in a browser and saved its old values afterwards.
+Reload the page it should change. A site behind Varnish (CloudPanel) shows a change made outside the admin only after *Settings > Cache > Clear cache now*. If a theme setting seems ignored: it may have been replaced by the default (invalid value), it may be hidden by a `when` condition (a field only matters while another has a value), or the Theme tab was open in a browser and saved its old values afterwards.

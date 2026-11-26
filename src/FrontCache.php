@@ -10,7 +10,7 @@ namespace GnozioCMS;
  *
  * - CloudPanel: its Varnish controller (`~/.varnish-cache/controller.php`, prepended to every request) is found by itself. A purge
  *   is handed to it with the site's cache tag and sent when the request ends; nothing to set up.
- * - Any other Varnish: the address of the cache (System > Page cache). A purge is `PURGE /` with the site's Host; the cache
+ * - Any other Varnish: the address of the cache (Settings > Cache). A purge is `PURGE /` with the site's Host; the cache
  *   must turn that into a ban of the host (docs/varnish.md).
  */
 final class FrontCache

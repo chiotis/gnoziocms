@@ -24,9 +24,9 @@ Left menu: **Content** (Pages, Posts, Projects… the types that are on, Media),
 | Taxonomies | `/admin/taxonomies` | categories, tags, own taxonomies and their terms |
 | Content types | `/admin/content-types` | switch types on, make a type, its fields |
 | History | `/admin/revisions` | every saved version, compare, restore |
-| Settings | `/admin/settings?tab=basics` | tabs basics (General), smtp, auth, backup, updates, apis, limits |
+| Settings | `/admin/settings?tab=basics` | tabs basics (General), smtp, auth, apis, cache (built-in page cache, Varnish address, Clear cache now), limits |
 | Backups | `/admin/backups` | create, verify, download, restore; *Remote storage* lists and fetches backups kept only remotely |
-| System | `/admin/system` | health checks, content index, the cron job line, **Page cache** (*Empty the page cache*) |
+| System | `/admin/system` | health checks, content index, the cron job line (the page cache is in Settings > Cache) |
 | Shop settings | `/admin/shop-settings?tab=general` | General, Shipping, Payments, Emails, Accounts, Marketing, Import & export (see `shop.md`) |
 | Orders | `/admin/shop-orders` | orders, timeline, shipping, refunds (a person's job) |
 | MCP | `/admin/mcp` | superadmin: on/off, connections, their scopes and rules, tokens (see `mcp.md`) |
@@ -54,7 +54,7 @@ Typing blocks as YAML into the **Advanced** tab (the raw front matter) does **no
 - **Redirect after changing an address**: the editor offers it when a published address changes; or Redirects > Add / Import lines `old-path new-path`.
 - **Publish many**: Content list > tick (shift-click for a range) > Publish.
 - **File many under a term**: Content list > tick > Bulk action > *Add to* (or *Remove from*) > the term. Their other terms stay.
-- **After changing files outside the admin** on a site behind Varnish/CloudPanel: System > Page cache > *Empty the page cache*.
+- **After changing files outside the admin** on a site behind Varnish/CloudPanel: Settings > Cache > *Clear cache now*.
 - **Build the page of a content type with blocks**: Theme > Single Layouts > the type's card > *Built with blocks* (it starts from a ready template: the theme's for its own types, one made from the type's fields for any other) > *Edit template*. The chain button beside a block's field shows a field of the entry instead of a typed value; on a list (the buttons of a Hero, the Buttons block) it binds the list to a list of the entry (the buy links of a book) and a small table maps each column. *Start again from the default* puts the ready template back (confirm first: it replaces the blocks of every language). Entries are not changed.
 - **Undo a mistake**: History > the entry > compare > Restore; or Backups.
 

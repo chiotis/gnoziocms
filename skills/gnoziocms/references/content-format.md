@@ -167,7 +167,7 @@ An uploaded file is `public/uploads/media/<id>.<ext>` plus `content/media/<id>.y
 
 ## Caches (when a file you wrote does not show)
 
-The CMS keeps the parsed front matter and HTML of every content file in `storage/cache/content` and reads a file again when its time or size changes, so files you write are seen at once. A cache *in front of* the site (Varnish on CloudPanel, or another Varnish set in System > Page cache) keeps whole public pages and is emptied only when something is **saved in the admin**: files written by a script or by hand do not empty it. After writing files on such a site, ask the person to press *Admin > System > Page cache > Empty the page cache* (or save anything in the admin), otherwise visitors may see the old page for as long as the cache keeps it (on CloudPanel up to its Cache Lifetime, often a week). `site_info.py` does not see that cache; the System screen says which one the site found.
+The CMS keeps the parsed front matter and HTML of every content file in `storage/cache/content` and reads a file again when its time or size changes, so files you write are seen at once. A cache *in front of* the site (Varnish on CloudPanel, or another Varnish set in Settings > Cache) keeps whole public pages and is emptied only when something is **saved in the admin**: files written by a script or by hand do not empty it. After writing files on such a site, ask the person to press *Admin > Settings > Cache > Clear cache now* (or save anything in the admin), otherwise visitors may see the old page for as long as the cache keeps it (on CloudPanel up to its Cache Lifetime, often a week). `site_info.py` does not see that cache; Settings > Cache says which one the site found.
 
 ## What the CMS does with a mistake
 

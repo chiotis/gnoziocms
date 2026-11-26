@@ -299,7 +299,7 @@ final class App
             return;
         }
 
-        // The site's own copy of a public page, when it keeps them (System > Page cache) and has one that is current.
+        // The site's own copy of a public page, when it keeps them (Settings > Cache) and has one that is current.
         $pageKey = $this->pageCacheKey($path);
         $served = $pageKey !== null && $this->pageCache()->serve($pageKey);
         if (!$served) {
@@ -1442,7 +1442,7 @@ final class App
         return $this->frontCacheService;
     }
 
-    /** The site's own copy of its public pages (docs/caching.md). */
+    /** The site's own copy of its public pages (docs/varnish.md). */
     private function pageCache(): PageCache
     {
         return $this->pageCacheService ??= new PageCache($this->systemMeta, $this->basePath . '/storage/cache/pages', trim((string)@file_get_contents($this->basePath . '/VERSION')));
@@ -2864,19 +2864,99 @@ final class App
             $this->redirect($admin->recalculateStorage($canLimits));
             return;
         }
+        if ($post && (string)($_POST['cache_action'] ?? '') === 'clear') {
+            $this->redirect($this->clearCacheNow());
+            return;
+        }
         if ($post) {
             $upload = $this->submittedUploadSettings();
-            $this->redirect($admin->save($_POST, [
+            $next = $admin->save($_POST, [
                 'storage_limit_mb' => $this->submittedStorageLimit(),
                 'upload_limit_mb' => $upload['mb'],
                 'upload_types' => $upload['types'],
-            ], SettingsAdmin::tab((string)($_GET['tab'] ?? 'basics'))));
+            ], SettingsAdmin::tab((string)($_GET['tab'] ?? 'basics')));
+            // The Cache section's switches live in the system database, next to the settings (PageCache, FrontCache).
+            $cacheError = isset($_POST['cache_shown']) ? $this->saveCacheSettings($_POST) : '';
+            $this->redirect($cacheError === '' ? $next : '/admin/settings?' . http_build_query(['tab' => 'cache', 'settings_error' => $cacheError]));
             return;
         }
         $this->render('@admin/settings.twig', $admin->screen($_GET, $canLimits, $this->listBackupSnapshots()) + [
             'user' => $this->auth->user(),
             'types' => $this->content->getTypes(),
+            'cache' => $this->cacheScreen(),
         ]);
+    }
+
+    /**
+     * Settings > Cache: the built-in copy of public pages (PageCache) and the Varnish in front of the site (FrontCache), what
+     * each is doing now and what the last "Clear cache now" did. docs/varnish.md.
+     *
+     * @return array<string, mixed>
+     */
+    private function cacheScreen(): array
+    {
+        $front = $this->frontCache();
+        $stats = $this->pageCache()->stats();
+        return [
+            'mode' => $front->mode(),
+            'tag' => $front->cloudPanelTag(),
+            'address' => $front->address(),
+            'base_url' => trim((string)($this->settings['base_url'] ?? '')),
+            'pages' => [
+                'enabled' => $this->pageCache()->isEnabled(),
+                'ttl_minutes' => intdiv(PageCache::TTL, 60),
+                'max_entries' => PageCache::MAX_ENTRIES,
+                'max_mb' => intdiv(PageCache::MAX_BYTES, 1000000),
+                'entries' => $stats['entries'],
+                'size' => Format::bytes($stats['bytes']),
+            ],
+            'notice' => (string)($_GET['cache'] ?? ''),
+            'status' => (int)($_GET['cache_status'] ?? 0),
+        ];
+    }
+
+    /**
+     * Saves the switches of Settings > Cache that changed; '' when all went well, else what to tell the person.
+     *
+     * @param array<string, mixed> $post
+     */
+    private function saveCacheSettings(array $post): string
+    {
+        $pages = $this->pageCache();
+        $on = Format::isTruthy($post['page_cache'] ?? '');
+        if ($on !== $pages->isEnabled()) {
+            if (!$pages->setEnabled($on)) {
+                return 'The built-in cache could not be switched ' . ($on ? 'on' : 'off') . ' because the SQLite system database is unavailable.';
+            }
+            $this->logActivity('system.page_cache', 'info', 'system', 'page_cache', $on ? 'The built-in page cache was turned on.' : 'The built-in page cache was turned off.', ['enabled' => $on]);
+        }
+        $front = $this->frontCache();
+        if ($front->mode() !== 'cloudpanel' && array_key_exists('cache_address', $post)) {
+            $address = trim((string)$post['cache_address']);
+            if ($address !== $front->address()) {
+                if (!$front->setAddress($address)) {
+                    return 'That is not the address of a Varnish: write it as host:port, for example 127.0.0.1:6081.';
+                }
+                $this->logActivity('system.cache_address', 'info', 'system', 'front_cache', $address === '' ? 'Varnish address removed.' : 'Varnish address saved.', ['address' => $address]);
+            }
+        }
+        return '';
+    }
+
+    /**
+     * Settings > Cache > Clear cache now. The purge itself was asked for by handleAdmin (every POST of the admin empties the
+     * built-in copies and the cache in front); here a Varnish is asked once more, now, so the screen can say what it answered.
+     * The compiled templates are made again on the next page too. Where to go next is returned.
+     */
+    private function clearCacheNow(): string
+    {
+        $front = $this->frontCache();
+        $mode = $front->mode();
+        $status = $mode === 'varnish' ? $front->sendPurge($front->address()) : 0;
+        SiteTwig::clearCache($this->basePath);
+        $ok = $mode !== 'varnish' || ($status >= 200 && $status < 300);
+        $this->logActivity($ok ? 'system.cache_purge' : 'system.cache_purge_failure', $ok ? 'info' : 'warning', 'system', 'front_cache', $ok ? 'Cache cleared.' : 'The Varnish did not confirm the purge.', ['mode' => $mode, 'status' => $status, 'built_in' => $this->pageCache()->isEnabled()]);
+        return '/admin/settings?' . http_build_query(['tab' => 'cache', 'cache' => $ok ? 'purged' : 'purge_failed'] + ($mode === 'varnish' ? ['cache_status' => $status] : []));
     }
 
     /**
@@ -3591,39 +3671,6 @@ final class App
             return;
         }
 
-        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (string)($_POST['system_action'] ?? '') === 'page_cache') {
-            $on = (string)($_POST['page_cache'] ?? '') === '1';
-            $saved = $this->pageCache()->setEnabled($on);
-            $this->logActivity('system.page_cache', 'info', 'system', 'page_cache', $on ? 'The site keeps its own copy of its public pages.' : 'The site no longer keeps its own copy of its pages.', ['enabled' => $on, 'saved' => $saved]);
-            $this->redirect('/admin/system?cache=' . ($saved ? ($on ? 'pages_on' : 'pages_off') : 'pages_failed'));
-            return;
-        }
-
-        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && in_array((string)($_POST['system_action'] ?? ''), ['purge_cache', 'cache_address'], true)) {
-            $cache = $this->frontCache();
-            if ((string)$_POST['system_action'] === 'cache_address') {
-                $address = trim((string)($_POST['cache_address'] ?? ''));
-                if (!$cache->setAddress($address)) {
-                    $this->redirect('/admin/system?cache=bad_address');
-                    return;
-                }
-                $this->logActivity('system.cache_address', 'info', 'system', 'front_cache', $address === '' ? 'Page cache address removed.' : 'Page cache address saved.', ['address' => $address]);
-                $this->redirect('/admin/system?cache=saved');
-                return;
-            }
-            // The purge itself was asked for by handleAdmin (every POST of the admin); here it is told how it went.
-            $mode = $cache->mode();
-            $status = $mode === 'varnish' ? $cache->sendPurge($cache->address()) : 0;
-            $ok = $mode === 'cloudpanel' ? $cache->cloudPanelTag() !== '' : ($status >= 200 && $status < 300);
-            // The site's own copies are dropped by the purge handleAdmin asked for, whatever a cache in front answers.
-            $ok = $ok || ($mode === 'none' && $this->pageCache()->isEnabled());
-            // And the compiled templates, made again on the next page (SiteTwig).
-            SiteTwig::clearCache($this->basePath);
-            $this->logActivity($ok ? 'system.cache_purge' : 'system.cache_purge_failure', $ok ? 'info' : 'warning', 'system', 'front_cache', $ok ? 'Page cache emptied.' : 'The page cache could not be emptied.', ['mode' => $mode, 'status' => $status]);
-            $this->redirect('/admin/system?cache=' . ($ok ? 'purged' : 'purge_failed') . ($mode === 'varnish' ? '&cache_status=' . $status : ''));
-            return;
-        }
-
         if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (string)($_POST['system_action'] ?? '') === 'add_demo') {
             $result = $this->starterContent()->add(is_array($_POST['demo'] ?? null) ? array_map('strval', $_POST['demo']) : []);
             if ($result['added'] > 0) {
@@ -3655,14 +3702,7 @@ final class App
                 ['name' => 'Sign-in attempt cleanup', 'schedule' => 'continuous', 'last' => '', 'how' => 'Entries older than a day are removed while new attempts are recorded.'],
             ],
             'storage' => $storage,
-            'front_cache' => [
-                'mode' => $this->frontCache()->mode(),
-                'tag' => $this->frontCache()->cloudPanelTag(),
-                'address' => $this->frontCache()->address(),
-                'notice' => (string)($_GET['cache'] ?? ''),
-                'status' => (int)($_GET['cache_status'] ?? 0),
-                'pages' => ['enabled' => $this->pageCache()->isEnabled(), 'ttl_minutes' => intdiv(PageCache::TTL, 60)] + $this->pageCache()->stats(),
-            ],
+            'front_cache' => ['mode' => $this->frontCache()->mode(), 'pages' => $this->pageCache()->isEnabled()],
             'rebuilt' => (string)($_GET['rebuilt'] ?? ''),
             'rebuilt_message' => trim((string)($_GET['msg'] ?? '')),
             'demo_groups' => $this->starterContent()->available() ? $this->starterContent()->groups() : [],

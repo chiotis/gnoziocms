@@ -39,7 +39,7 @@ st, _, html = root.get('/admin/settings')
 label, body = nav(html)
 check('Settings has the section list', st == 200 and label == 'Settings' and body != '', st)
 check('under the group headings, in order', headings(body) == ['Site', 'Communication', 'Access', 'Integrations', 'System'], headings(body))
-check('with every section, in order, MCP and Omni among them', items(body) == ['basics', 'smtp', 'auth', 'apis', 'mcp', 'omni', 'limits'], items(body))
+check('with every section, in order, MCP and Omni among them', items(body) == ['basics', 'smtp', 'auth', 'apis', 'mcp', 'omni', 'cache', 'limits'], items(body))
 check('MCP and Omni are links to their own screens', re.search(r'href="[^"]*admin/mcp" class="section-nav-link" data-section="mcp"', body) is not None and re.search(r'href="[^"]*admin/omni" class="section-nav-link" data-section="omni"', body) is not None)
 check('each with an icon and a label', re.search(r'data-section="smtp"><svg[^>]*aria-hidden="true">.+?</svg><span>Email / SMTP</span>', body) is not None)
 check('each a link that opens its section', re.search(r'href="[^"]*admin/settings\?tab=smtp" class="section-nav-link" data-section="smtp"', body) is not None)
@@ -104,7 +104,7 @@ adm = Client(); adm.login('navadm', 'Sturdy-pass-99')
 st, _, html = adm.get('/admin/settings?tab=limits')
 body = nav(html)[1]
 check('an admin without the Limits permission has no Limits entry', st == 200 and 'limits' not in items(body) and 'limits' not in options(html)[0], items(body))
-check('and no System group at all, with Backups and Updates on their own screens', 'System' not in headings(body), headings(body))
+check('and only Cache under System, with Backups and Updates on their own screens', 'System' in headings(body) and 'cache' in items(body) and not any(i in items(body) for i in ('backup', 'updates')), (headings(body), items(body)))
 check('nor Omni, which only the super admin may open', 'omni' not in items(body) and 'admin/omni"' not in html, items(body))
 
 # ---- Theme, AI publishing and SEO: the same list

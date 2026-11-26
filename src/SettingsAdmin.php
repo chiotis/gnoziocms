@@ -15,7 +15,7 @@ namespace GnozioCMS;
  */
 final class SettingsAdmin
 {
-    public const TABS = ['basics', 'apis', 'smtp', 'auth', 'limits'];
+    public const TABS = ['basics', 'apis', 'smtp', 'auth', 'cache', 'limits'];
 
     /** The parts of the settings kept on a screen of their own (backups.manage, updates.manage), and where that is. */
     public const SECTIONS = ['backup' => '/admin/backups?view=settings', 'updates' => '/admin/updates?view=settings'];

@@ -6,16 +6,6 @@
   {% set btn_secondary = 'inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50' %}
 
   {{ ui.flash(rebuilt_message, rebuilt == 'ok' ? 'success' : 'error') }}
-  {% set cache_notices = {
-    purged: ['The page cache was emptied: visitors get the pages as they are now.', 'success'],
-    purge_failed: ['The page cache could not be emptied' ~ (front_cache.status ? ' (it answered ' ~ front_cache.status ~ ')' : ' (no answer)') ~ '. Check the address and that the cache accepts PURGE from this server.', 'error'],
-    saved: ['The address of the page cache was saved.', 'success'],
-    bad_address: ['That is not an address of a cache: write it as host:port, for example 127.0.0.1:6081.', 'error'],
-    pages_on: ['The site now keeps its own copy of its public pages.', 'success'],
-    pages_off: ['The site no longer keeps its own copy of its pages.', 'success'],
-    pages_failed: ['The setting could not be saved (the system database is not available).', 'error'],
-  } %}
-  {% if cache_notices[front_cache.notice] is defined %}{{ ui.flash(cache_notices[front_cache.notice][0], cache_notices[front_cache.notice][1]) }}{% endif %}
   {% if demo == 'ok' %}
     {{ ui.flash(demo_added > 0 ? 'Added ' ~ demo_added ~ (demo_added == 1 ? ' file' : ' files') ~ ' of the demo site. Nothing that was there was changed.' : 'Nothing to add: the site already has what you chose.', demo_added > 0 ? 'success' : 'info') }}
   {% elseif demo == 'fail' %}
@@ -147,41 +137,10 @@
 
       <div class="rounded-lg border border-slate-200 bg-white p-4">
         <div class="flex items-center justify-between gap-3">
-          <h2 class="text-sm font-semibold text-slate-900">Page cache</h2>
-          {{ ui.badge(front_cache.mode == 'cloudpanel' ? 'CloudPanel Varnish' : (front_cache.mode == 'varnish' ? 'Varnish' : 'none'), front_cache.mode == 'none' ? 'slate' : 'green') }}
+          <h2 class="text-sm font-semibold text-slate-900">Cache</h2>
+          {{ ui.badge(front_cache.mode == 'cloudpanel' ? 'CloudPanel Varnish' : (front_cache.mode == 'varnish' ? 'Varnish' : (front_cache.pages ? 'Built-in' : 'off')), front_cache.mode == 'none' and not front_cache.pages ? 'slate' : 'green') }}
         </div>
-        {% if front_cache.mode == 'cloudpanel' %}
-          <p class="mt-2 text-xs text-slate-500">CloudPanel's Varnish keeps the public pages (cache tag <span class="font-mono">{{ front_cache.tag ?: '—' }}</span>). Every change saved in the admin empties it, so visitors see it at once.</p>
-        {% else %}
-          <p class="mt-2 text-xs text-slate-500">A Varnish in front of the site that keeps the public pages. With its address here, every change saved in the admin empties it (a <span class="font-mono">PURGE /</span> with the site's host).</p>
-          <form method="post" action="{{ url('admin/system') }}" class="mt-3 flex gap-2">
-            {{ csrf_field() }}
-            <input type="hidden" name="system_action" value="cache_address">
-            <input type="text" name="cache_address" value="{{ front_cache.address }}" placeholder="127.0.0.1:6081" aria-label="Address of the page cache" class="min-w-0 flex-1 rounded-md border border-slate-300 px-2.5 py-1.5 text-sm">
-            <button type="submit" class="{{ btn_secondary }}">Save</button>
-          </form>
-        {% endif %}
-        <div class="mt-4 border-t border-slate-200 pt-3">
-          <div class="flex items-center justify-between gap-3">
-            <h3 class="text-sm font-semibold text-slate-900">The site's own copy</h3>
-            {{ ui.badge(front_cache.pages.enabled ? 'on' : 'off', front_cache.pages.enabled ? 'green' : 'slate') }}
-          </div>
-          <p class="mt-2 text-xs text-slate-500">For a host with no cache in front of it. The site keeps the pages visitors see without signing in (not a search, a filter or a sort) and sends the copy, so a visit does not run the site. Every change saved in the admin drops the copies; a copy is not used for more than {{ front_cache.pages.ttl_minutes }} minutes either, for what changes outside the admin.{% if front_cache.mode != 'none' %} A cache is already in front of this site, which does the same: this one adds nothing.{% endif %}</p>
-          {% if front_cache.pages.enabled %}<p class="mt-2 text-xs text-slate-500">{{ front_cache.pages.entries }} {{ front_cache.pages.entries == 1 ? 'page' : 'pages' }} kept.</p>{% endif %}
-          <form method="post" action="{{ url('admin/system') }}" class="mt-3">
-            {{ csrf_field() }}
-            <input type="hidden" name="system_action" value="page_cache">
-            <input type="hidden" name="page_cache" value="{{ front_cache.pages.enabled ? '0' : '1' }}">
-            <button type="submit" class="{{ btn_secondary }} w-full justify-center">{{ front_cache.pages.enabled ? 'Turn it off' : 'Turn it on' }}</button>
-          </form>
-        </div>
-        {% if front_cache.mode != 'none' or front_cache.pages.enabled %}
-          <form method="post" action="{{ url('admin/system') }}" class="mt-3">
-            {{ csrf_field() }}
-            <input type="hidden" name="system_action" value="purge_cache">
-            <button type="submit" class="{{ btn_secondary }} w-full justify-center">Empty the page cache</button>
-          </form>
-        {% endif %}
+        <p class="mt-2 text-xs text-slate-500">The built-in page cache, a Varnish in front of the site and <em>Clear cache now</em> are in <a href="{{ url('admin/settings?tab=cache') }}" class="font-medium text-blue-700 hover:underline">Settings &rsaquo; Cache</a>.</p>
       </div>
 
       {% if demo_groups %}

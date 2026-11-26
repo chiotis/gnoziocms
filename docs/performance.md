@@ -18,7 +18,7 @@ things are settings of the site or of its host, listed under [What a site should
 - Twig templates (the theme's, the site's in `custom/`, the admin's) are compiled to PHP once and kept in `storage/cache/twig`, so a
   page no longer parses its templates on every request. A compiled copy is used only for the very file it was made from (its
   time and size are part of its name), so an edited template, a theme change or a restored older file is used at once. The
-  folder is emptied by an update and by System > *Empty the page cache*, counts in Settings > Limits like the rest of
+  folder is emptied by an update and by Settings > Cache > *Clear cache now*, counts in Settings > Limits like the rest of
   `storage/`, and is left out of backups (`storage/cache/`). When it cannot be written, pages are made without it.
 - Measured on a development copy (PHP's built-in server, no OPcache, median of 50 requests): the home page 264 → 177 ms, a post
   list 161 → 84 ms, the admin's sign-in page 46 → 44 ms. With OPcache on, the compiled files are kept in memory too.
@@ -46,7 +46,7 @@ things are settings of the site or of its host, listed under [What a site should
    curl -sI https://example.com/ | grep -iE 'x-page-cache|server-timing|cf-cache-status|age'
    ```
    - Varnish in front (CloudPanel, see [varnish.md](varnish.md)): nothing else to do.
-   - No cache in front: turn on **System > Page cache > The site's own copy**. The answer then says `X-Page-Cache: hit` from the
+   - No cache in front: turn on **Settings > Cache > Built-in page cache**. The answer then says `X-Page-Cache: hit` from the
      second visit to an address on. A copy is sent by `public/index.php` before the application boots (`PageCache::serveEarly`;
      `Server-Timing: cache;desc="page cache hit, before the application"`) for a GET with no query and no session cookie, when
      nothing was due after a response in the last minute (`storage/cache/pages/quiet`) and the site's host and trusted proxies are
