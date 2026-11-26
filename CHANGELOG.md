@@ -7,6 +7,11 @@
 - **Varnish in front of the site** has the address and how to set it up (the VCL purge rule, trusted proxies, testing with Clear cache now) and what it must not keep. On CloudPanel it explains that there is nothing to set up.
 - The switches are saved with the Settings form. A wrong Varnish address comes back to the Cache section with an error.
 - Tests: `page_cache` and `settings_nav` (HTTP).
+## 0.1.347 — 2026-11-26 — SVG uploads header: in the installer, a fix seen at once, and the nginx lines for CloudPanel
+- **System > Status › SVG uploads header** asks for its test drawing with a query string no cache has seen, so a CDN (Cloudflare) that keeps the file with its old headers no longer hides a fixed server, and a warning is looked at again after ten minutes instead of a day. An ok answer is still kept a day.
+- `docs/security.md` has the uploads lines for CloudPanel (no PHP in the block on port 443, so `try_files … /index.php` would break picture variants), where to put them, how to reload nginx, and to purge the CDN's cache afterwards.
+- **The installer** asks an nginx site for the same test drawing when the document root is set and, unless the header comes back, lists the uploads block on its closing page (CloudPanel-safe, with where to put it and the CDN purge), next to the cron job and the block for ChatGPT. Apache needs nothing: it reads `public/uploads/.htaccess`.
+- Tests: `system-status` (unit), `installer` (HTTP).
 
 ## 0.1.346 — 2026-11-26 — Reading width for plain text too
 - **Theme > Layout and spacing > Reading width** now also holds the text of a post or page that has only the plain editor's text and no sidebar, centred as the blocks are. Before, it changed only pages with blocks. Left blank, the text still takes the container's whole width, as since 0.1.304. Block pages and pages with a sidebar are as before.
