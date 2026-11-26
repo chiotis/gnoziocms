@@ -7,6 +7,7 @@
 - **Varnish in front of the site** has the address and how to set it up (the VCL purge rule, trusted proxies, testing with Clear cache now) and what it must not keep. On CloudPanel it explains that there is nothing to set up.
 - The switches are saved with the Settings form. A wrong Varnish address comes back to the Cache section with an error.
 - Tests: `page_cache` and `settings_nav` (HTTP).
+
 ## 0.1.347 — 2026-11-26 — SVG uploads header: in the installer, a fix seen at once, and the nginx lines for CloudPanel
 - **System > Status › SVG uploads header** asks for its test drawing with a query string no cache has seen, so a CDN (Cloudflare) that keeps the file with its old headers no longer hides a fixed server, and a warning is looked at again after ten minutes instead of a day. An ok answer is still kept a day.
 - `docs/security.md` has the uploads lines for CloudPanel (no PHP in the block on port 443, so `try_files … /index.php` would break picture variants), where to put them, how to reload nginx, and to purge the CDN's cache afterwards.
