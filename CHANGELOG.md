@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.348 — 2026-11-26 — Settings › Cache: the built-in page cache and Varnish in one section, with directions
+- The page cache moves from **System** to its own **Settings › Cache** section (System group of the Settings list, `settings.manage`). System keeps a short card that links to it.
+- **Cache status** says whether the built-in cache is on (pages kept and their size), which Varnish the site found, and what visitors get now. **Clear cache now** empties the built-in copies, asks the Varnish to drop the site's pages (and says what it answered: 200, 405 or no answer), and makes the compiled templates again.
+- **Built-in page cache** comes first, because most hosts have no Varnish. It has the switch, a warning when a Varnish already does the job or the Base URL is missing, when to use it, what is and is not kept, the 10-minute freshness limit and how to check `X-Page-Cache`.
+- **Varnish in front of the site** has the address and how to set it up (the VCL purge rule, trusted proxies, testing with Clear cache now) and what it must not keep. On CloudPanel it explains that there is nothing to set up.
+- The switches are saved with the Settings form. A wrong Varnish address comes back to the Cache section with an error.
+- Tests: `page_cache` and `settings_nav` (HTTP).
+
 ## 0.1.346 — 2026-11-26 — Reading width for plain text too
 - **Theme > Layout and spacing > Reading width** now also holds the text of a post or page that has only the plain editor's text and no sidebar, centred as the blocks are. Before, it changed only pages with blocks. Left blank, the text still takes the container's whole width, as since 0.1.304. Block pages and pages with a sidebar are as before.
 
