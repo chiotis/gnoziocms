@@ -233,6 +233,8 @@ final class Branding
         $reading = self::number($design['reading_width'] ?? '');
         if ($reading !== null) {
             $vars['--container-narrow'] = self::rem($reading);
+            // Set on purpose, so it also holds the plain text of an entry with no sidebar (full width when left blank).
+            $vars['--reading-width'] = self::rem($reading);
         }
         $gutter = self::number($design['gutter'] ?? '');
         if ($gutter !== null) {

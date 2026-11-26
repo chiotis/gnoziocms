@@ -140,7 +140,7 @@ check('taking the site palette away gives the page back to the ready-made palett
 css = style(page())
 check('type: families, size, scale, weight, spacing, case', all(x in css for x in ('--font-heading:Avenir,', '--font-body:Rockwell,', '--type-scale:1.125;', '--step-5:clamp(', '--heading-weight:800;', '--heading-tracking:0.025em;',
       'h1,h2,h3,h4,h5,h6{line-height:1.05;text-transform:uppercase}', 'body.theme-body{line-height:1.8}')), css[:600])
-check('layout: widths, margin, sections, spacing', all(x in css for x in ('--container:87.5rem;', '--container-narrow:50rem;', '--gutter:clamp(', '--section-scale:0.7143;', '--header-min:5rem;', '--space-scale:1.2;')), css[:900])
+check('layout: widths, margin, sections, spacing', all(x in css for x in ('--container:87.5rem;', '--container-narrow:50rem;', '--reading-width:50rem;', '--gutter:clamp(', '--section-scale:0.7143;', '--header-min:5rem;', '--space-scale:1.2;')), css[:900])
 check('shape: radius, button corners, shadows', all(x in css for x in ('--radius-m:0.375rem;', '--radius-button:0px;', '--shadow-m:0 30px 60px')), css[:900])
 check('buttons: height, padding, size, weight, capitals', all(x in css for x in ('--btn-height:3.375rem;', '--btn-pad-x:1.875rem;', '--btn-size:1rem;', '--btn-weight:700;', '--btn-case:uppercase;')), css[:1200])
 check('the logo sizes and the size of the name', all(x in css for x in ('--logo-height:2.75rem;', '--logo-height-mobile:1.875rem;', '--footer-logo-height:2.5rem;', '--brand-name-size:1.625rem;')), css[:1400])

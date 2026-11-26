@@ -2504,9 +2504,11 @@ body.has-transparent-header:not(.header-solid) .site-header.is-on-dark[data-stic
   max-width: var(--container-narrow);
 }
 
-/* An entry's text with no sidebar beside it: the whole width of the container. */
+/* An entry's text with no sidebar beside it: the whole width of the container,
+   or the Reading width when one is set (Theme > Layout and spacing), centred as the blocks are. */
 .single-body.is-full > .prose-block {
-  max-width: none;
+  max-width: var(--reading-width, none);
+  margin-inline: auto;
 }
 
 /* "With sidebar" template */
