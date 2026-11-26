@@ -243,6 +243,21 @@ set, and says why. Pages themselves are still built with the request's host when
      }
      ```
 
+     **CloudPanel** (and any server block that has no PHP and passes pages on with `proxy_pass`): the `try_files … /index.php` line above would answer 404 for picture variants not yet made. Add these two locations instead, in the block on port 443 and **above** CloudPanel's `location ~* ^.+\.(css|js|jpg|…|svg|…)$`, since nginx takes the first regular expression that matches. Everything else under `/uploads/` stays as it was:
+
+     ```nginx
+     location ~* ^/uploads/.*\.(php\d?|phtml|phar|pht|cgi|pl|py|sh|html?)$ { deny all; }
+     location ~* ^/uploads/.*\.svg$ {
+         add_header Content-Security-Policy "default-src 'none'; style-src 'unsafe-inline'; img-src data:";
+         add_header X-Content-Type-Options nosniff;
+         add_header Access-Control-Allow-Origin "*";
+         expires max;
+         try_files $uri =404;
+     }
+     ```
+
+     Saving the Vhost in CloudPanel tests and reloads nginx; elsewhere `sudo nginx -t && sudo systemctl reload nginx`. **Behind a CDN** (Cloudflare and the like) purge its cache of `/uploads/` afterwards: it keeps SVG files with the headers they had, for hours. Check with `curl -sI "https://example.com/uploads/_v/header-check.svg?x=1" | grep -i content-security`. The status check asks past the CDN's cache and looks again ten minutes after a warning. On nginx the installer asks the same when the document root is set and, if the header is missing, shows this block on its closing page.
+
      Theme and custom files are copied into `public/` and image variants not yet written have addresses with no file extension, so a static-file location (for example a `\.(css|js|webp)$` caching block, as CloudPanel has) needs no change while PHP can write to `public/`. Where it cannot, theme assets (`/_themes/…`, `/_custom/…`) are served by PHP, and such a location must end in `try_files $uri /index.php?$query_string;`.
 
      For that case: CloudPanel's PHP site, with Varnish on or off, has no PHP in the block on port 443: its `location /` passes pages on (`{{varnish_proxy_pass}}`, to Varnish or straight to the block on port 8080, which runs PHP). There `/index.php` would reach the site as the address `/index.php` and answer 404. In that block send a missing file the same way as a page, under its own address, with a named location:
