@@ -136,7 +136,9 @@ final class SystemStatus
     /**
      * Whether the web server sends uploaded SVG files with a Content-Security-Policy that stops scripts (audit S17): Apache has
      * it from public/uploads/.htaccess, nginx only when the operator added the line. A probe file is asked for at the site's
-     * address once a day (the answer kept in $cacheFile).
+     * address once a day (the answer kept in $cacheFile). A warning is kept only ten minutes, so the check clears soon after the
+     * server is fixed, and the address carries a query string no cache has seen: a CDN (Cloudflare and the like) keeps a file with
+     * the headers it had for hours, so a cached copy would hide the fix.
      *
      * @param \Closure(string): (array<string, string>|null) $headers the response headers of an address, names in lower case;
      *   null when it could not be asked
@@ -147,7 +149,8 @@ final class SystemStatus
         $label = 'SVG uploads header';
         $now = $now > 0 ? $now : time();
         $kept = is_file($cacheFile) ? json_decode((string)file_get_contents($cacheFile), true) : null;
-        if (is_array($kept) && (int)($kept['at'] ?? 0) > $now - 86400 && ($kept['base'] ?? '') === $baseUrl && is_array($kept['check'] ?? null)) {
+        $keep = (($kept['check']['status'] ?? '') === 'ok') ? 86400 : 600;
+        if (is_array($kept) && (int)($kept['at'] ?? 0) > $now - $keep && ($kept['base'] ?? '') === $baseUrl && is_array($kept['check'] ?? null)) {
             return $kept['check'];
         }
         if ($baseUrl === '') {
@@ -158,7 +161,7 @@ final class SystemStatus
             @mkdir(dirname($probe), 0775, true);
             @file_put_contents($probe, '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>' . "\n");
         }
-        $answer = $headers(rtrim($baseUrl, '/') . '/uploads/' . self::SVG_PROBE);
+        $answer = $headers(rtrim($baseUrl, '/') . '/uploads/' . self::SVG_PROBE . '?check=' . $now);
         if ($answer === null) {
             $check = ['label' => $label, 'value' => 'could not be checked (the site did not answer itself)', 'status' => 'warning'];
         } else {
