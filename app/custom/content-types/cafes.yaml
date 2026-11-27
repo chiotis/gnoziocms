@@ -1,0 +1,4 @@
+label: { en: Cafes }
+singular: { en: Cafe }
+fields:
+  location: { type: location, label: Place }

@@ -1,0 +1,12 @@
+label: Volumes
+singular: Volume
+fields:
+  author: {type: relation, types: [authors], label: Author}
+  others: {type: relation, types: [authors], multiple: true, max: 2, label: Also by}
+  editions:
+    type: repeater
+    label: Editions
+    item_label: Edition
+    fields:
+      year: {type: number, label: Year}
+      editor: {type: relation, types: [authors], label: Editor}

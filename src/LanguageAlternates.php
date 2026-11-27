@@ -61,7 +61,14 @@ final class LanguageAlternates
         }
 
         $translationId = (string)($item->meta['translation_id'] ?? '');
-        $all = $this->content->getItems($type, null, true, false);
+        // The links change only when a translation of this entry does (the page cache's CacheTags): one with the same id, or with
+        // the same address when the entry has no id.
+        $all = CacheTags::quietly(fn(): array => $this->content->getItems($type, null, true, false));
+        if ($translationId !== '') {
+            CacheTags::readId($translationId);
+        } else {
+            CacheTags::readEntry($type, $item->slug);
+        }
         $matches = [];
         foreach ($all as $candidate) {
             if ($translationId !== '' && (string)($candidate->meta['translation_id'] ?? '') === $translationId) {

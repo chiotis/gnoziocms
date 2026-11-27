@@ -1,4 +1,4 @@
-import re, sys
+import json, re, sys
 sys.path.insert(0, '.')
 from client import Client, has_field, BASE
 
@@ -85,17 +85,72 @@ check('the first page made after the change opens the front door again, with the
 def save_page(slug, fields):
     st, hdr, _ = root.submit('/admin/edit?type=pages&slug=%s&lang=el' % slug, has_field('body'), fields, drop=['visible'])
     return st, hdr.get('Location') or ''
-status(anon, '/'); status(anon, '/')
+# (the sitemap lists every page, so it is one of the pages a page that goes public or away refreshes)
+for p in ('/', '/sitemap.xml'): status(anon, p); status(anon, p)
 st, loc = save_page('', {'title': 'Cache test draft', 'status': 'draft', 'body': 'Hidden for now'})
 m = re.search(r'slug=([^&]+)', loc); draft = m.group(1) if m else ''
-st, mark, _, _ = status(anon, '/')
-check('a new draft leaves the kept pages alone', draft != '' and mark == 'hit', (st, loc, mark))
+check('a new draft leaves the kept pages alone', draft != '' and [status(anon, p)[1] for p in ('/', '/sitemap.xml')] == ['hit', 'hit'], (st, loc))
 save_page(draft, {'title': 'Cache test draft', 'status': 'draft', 'body': 'Still hidden'})
-check('and so does saving it again as a draft', status(anon, '/')[1] == 'hit')
+check('and so does saving it again as a draft', status(anon, '/sitemap.xml')[1] == 'hit')
 save_page(draft, {'title': 'Cache test draft', 'status': 'published', 'body': 'Out now'})
-check('publishing it empties them', status(anon, '/')[1] == 'miss')
+check('publishing it refreshes the pages that list it', status(anon, '/sitemap.xml')[1] == 'miss')
+status(anon, '/sitemap.xml')
 save_page(draft, {'title': 'Cache test draft', 'status': 'draft', 'body': 'Back to hidden'})
-check('and so does taking it back to a draft', status(anon, '/')[1] == 'miss')
+check('and so does taking it back to a draft', status(anon, '/sitemap.xml')[1] == 'miss')
+
+# ---- Refresh only what changed: saving a post refreshes its page and the lists of posts, not the other pages
+POST = '/rebrand-readiness-guide'
+WATCHED = (POST, '/posts', '/sitemap.xml', '/about', '/en/about', '/services')
+def warm():
+    for p in WATCHED: status(anon, p)
+    return [status(anon, p)[1] for p in WATCHED]
+def save_post(body):
+    return root.submit('/admin/edit?type=posts&slug=rebrand-readiness-guide&lang=el', has_field('body'), {'body': body})
+check('the pages are all kept', warm() == ['hit'] * len(WATCHED), warm())
+save_post('A new paragraph for the cache test.')
+st, mark, _, body = status(anon, POST)
+check('saving a post: its page is made again, with the change', st == 200 and mark == 'miss' and 'A new paragraph for the cache test.' in body, (st, mark))
+check('the list of posts and the sitemap too, the other pages stay ready', [status(anon, p)[1] for p in WATCHED[1:]] == ['miss', 'miss', 'hit', 'hit', 'hit'], [status(anon, p)[1] for p in WATCHED[1:]])
+st, mark, _, body = status(anon, POST)
+check('and the new page is the copy from then on', mark == 'hit' and 'A new paragraph for the cache test.' in body, mark)
+warm()
+root.submit('/admin/settings', is_settings, {'title': 'Another name for the cache test'})
+check('a change to the settings still refreshes every page', [status(anon, p)[1] for p in WATCHED] == ['miss'] * len(WATCHED), [status(anon, p)[1] for p in WATCHED])
+
+def cache_form(fields):
+    return root.submit(CACHE, is_settings, fields)
+def ticked(html, name):
+    return re.search(r'name="%s" value="1"\s+checked' % name, html) is not None
+st, _, html = root.get(CACHE)
+check('the controls are offered: the lifetime (10 minutes), Refresh only what changed and Build again, both on, Build cache now', 'name="page_cache_ttl"' in html and re.search(r'<option value="600" selected>10 minutes', html) is not None and ticked(html, 'page_cache_targeted') and ticked(html, 'page_cache_rebuild') and 'data-cache-build-start' in html and 'How to set the three controls' in html, html[:200])
+check('a server that cannot work after the response says Build again cannot happen there', 'cannot work after the response' in html)
+warm()
+cache_form({'page_cache_targeted': None})
+st, _, html = root.get(CACHE)
+check('Refresh only what changed can be turned off', not ticked(html, 'page_cache_targeted') and ticked(html, 'page_cache_rebuild'))
+warm()
+save_post('Saved with every page refreshed.')
+check('and then saving a post refreshes every page again', [status(anon, p)[1] for p in WATCHED] == ['miss'] * len(WATCHED), [status(anon, p)[1] for p in WATCHED])
+cache_form({'page_cache_targeted': '1', 'page_cache_rebuild': None, 'page_cache_ttl': '86400'})
+st, _, html = root.get(CACHE)
+check('the lifetime is kept, Build again can be turned off', re.search(r'<option value="86400" selected>1 day', html) is not None and ticked(html, 'page_cache_targeted') and not ticked(html, 'page_cache_rebuild') and 'each kept for up to 1 day' in html, html[:200])
+st, hdr, _ = cache_form({'page_cache_ttl': '1234'})
+check('a lifetime that is not offered is refused', 'settings_error' in (hdr.get('Location') or ''), hdr.get('Location'))
+cache_form({'page_cache_ttl': '600', 'page_cache_rebuild': '1'})
+
+# ---- Build cache now: the addresses to open, for the admin only
+st, hdr, body = root.get(CACHE + '&cache_addresses=1')
+try:
+    listed = json.loads(body)
+except ValueError:
+    listed = {}
+paths = listed.get('paths') or []
+check('Build cache now gets the public addresses: home pages, lists, entries, terms, the sitemap', st == 200 and listed.get('origin') == BASE.rstrip('/').lower() and all(p in paths for p in ('/', '/en', '/posts', '/about', '/en/about', POST, '/sitemap.xml')) and not any('contact' in p for p in paths), (st, body[:300]))
+st, hdr, body = Client().get(CACHE + '&cache_addresses=1')
+check('and a visitor gets none', '"paths"' not in body, (st, body[:100]))
+clear_cache(root)
+for p in paths: anon.get(p)
+check('once each address was opened, the pages are kept', [status(anon, p)[1] for p in ('/', '/posts', '/about', POST)] == ['hit'] * 4)
 
 # ---- the button empties it by hand
 status(anon, '/'); 

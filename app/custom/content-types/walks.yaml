@@ -1,0 +1,10 @@
+label: { en: Walks }
+singular: { en: Walk }
+fields:
+  guide: { type: relation, types: [authors], label: Guide, filterable: true }
+  level: { type: select, label: Level, filterable: true, options: { easy: Easy, hard: Hard } }
+  location: { type: location, label: Start }
+archive:
+  per_page: 4
+  order: date_desc
+  taxonomies: [categories]

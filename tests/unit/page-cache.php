@@ -166,6 +166,89 @@ $GLOBALS['database'] = $database;
 (function () { $this->bump(); $this->deleteFiles(); })->call($early);
 check('a purge removes the copies, the front door and the quiet time', [$try(), is_file($site . '/storage/cache/pages/frontdoor.json'), is_file($site . '/storage/cache/pages/quiet')], [false, false, false]);
 
+// ---- how long a copy is kept (Settings > Cache > Keep each page for)
+$headOf = static function (string $k) use ($dir): array {
+    return json_decode((string)strstr((string)@file_get_contents($dir . '/' . $k . '.page'), "\n", true), true) ?: [];
+};
+check('ten minutes until it is set', $cache->ttl(), 600);
+check('a lifetime offered is kept, another is refused', [$cache->setTtl(86400), (new PageCache($meta, $dir, '0.1.1'))->ttl(), $cache->setTtl(1234), $cache->ttl()], [true, 86400, false, 86400]);
+$cache->keep('ttl-check', $cache->generation(), '<p>a day</p>', 200, $page, []);
+$left = (int)($headOf('ttl-check')['expires'] ?? 0) - time();
+check('a copy is then kept that long', $left > 86000 && $left <= 86400, true);
+$cache->setTtl(600);
+
+// ---- refresh only what changed (CacheTags)
+GnozioCMS\CacheTags::reset();
+$setUrl = static function (string $url) use ($cache): void { (function () use ($url) { $this->url = $url; })->call($cache); };
+$kept = static function (string $name, array $tags, string $url = '') use ($cache, $page, $setUrl): void {
+    $setUrl($url !== '' ? $url : 'https://site.test/' . $name);
+    $cache->keep('tag-' . $name, $cache->generation(), '<p>' . $name . '</p>', 200, $page, $tags, microtime(true) - 1);
+};
+$served = static fn(string $name): bool => $cache->serve('tag-' . $name, static function (): void {});
+$kept('post', ['entry:posts/hello', 'type:tags']);
+$kept('home', ['entry:pages/home', 'type:posts'], 'https://site.test/');
+$kept('about', ['entry:pages/about']);
+$kept('map', ['*']);
+$kept('author', ['id:abc']);
+$kept('static', []);
+check('a copy keeps what it was made from', $headOf('tag-post')['tags'] ?? null, ['entry:posts/hello', 'type:tags']);
+GnozioCMS\CacheTags::changed('posts', 'hello', 'h1');
+$aboutCopy = (string)file_get_contents($dir . '/tag-about.page');
+$dropped = $cache->dropChanged(GnozioCMS\CacheTags::changes());
+check('saving a post drops its page, the lists of posts and what is made from everything, the home page first, then the newest', $dropped, ['https://site.test/', 'https://site.test/map', 'https://site.test/post']);
+check('the others are still sent', [$served('post'), $served('home'), $served('map'), $served('about'), $served('author'), $served('static')], [false, false, false, true, true, true]);
+GnozioCMS\CacheTags::reset();
+GnozioCMS\CacheTags::changed('people', 'someone', 'abc');
+check('an entry a relation points at drops the pages that show it', [$cache->dropChanged(GnozioCMS\CacheTags::changes()), $served('about'), $served('author')], [['https://site.test/author'], true, false]);
+GnozioCMS\CacheTags::reset();
+GnozioCMS\CacheTags::changed('pages', 'about');
+$cache->dropChanged(GnozioCMS\CacheTags::changes());
+file_put_contents($dir . '/tag-about.page', $aboutCopy);
+check('a copy made before the change is not sent even if its file is still there', $served('about'), false);
+check('nor kept when it was being made while the change was saved', $cache->keep('tag-late', $cache->generation(), '<p>late</p>', 200, $page, ['type:pages'], microtime(true) - 5), false);
+check('one made from something else is', $cache->keep('tag-other', $cache->generation(), '<p>other</p>', 200, $page, ['type:posts'], microtime(true)), true);
+check('nothing written, nothing dropped', $cache->dropChanged([]), []);
+GnozioCMS\CacheTags::reset();
+GnozioCMS\CacheTags::removed('pages', 'old');
+check('an entry taken away is said apart (then everything is dropped)', [GnozioCMS\CacheTags::anyRemoved(), in_array('entry:pages/old', GnozioCMS\CacheTags::changes(), true)], [true, true]);
+GnozioCMS\CacheTags::reset();
+check('the switches are on until they are turned off', [$cache->refreshesChangedOnly(), $cache->rebuildsAfterChange()], [true, true]);
+$cache->setRefreshChangedOnly(false);
+$cache->setRebuildAfterChange(false);
+check('and then off', [$cache->refreshesChangedOnly(), $cache->rebuildsAfterChange()], [false, false]);
+$cache->setRefreshChangedOnly(true);
+$cache->setRebuildAfterChange(true);
+$setUrl('https://site.test/x');
+$cache->keep('all-1', $cache->generation(), '<p>x</p>', 200, $page, []);
+check('emptying everything gives the addresses to make again', in_array('https://site.test/x', $cache->dropAll(), true) && $cache->stats()['entries'] === 0, true);
+
+// ---- what reads entries says what it read
+$content = new GnozioCMS\ContentRepository($root . '/content', new League\CommonMark\MarkdownConverter((new League\CommonMark\Environment\Environment())->addExtension(new League\CommonMark\Extension\CommonMark\CommonMarkCoreExtension())), ['languages' => ['default' => 'en', 'available' => ['en']]]);
+mkdir($root . '/content/pages', 0775, true);
+file_put_contents($root . '/content/pages/about.md', "---\ntitle: About\n---\n\nHi\n");
+GnozioCMS\CacheTags::reset();
+$content->find('pages', 'about', 'en');
+check('finding one entry is that entry only', GnozioCMS\CacheTags::read(), ['entry:pages/about']);
+$content->getItems('posts', 'en');
+check('listing a type is the type', GnozioCMS\CacheTags::read(), ['entry:pages/about', 'type:posts']);
+GnozioCMS\CacheTags::reset();
+
+// ---- the pages dropped are asked for again: on this server first, else through the public address, never for ever
+$asked = [];
+$fake = static function (array $answers) use (&$asked): Closure {
+    return static function (string $url, bool $local) use (&$asked, $answers): int {
+        $asked[] = [parse_url($url, PHP_URL_PATH), $local];
+        return $answers[$local ? 'local' : 'public'];
+    };
+};
+check('on this server when it answers', [$cache->rebuild(['https://site.test/', 'https://site.test/a'], $fake(['local' => 200, 'public' => 200])), $asked], [2, [['/', true], ['/a', true]]]);
+$asked = [];
+check('through the public address when this server does not', [$cache->rebuild(['https://site.test/', 'https://site.test/a'], $fake(['local' => 0, 'public' => 200])), $asked], [2, [['/', true], ['/', false], ['/a', false]]]);
+$asked = [];
+check('and it stops when neither answers', [$cache->rebuild(['https://site.test/', 'https://site.test/a'], $fake(['local' => 0, 'public' => 0])), $asked], [0, [['/', true], ['/', false]]]);
+$asked = [];
+check('at most the time it is given', $cache->rebuild(['https://site.test/'], $fake(['local' => 200, 'public' => 200]), -1), 0);
+
 // ---- a response that something refused
 FrontCache::doNotKeep();
 check('an answer that said it must not be kept is not kept', $cache->keep($key('refused'), $cache->generation(), 'x', 200, $page), false);

@@ -250,6 +250,7 @@ final class ArchiveQuery
         $params['lang'] = $lang;
         $marks = [];
         foreach (array_values($scope['types']) as $i => $type) {
+            CacheTags::readType((string)$type);
             $marks[] = ':type' . $i;
             $params['type' . $i] = $type;
         }

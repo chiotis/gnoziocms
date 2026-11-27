@@ -306,7 +306,7 @@ final class App
             $this->sendSecurityHeaders(false);
             $this->sendPublicCacheHeaders();
             if ($pageKey !== null) {
-                $this->pageCache()->capture($pageKey);
+                $this->pageCache()->capture($pageKey, ($this->isHttpsRequest() ? 'https' : 'http') . '://' . strtolower((string)($_SERVER['HTTP_HOST'] ?? '')) . '/' . ltrim($path, '/'));
             }
         }
 
@@ -1537,7 +1537,8 @@ final class App
         // the handler, which may end the request with a redirect). Screens that only read, preview or export do not count.
         if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && !in_array($action, self::ADMIN_POSTS_THAT_CHANGE_NOTHING, true) && !isset($_GET['preview'])) {
             if (!$this->savesAHiddenEntry($action)) {
-                $this->frontCache()->purgeAll();
+                // Saving an entry drops only the kept pages made from it, when Settings > Cache says so (PageCache, CacheTags).
+                $this->frontCache()->purgeAll($action === 'save' && $this->sanitizeType((string)($_POST['type'] ?? 'pages')) !== 'forms');
             }
             $this->contentIndex->bump(); // what is derived from the whole site (the maps' data) is made again
         }
@@ -2864,6 +2865,13 @@ final class App
             $this->redirect($admin->recalculateStorage($canLimits));
             return;
         }
+        // Settings > Cache > Build cache now asks for the addresses to open, then opens them from the browser.
+        if (!$post && isset($_GET['cache_addresses'])) {
+            header('Content-Type: application/json; charset=utf-8');
+            header('Cache-Control: private, no-store');
+            echo json_encode($this->cacheAddresses(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            return;
+        }
         if ($post && (string)($_POST['cache_action'] ?? '') === 'clear') {
             $this->redirect($this->clearCacheNow());
             return;
@@ -2904,6 +2912,13 @@ final class App
             'base_url' => trim((string)($this->settings['base_url'] ?? '')),
             'pages' => [
                 'enabled' => $this->pageCache()->isEnabled(),
+                'ttl' => $this->pageCache()->ttl(),
+                'ttl_label' => PageCache::TTL_CHOICES[$this->pageCache()->ttl()],
+                'ttl_choices' => PageCache::TTL_CHOICES,
+                'targeted' => $this->pageCache()->refreshesChangedOnly(),
+                'rebuild' => $this->pageCache()->rebuildsAfterChange(),
+                'rebuild_max' => PageCache::REBUILD_MAX,
+                'after_response' => CronStatus::finishFunction() !== null,
                 'ttl_minutes' => intdiv(PageCache::TTL, 60),
                 'max_entries' => PageCache::MAX_ENTRIES,
                 'max_mb' => intdiv(PageCache::MAX_BYTES, 1000000),
@@ -2930,6 +2945,26 @@ final class App
             }
             $this->logActivity('system.page_cache', 'info', 'system', 'page_cache', $on ? 'The built-in page cache was turned on.' : 'The built-in page cache was turned off.', ['enabled' => $on]);
         }
+        // The built-in cache's own choices: how long a page is kept, what a saved entry drops, and making pages again.
+        if (array_key_exists('page_cache_ttl', $post)) {
+            $ttl = (int)$post['page_cache_ttl'];
+            if ($ttl !== $pages->ttl()) {
+                if (!$pages->setTtl($ttl)) {
+                    return 'That is not one of the lifetimes offered for a kept page.';
+                }
+                $this->logActivity('system.page_cache', 'info', 'system', 'page_cache', 'Kept pages now last ' . PageCache::TTL_CHOICES[$ttl] . '.', ['ttl' => $ttl]);
+            }
+            $targeted = Format::isTruthy($post['page_cache_targeted'] ?? '');
+            if ($targeted !== $pages->refreshesChangedOnly()) {
+                $pages->setRefreshChangedOnly($targeted);
+                $this->logActivity('system.page_cache', 'info', 'system', 'page_cache', $targeted ? 'Saving an entry now refreshes only the pages it appears on.' : 'Saving an entry now clears every kept page.', ['targeted' => $targeted]);
+            }
+            $rebuild = Format::isTruthy($post['page_cache_rebuild'] ?? '');
+            if ($rebuild !== $pages->rebuildsAfterChange()) {
+                $pages->setRebuildAfterChange($rebuild);
+                $this->logActivity('system.page_cache', 'info', 'system', 'page_cache', $rebuild ? 'Cleared pages are now built again at once.' : 'Cleared pages are now built again on their next visit.', ['rebuild' => $rebuild]);
+            }
+        }
         $front = $this->frontCache();
         if ($front->mode() !== 'cloudpanel' && array_key_exists('cache_address', $post)) {
             $address = trim((string)$post['cache_address']);
@@ -2941,6 +2976,58 @@ final class App
             }
         }
         return '';
+    }
+
+    /**
+     * Settings > Cache > Build cache now: the public addresses of the site, for the browser to open one by one without its cookie
+     * (so each is made as a visitor sees it and kept). The home pages, the lists of each type, every listed entry and the pages of
+     * the terms, at most PageCache::MAX_ENTRIES. `origin` is the site's address: the pages are kept only when asked for there.
+     *
+     * @return array{origin: string, paths: list<string>}
+     */
+    private function cacheAddresses(): array
+    {
+        $base = rtrim(trim((string)($this->settings['base_url'] ?? '')), '/');
+        $origin = '';
+        if (preg_match('#^(https?://[^/]+)#i', $base, $m) === 1) {
+            $origin = strtolower($m[1]);
+        }
+        $paths = new ContentPaths($this->settings);
+        $default = $paths->defaultLang();
+        $languages = array_values(array_unique(array_merge([$default], array_map('strval', (array)($this->settings['languages']['available'] ?? [])))));
+        $basePath = (string)(parse_url($base, PHP_URL_PATH) ?? '');
+        $found = [];
+        $add = static function (string $path) use (&$found, $basePath): void {
+            $found[rtrim($basePath, '/') . '/' . ltrim($path, '/')] = true;
+        };
+        $types = array_values(array_filter($this->content->getTypes(), static fn(string $type): bool => $type !== 'forms'));
+        foreach ($languages as $lang) {
+            $add($paths->publicPath('pages', $paths->homeSlug(), $lang));
+        }
+        foreach ($languages as $lang) {
+            foreach ($types as $type) {
+                if ($type !== 'pages') {
+                    $add(ContentPaths::archive($type, $lang, $default));
+                }
+            }
+        }
+        foreach ($types as $type) {
+            foreach ($languages as $lang) {
+                foreach ($this->content->getItems($type, $lang, false, false) as $item) {
+                    $add($paths->publicPath($type, $item->slug, $lang));
+                }
+            }
+        }
+        foreach ($languages as $lang) {
+            foreach ($this->sitemapTerms($lang) as $term) {
+                $add((string)$term['path']);
+            }
+        }
+        if ($this->sitemap()->enabled()) {
+            $add('sitemap.xml');
+        }
+        $add('robots.txt');
+        return ['origin' => $origin, 'paths' => array_slice(array_keys($found), 0, PageCache::MAX_ENTRIES)];
     }
 
     /**
@@ -4015,7 +4102,7 @@ final class App
                 if ($outcome === 'set') {
                     // What visitors see changed: the same as a save in the admin.
                     $this->content->forget();
-                    $this->frontCache()->purgeAll();
+                    $this->frontCache()->purgeAll(true);
                     $this->contentIndex->bump();
                 }
                 return $outcome;
@@ -4030,7 +4117,7 @@ final class App
         $outcome = $this->contentAdmin()->setStatus($type, $slug, $lang, $status, $publishAt, $actor);
         if ($outcome === 'set') {
             $this->content->forget();
-            $this->frontCache()->purgeAll();
+            $this->frontCache()->purgeAll(true);
             $this->contentIndex->bump();
         }
         return $outcome;
@@ -4355,8 +4442,8 @@ final class App
             $this->basePath . '/public',
             fn(string $path): string => $this->buildAbsoluteUrl($path),
             function (array $entry, array $connection, bool $published): void {
-                // What visitors see may have changed: the same as a save in the admin.
-                $this->frontCache()->purgeAll();
+                // What visitors see may have changed: the same as a save in the admin (only the pages made from the entry).
+                $this->frontCache()->purgeAll(true);
                 $this->contentIndex->bump();
                 $this->aiAutoPicture((string)$entry['type'], (string)$entry['slug'], (string)$entry['lang'], (string)$connection['username'] . ' (MCP: ' . $connection['name'] . ')');
                 if ($published) {
