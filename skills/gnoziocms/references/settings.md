@@ -53,7 +53,7 @@ Admin > **Settings** (System menu), tabs General, Email / SMTP, Auth, Backups, U
 | `content_types`, `content_types_off` | which content types are on | *Admin > Content types* |
 | `limits.*` | storage and upload limits, allowed upload kinds | superadmin, *Settings > Limits* |
 | analytics choice | none / own code / the platform's cookieless analytics | *Admin > Analytics* |
-| built-in page cache, Varnish address | the site's own copy of public pages (for hosts with nothing in front); a Varnish in front of the site (CloudPanel's is found by itself); *Clear cache now* button | *Admin > Settings > Cache* |
+| built-in page cache, Varnish address | the site's own copy of public pages (for hosts with nothing in front), how long each page is kept, *Refresh only what changed* (a saved entry refreshes only the pages that show it), *Build cleared pages again at once*, *Build cache now*; a Varnish in front of the site (CloudPanel's is found by itself); *Clear cache now* button | *Admin > Settings > Cache* |
 | Omni connection | reports the site's health to an Omni monitoring app | superadmin only, *Admin > Omni*; never connect or disconnect it yourself |
 
 `python3 scripts/site_settings.py set site title="Νέο όνομα"` accepts only the safe keys it lists in `--help`. For the others use the screens.

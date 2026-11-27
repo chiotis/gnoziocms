@@ -70,14 +70,19 @@ final class FrontCache
     /**
      * Empties the cache of the whole site, once per request: CloudPanel sends it when the request ends; another Varnish is asked
      * after the response, so what was saved is on disk first; the site's own copies are dropped at the same moment. False when there
-     * is no cache to empty.
+     * is no cache to empty. With `$changedOnly` the site's own copies lose only the pages made from the entries this request wrote
+     * (PageCache::purgeChangedAtEnd(), when Settings > Cache says so); a call without it in the same request still empties them all.
      */
-    public function purgeAll(): bool
+    public function purgeAll(bool $changedOnly = false): bool
     {
+        if ($changedOnly && $this->pages !== null && $this->pages->refreshesChangedOnly()) {
+            $this->pages->purgeChangedAtEnd();
+        } else {
+            $this->pages?->purgeAtEnd();
+        }
         if ($this->queued) {
             return true;
         }
-        $this->pages?->purgeAtEnd();
         $own = $this->pages !== null && $this->pages->isEnabled();
         $cloudPanel = self::cloudPanel();
         if ($cloudPanel !== null) {

@@ -50,5 +50,23 @@ answer over 2 MB. At most 3,000 copies are kept. The answer carries `X-Page-Cach
 Emptying: by the same call that empties the cache in front, on every change saved in the admin and by the button. Copies are not
 deleted on the spot: when the request that saved ends, a new generation number is written and the files are removed; an answer that
 began under the old number is not kept, so a visit that overlaps a save cannot put the old page back. A copy is also not used for more
-than 10 minutes (`PageCache::TTL`), for what changes outside the admin (a file edited by hand, a script). With a cache in front the
-switch does nothing the cache does not already do.
+than its lifetime, for what changes outside the admin (a file edited by hand, a script): **Keep each page for**, 5 minutes to a week,
+10 minutes until it is set (`PageCache::ttl()`, `page_cache_ttl` in the system database). With a cache in front the switch does
+nothing the cache does not already do.
+
+**Refresh only what changed** (on until it is turned off, `page_cache_targeted`): saving an entry drops only the copies made from it.
+While a page is made, the places that read entries say what they read (`CacheTags`): `type:<type>` for a list of a type
+(`ContentRepository::getItems()`, an archive's query, related entries, the choices of a relation), `entry:<type>/<slug>` for one entry
+(`find()`, an entry looked up by address), `id:<translation id>` for an entry a relation points at or the translations of an entry, and
+`*` for what is made from the whole content (the maps' data, the search index). The copy keeps that list. `ContentIndex::upsert()`
+says what a request wrote; when it ends, those tags are stamped in `storage/cache/pages/stamps.json` and the copies carrying one are
+removed. A copy made before a stamp of one of its tags is neither sent nor kept, so a visit that overlaps the save cannot put the old
+page back. Only the editor's Save (not of a form), an MCP save, AI publishing's status and main picture work this way; an entry
+deleted or moved to another address (`ContentIndex::remove()`), and every other change saved in the admin, still empty everything.
+
+**Build cleared pages again at once** (on until it is turned off, `page_cache_rebuild`): after the response is sent (PHP-FPM or
+LiteSpeed only, `CronStatus::finishFunction()`), the site asks itself for the addresses it just dropped, the home pages first, then the
+newest, at most 50 and for at most a minute (`PageCache::rebuild()`): on this server first (the host resolved to 127.0.0.1, an answer
+must carry `X-Page-Cache`), else through the public address. **Build cache now** lists the public addresses (home pages, archives,
+every listed entry, term pages, the sitemap, robots.txt: `?cache_addresses=1` on Settings) and the admin's browser opens each without
+its cookie, three at a time, counting what was built, already ready or never kept.

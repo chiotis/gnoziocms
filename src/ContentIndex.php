@@ -78,6 +78,8 @@ final class ContentIndex
      */
     public function revision(): string
     {
+        // What is kept under the revision (the maps' data) is made from the whole of the content.
+        CacheTags::readAll();
         return $this->meta !== null && $this->isAvailable() && $this->meta->isAvailable() ? (string)$this->meta->get(self::META_REVISION) : '';
     }
 
@@ -243,6 +245,7 @@ final class ContentIndex
 
     public function upsert(ContentItem $item): void
     {
+        CacheTags::changed($item->type, $item->slug, (string)($item->meta['translation_id'] ?? ''));
         if ($this->isAvailable()) {
             $this->write($item);
             $this->bump();
@@ -251,6 +254,7 @@ final class ContentIndex
 
     public function remove(string $type, string $slug, string $lang): void
     {
+        CacheTags::removed($type, $slug);
         if ($this->isAvailable()) {
             $this->drop($type, $slug, $lang);
             $this->bump();
@@ -319,6 +323,7 @@ final class ContentIndex
     /** @return array<int, array<string, mixed>> */
     public function search(string $query, int $limit = 50): array
     {
+        CacheTags::readAll();
         $query = trim(mb_strtolower($query));
         if ($query === '' || !$this->isAvailable()) {
             return [];
@@ -454,6 +459,9 @@ final class ContentIndex
      */
     public function entriesById(array $ids, array $types = []): array
     {
+        foreach ($ids as $id) {
+            CacheTags::readId((string)$id);
+        }
         $ids = array_values(array_unique(array_filter($ids, static fn(string $id): bool => $id !== '')));
         if ($ids === [] || !$this->isAvailable()) {
             return [];
@@ -482,6 +490,7 @@ final class ContentIndex
      */
     public function entryByTranslation(string $type, string $translationId, array $langs): ?array
     {
+        CacheTags::readId($translationId);
         $langs = array_values(array_unique(array_filter($langs, static fn(string $l): bool => $l !== '')));
         if ($translationId === '' || $langs === [] || !$this->isAvailable()) {
             return null;
@@ -509,6 +518,7 @@ final class ContentIndex
      */
     public function similar(string $type, string $slug, string $lang, string $taxonomy, array $terms, int $limit): array
     {
+        CacheTags::readType($type);
         $terms = array_values(array_unique(array_filter(array_map('strval', $terms), static fn(string $t): bool => $t !== '')));
         if ($limit < 1 || !$this->isAvailable()) {
             return [];
@@ -536,6 +546,7 @@ final class ContentIndex
      */
     public function referencesTo(string $id, string $fromType, string $fieldPath): array
     {
+        CacheTags::readType($fromType);
         if ($id === '' || !$this->isAvailable()) {
             return [];
         }
@@ -552,6 +563,9 @@ final class ContentIndex
      */
     public function choices(array $types, string $defaultLang, int $limit, string $query = '', bool $publishedOnly = false): array
     {
+        foreach ($types as $type) {
+            CacheTags::readType((string)$type);
+        }
         if ($types === [] || !$this->isAvailable()) {
             return [];
         }
@@ -584,6 +598,7 @@ final class ContentIndex
      */
     public function referrers(string $id): array
     {
+        CacheTags::readAll();
         if ($id === '' || !$this->isAvailable()) {
             return [];
         }
@@ -603,6 +618,7 @@ final class ContentIndex
      */
     public function brokenReferences(int $limit = 500): array
     {
+        CacheTags::readAll();
         if (!$this->isAvailable()) {
             return [];
         }
@@ -618,6 +634,7 @@ final class ContentIndex
     /** Every entry that points at an id, from any content type: type, slug, language, field path. @return array<int, array<string, mixed>> */
     public function allReferencesTo(string $id): array
     {
+        CacheTags::readAll();
         if ($id === '' || !$this->isAvailable()) {
             return [];
         }
@@ -634,6 +651,9 @@ final class ContentIndex
      */
     public function entriesByAddress(array $pairs, array $langs): array
     {
+        foreach ($pairs as $pair) {
+            CacheTags::readEntry((string)($pair[0] ?? ''), (string)($pair[1] ?? ''));
+        }
         if ($pairs === [] || !$this->isAvailable()) {
             return [];
         }

@@ -437,7 +437,7 @@
                 {%- elseif cache.pages.enabled and not cache.base_url -%}
                   <strong class="font-medium text-orange-700">A page made on every visit: the built-in cache is on but keeps nothing until the site has a Base URL (General).</strong>
                 {%- elseif cache.pages.enabled -%}
-                  Public pages from the built-in copies. They are made again on every change saved in the admin, and at least every {{ cache.pages.ttl_minutes }} minutes.
+                  Public pages from the built-in copies, each kept for up to {{ cache.pages.ttl_label }}. {% if cache.pages.targeted %}Saving an entry refreshes only the pages it appears on; any other change saved in the admin refreshes them all.{% else %}They are made again on every change saved in the admin.{% endif %}
                 {%- else -%}
                   A page made on every visit. Turn on the built-in cache below to make visits faster.
                 {%- endif -%}
@@ -447,7 +447,7 @@
               <span>Clear by hand</span>
               <div>
                 <button type="submit" form="cache-clear" class="{{ secondary_button_class }}">Clear cache now</button>
-                <p class="mt-1 text-[11px] leading-4 text-slate-500">Empties the built-in copies, asks the Varnish to drop this site's pages, and makes the compiled templates again. Every change saved in the admin already does this. You need it after files were changed on the server outside the admin (by hand, by a script, by an upload over FTP), and to test the Varnish address.</p>
+                <p class="mt-1 text-[11px] leading-4 text-slate-500">Empties the built-in copies, asks the Varnish to drop this site's pages, and makes the compiled templates again. Changes saved in the admin already do this for what they change. You need it after files were changed on the server outside the admin (by hand, by a script, by an upload over FTP), and to test the Varnish address.</p>
               </div>
             </div>
           </div>
@@ -471,20 +471,56 @@
             {% elseif not cache.base_url %}
               <p class="set-indent text-xs text-orange-700">It needs the site's Base URL (<a href="{{ url('admin/settings?tab=basics') }}" class="font-medium underline">General</a>): only pages asked for on that address are kept. Until it is set nothing is kept.</p>
             {% endif %}
+            <div>
+              <label for="page_cache_ttl">Keep each page for</label>
+              <select id="page_cache_ttl" name="page_cache_ttl">
+                {% for seconds, label in cache.pages.ttl_choices %}
+                  <option value="{{ seconds }}"{% if cache.pages.ttl == seconds %} selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+              <p>After this long a page is made again on its next visit, even if nothing changed. Changes saved in the admin show at once whatever you pick, so a long time is safe. Pick a short one only if files are often changed on the server outside the admin.</p>
+            </div>
+            <label class="flex">
+              <input type="checkbox" name="page_cache_targeted" value="1" {% if cache.pages.targeted %}checked{% endif %}>
+              <span><span class="font-medium">Refresh only what changed</span>
+                <span class="block text-xs text-slate-500">Saving a post or a page refreshes that page and the pages that show it: the home page, its archive and term pages, lists and related entries that include it, the feeds and the sitemap. The rest stay ready. Off: every save clears every page.</span></span>
+            </label>
+            <label class="flex">
+              <input type="checkbox" name="page_cache_rebuild" value="1" {% if cache.pages.rebuild %}checked{% endif %}>
+              <span><span class="font-medium">Build cleared pages again at once</span>
+                <span class="block text-xs text-slate-500">After a save or <em>Clear cache now</em>, the site opens the pages it cleared (up to {{ cache.pages.rebuild_max }}, the home page first) once your screen has loaded, so the next visitor gets them ready. Off: each is made on its next visit.{% if not cache.pages.after_response %} <strong class="font-medium text-orange-700">This server runs PHP in a way that cannot work after the response (it needs PHP-FPM or LiteSpeed), so pages are made on their next visit; use Build cache now instead.</strong>{% endif %}</span></span>
+            </label>
+            <div>
+              <span>Build cache now</span>
+              <div data-cache-build data-addresses="{{ url('admin/settings?tab=cache&cache_addresses=1') }}">
+                <button type="button" class="{{ secondary_button_class }}" data-cache-build-start{% if not cache.pages.enabled or not cache.base_url or cache_front %} disabled{% endif %}>Build cache now</button>
+                <button type="button" class="{{ secondary_button_class }}" data-cache-build-stop style="display: none">Stop</button>
+                <p class="mt-1 text-[11px] leading-4 text-slate-500" data-cache-build-status aria-live="polite">{% if not cache.pages.enabled %}Turn the cache on and save first.{% elseif not cache.base_url %}Set the Base URL first.{% else %}Opens every public page once (the home pages, the lists, every published entry, the term pages and the sitemap), so no visitor waits for a page to be made. Keep this screen open until it ends.{% endif %}</p>
+              </div>
+            </div>
           </div>
           <details class="en-details-note">
             <summary>When to use it</summary>
             <ul class="mt-1.5 list-disc space-y-1 pl-5">
               <li><strong>Turn it on</strong> on shared hosting, or on any server with no Varnish or CDN cache in front of the site.</li>
-              <li><strong>Leave it off</strong> when a Varnish (for example CloudPanel's) or a CDN already keeps the pages, and while you are building the site by changing its files on the server, since such changes show only after up to {{ cache.pages.ttl_minutes }} minutes or after <em>Clear cache now</em>.</li>
+              <li><strong>Leave it off</strong> when a Varnish (for example CloudPanel's) or a CDN already keeps the pages, and while you are building the site by changing its files on the server, since such changes show only after up to {{ cache.pages.ttl_label }} or after <em>Clear cache now</em>.</li>
             </ul>
+          </details>
+          <details class="en-details-note">
+            <summary>How to set the three controls</summary>
+            <ol>
+              <li><strong>Keep each page for:</strong> how long a kept page is used before it is made again. Anything saved in the admin shows at once whatever this says, so 1 hour to 1 day suits most sites. A shorter time only matters for what changes outside the admin: a file edited on the server, a script, an import from the command line. For a site you edit only in the admin, 1 day or 1 week is fine.</li>
+              <li><strong>Refresh only what changed:</strong> leave it on. When you save a post, only its own page and the pages that show it are made again (the home page, its archive, its categories and tags, lists built with blocks that include its type, related entries, feeds and the sitemap). Changing the slug of an entry, deleting one, saving a form, the settings, the menus, the theme or the taxonomies still clears every page, since such changes reach every page. Turn it off only if a page ever shows an old version after a save; then tell us which page.</li>
+              <li><strong>Build cleared pages again at once:</strong> leave it on. Right after a save the site opens again the pages it just cleared, in the background, so even the first visitor after a change gets a ready page. It does this for up to {{ cache.pages.rebuild_max }} pages and for at most a minute; any others are made on their next visit.</li>
+              <li><strong>Build cache now:</strong> press it after turning the cache on, after <em>Clear cache now</em>, or after a big change (a new theme, an import). Your browser opens every public page once, without your sign-in, and shows how many it built. It can take a few minutes on a large site; you can stop it and press it again later, and pages already kept are just counted.</li>
+            </ol>
           </details>
           <details class="en-details-note">
             <summary>What is kept, what is not, and how fresh it is</summary>
             <ul class="mt-1.5 list-disc space-y-1 pl-5">
               <li><strong>Kept:</strong> pages, the sitemap, feeds and robots.txt, opened by a visitor who is not signed in, on the site's own address (the Base URL), with nothing after a <code>?</code> in the address.</li>
-              <li><strong>Never kept:</strong> anything seen by someone signed in (editors may see drafts), searches, filters and sorts, the shop's cart, checkout and account, pages that are not found or that redirect, pictures and downloads, an answer over {{ cache.pages.max_mb }} MB, and the MCP server.</li>
-              <li><strong>Fresh:</strong> every change saved in the admin, and every scheduled entry going live, drops all the copies at once. A copy is never used for more than {{ cache.pages.ttl_minutes }} minutes either, so what changes outside the admin (a file edited on the server, a script) shows within {{ cache.pages.ttl_minutes }} minutes, or at once with <em>Clear cache now</em>.</li>
+              <li><strong>Never kept:</strong> anything seen by someone signed in (editors may see drafts), searches, filters and sorts, the shop's cart, checkout and account, pages that are not found or that redirect, pictures and downloads, an answer over {{ cache.pages.max_mb }} MB, and the MCP server. These work exactly as without the cache.</li>
+              <li><strong>Fresh:</strong> {% if cache.pages.targeted %}saving an entry drops the pages it appears on; any other change saved in the admin, and every scheduled entry going live, drops all the copies at once.{% else %}every change saved in the admin, and every scheduled entry going live, drops all the copies at once.{% endif %} A copy is never used for more than {{ cache.pages.ttl_label }} either, so what changes outside the admin (a file edited on the server, a script) shows within {{ cache.pages.ttl_label }}, or at once with <em>Clear cache now</em>.</li>
               <li><strong>Room:</strong> at most {{ cache.pages.max_entries|number_format }} pages, in <code>storage/cache/pages</code>. They count in Limits like the rest of the site.</li>
               <li><strong>To check it works:</strong> open a page in a private window twice and look at the response headers (the browser's developer tools, Network), or run <code>curl -sI {{ cache.base_url ?: 'https://example.com' }}/</code> twice. <code>X-Page-Cache: hit</code> means the copy was sent; <code>miss</code> means the page was made and kept.</li>
             </ul>
@@ -564,6 +600,56 @@ sub vcl_recv {
     {{ csrf_field() }}
     <input type="hidden" name="cache_action" value="clear">
   </form>
+  <script>
+  // Settings > Cache > Build cache now: opens every public address without the session cookie, a few at a time, so each page is
+  // made as a visitor sees it and kept. X-Page-Cache says what happened: miss (built now), hit (already kept), none (never kept).
+  (function () {
+    var box = document.querySelector('[data-cache-build]');
+    if (!box) { return; }
+    var start = box.querySelector('[data-cache-build-start]');
+    var stop = box.querySelector('[data-cache-build-stop]');
+    var status = box.querySelector('[data-cache-build-status]');
+    var stopped = false;
+    function say(text) { status.textContent = text; }
+    stop.addEventListener('click', function () { stopped = true; });
+    start.addEventListener('click', function () {
+      stopped = false;
+      start.disabled = true;
+      stop.style.display = '';
+      say('Finding the pages…');
+      fetch(box.getAttribute('data-addresses'), { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+        .then(function (r) { if (!r.ok) { throw new Error('status ' + r.status); } return r.json(); })
+        .then(function (list) {
+          if (list.origin && list.origin !== window.location.origin.toLowerCase()) {
+            throw new Error('pages are kept only on ' + list.origin + ', and this admin is open on ' + window.location.origin + '. Open the admin there and try again');
+          }
+          var paths = list.paths || [], next = 0, finished = 0, built = 0, ready = 0, skipped = 0;
+          function report(done) {
+            var counts = built + ' built, ' + ready + ' already ready' + (skipped ? ', ' + skipped + ' never kept (not found, a redirect, or a page that is always made fresh)' : '');
+            say(done ? (stopped ? 'Stopped after ' + finished + ' of ' + paths.length + ' pages: ' : 'Done, ' + paths.length + ' pages: ') + counts + '.' : 'Building ' + finished + ' of ' + paths.length + ' pages: ' + counts + '…');
+          }
+          return new Promise(function (resolve) {
+            var running = 0;
+            function pump() {
+              if ((stopped || next >= paths.length) && running === 0) { resolve(); return; }
+              while (!stopped && running < 3 && next < paths.length) {
+                running++;
+                fetch(paths[next++], { credentials: 'omit', cache: 'no-store', redirect: 'manual' })
+                  .then(function (r) {
+                    var mark = r.headers.get('X-Page-Cache');
+                    if (r.status === 200 && mark === 'miss') { built++; } else if (r.status === 200 && mark === 'hit') { ready++; } else { skipped++; }
+                  }, function () { skipped++; })
+                  .then(function () { running--; finished++; report(false); pump(); });
+              }
+            }
+            pump();
+          }).then(function () { report(true); });
+        })
+        .catch(function (e) { say('Could not build the cache: ' + e.message + '.'); })
+        .then(function () { start.disabled = false; stop.style.display = 'none'; });
+    });
+  })();
+  </script>
   {% if can('limits.manage') %}
   <form id="storage-recalculate" method="post" action="/admin/settings?tab=limits" hidden>
     {{ csrf_field() }}

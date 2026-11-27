@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.349 — 2026-11-27 — Settings › Cache: how long pages are kept, refreshing only what changed, and building the cache
+- **Keep each page for** sets how long the built-in cache uses a page before making it again: 5 minutes to 1 week, 10 minutes until it is set. Changes saved in the admin still show at once, so a long time is safe; a short one only matters for files changed on the server outside the admin.
+- **Refresh only what changed** (on): saving a post or a page drops only its own page and the pages made from it: lists of its type (home page blocks, the archive, term pages, related entries, feeds, the sitemap), pages that show it through a relation, and its translations' language links. Every other page stays ready. Each kept page remembers what it was made from (`CacheTags`); a save stamps what it wrote, and a page made before that stamp is neither sent nor kept. Deleting an entry or changing its address, saving a form, and any other change saved in the admin still clear every page. MCP saves and AI publishing's status and main picture work the same way.
+- **Build cleared pages again at once** (on): after a save or *Clear cache now*, once the response is sent, the site opens the pages it just cleared (the home pages first, then the newest, at most 50, for at most a minute), on this server first and through the public address otherwise. It needs PHP-FPM or LiteSpeed; the screen says when the server cannot.
+- **Build cache now** opens every public page once from the browser, without the sign-in (home pages, lists, every published entry, term pages, the sitemap), three at a time, with a progress line and Stop, and says how many it built, how many were already ready and how many are never kept.
+- Searches, filters, the shop's cart, checkout and accounts, forms and anyone signed in are still never kept. The Cache section has directions for each control. `docs/varnish.md` and the skill describe them.
+- Tests: `page-cache` (unit), `page_cache` (HTTP).
+
 ## 0.1.348 — 2026-11-26 — Settings › Cache: the built-in page cache and Varnish in one section, with directions
 - The page cache moves from **System** to its own **Settings › Cache** section (System group of the Settings list, `settings.manage`). System keeps a short card that links to it.
 - **Cache status** says whether the built-in cache is on (pages kept and their size), which Varnish the site found, and what visitors get now. **Clear cache now** empties the built-in copies, asks the Varnish to drop the site's pages (and says what it answered: 200, 405 or no answer), and makes the compiled templates again.

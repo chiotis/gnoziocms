@@ -14,8 +14,13 @@ namespace GnozioCMS;
  *   say it must not be kept (FrontCache::doNotKeep());
  * - emptied by the same call that empties the cache in front (FrontCache::purgeAll()): whatever is saved in the admin. The files are
  *   not deleted on the spot: a generation number changes at the end of that request, after what was saved is on disk, and a response
- *   that started under the old number is not kept. A copy also stops being used after TTL seconds, for what changes outside the admin
- *   (after Images::PENDING_PAGE_TTL when it names a picture that is not written yet).
+ *   that started under the old number is not kept. A copy also stops being used after its lifetime (ttl(), Settings > Cache), for
+ *   what changes outside the admin (after Images::PENDING_PAGE_TTL when it names a picture that is not written yet);
+ * - or, for a saved entry, only the copies made from it (purgeChangedAtEnd(), "Refresh only what changed"): each copy keeps what it
+ *   was made from (CacheTags), a save stamps what it changed in `stamps.json`, and a copy made before a stamp of one of its tags is
+ *   not used any more (nor kept, when it was being made meanwhile). Anything else saved in the admin still empties all of them;
+ * - made again after it was emptied (rebuild(), "Build the pages again"), by asking the site for the pages that were dropped, after
+ *   the response was sent; and made all at once from Settings > Cache > Build cache now (the browser asks for every address).
  *
  * It is off until Settings > Cache turns it on; with a cache in front it is not needed.
  *
@@ -27,8 +32,16 @@ namespace GnozioCMS;
 final class PageCache
 {
     public const META_ENABLED = 'page_cache_enabled';
-    /** How long a copy is used, whatever happens (a file edited outside the admin shows up by then). */
+    public const META_TTL = 'page_cache_ttl';
+    public const META_TARGETED = 'page_cache_targeted';
+    public const META_REBUILD = 'page_cache_rebuild';
+    /** How long a copy is used at most when nothing else is said (a file edited outside the admin shows up by then). */
     public const TTL = 600;
+    /** The lifetimes Settings > Cache offers, in seconds, with their names. */
+    public const TTL_CHOICES = [300 => '5 minutes', 600 => '10 minutes', 1800 => '30 minutes', 3600 => '1 hour', 21600 => '6 hours', 43200 => '12 hours', 86400 => '1 day', 604800 => '1 week'];
+    /** How many dropped pages are made again after a change, and for how long at most (seconds), so the work ends. */
+    public const REBUILD_MAX = 50;
+    public const REBUILD_SECONDS = 60;
     /** The most copies kept, and the largest answer kept: a site has a page for each address, so this is a guard, not a limit it meets. */
     public const MAX_ENTRIES = 3000;
     public const MAX_BYTES = 2000000;
@@ -42,7 +55,14 @@ final class PageCache
     public const QUIET_SECONDS = 60;
 
     private bool $purgeQueued = false;
+    /** Whether this request's purge empties everything (true) or only what the saved entries were in (false). */
+    private bool $purgeAll = false;
     private ?bool $enabled = null;
+    /** When the page being kept started to be made, and its address (capture()). */
+    private float $started = 0.0;
+    private string $url = '';
+    /** @var array<string, array<string, float>> stamps.json of each directory, read once per request */
+    private static array $stamps = [];
     /** @var array{site_host: string, trusted: list<string>}|null what serveEarly() needs, written beside the copies */
     private ?array $frontDoor = null;
 
@@ -65,6 +85,53 @@ final class PageCache
         // Copies from before it was turned off are not to come back.
         $this->bump();
         $this->deleteFiles();
+        return true;
+    }
+
+    /** How long a copy is used at most, in seconds (Settings > Cache > Keep each page for). */
+    public function ttl(): int
+    {
+        $value = $this->meta->isAvailable() ? (int)$this->meta->get(self::META_TTL) : 0;
+        return isset(self::TTL_CHOICES[$value]) ? $value : self::TTL;
+    }
+
+    public function setTtl(int $seconds): bool
+    {
+        if (!isset(self::TTL_CHOICES[$seconds]) || !$this->meta->isAvailable()) {
+            return false;
+        }
+        $this->meta->set(self::META_TTL, (string)$seconds);
+        return true;
+    }
+
+    /** Whether saving an entry drops only the pages made from it (on unless it was turned off). */
+    public function refreshesChangedOnly(): bool
+    {
+        return !$this->meta->isAvailable() || $this->meta->get(self::META_TARGETED) !== '0';
+    }
+
+    /** Whether the pages a change dropped are made again at once, after the response (on unless it was turned off). */
+    public function rebuildsAfterChange(): bool
+    {
+        return !$this->meta->isAvailable() || $this->meta->get(self::META_REBUILD) !== '0';
+    }
+
+    public function setRefreshChangedOnly(bool $on): bool
+    {
+        return $this->setSwitch(self::META_TARGETED, $on);
+    }
+
+    public function setRebuildAfterChange(bool $on): bool
+    {
+        return $this->setSwitch(self::META_REBUILD, $on);
+    }
+
+    private function setSwitch(string $key, bool $on): bool
+    {
+        if (!$this->meta->isAvailable()) {
+            return false;
+        }
+        $this->meta->set($key, $on ? '1' : '0');
         return true;
     }
 
@@ -158,7 +225,8 @@ final class PageCache
             return false;
         }
         $head = json_decode(substr($raw, 0, $cut), true);
-        if (!is_array($head) || ($head['generation'] ?? null) !== self::generationIn($directory) || (int)($head['expires'] ?? 0) < time()) {
+        if (!is_array($head) || ($head['generation'] ?? null) !== self::generationIn($directory) || (int)($head['expires'] ?? 0) < time()
+            || self::changedSince($directory, (array)($head['tags'] ?? []), (float)($head['made'] ?? 0))) {
             return false;
         }
         $body = substr($raw, $cut + 1);
@@ -184,9 +252,11 @@ final class PageCache
      * Starts keeping the answer to this request: when it ends, it is written down if it is one that may be kept. Call it after the
      * headers that belong to every response (the security headers, Cache-Control) are set, so they are kept with it.
      */
-    public function capture(string $key): void
+    public function capture(string $key, string $url = ''): void
     {
         $generation = $this->generation();
+        $this->started = microtime(true);
+        $this->url = $url;
         header('X-Page-Cache: miss');
         ob_start(function (string $buffer, int $phase) use ($key, $generation): bool {
             // Only an answer that was buffered whole: a flush in the middle means the headers may be gone.
@@ -202,10 +272,12 @@ final class PageCache
     }
 
     /** Keeps `$body` under `$key` when this response may be kept. Public for tests, which pass the response they stand for. */
-    public function keep(string $key, string $generation, string $body, ?int $status = null, ?array $headers = null): bool
+    public function keep(string $key, string $generation, string $body, ?int $status = null, ?array $headers = null, ?array $tags = null, ?float $started = null): bool
     {
         $status ??= http_response_code() ?: 200;
         $headers ??= headers_list();
+        $tags ??= CacheTags::read();
+        $started ??= $this->started > 0 ? $this->started : microtime(true);
         if ($status !== 200 || $body === '' || strlen($body) > self::MAX_BYTES || FrontCache::refused() || session_status() === PHP_SESSION_ACTIVE) {
             return false;
         }
@@ -230,15 +302,19 @@ final class PageCache
             return false;
         }
         // The site changed while this response was made: it may show what is no longer there.
-        if ($this->generation() !== $generation || !$this->room()) {
+        self::$stamps = [];
+        if ($this->generation() !== $generation || self::changedSince($this->directory, $tags, $started) || !$this->room()) {
             return false;
         }
         if (!is_dir($this->directory) && !@mkdir($this->directory, 0775, true) && !is_dir($this->directory)) {
             return false;
         }
         // A page that names a picture still to be written is drawn again soon, with the picture's own address (Images).
-        $ttl = Images::namesPending($body) ? min(self::TTL, Images::PENDING_PAGE_TTL) : self::TTL;
-        $head = json_encode(['generation' => $generation, 'expires' => time() + $ttl, 'length' => strlen($body), 'headers' => $kept], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $ttl = Images::namesPending($body) ? min($this->ttl(), Images::PENDING_PAGE_TTL) : $this->ttl();
+        $head = json_encode([
+            'generation' => $generation, 'expires' => time() + $ttl, 'made' => $started, 'tags' => array_values($tags), 'url' => $this->url,
+            'length' => strlen($body), 'headers' => $kept,
+        ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         if ($head === false) {
             return false;
         }
@@ -271,9 +347,26 @@ final class PageCache
 
     /**
      * Empties the cache when the request ends: a new generation (what began before it is not kept) and the files removed. Once per
-     * request. The generation is the first thing that changes, so a copy is never sent after this returns.
+     * request. The generation is the first thing that changes, so a copy is never sent after this returns. It wins over
+     * purgeChangedAtEnd() in the same request.
      */
     public function purgeAtEnd(): void
+    {
+        $this->purgeAll = true;
+        $this->queuePurge();
+    }
+
+    /**
+     * Drops, when the request ends, only the copies made from the entries this request wrote (CacheTags): the entry's own page and
+     * the pages that list its type, show it through a relation, or are made from all the content. When nothing was written nothing
+     * is dropped; when an entry was taken away (deleted, moved) everything is, since links and menus may have changed with it.
+     */
+    public function purgeChangedAtEnd(): void
+    {
+        $this->queuePurge();
+    }
+
+    private function queuePurge(): void
     {
         if ($this->purgeQueued) {
             return;
@@ -284,9 +377,215 @@ final class PageCache
             return;
         }
         register_shutdown_function(function (): void {
-            $this->bump();
-            $this->deleteFiles();
+            $dropped = $this->purgeAll || CacheTags::anyRemoved() ? $this->dropAll() : $this->dropChanged(CacheTags::changes());
+            if ($dropped !== [] && $this->isEnabled() && $this->rebuildsAfterChange() && CronStatus::finishFunction() !== null) {
+                // After whatever else runs at the end (a Varnish's purge), and after the response was sent.
+                register_shutdown_function(fn() => $this->rebuildAfterResponse($dropped));
+            }
         });
+    }
+
+    /** Empties everything now. @return list<string> the addresses that were kept, the ones most worth making again first */
+    public function dropAll(): array
+    {
+        $this->bump();
+        $urls = $this->rebuildsAfterChange() ? $this->addressesOf(glob($this->directory . '/*.page') ?: []) : [];
+        $this->deleteFiles();
+        @unlink($this->directory . '/stamps.json');
+        self::$stamps = [];
+        return $urls;
+    }
+
+    /**
+     * Drops now the copies made from any of `$tags` (what CacheTags::changes() says was written): the tags are stamped first, so a
+     * copy is not sent once this starts, then the files go. @return list<string> the addresses of the copies dropped
+     */
+    public function dropChanged(array $tags): array
+    {
+        if ($tags === [] || !is_dir($this->directory)) {
+            return [];
+        }
+        $this->stamp($tags, microtime(true));
+        $wanted = array_flip($tags);
+        $dropped = [];
+        foreach (glob($this->directory . '/*.page') ?: [] as $file) {
+            $head = self::headOf($file);
+            if ($head === null) {
+                continue;
+            }
+            foreach ((array)($head['tags'] ?? []) as $tag) {
+                if (isset($wanted[$tag])) {
+                    $dropped[] = $file;
+                    break;
+                }
+            }
+        }
+        $urls = $this->addressesOf($dropped);
+        foreach ($dropped as $file) {
+            @unlink($file);
+        }
+        return $urls;
+    }
+
+    /**
+     * The addresses the copies in `$files` were made for, the home pages first, then the ones made last, at most REBUILD_MAX.
+     * @param string[] $files @return list<string>
+     */
+    private function addressesOf(array $files): array
+    {
+        $found = [];
+        foreach ($files as $file) {
+            $head = self::headOf($file);
+            $url = is_array($head) ? (string)($head['url'] ?? '') : '';
+            if ($url !== '' && preg_match('#^https?://#i', $url) === 1) {
+                $path = trim((string)parse_url($url, PHP_URL_PATH), '/');
+                // A home page (of the site, of a language) first: it is the most visited.
+                $found[$url] = [preg_match('#^([a-z]{2})?$#', $path) === 1 ? 0 : 1, -(float)($head['made'] ?? 0)];
+            }
+        }
+        uasort($found, static fn(array $a, array $b): int => $a <=> $b);
+        return array_slice(array_keys($found), 0, self::REBUILD_MAX);
+    }
+
+    /** The first line of a kept copy: what it is (generation, time, tags, address). */
+    private static function headOf(string $file): ?array
+    {
+        $handle = @fopen($file, 'rb');
+        if ($handle === false) {
+            return null;
+        }
+        $line = fgets($handle, 65536);
+        fclose($handle);
+        $head = is_string($line) ? json_decode($line, true) : null;
+        return is_array($head) ? $head : null;
+    }
+
+    /** Writes when each of `$tags` changed into stamps.json, forgetting stamps older than any copy can be. */
+    private function stamp(array $tags, float $now): void
+    {
+        $path = $this->directory . '/stamps.json';
+        $handle = @fopen($path, 'c+');
+        if ($handle === false) {
+            return;
+        }
+        flock($handle, LOCK_EX);
+        $stamps = json_decode((string)stream_get_contents($handle), true);
+        $stamps = is_array($stamps) ? $stamps : [];
+        $oldest = $now - max(array_keys(self::TTL_CHOICES)) - 60;
+        $stamps = array_filter($stamps, static fn($time): bool => is_numeric($time) && (float)$time >= $oldest);
+        foreach ($tags as $tag) {
+            $stamps[(string)$tag] = $now;
+        }
+        ftruncate($handle, 0);
+        rewind($handle);
+        fwrite($handle, (string)json_encode($stamps, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+        fflush($handle);
+        flock($handle, LOCK_UN);
+        fclose($handle);
+        self::$stamps = [];
+    }
+
+    /** Whether one of `$tags` changed at `$since` or later (stamps.json), so a copy made from them then is old. */
+    private static function changedSince(string $directory, array $tags, float $since): bool
+    {
+        if ($tags === []) {
+            return false;
+        }
+        if (!isset(self::$stamps[$directory])) {
+            $read = is_file($directory . '/stamps.json') ? json_decode((string)@file_get_contents($directory . '/stamps.json'), true) : [];
+            self::$stamps[$directory] = is_array($read) ? $read : [];
+        }
+        $stamps = self::$stamps[$directory];
+        foreach ($tags as $tag) {
+            if (isset($stamps[$tag]) && (float)$stamps[$tag] >= $since) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** After the response was sent: the session let go (the next screen must not wait), then the dropped pages asked for again. */
+    private function rebuildAfterResponse(array $urls): void
+    {
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_write_close();
+        }
+        $finish = CronStatus::finishFunction();
+        if ($finish !== null) {
+            $finish();
+        }
+        if (function_exists('ignore_user_abort')) {
+            ignore_user_abort(true);
+        }
+        if (function_exists('set_time_limit')) {
+            @set_time_limit(self::REBUILD_SECONDS + 30);
+        }
+        $this->rebuild($urls);
+    }
+
+    /**
+     * Asks the site for each of `$urls` the way a visitor would (no cookie), so its copy is made and kept: on this server first
+     * (the site's host resolved to 127.0.0.1, which also works behind a CDN), else through the public address. Stops after
+     * REBUILD_SECONDS, or at the first address that cannot be reached either way. How many pages answered is returned.
+     *
+     * @param list<string> $urls
+     * @param \Closure(string, bool): int|null $fetch the status a GET of the address got (0: no answer), true to ask this server
+     */
+    public function rebuild(array $urls, ?\Closure $fetch = null, int $seconds = self::REBUILD_SECONDS): int
+    {
+        $fetch ??= self::fetch(...);
+        $deadline = microtime(true) + $seconds;
+        $local = true;
+        $done = 0;
+        foreach (array_slice($urls, 0, self::REBUILD_MAX) as $url) {
+            if (microtime(true) > $deadline) {
+                break;
+            }
+            $status = $local ? $fetch($url, true) : 0;
+            if ($status === 0 || $status === 421) {
+                // This server does not answer for the site's address: ask the public one from now on.
+                $local = false;
+                $status = $fetch($url, false);
+            }
+            if ($status === 0) {
+                break;
+            }
+            $done++;
+        }
+        return $done;
+    }
+
+    /** A GET of `$url` with no cookie; the status (0: no answer, or curl cannot be used here). */
+    public static function fetch(string $url, bool $local): int
+    {
+        if (!function_exists('curl_init') || !function_exists('curl_exec') || preg_match('#^(https?)://([^/:]+)(?::(\d+))?#i', $url, $m) !== 1) {
+            return 0;
+        }
+        $port = isset($m[3]) && $m[3] !== '' ? (int)$m[3] : (strtolower($m[1]) === 'https' ? 443 : 80);
+        $ch = curl_init($url);
+        $options = [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => false,
+            CURLOPT_CONNECTTIMEOUT => 3,
+            CURLOPT_TIMEOUT => 15,
+            CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
+            CURLOPT_USERAGENT => 'GnozioCMS page cache',
+            CURLOPT_HTTPHEADER => ['Accept: text/html,application/xml;q=0.9,*/*;q=0.8'],
+        ];
+        if ($local) {
+            $options[CURLOPT_RESOLVE] = [$m[2] . ':' . $port . ':127.0.0.1'];
+        }
+        $ours = false;
+        $options[CURLOPT_HEADERFUNCTION] = static function ($ch, string $line) use (&$ours): int {
+            if (stripos($line, 'x-page-cache:') === 0) {
+                $ours = true;
+            }
+            return strlen($line);
+        };
+        curl_setopt_array($ch, $options);
+        $ok = curl_exec($ch) !== false;
+        // On this server, an answer without the page cache's header came from another site (the server's default one).
+        return $ok && (!$local || $ours) ? (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE) : 0;
     }
 
     /** How many copies are kept, and their size. @return array{entries: int, bytes: int} */

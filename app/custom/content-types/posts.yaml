@@ -1,0 +1,8 @@
+fields:
+  subtitle:
+    type: text
+    label: Subtitle
+  level:
+    type: select
+    label: Level
+    options: { easy: Easy, hard: Hard }

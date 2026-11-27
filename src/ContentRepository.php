@@ -151,6 +151,14 @@ final class ContentRepository
     /** @return ContentItem[] */
     public function getItems(string $type, ?string $lang = null, bool $includeHidden = false, bool $fallbackDefault = true): array
     {
+        // A page that lists a type changes when any entry of it does (CacheTags, the page cache's "Refresh only what changed").
+        CacheTags::readType($type);
+        return $this->itemsOf($type, $lang, $includeHidden, $fallbackDefault);
+    }
+
+    /** getItems() without saying that the whole type was read (find() reads one entry). @return ContentItem[] */
+    private function itemsOf(string $type, ?string $lang, bool $includeHidden, bool $fallbackDefault): array
+    {
         $defaultLang = $this->settings['languages']['default'] ?? null;
         $cacheKey = $type . '|' . ($lang === null ? '_all' : $lang) . '|' . ($fallbackDefault ? 'fb' : 'strict');
         if (isset($this->cache[$cacheKey])) {
@@ -257,7 +265,8 @@ final class ContentRepository
 
     public function find(string $type, string $slug, ?string $lang = null, bool $includeHidden = false, bool $fallbackDefault = true): ?ContentItem
     {
-        $items = $this->getItems($type, $lang, $includeHidden, $fallbackDefault);
+        CacheTags::readEntry($type, $slug);
+        $items = $this->itemsOf($type, $lang, $includeHidden, $fallbackDefault);
         foreach ($items as $item) {
             if ($item->slug === $slug) {
                 return $item;
